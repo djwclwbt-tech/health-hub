@@ -103,6 +103,151 @@ const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{}});
 
+// ═══ SUPABASE CLIENT ═══
+const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
+const SB_KEY="sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
+const sbh={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
+
+const sb={
+  async upsert(table,data,conflict="date"){
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
+        body:JSON.stringify(data)});
+      return r.ok;
+    }catch{return false;}
+  },
+  async select(table,order="date",dir="desc",limit=500){
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=${order}.${dir}&limit=${limit}`,{headers:sbh});
+      return r.ok?await r.json():[];
+    }catch{return[];}
+  },
+  async deleteRow(table,col,val){
+    try{
+      await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`,{method:"DELETE",headers:sbh});
+    }catch{}
+  }
+};
+
+// Sync entire data object TO supabase (debounced, non-blocking)
+let syncTimer=null;
+const syncToSB=async(d)=>{
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(async()=>{
+    try{
+      // Weight
+      for(const[date,value]of Object.entries(d.wt||{})){
+        await sb.upsert("weight",{date,value});
+      }
+      // Steps
+      for(const[date,value]of Object.entries(d.steps||{})){
+        await sb.upsert("steps",{date,value:Math.round(value)});
+      }
+      // Water
+      for(const[date,oz]of Object.entries(d.water||{})){
+        await sb.upsert("water",{date,oz:Math.round(oz)});
+      }
+      // Recovery
+      for(const[date,r]of Object.entries(d.rec||{})){
+        await sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
+          respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
+          strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null});
+      }
+      // Habits
+      for(const[date,h]of Object.entries(d.habits||{})){
+        if(!h)continue;
+        await sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
+          sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed});
+      }
+      // Workouts
+      for(const[date,w]of Object.entries(d.wk||{})){
+        await sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null});
+      }
+      // Nutrition
+      for(const[date,n]of Object.entries(d.nut||{})){
+        await sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
+          total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0});
+      }
+      // Progression
+      for(const[exId,p]of Object.entries(d.prog||{})){
+        await sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
+          last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id");
+      }
+      // Quick meals (clear and re-insert)
+      if(d.qm&&d.qm.length>0){
+        for(const q of d.qm){
+          await sb.upsert("quick_meals",{description:q.description,cal:q.cal||0,protein:q.protein||0,
+            carbs:q.carbs||0,fat:q.fat||0,fiber:q.fiber||0,components:q.components||[]},"description");
+        }
+      }
+      // Mobility
+      for(const[date]of Object.entries(d.mob||{})){
+        await sb.upsert("mobility",{date,completed:true});
+      }
+      // Stepper
+      for(const[date]of Object.entries(d.stp||{})){
+        await sb.upsert("stepper",{date,completed:true});
+      }
+      // Debrief
+      for(const[date]of Object.entries(d.debrief||{})){
+        await sb.upsert("debrief",{date,completed:true});
+      }
+      console.log("[SB] Full sync complete");
+    }catch(e){console.error("[SB] Sync error:",e);}
+  },2000);
+};
+
+// Save single-table change to SB (fast, targeted)
+const svSB={
+  weight:(date,value)=>sb.upsert("weight",{date,value}),
+  steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
+  water:(date,oz)=>sb.upsert("water",{date,oz:Math.round(oz)}),
+  recovery:(date,r)=>sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
+    respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
+    strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null}),
+  habits:(date,h)=>sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
+    sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed}),
+  workout:(date,w)=>sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null}),
+  nutrition:(date,n)=>sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
+    total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0}),
+  progression:(exId,p)=>sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
+    last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id"),
+  debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
+  mobility:(date)=>sb.upsert("mobility",{date,completed:true}),
+  stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
+};
+
+// Load from Supabase → build data object
+const loadFromSB=async()=>{
+  try{
+    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief]=await Promise.all([
+      sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
+      sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
+      sb.select("progression","exercise_id","asc"),sb.select("quick_meals","created_at","asc"),
+      sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
+    ]);
+    const d=bl();
+    wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
+    steps.forEach(r=>{d.steps[r.date]=r.value;});
+    water.forEach(r=>{d.water[r.date]=r.oz;});
+    rec.forEach(r=>{d.rec[r.date]={recoveryScore:r.recovery_score,hrv:r.hrv,rhr:r.rhr,
+      respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
+      strain:r.strain,wakeTime:r.wake_time,notes:r.notes};});
+    habits.forEach(r=>{d.habits[r.date]={alcohol:r.alcohol,cannabis:r.cannabis,screensOff:r.screens_off,
+      sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed};});
+    wk.forEach(r=>{d.wk[r.date]={day:r.day_name,exercises:r.exercises,dur:r.duration_min};});
+    nut.forEach(r=>{d.nut[r.date]={meals:r.meals,totalCal:r.total_cal,totalProtein:r.total_protein,
+      totalCarbs:r.total_carbs,totalFat:r.total_fat,totalFiber:r.total_fiber};});
+    prog.forEach(r=>{d.prog[r.exercise_id]={currentWeight:Number(r.current_weight),lastReps:r.last_reps,
+      lastDate:r.last_date,progressed:r.progressed};});
+    qm.forEach(r=>{d.qm.push({description:r.description,cal:r.cal,protein:r.protein,carbs:r.carbs,fat:r.fat,fiber:r.fiber,components:r.components});});
+    mob.forEach(r=>{d.mob[r.date]=true;});
+    stp.forEach(r=>{d.stp[r.date]=true;});
+    debrief.forEach(r=>{d.debrief[r.date]=true;});
+    return d;
+  }catch(e){console.error("[SB] Load error:",e);return null;}
+};
+
 const parseHealthImport=(text)=>{
   const d={wt:{},steps:{},rec:{},nut:{}};
   const lines=text.split("\n");
@@ -1257,12 +1402,57 @@ window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return raw?migrate(raw):bl();});
   const [showD,setShowD]=useState(()=>!(data.debrief||{})[yd()]);
-  const [workout,setWorkout]=useState(null); // Lifted to App level
-  useEffect(()=>{sv(data);},[data]);
+  const [workout,setWorkout]=useState(null);
+  const [sbLoaded,setSbLoaded]=useState(false);
+  const [syncStatus,setSyncStatus]=useState("");
+
+  // On mount: load from Supabase, merge with localStorage
+  useEffect(()=>{
+    (async()=>{
+      const sbData=await loadFromSB();
+      if(sbData){
+        const local=ld();
+        if(local){
+          const merged=migrate(local);
+          // Merge: Supabase wins for existing keys, local fills gaps
+          const final={...merged};
+          Object.keys(sbData).forEach(k=>{
+            if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
+              final[k]={...merged[k],...sbData[k]};
+            }else if(Array.isArray(sbData[k])&&sbData[k].length>0){
+              final[k]=sbData[k];
+            }else if(sbData[k]&&(!merged[k]||Object.keys(merged[k]).length===0)){
+              final[k]=sbData[k];
+            }
+          });
+          setData(final);sv(final);
+          // If local had data but SB was empty, push local to SB
+          const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
+          const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
+          if(localHasData&&sbEmpty){
+            setSyncStatus("Migrating local data...");
+            await syncToSB(final);
+            setSyncStatus("Migration complete");
+            setTimeout(()=>setSyncStatus(""),3000);
+          }
+        }else{
+          setData(sbData);sv(sbData);
+        }
+      }
+      setSbLoaded(true);
+    })();
+  },[]);
+
+  // Save to localStorage + Supabase on every data change
+  useEffect(()=>{
+    sv(data);
+    if(sbLoaded)syncToSB(data);
+  },[data,sbLoaded]);
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
 
       {/* Workout timer bar visible on all tabs when workout active */}
