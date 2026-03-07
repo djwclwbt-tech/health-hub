@@ -14,6 +14,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f6f8; overflow-x: hidden; }
   #root { min-height: 100vh; }
+  #root { min-height: 100dvh; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -23,27 +24,39 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
-
-
+const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ PROGRAM ═══
 const PROG = {
   name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
-  mobility:[
-    {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
-    {name:"Thoracic Extensions",dur:"10 reps",cue:"Pin lower back flat, only upper back moves"},
-    {name:"Band Pull-Aparts",dur:"15 reps",cue:"Squeeze shoulder blades like cracking a walnut"},
-    {name:"World's Greatest Stretch",dur:"5/side",cue:"Rotate chest to ceiling, reach through"},
-  ],
+  mobility:{
+    upper:[
+      {name:"Band Pull-Aparts",dur:"15 reps",cue:"Squeeze shoulder blades like cracking a walnut"},
+      {name:"Thoracic Extensions",dur:"10 reps",cue:"Pin lower back flat, only upper back moves"},
+      {name:"Wall Slides",dur:"10 reps",cue:"Keep wrists and elbows glued to wall, slide up slow"},
+      {name:"Face Pulls (light band)",dur:"15 reps",cue:"Pull to forehead, externally rotate at end"},
+    ],
+    lower:[
+      {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
+      {name:"World's Greatest Stretch",dur:"5/side",cue:"Rotate chest to ceiling, reach through"},
+      {name:"Leg Swings (front/lateral)",dur:"10/direction",cue:"Controlled swing, brace core, full ROM"},
+      {name:"Glute Bridges",dur:"15 reps",cue:"Squeeze glutes hard at top, 2s hold"},
+    ],
+    core:[
+      {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
+      {name:"Cat-Cow",dur:"10 reps",cue:"Full spinal flexion to extension, breathe with it"},
+      {name:"Dead Bug",dur:"10/side",cue:"Press low back into floor, opposite arm and leg extend"},
+      {name:"Bird Dog",dur:"10/side",cue:"Extend arm and leg, keep hips square to floor"},
+    ],
+  },
   days:{
-    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",
+    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",mobilityKey:"core",
       exercises:[
         {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
         {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
         {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
       ]},
-    tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,
+    tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,mobilityKey:"upper",
       exercises:[
         {id:"smith-flat-bench",name:"Smith Flat Bench",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
         {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
@@ -52,7 +65,7 @@ const PROG = {
         {id:"preacher-curl",name:"Preacher Curl Machine",sets:3,rr:[5,8],rest:90,sw:70,inc:5,unit:"lbs",notes:"Try 75",cue:"Slow eccentric, don't let it free-fall at bottom"},
         {id:"tricep-dips",name:"Tricep Dips",sets:3,rr:[5,8],rest:90,sw:0,inc:0,unit:"BW",notes:"Add weight at 3×8",cue:"Lean slightly forward, lock out fully at top"},
       ]},
-    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,
+    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,mobilityKey:"lower",
       exercises:[
         {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
         {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
@@ -60,7 +73,7 @@ const PROG = {
         {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
         {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
-    thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+    thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,mobilityKey:"upper",
       exercises:[
         {id:"smith-incline",name:"Smith Incline Press",sets:3,rr:[10,12],rest:90,sw:105,inc:5,unit:"lbs",notes:"30-45°",cue:"Feel upper chest stretch at bottom, squeeze at top"},
         {id:"overhand-cable-row",name:"Overhand Cable Row",sets:3,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
@@ -69,7 +82,7 @@ const PROG = {
         {id:"incline-db-curl",name:"Incline DB Curl",sets:3,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
         {id:"oh-tricep-ext",name:"OH Cable Rope Ext",sets:3,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"3×12 then +5",cue:"Elbows locked by ears, extend fully, squeeze tricep"},
       ]},
-    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,mobilityKey:"lower",
       exercises:[
         {id:"hack-squat-b",name:"Hack Squat",sets:3,rr:[10,12],rest:120,sw:140,inc:10,unit:"lbs",notes:"Or LP 300-320",cue:"Slow descent, drive through heels on the way up"},
         {id:"walking-lunges",name:"Walking Lunges DB",sets:3,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Long stride, back knee kisses floor, front knee stacks"},
@@ -90,7 +103,6 @@ const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{}});
 
-// Parse pasted HealthKit data (the markdown table format from Claude iOS)
 const parseHealthImport=(text)=>{
   const d={wt:{},steps:{},rec:{},nut:{}};
   const lines=text.split("\n");
@@ -118,7 +130,6 @@ const parseHealthImport=(text)=>{
       d.nut[date].totalProtein=num;if(d.nut[date].meals.length)d.nut[date].meals[0].protein=num;
     }
   }
-  // Parse sleep separately (different table format)
   let inSleep=false;
   for(const line of lines){
     if(line.includes("SLEEP"))inSleep=true;
@@ -131,74 +142,132 @@ const parseHealthImport=(text)=>{
   return d;
 };
 const migrate=(d)=>{const b=bl();return{...b,...d,
-  wk:d.wk||d.workoutLog||{},
-  nut:d.nut||d.nutritionLog||{},
-  wt:d.wt||d.weightLog||{},
-  rec:d.rec||d.recoveryLog||{},
-  steps:d.steps||{},
-  prog:d.prog||d.progressionState||{},
-  qm:d.qm||d.quickMeals||[],
-  mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{}};};
+  wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
+  rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
+  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{}};};
 const td=()=>new Date().toISOString().split("T")[0];
 const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
 
+// Auto-format time: "615" → "6:15", "1030" → "10:30"
+const fmtTime=(v)=>{
+  const digits=v.replace(/\D/g,"");
+  if(digits.length<=2)return digits;
+  if(digits.length===3)return digits[0]+":"+digits.slice(1);
+  if(digits.length>=4)return digits.slice(0,-2)+":"+digits.slice(-2);
+  return digits;
+};
+
+// Format elapsed seconds to mm:ss or h:mm:ss
+const fmtElapsed=(secs)=>{
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
+  if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${m}:${String(s).padStart(2,"0")}`;
+};
+
 const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
   p:"#1a73e8",pl:"#e8f0fe",g:"#0d7c3e",gl:"#e6f4ea",r:"#c5221f",rl:"#fce8e6",
   a:"#b06d00",al:"#fef7e0",v:"#6a1b9a",vl:"#f3e8fd",
   t:"#1a1a1a",t2:"#5f6368",t3:"#9aa0a6"};
 
+// ═══ BASE COMPONENTS (larger sizes) ═══
 const N=({value,onChange,placeholder,style={}})=>(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={e=>onChange(e.target.value)}
-    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,padding:"9px 10px",
-    color:C.t,fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
+    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
 );
+const TimeInput=({value,onChange,placeholder,style={}})=>{
+  const handleChange=(e)=>{
+    const raw=e.target.value.replace(/\D/g,"");
+    if(raw.length<=4)onChange(fmtTime(raw));
+  };
+  return(<input type="text" inputMode="numeric" value={value} onChange={handleChange}
+    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>);
+};
 const T=({value,onChange,placeholder,style={}})=>(
   <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,padding:"9px 10px",color:C.t,
-    fontSize:13,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
+    style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",color:C.t,
+    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
 );
 const B=({children,onClick,color=C.p,disabled,full,small,outline,style={}})=>(
   <button onClick={onClick} disabled={disabled} style={{
     background:outline?"transparent":color,color:outline?color:"#fff",
-    border:outline?`1px solid ${color}`:"none",borderRadius:3,
-    padding:small?"6px 10px":"9px 16px",fontSize:small?11:13,fontWeight:600,
+    border:outline?`2px solid ${color}`:"none",borderRadius:6,
+    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,
     cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,
-    width:full?"100%":"auto",fontFamily:"inherit",...style,
+    width:full?"100%":"auto",fontFamily:"inherit",minHeight:44,...style,
   }}>{children}</button>
 );
 const X=({children,style={},...p})=>(
-  <div style={{background:C.cd,borderRadius:3,padding:14,border:`1px solid ${C.bd}`,...style}} {...p}>{children}</div>
+  <div style={{background:C.cd,borderRadius:6,padding:14,border:`1px solid ${C.bd}`,...style}} {...p}>{children}</div>
 );
-const L=({children})=><div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{children}</div>;
-const S=({title,children})=><div style={{marginTop:6}}><div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4}}>{title}</div>{children}</div>;
-const Br=({v,max,color=C.p,h=4})=>(
-  <div style={{height:h,background:C.bl,borderRadius:2,overflow:"hidden"}}>
-    <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:2,transition:"width 0.3s"}}/>
+const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
+const S=({title,children,collapsible,defaultOpen=true})=>{
+  const [open,setOpen]=useState(defaultOpen);
+  return(<div style={{marginTop:6}}>
+    <div onClick={collapsible?()=>setOpen(!open):undefined} style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,cursor:collapsible?"pointer":"default",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span>{title}</span>{collapsible&&<span style={{fontSize:10}}>{open?"▾":"▸"}</span>}
+    </div>
+    {open&&children}
+  </div>);
+};
+const Br=({v,max,color=C.p,h=5})=>(
+  <div style={{height:h,background:C.bl,borderRadius:3,overflow:"hidden"}}>
+    <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:3,transition:"width 0.3s"}}/>
   </div>
 );
 
-const TabBar=({active,set})=>(
-  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"sticky",bottom:0,zIndex:100}}>
-    {[{id:"dashboard",l:"Home"},{id:"training",l:"Train"},{id:"nutrition",l:"Food"},{id:"weight",l:"Scale"},{id:"recovery",l:"Whoop"}].map(t=>(
+// ═══ TAB BAR (bigger) ═══
+const TabBar=({active,set,hasActiveWorkout})=>(
+  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
+    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
-        flex:1,padding:"10px 4px 12px",background:"transparent",border:"none",cursor:"pointer",
-        color:active===t.id?C.p:C.t3,fontSize:11,fontWeight:active===t.id?700:500,fontFamily:"inherit",
-        borderTop:active===t.id?`2px solid ${C.p}`:"2px solid transparent",
-      }}>{t.l}</button>
+        flex:1,padding:"8px 4px 14px",background:"transparent",border:"none",cursor:"pointer",
+        color:active===t.id?C.p:C.t3,fontSize:12,fontWeight:active===t.id?700:500,fontFamily:"inherit",
+        borderTop:active===t.id?`3px solid ${C.p}`:"3px solid transparent",
+        position:"relative",minHeight:52,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+      }}>
+        <span style={{fontSize:16}}>{t.icon}</span>
+        <span>{t.l}</span>
+        {t.id==="training"&&hasActiveWorkout&&active!=="training"&&(
+          <div style={{position:"absolute",top:6,right:"50%",marginRight:-16,width:8,height:8,borderRadius:4,background:C.g,border:`2px solid ${C.cd}`}}/>
+        )}
+      </button>
     ))}
   </div>
 );
+
+// ═══ WORKOUT TIMER BAR (shows on all tabs when workout active) ═══
+const WorkoutTimerBar=({workout,onTap})=>{
+  const [elapsed,setElapsed]=useState(0);
+  useEffect(()=>{
+    if(!workout)return;
+    const iv=setInterval(()=>setElapsed(Math.floor((Date.now()-workout.start)/1000)),1000);
+    return()=>clearInterval(iv);
+  },[workout]);
+  if(!workout)return null;
+  const sess=PROG.days[workout.day];
+  return(
+    <div onClick={onTap} style={{background:C.p,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",borderRadius:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:8,height:8,borderRadius:4,background:"#4ade80",animation:"pulse 2s infinite"}}/>
+        <span style={{color:"#fff",fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
+      </div>
+      <span style={{color:"#fff",fontSize:18,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
+    </div>
+  );
+};
 
 // ═══ CHART ═══
 const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   if(!data||data.length<2){
     if(!empty)return null;
-    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
+    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
       <div style={{height,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <span style={{fontSize:11,color:C.t3}}>{empty}</span>
+        <span style={{fontSize:13,color:C.t3}}>{empty}</span>
       </div></X>);
   }
   const vals=data.map(d=>d.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1,pad=rng*0.12;
@@ -208,8 +277,8 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   return(
     <X style={{padding:"10px 14px"}}>
       {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-        <span style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
-        <span style={{fontSize:11,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
+        <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
+        <span style={{fontSize:13,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
       </div>}
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height}} preserveAspectRatio="none">
         <defs><linearGradient id={`f${color.slice(1)}`} x1="0" y1="0" x2="0" y2="1">
@@ -219,39 +288,30 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
         <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         {pts.map((p,i)=><circle key={i} cx={p[0]} cy={p[1]} r="2" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
       </svg>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:C.t3,marginTop:2}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}>
         <span>{data[0].d||""}</span><span>{data[data.length-1].d||""}</span>
       </div>
     </X>
   );
 };
 
-// ═══ MORNING DEBRIEF ═══
+// ═══ MORNING DEBRIEF (redesigned: Whoop as single page, then habits) ═══
 const Debrief=({data,setData,onClose})=>{
   const y=yd();if((data.debrief||{})[y])return null;
   const [step,setStep]=useState(0);
-  const [f,setF]=useState({wt:"",rs:"",hrv:"",rhr:"",rr:"",sh:"",sp:"",wake:"",
+  const lastWt=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]||"";
+  const [f,setF]=useState({wt:lastWt?""+lastWt:"",rs:"",hrv:"",rhr:"",rr:"",sh:"",sp:"",str:"",steps:"",wake:"",
     alcohol:null,cannabis:null,screens:null,sunlight:null,bed:null,read:null});
 
   const steps=[
-    {title:"Weight",sub:"Step on the scale",type:"num",field:"wt",ph:"185.0",unit:"lbs"},
-    {title:"Recovery Score",sub:"From Whoop app",type:"num",field:"rs",ph:"72",unit:"%"},
-    {title:"HRV",sub:"Heart rate variability",type:"num",field:"hrv",ph:"68",unit:"ms"},
-    {title:"Resting Heart Rate",sub:"From Whoop",type:"num",field:"rhr",ph:"42",unit:"bpm"},
-    {title:"Respiratory Rate",sub:"From Whoop",type:"num",field:"rr",ph:"15.2",unit:"brpm"},
-    {title:"Sleep",sub:"Total hours",type:"num",field:"sh",ph:"7.5",unit:"hrs"},
-    {title:"Sleep Performance",sub:"From Whoop",type:"num",field:"sp",ph:"85",unit:"%"},
-    {title:"Wake Up Time",sub:"What time did you get up?",type:"num",field:"wake",ph:"6:15",unit:""},
-    {title:"Alcohol Yesterday?",type:"yn",field:"alcohol"},
-    {title:"Cannabis Yesterday?",type:"yn",field:"cannabis"},
-    {title:"Screens Off by 10pm?",type:"yn",field:"screens"},
-    {title:"Morning Sunlight Within 30 Min?",type:"yn",field:"sunlight"},
-    {title:"In Bed by 10:30?",type:"yn",field:"bed"},
-    {title:"Read Before Bed?",type:"yn",field:"read"},
+    {title:"Weight",sub:"Step on the scale",type:"weight"},
+    {title:"Whoop Recovery",sub:"Enter your recovery data",type:"whoop"},
+    {title:"Wake Up Time",sub:"What time did you get up?",type:"time",field:"wake",ph:"630"},
+    {title:"Habits",sub:"Yesterday's habits",type:"habits"},
   ];
 
   const cur=steps[step];
-  const canNext=cur.type==="yn"?f[cur.field]!==null:true;
+  const canNext=cur.type==="habits"?(f.alcohol!==null&&f.cannabis!==null&&f.screens!==null&&f.sunlight!==null&&f.bed!==null&&f.read!==null):true;
 
   const submit=()=>{
     const t=td();
@@ -260,45 +320,88 @@ const Debrief=({data,setData,onClose})=>{
     nd.rec={...nd.rec,[t]:{...(nd.rec[t]||{}),
       recoveryScore:+f.rs||undefined,hrv:+f.hrv||undefined,rhr:+f.rhr||undefined,
       respiratoryRate:+f.rr||undefined,sleepHours:+f.sh||undefined,sleepPerformance:+f.sp||undefined,
-      wakeTime:f.wake||undefined}};
+      strain:+f.str||undefined,wakeTime:f.wake||undefined}};
+    if(f.steps)nd.steps={...nd.steps,[t]:+f.steps};
     nd.habits={...nd.habits,[y]:{alcohol:f.alcohol,cannabis:f.cannabis,screensOff:f.screens,
       sunlight:f.sunlight,bedBy1030:f.bed,readBeforeBed:f.read}};
     setData(nd);sv(nd);onClose();
   };
 
+  const habitItems=[
+    {field:"alcohol",label:"Alcohol Yesterday?"},
+    {field:"cannabis",label:"Cannabis Yesterday?"},
+    {field:"screens",label:"Screens Off by 10pm?"},
+    {field:"sunlight",label:"Morning Sunlight?"},
+    {field:"bed",label:"In Bed by 10:30?"},
+    {field:"read",label:"Read Before Bed?"},
+  ];
+
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.cd,borderRadius:3,padding:20,width:"100%",maxWidth:340,border:`1px solid ${C.bd}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:360,border:`1px solid ${C.bd}`,maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div>
-            <div style={{fontSize:14,fontWeight:700,color:C.t}}>Morning Debrief</div>
-            <div style={{fontSize:10,color:C.t3}}>{step+1}/{steps.length}</div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t}}>Morning Debrief</div>
+            <div style={{fontSize:12,color:C.t3}}>{step+1}/{steps.length}</div>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:14}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:18,padding:8}}>✕</button>
         </div>
-        <Br v={step+1} max={steps.length} color={C.p} h={2}/>
+        <Br v={step+1} max={steps.length} color={C.p} h={3}/>
 
-        <div style={{margin:"20px 0"}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t}}>{cur.title}</div>
-          {cur.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{cur.sub}</div>}
+        <div style={{margin:"16px 0"}}>
+          <div style={{fontSize:17,fontWeight:700,color:C.t}}>{cur.title}</div>
+          {cur.sub&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>{cur.sub}</div>}
 
-          {cur.type==="num"&&(
+          {cur.type==="weight"&&(
             <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
-              <N value={f[cur.field]} onChange={v=>setF({...f,[cur.field]:v})} placeholder={cur.ph}
-                style={{fontSize:24,padding:"16px",fontWeight:700}}/>
-              {cur.unit&&<span style={{fontSize:13,color:C.t3,minWidth:30}}>{cur.unit}</span>}
+              <N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185.0"
+                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
+              <span style={{fontSize:15,color:C.t3,minWidth:30}}>lbs</span>
             </div>
           )}
 
-          {cur.type==="yn"&&(
-            <div style={{display:"flex",gap:8,marginTop:12}}>
-              {[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=>(
-                <button key={o.l} onClick={()=>setF({...f,[cur.field]:o.v})} style={{
-                  flex:1,padding:"14px",borderRadius:3,fontSize:14,fontWeight:700,cursor:"pointer",
-                  background:f[cur.field]===o.v?(o.v?C.gl:C.rl):"transparent",
-                  border:`1px solid ${f[cur.field]===o.v?(o.v?C.g:C.r):C.bd}`,
-                  color:f[cur.field]===o.v?(o.v?C.g:C.r):C.t2,fontFamily:"inherit",
-                }}>{o.l}</button>
+          {cur.type==="whoop"&&(
+            <div style={{marginTop:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72"/></div>
+                <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
+                <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
+                <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
+                <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
+                <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85"/></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
+                <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
+                <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
+              </div>
+            </div>
+          )}
+
+          {cur.type==="time"&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+              <TimeInput value={f.wake} onChange={v=>setF({...f,wake:v})} placeholder="630"
+                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
+            </div>
+          )}
+
+          {cur.type==="habits"&&(
+            <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
+              {habitItems.map(h=>(
+                <div key={h.field} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
+                  <span style={{fontSize:14,fontWeight:500,color:C.t}}>{h.label}</span>
+                  <div style={{display:"flex",gap:4}}>
+                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=>(
+                      <button key={o.l} onClick={()=>setF({...f,[h.field]:o.v})} style={{
+                        padding:"6px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",
+                        background:f[h.field]===o.v?(o.v?C.gl:C.rl):"transparent",
+                        border:`1px solid ${f[h.field]===o.v?(o.v?C.g:C.r):C.bd}`,
+                        color:f[h.field]===o.v?(o.v?C.g:C.r):C.t3,fontFamily:"inherit",
+                      }}>{o.l}</button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -306,18 +409,31 @@ const Debrief=({data,setData,onClose})=>{
 
         <div style={{display:"flex",gap:6}}>
           {step>0&&<B outline onClick={()=>setStep(step-1)} style={{flex:1}}>Back</B>}
-          <B full disabled={cur.type==="yn"&&!canNext} onClick={step<steps.length-1?()=>setStep(step+1):submit}
+          <B full onClick={step<steps.length-1?()=>setStep(step+1):submit}
             color={step===steps.length-1?C.g:C.p} style={{flex:2}}>
             {step===steps.length-1?"Done":"Next"}
           </B>
         </div>
-        <button onClick={()=>{
-          if(step<steps.length-1)setStep(step+1);else submit();
-        }} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:10,marginTop:8,width:"100%",textAlign:"center",fontFamily:"inherit"}}>Skip</button>
+        <button onClick={()=>{if(step<steps.length-1)setStep(step+1);else submit();}}
+          style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,marginTop:8,width:"100%",textAlign:"center",fontFamily:"inherit"}}>Skip</button>
       </div>
     </div>
   );
 };
+
+// ═══ CONFIRM MODAL ═══
+const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",confirmColor=C.g})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:320,border:`1px solid ${C.bd}`}}>
+      <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:6}}>{title}</div>
+      <div style={{fontSize:14,color:C.t2,marginBottom:16}}>{message}</div>
+      <div style={{display:"flex",gap:8}}>
+        <B full outline onClick={onCancel} style={{flex:1}}>Cancel</B>
+        <B full onClick={onConfirm} color={confirmColor} style={{flex:1}}>{confirmText}</B>
+      </div>
+    </div>
+  </div>
+);
 
 // ═══ DASHBOARD ═══
 const Dashboard=({data,setData})=>{
@@ -332,8 +448,7 @@ const Dashboard=({data,setData})=>{
         rhr:Object.values(parsed.rec).filter(r=>r.rhr).length,sleep:Object.values(parsed.rec).filter(r=>r.sleepHours).length,
         cal:Object.keys(parsed.nut).length};
       const nd={...data,
-        wt:{...parsed.wt,...data.wt},
-        steps:{...parsed.steps,...data.steps},
+        wt:{...parsed.wt,...data.wt},steps:{...parsed.steps,...data.steps},
         rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
         nut:{...parsed.nut,...data.nut},
       };
@@ -365,7 +480,6 @@ const Dashboard=({data,setData})=>{
   const lifts=Object.values(data.prog).filter(p=>p.progressed).length;
   const totalL=Object.keys(data.prog).length;
 
-  // Habit streak
   const habitDays=Object.entries(data.habits||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
   const habitScore=habitDays.length?Math.round(habitDays.reduce((s,[_,h])=>{
     if(!h)return s;let c=0;
@@ -378,19 +492,19 @@ const Dashboard=({data,setData})=>{
   return(
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       <div>
-        <div style={{fontSize:16,fontWeight:700,color:C.t}}>Home</div>
-        <div style={{fontSize:11,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}</div>
+        <div style={{fontSize:18,fontWeight:700,color:C.t}}>Home</div>
+        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}</div>
       </div>
 
-      <X style={{borderLeft:`3px solid ${C.p}`}}>
+      <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:10,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
-            <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
-            {sess&&<div style={{fontSize:11,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div>}
+            <div style={{fontSize:11,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
+            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div>}
           </div>
-          {data.wk[t]?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Complete</span>
-           :sess?<span style={{fontSize:11,fontWeight:600,color:C.p}}>Ready</span>:null}
+          {data.wk[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Complete</span>
+           :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
         </div>
       </X>
 
@@ -401,9 +515,9 @@ const Dashboard=({data,setData})=>{
           {l:"Streak",v:streak,s:"d",sc:streak>=5?C.g:C.a},
         ].map((m,i)=>(
           <X key={i} style={{padding:"8px 4px",textAlign:"center"}}>
-            <div style={{fontSize:17,fontWeight:700,color:C.t,lineHeight:1}}>{m.v}</div>
-            {m.s&&<div style={{fontSize:9,color:m.sc||C.t3,fontWeight:600}}>{m.s}</div>}
-            <div style={{fontSize:8,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
+            <div style={{fontSize:19,fontWeight:700,color:C.t,lineHeight:1}}>{m.v}</div>
+            {m.s&&<div style={{fontSize:10,color:m.sc||C.t3,fontWeight:600}}>{m.s}</div>}
+            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
           </X>
         ))}
       </div>
@@ -413,7 +527,7 @@ const Dashboard=({data,setData})=>{
           {[{l:"Calories",v:tCal,x:calT,c:tCal>calT?C.a:C.p},{l:"Protein",v:`${tPro}g`,x:proT,c:tPro>=proT?C.g:C.r},
             {l:"Fiber",v:`${tFib}g`,x:30,c:C.v}].map((s,i)=>(
             <div key={i}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t2,marginBottom:2}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2,marginBottom:2}}>
                 <span>{s.l}</span><span style={{fontWeight:600,color:s.c}}>{s.v}/{typeof s.x==="number"?s.x:s.x}</span>
               </div>
               <Br v={typeof s.v==="string"?parseInt(s.v):s.v} max={s.x} color={s.c}/>
@@ -422,65 +536,64 @@ const Dashboard=({data,setData})=>{
         </div>
       </X>
 
-      {/* Habit score */}
       {habitScore!=null&&(
         <X style={{padding:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11}}>
-            <span style={{fontWeight:600,color:C.t2}}>Habit Score (7-day avg)</span>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13}}>
+            <span style={{fontWeight:600,color:C.t2}}>Habit Score (7d)</span>
             <span style={{fontWeight:700,color:habitScore>=70?C.g:habitScore>=40?C.a:C.r}}>{habitScore}%</span>
           </div>
-          <Br v={habitScore} max={100} color={habitScore>=70?C.g:habitScore>=40?C.a:C.r} h={3}/>
+          <Br v={habitScore} max={100} color={habitScore>=70?C.g:habitScore>=40?C.a:C.r}/>
         </X>
       )}
 
-      {/* Charts */}
-      <Ch data={wCh} color={C.p} label="Weight" yUnit=" lbs" empty="Log weight to see trend"/>
-      <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log Whoop recovery to see trend"/>
-      <Ch data={rhrCh} color={C.v} label="Resting Heart Rate" yUnit=" bpm" empty="Log RHR to see trend"/>
-      <Ch data={stCh} color={C.a} label="Steps" empty="Log steps to see trend"/>
-      <Ch data={slCh} color={C.p} label="Sleep" yUnit=" hrs" empty="Log sleep to see trend"/>
+      <S title="Trends" collapsible defaultOpen={false}>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <Ch data={wCh} color={C.p} label="Weight" yUnit=" lbs" empty="Log weight to see trend"/>
+          <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
+          <Ch data={rhrCh} color={C.v} label="RHR" yUnit=" bpm" empty="Log RHR to see trend"/>
+          <Ch data={stCh} color={C.a} label="Steps" empty="Log steps to see trend"/>
+          <Ch data={slCh} color={C.p} label="Sleep" yUnit=" hrs" empty="Log sleep to see trend"/>
+        </div>
+      </S>
 
       {totalL>0&&(
         <X style={{padding:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
             <span style={{color:C.t2,fontWeight:600}}>Lift Progressions</span>
             <span style={{color:C.g,fontWeight:700}}>{lifts}/{totalL}</span>
           </div>
-          <Br v={lifts} max={totalL} color={C.g} h={3}/>
+          <Br v={lifts} max={totalL} color={C.g}/>
         </X>
       )}
 
-      <div style={{display:"flex",gap:2}}>
+      <div style={{display:"flex",gap:3}}>
         {dks.map((dk,i)=>{
           const isToday=dk===dn,done=Object.keys(data.wk).some(ws=>dw(ws)===dk&&wkn(ws)===w);
-          return(<div key={dk} style={{flex:1,borderRadius:2,padding:"5px 2px",textAlign:"center",
+          return(<div key={dk} style={{flex:1,borderRadius:4,padding:"6px 2px",textAlign:"center",
             background:isToday?C.pl:C.cd,border:`1px solid ${done?C.g:isToday?C.p:C.bd}`}}>
-            <div style={{fontSize:9,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F"][i]}</div>
-            {done&&<div style={{width:4,height:4,borderRadius:2,background:C.g,margin:"2px auto 0"}}/>}
+            <div style={{fontSize:11,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F"][i]}</div>
+            {done&&<div style={{width:6,height:6,borderRadius:3,background:C.g,margin:"2px auto 0"}}/>}
           </div>);
         })}
       </div>
 
-      {/* Import / Settings */}
-      <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:8}}>
-        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:600}}>
+      <div style={{marginTop:4,borderTop:`1px solid ${C.bl}`,paddingTop:8}}>
+        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:600}}>
           {showImport?"Hide Import":"Import Health Data"}
         </button>
         {showImport&&(
           <div style={{marginTop:8}}>
-            <div style={{fontSize:11,color:C.t2,marginBottom:6}}>
-              Paste your HealthKit export from Claude iOS (the markdown table format). Existing data won't be overwritten.
+            <div style={{fontSize:12,color:C.t2,marginBottom:6}}>
+              Paste HealthKit export from Claude iOS (markdown table format). Existing data won't be overwritten.
             </div>
             <textarea value={importText} onChange={e=>setImportText(e.target.value)}
               placeholder="Paste HealthKit data export here..."
-              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,
-                padding:10,color:C.t,fontSize:12,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-            <div style={{display:"flex",gap:4,marginTop:4}}>
-              <B full onClick={doImport} disabled={!importText.trim()}>Import Data</B>
-            </div>
-            {importStatus&&<div style={{fontSize:11,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
+              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,
+                padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+            <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
+            {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
             <button onClick={()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);}}}
-              style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
+              style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
               Reset All Data
             </button>
           </div>
@@ -491,135 +604,176 @@ const Dashboard=({data,setData})=>{
 };
 
 // ═══ TRAINING ═══
-const Training=({data,setData})=>{
+const Training=({data,setData,workout,setWorkout,setTab})=>{
   const t=td(),dn=dw(t);
   const [sel,setSel]=useState(dn);
-  const [act,setAct]=useState(null);
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
   const [showMob,setShowMob]=useState(false);
   const [mobDone,setMobDone]=useState(!!data.mob?.[t]);
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
+  const [showFinishConfirm,setShowFinishConfirm]=useState(false);
+  const [showCancelConfirm,setShowCancelConfirm]=useState(false);
   const tr=useRef(null);
   const sess=PROG.days[sel];
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
+
+  // Get mobility for current day
+  const getMobility=(dayKey)=>{
+    const day=PROG.days[dayKey];
+    if(!day)return PROG.mobility.core;
+    return PROG.mobility[day.mobilityKey]||PROG.mobility.core;
+  };
+
   const startW=()=>{if(!sess)return;
-    setAct({day:sel,exercises:sess.exercises.map(ex=>({id:ex.id,
+    setWorkout({day:sel,exercises:sess.exercises.map(ex=>({id:ex.id,
       wu:WU(gw(ex.id,ex.sw)).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:gw(ex.id,ex.sw),reps:0,done:false})),
     })),start:Date.now()});};
-  const uS=(ei,si,f,v)=>setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
-  const dWU=(ei,wi)=>setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].wu[wi].done=true;return n;});
-  const dS=(ei,si,rest)=>{
-    setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;return n;});
-    if(rest>0){if(tr.current)clearInterval(tr.current);setRl(rest);setRt(rest);
-      tr.current=setInterval(()=>{setRl(p=>{if(p<=1){clearInterval(tr.current);setRt(0);return 0;}return p-1;});},1000);}
+
+  const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
+  const dWU=(ei,wi,rest)=>{
+    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].wu[wi].done=true;return n;});
+    if(rest&&rest>0){startRestTimer(Math.min(rest,60));}
   };
-  const finish=()=>{
-    if(!act)return;const nd={...data};
-    nd.wk={...nd.wk,[t]:{day:act.day,exercises:act.exercises,dur:Math.round((Date.now()-act.start)/6e4)}};
-    const s=PROG.days[act.day];
-    act.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe||pe.inc===0)return;
+  const dS=(ei,si,rest)=>{
+    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;return n;});
+    if(rest>0)startRestTimer(rest);
+  };
+
+  const startRestTimer=(rest)=>{
+    if(tr.current)clearInterval(tr.current);
+    setRl(rest);setRt(rest);
+    tr.current=setInterval(()=>{setRl(p=>{if(p<=1){clearInterval(tr.current);setRt(0);return 0;}return p-1;});},1000);
+  };
+
+  const finishWorkout=()=>{
+    if(!workout)return;const nd={...data};
+    nd.wk={...nd.wk,[t]:{day:workout.day,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
+    const s=PROG.days[workout.day];
+    workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe||pe.inc===0)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=gw(pe.id,pe.sw);
       nd.prog={...nd.prog,[pe.id]:{currentWeight:hit?cw+pe.inc:cw,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit}};
-    });setData(nd);sv(nd);setAct(null);if(tr.current)clearInterval(tr.current);setRt(0);};
+    });
+    setData(nd);sv(nd);setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);
+    setShowFinishConfirm(false);
+  };
+
+  const cancelWorkout=()=>{
+    setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);
+    setShowCancelConfirm(false);
+  };
+
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
   const logMob=()=>{const nd={...data,mob:{...data.mob,[t]:true}};setData(nd);sv(nd);setMobDone(true);setShowMob(false);};
 
   const dks=["monday","tuesday","wednesday","thursday","friday"];
+  const mobList=getMobility(sel);
 
-  if(act){
-    const s=PROG.days[act.day];
+  // Active workout view
+  if(workout){
+    const s=PROG.days[workout.day];
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:3,textAlign:"center"}}>
-        <div style={{fontSize:9,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>Rest</div>
-        <div style={{fontSize:32,fontWeight:700,color:"#fff"}}>{Math.floor(rl/60)}:{String(rl%60).padStart(2,"0")}</div>
+      {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
+      {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
+
+      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center"}}>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>Rest</div>
+        <div style={{fontSize:36,fontWeight:700,color:"#fff",fontVariantNumeric:"tabular-nums"}}>{Math.floor(rl/60)}:{String(rl%60).padStart(2,"0")}</div>
       </div>)}
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:15,fontWeight:700,color:C.t}}>{s.name}</div><div style={{fontSize:11,color:C.t3}}>{s.focus}</div></div>
-        <B onClick={finish} color={C.g}>Finish</B>
+        <div>
+          <div style={{fontSize:17,fontWeight:700,color:C.t}}>{s.name}</div>
+          <div style={{fontSize:13,color:C.t3}}>{s.focus}</div>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <B small outline onClick={()=>setShowCancelConfirm(true)} color={C.r}>Cancel</B>
+          <B small onClick={()=>setShowFinishConfirm(true)} color={C.g}>Finish</B>
+        </div>
       </div>
 
       {s.exercises.map((ex,ei)=>{
-        const wuSets=act.exercises[ei].wu;
+        const wuSets=workout.exercises[ei].wu;
         return(<X key={ex.id} style={{padding:10}}>
           <div style={{marginBottom:6}}>
-            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{ex.name}</div>
-            <div style={{fontSize:10,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
-            <div style={{fontSize:10,color:C.p,marginTop:2}}>{ex.cue}</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.t}}>{ex.name}</div>
+            <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+            <div style={{fontSize:12,color:C.p,marginTop:2}}>{ex.cue}</div>
           </div>
           {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
-            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginBottom:2}}>Warm-up</div>
-            {wuSets.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",opacity:wu.done?0.3:0.6,fontSize:12}}>
-              <span style={{color:C.t3,width:28}}>{wu.l}</span>
+            <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",marginBottom:3}}>Warm-up</div>
+            {wuSets.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.3:0.7,fontSize:14}}>
+              <span style={{color:C.t3,width:32}}>{wu.l}</span>
               <span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
-              {!wu.done?<B small outline onClick={()=>dWU(ei,wi)} color={C.t3}>✓</B>:<span style={{color:C.g}}>✓</span>}
+              {!wu.done?<B small outline onClick={()=>dWU(ei,wi,ex.rest)} color={C.t3}>✓</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
             </div>))}
           </div>)}
-          {act.exercises[ei].sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",
+          {workout.exercises[ei].sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
             borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
-            <span style={{fontSize:10,color:C.t3,width:16,fontWeight:600}}>{si+1}</span>
-            <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:62,fontSize:14}}/>
-            <span style={{color:C.t3,fontSize:11}}>×</span>
-            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:50,fontSize:14}}/>
-            {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:14}}>✓</span>}
+            <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
+            <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:68,fontSize:16}}/>
+            <span style={{color:C.t3,fontSize:13}}>×</span>
+            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16}}/>
+            {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
           </div>))}
         </X>);
       })}
 
       {s.stepper&&(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>Stairstepper</div><div style={{fontSize:10,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
-        {stpDone?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
+        <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Stairstepper</div><div style={{fontSize:12,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
+        {stpDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
       </X>)}
     </div>);
   }
 
+  // Program view (not in workout)
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Training</div>
-    <div style={{display:"flex",gap:2}}>
-      {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"6px 2px",borderRadius:2,
+    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
+    <div style={{display:"flex",gap:3}}>
+      {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
         border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-        fontSize:10,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+        fontSize:12,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
     </div>
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:10,color:C.t3}}>5 min — optional</div></div>
-      {mobDone?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B small outline onClick={()=>setShowMob(!showMob)}>{showMob?"Hide":"View"}</B>}
+      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:12,color:C.t3}}>5 min — {PROG.days[sel]?.mobilityKey||"core"} focus</div></div>
+      {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small outline onClick={()=>setShowMob(!showMob)}>{showMob?"Hide":"View"}</B>}
     </X>
     {showMob&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
-      {PROG.mobility.map((m,i)=>(<div key={i} style={{padding:"5px 0",borderBottom:i<PROG.mobility.length-1?`1px solid ${C.bl}`:"none"}}>
-        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:12,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:10,color:C.t3}}>{m.dur}</span></div>
-        <div style={{fontSize:10,color:C.p,marginTop:1}}>{m.cue}</div>
+      {mobList.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<mobList.length-1?`1px solid ${C.bl}`:"none"}}>
+        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:12,color:C.t3}}>{m.dur}</span></div>
+        <div style={{fontSize:12,color:C.p,marginTop:1}}>{m.cue}</div>
       </div>))}
-      <B full small color={C.g} style={{marginTop:6}} onClick={logMob}>Mark Complete</B>
+      <B full small color={C.g} style={{marginTop:8}} onClick={logMob}>Mark Complete</B>
     </X>)}
 
     {sess?(<>
       <X style={{borderLeft:`3px solid ${C.p}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:14,fontWeight:700,color:C.t}}>{sess.name}</div>
-            <div style={{fontSize:11,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div></div>
-          {data.wk[t]&&sel===dn?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
+            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div></div>
+          {data.wk[t]&&sel===dn?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
         </div>
       </X>
       {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
         return(<X key={ex.id} style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
             <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:600,color:C.t}}>{ex.name}</div>
-              <div style={{fontSize:10,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
-              <div style={{fontSize:10,color:C.p,marginTop:1}}>{ex.cue}</div>
+              <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
+              <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+              <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
             </div>
-            <div style={{textAlign:"right",minWidth:44}}>
-              <div style={{fontSize:18,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
-              <div style={{fontSize:9,color:C.t3}}>{ex.unit}</div>
-              {prog?.lastReps&&<div style={{fontSize:9,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
+            <div style={{textAlign:"right",minWidth:48}}>
+              <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
+              <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
+              {prog?.lastReps&&<div style={{fontSize:10,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
             </div>
           </div>
         </X>);})}
-    </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:12}}>Rest Day</div></X>}
+    </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:14}}>Rest Day</div></X>}
   </div>);
 };
 
@@ -655,25 +809,25 @@ const Nutrition=({data,setData})=>{
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <button onClick={()=>setSelM(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
-      <X><div style={{fontSize:14,fontWeight:700,color:C.t}}>{meal.description}</div>
-        {meal.raw&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>{meal.raw}</div>}
+      <button onClick={()=>setSelM(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
+      <X><div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
+        {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
           {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
             {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
-            <div key={i}><div style={{fontSize:15,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
+            <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
         </div>
-        <div style={{display:"flex",height:5,borderRadius:2,overflow:"hidden",marginBottom:2}}>
+        <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginBottom:2}}>
           <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.a}}/><div style={{width:`${fp}%`,background:C.r}}/>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
       {meal.components?.length>0&&(<X><L>Components</L>
-        {meal.components.map((c,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i?`1px solid ${C.bl}`:"none",fontSize:11}}>
+        {meal.components.map((c,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:i?`1px solid ${C.bl}`:"none",fontSize:13}}>
           <span style={{fontWeight:600,color:C.t}}>{c.item}</span>
-          <span style={{color:C.t2}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
+          <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
         </div>))}</X>)}
-      <div style={{display:"flex",gap:4}}>
+      <div style={{display:"flex",gap:6}}>
         {meal.source==="ai"&&!data.qm?.find(q=>q.description===meal.description)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
@@ -681,50 +835,50 @@ const Nutrition=({data,setData})=>{
   }
 
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Food</div>
+    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
     <X style={{padding:10}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:2,textAlign:"center"}}>
         {[{l:"Cal",v:tl.totalCal,x:calT,c:tl.totalCal>calT?C.a:C.p},{l:"Pro",v:`${tl.totalProtein}g`,x:`${proT}g`,c:tl.totalProtein>=proT?C.g:C.r},
           {l:"Carb",v:`${tl.totalCarbs}g`,x:"—",c:C.t},{l:"Fat",v:`${tl.totalFat}g`,x:"—",c:C.t},{l:"Fib",v:`${tl.totalFiber||0}g`,x:"30g",c:C.v}
-        ].map((s,i)=>(<div key={i}><div style={{fontSize:14,fontWeight:700,color:s.c}}>{s.v}</div><div style={{fontSize:8,color:C.t3}}>/{s.x}</div>
-          <div style={{fontSize:7,color:C.t3,textTransform:"uppercase",fontWeight:600,marginTop:1}}>{s.l}</div></div>))}
+        ].map((s,i)=>(<div key={i}><div style={{fontSize:16,fontWeight:700,color:s.c}}>{s.v}</div><div style={{fontSize:10,color:C.t3}}>/{s.x}</div>
+          <div style={{fontSize:9,color:C.t3,textTransform:"uppercase",fontWeight:600,marginTop:1}}>{s.l}</div></div>))}
       </div>
     </X>
-    <div style={{display:"flex",gap:2}}>
-      {[["ai","AI"],["manual","Manual"],["quick","Quick"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
-        flex:1,padding:"6px",borderRadius:2,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
-        color:mode===m?C.p:C.t3,fontSize:10,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
+    <div style={{display:"flex",gap:3}}>
+      {[["ai","AI Estimate"],["manual","Manual"],["quick","Quick Add"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
+        flex:1,padding:"8px",borderRadius:4,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
+        color:mode===m?C.p:C.t3,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
     </div>
     {mode==="ai"&&(<X style={{padding:10}}>
       <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder='Describe your meal...'
-        style={{width:"100%",minHeight:44,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:2,padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-      <B full onClick={aiGo} disabled={loading||!input.trim()} style={{marginTop:4}}>{loading?"Estimating...":"Estimate"}</B>
+        style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+      <B full onClick={aiGo} disabled={loading||!input.trim()} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
     </X>)}
     {mode==="manual"&&(<X style={{padding:10}}>
-      <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What?" style={{marginBottom:4}}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:2}}>
+      <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
         <N value={mf.cal} onChange={v=>setMf({...mf,cal:v})} placeholder="Cal"/>
         <N value={mf.pro} onChange={v=>setMf({...mf,pro:v})} placeholder="Pro"/>
         <N value={mf.carb} onChange={v=>setMf({...mf,carb:v})} placeholder="Carb"/>
         <N value={mf.fat} onChange={v=>setMf({...mf,fat:v})} placeholder="Fat"/>
         <N value={mf.fib} onChange={v=>setMf({...mf,fib:v})} placeholder="Fib"/>
       </div>
-      <B full style={{marginTop:4}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual",components:[]});
+      <B full style={{marginTop:6}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual",components:[]});
         setMf({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
     </X>)}
     {mode==="quick"&&(<X style={{padding:10}}>
-      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:11,padding:8,textAlign:"center"}}>No saved meals</div>
+      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No saved meals</div>
       :(data.qm||[]).map((q,i)=>(<button key={i} onClick={()=>add({...q,source:"quick"})} style={{display:"flex",justifyContent:"space-between",
-        alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:2,padding:"7px 10px",cursor:"pointer",
-        marginBottom:2,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:12}}>
-        <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:10}}>{q.cal} · {q.protein}gP</span></button>))}
+        alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 12px",cursor:"pointer",
+        marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:14}}>
+        <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:12}}>{q.cal} · {q.protein}gP</span></button>))}
     </X>)}
     <S title={`Today (${tl.meals.length})`}>
       {tl.meals.map((m,i)=>(<X key={i} onClick={()=>setSelM(i)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>{m.description}</div>
-            <div style={{fontSize:10,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
-          <span style={{color:C.t3,fontSize:11}}>→</span>
+          <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{m.description}</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
+          <span style={{color:C.t3,fontSize:13}}>→</span>
         </div>
       </X>))}
     </S>
@@ -740,22 +894,22 @@ const Weight=({data,setData})=>{
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const add=()=>{if(!nw)return;const nd={...data,wt:{...data.wt,[t]:Number(nw)}};setData(nd);sv(nd);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Scale</div>
+    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Scale</div>
     <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
-      <div style={{display:"flex",gap:6,marginTop:3}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1}}/><B onClick={add}>Log</B></div>
-      {data.wt[t]&&<div style={{fontSize:11,color:C.g,marginTop:4,fontWeight:600}}>Today: {data.wt[t]} lbs</div>}
+      <div style={{display:"flex",gap:6,marginTop:4}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:18}}/><B onClick={add}>Log</B></div>
+      {data.wt[t]&&<div style={{fontSize:13,color:C.g,marginTop:4,fontWeight:600}}>Today: {data.wt[t]} lbs</div>}
     </X>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
     </div>
     <Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>
-    <S title="History">
+    <S title="History" collapsible>
       {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
-        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:12}}>
+        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
-          <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:10}}>{diff>0?"+":""}{diff}</span>}</span>
+          <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
         </div>);})}
     </S>
   </div>);
@@ -774,33 +928,33 @@ const Recovery=({data,setData})=>{
   const hrvCh=recent.filter(e=>e[1].hrv).reverse().map(([d,v])=>({v:v.hrv,d:d.slice(5)}));
 
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Whoop Recovery</div>
+    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Whoop Recovery</div>
     <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
         <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72"/></div>
         <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
         <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
         <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
-        <div><L>Sleep hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
+        <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
         <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85"/></div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
         <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
         <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
       </div>
-      <div style={{marginTop:4}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
-      <B full style={{marginTop:6}} onClick={saveR}>Save</B>
+      <div style={{marginTop:6}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
+      <B full style={{marginTop:8}} onClick={saveR}>Save</B>
     </X>
     {avgR!=null&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:sc(avgR)}}>{avgR}%</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg Recovery</div></X>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:C.v}}>{recent.filter(e=>e[1].hrv).length?Math.round(recent.filter(e=>e[1].hrv).reduce((s,e)=>s+e[1].hrv,0)/recent.filter(e=>e[1].hrv).length):"-"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg HRV</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:sc(avgR)}}>{avgR}%</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg Recovery</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.v}}>{recent.filter(e=>e[1].hrv).length?Math.round(recent.filter(e=>e[1].hrv).reduce((s,e)=>s+e[1].hrv,0)/recent.filter(e=>e[1].hrv).length):"-"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg HRV</div></X>
     </div>)}
     <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
     <Ch data={hrvCh} color={C.v} label="HRV" yUnit=" ms" empty="Log HRV to see trend"/>
-    <S title="Recent">
-      {recent.map(([d,r])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.bl}`,fontSize:11}}>
+    <S title="Recent" collapsible>
+      {recent.map(([d,r])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:13}}>
         <span style={{color:C.t2,fontWeight:600}}>{fmt(d)}</span>
         <div style={{display:"flex",gap:6,color:C.t2}}>
           {r.recoveryScore&&<span style={{fontWeight:700,color:sc(r.recoveryScore)}}>{r.recoveryScore}%</span>}
@@ -816,19 +970,25 @@ window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return raw?migrate(raw):bl();});
   const [showD,setShowD]=useState(()=>!(data.debrief||{})[yd()]);
+  const [workout,setWorkout]=useState(null); // Lifted to App level
   useEffect(()=>{sv(data);},[data]);
+
   return(
-    <div style={{background:C.bg,color:C.t,minHeight:"100vh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
-      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:64}}>
+
+      {/* Workout timer bar visible on all tabs when workout active */}
+      {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")}/>}
+
+      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:70}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
-        {tab==="training"&&<Training data={data} setData={setData}/>}
+        {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
         {tab==="recovery"&&<Recovery data={data} setData={setData}/>}
       </div>
-      <TabBar active={tab} set={setTab}/>
+      <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
     </div>
   );
 }
@@ -837,4 +997,5 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
 </script>
 </body>
+</html>
 </html>
