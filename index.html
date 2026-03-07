@@ -220,28 +220,28 @@ const Br=({v,max,color=C.p,h=5})=>(
   </div>
 );
 
-// ═══ TAB BAR (bigger) ═══
+// ═══ TAB BAR (even larger) ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
   <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
     {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
-        flex:1,padding:"8px 4px 14px",background:"transparent",border:"none",cursor:"pointer",
-        color:active===t.id?C.p:C.t3,fontSize:12,fontWeight:active===t.id?700:500,fontFamily:"inherit",
+        flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
+        color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?700:600,fontFamily:"inherit",
         borderTop:active===t.id?`3px solid ${C.p}`:"3px solid transparent",
-        position:"relative",minHeight:52,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+        position:"relative",minHeight:62,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
       }}>
-        <span style={{fontSize:16}}>{t.icon}</span>
+        <span style={{fontSize:20}}>{t.icon}</span>
         <span>{t.l}</span>
         {t.id==="training"&&hasActiveWorkout&&active!=="training"&&(
-          <div style={{position:"absolute",top:6,right:"50%",marginRight:-16,width:8,height:8,borderRadius:4,background:C.g,border:`2px solid ${C.cd}`}}/>
+          <div style={{position:"absolute",top:6,right:"50%",marginRight:-18,width:10,height:10,borderRadius:5,background:C.g,border:`2px solid ${C.cd}`}}/>
         )}
       </button>
     ))}
   </div>
 );
 
-// ═══ WORKOUT TIMER BAR (shows on all tabs when workout active) ═══
-const WorkoutTimerBar=({workout,onTap})=>{
+// ═══ WORKOUT TIMER BAR (shows on ALL tabs when workout active) ═══
+const WorkoutTimerBar=({workout,onTap,compact})=>{
   const [elapsed,setElapsed]=useState(0);
   useEffect(()=>{
     if(!workout)return;
@@ -251,12 +251,12 @@ const WorkoutTimerBar=({workout,onTap})=>{
   if(!workout)return null;
   const sess=PROG.days[workout.day];
   return(
-    <div onClick={onTap} style={{background:C.p,padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",borderRadius:0}}>
+    <div onClick={onTap} style={{background:C.p,padding:compact?"6px 14px":"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?6:0}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:8,height:8,borderRadius:4,background:"#4ade80",animation:"pulse 2s infinite"}}/>
         <span style={{color:"#fff",fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
       </div>
-      <span style={{color:"#fff",fontSize:18,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
+      <span style={{color:"#fff",fontSize:20,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
     </div>
   );
 };
@@ -508,33 +508,84 @@ const Dashboard=({data,setData})=>{
         </div>
       </X>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4}}>
-        {[{l:"Weight",v:lw?lw.toFixed(1):"—",s:wc?`${wc>0?"+":""}${wc}`:"",sc:wc&&wc<0?C.g:wc&&wc>0?C.r:C.t3},
-          {l:"Recovery",v:ws??"-",s:ws!=null?"%":"",sc:ws>=67?C.g:ws>=34?C.a:ws!=null?C.r:C.t3},
-          {l:"Steps",v:steps?steps.toLocaleString():"—",sc:C.t3},
-          {l:"Streak",v:streak,s:"d",sc:streak>=5?C.g:C.a},
-        ].map((m,i)=>(
-          <X key={i} style={{padding:"8px 4px",textAlign:"center"}}>
-            <div style={{fontSize:19,fontWeight:700,color:C.t,lineHeight:1}}>{m.v}</div>
-            {m.s&&<div style={{fontSize:10,color:m.sc||C.t3,fontWeight:600}}>{m.s}</div>}
-            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
-          </X>
-        ))}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+        {/* Weight mini-trend */}
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Weight</span>
+            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?lw.toFixed(1):"—"}</span>
+          </div>
+          {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:C.r,marginBottom:4}}>{wc>0?"+":""}{wc} lbs</div>}
+          {wCh.length>=2?(
+            <svg viewBox={`0 0 ${wCh.length*20} 28`} style={{width:"100%",height:28}} preserveAspectRatio="none">
+              {(()=>{const vals=wCh.map(d=>d.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+                const pts=wCh.map((d,i)=>[i*(wCh.length*20/(wCh.length-1)),28-4-((d.v-mn)/rng)*20]);
+                const line=pts.map(p=>p.join(",")).join(" ");
+                return <polyline points={line} fill="none" stroke={C.p} strokeWidth="2" strokeLinecap="round"/>;
+              })()}
+            </svg>
+          ):<div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"4px 0"}}>No data yet</div>}
+        </X>
+
+        {/* Steps mini-trend */}
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
+            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
+          </div>
+          <Br v={steps} max={10000} color={steps>=10000?C.g:C.a} h={6}/>
+          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/10000*100):0}% of 10k</div>
+        </X>
       </div>
 
-      <X style={{padding:10}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-          {[{l:"Calories",v:tCal,x:calT,c:tCal>calT?C.a:C.p},{l:"Protein",v:`${tPro}g`,x:proT,c:tPro>=proT?C.g:C.r},
-            {l:"Fiber",v:`${tFib}g`,x:30,c:C.v}].map((s,i)=>(
-            <div key={i}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2,marginBottom:2}}>
-                <span>{s.l}</span><span style={{fontWeight:600,color:s.c}}>{s.v}/{typeof s.x==="number"?s.x:s.x}</span>
-              </div>
-              <Br v={typeof s.v==="string"?parseInt(s.v):s.v} max={s.x} color={s.c}/>
+      {/* Water Intake placeholder */}
+      <X style={{padding:10,opacity:0.5,border:`1px dashed ${C.bd}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Water</div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t}}>— / 128 oz</div>
+          </div>
+          <span style={{fontSize:12,color:C.t3}}>Coming soon</span>
+        </div>
+        <Br v={0} max={128} color={C.p} h={6}/>
+      </X>
+
+      {/* Nutrition — larger with full macro breakdown */}
+      <X style={{padding:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:13,fontWeight:700,color:C.t}}>Nutrition</span>
+          <span style={{fontSize:12,color:C.t3}}>{fmt(t)}</span>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+          <div style={{fontSize:28,fontWeight:700,color:tCal>calT?C.a:C.p}}>{tCal}</div>
+          <div style={{fontSize:14,color:C.t3}}>/ {calT} cal</div>
+        </div>
+        <Br v={tCal} max={calT} color={tCal>calT?C.a:C.p} h={8}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:10}}>
+          {[{l:"Protein",v:tPro,x:proT,u:"g",c:tPro>=proT?C.g:C.r},
+            {l:"Carbs",v:nut?.totalCarbs||0,x:null,u:"g",c:C.a},
+            {l:"Fat",v:nut?.totalFat||0,x:null,u:"g",c:C.t2},
+            {l:"Fiber",v:tFib,x:30,u:"g",c:C.v}].map((m,i)=>(
+            <div key={i} style={{textAlign:"center"}}>
+              <div style={{fontSize:20,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
+              {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
+              <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
+              {m.x&&<Br v={m.v} max={m.x} color={m.c} h={4}/>}
             </div>
           ))}
         </div>
       </X>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+        <X style={{padding:8,textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:700,color:ws>=67?C.g:ws>=34?C.a:ws!=null?C.r:C.t3}}>{ws??"-"}{ws!=null?"%":""}</div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Recovery</div>
+        </X>
+        <X style={{padding:8,textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:700,color:streak>=5?C.g:C.a}}>{streak}<span style={{fontSize:12,fontWeight:600}}>d</span></div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Streak</div>
+        </X>
+      </div>
 
       {habitScore!=null&&(
         <X style={{padding:10}}>
@@ -678,6 +729,9 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
+
+      {/* Always-visible workout elapsed timer */}
+      <WorkoutTimerBar workout={workout} compact/>
 
       {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center"}}>
         <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>Rest</div>
@@ -981,7 +1035,7 @@ window.App = function App(){
       {/* Workout timer bar visible on all tabs when workout active */}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")}/>}
 
-      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:70}}>
+      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
@@ -997,5 +1051,4 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
 </script>
 </body>
-</html>
 </html>
