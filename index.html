@@ -642,13 +642,12 @@ const Nutrition=({data,setData})=>{
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
 
   const aiGo=async()=>{if(!input.trim())return;setLoading(true);
-    try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
-        system:"Estimate meal nutrition. Return ONLY JSON: {\"description\":\"name\",\"cal\":num,\"protein\":num,\"carbs\":num,\"fat\":num,\"fiber\":num,\"components\":[{\"item\":\"name\",\"cal\":num,\"protein\":num,\"carbs\":num,\"fat\":num,\"fiber\":num}]}. No markdown. Realistic portions.",
-        messages:[{role:"user",content:input}]})});
-      const res=await r.json();const parsed=JSON.parse((res.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+    try{const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({input:input})});
+      const parsed=await r.json();
+      if(parsed.error){throw new Error(parsed.error);}
       add({...parsed,source:"ai",raw:input,components:parsed.components||[]});setInput("");
-    }catch{add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
+    }catch(e){console.error(e);add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
     setLoading(false);};
 
   if(selM!==null){
