@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Health Hub">
+<meta name="theme-color" content="#f5f6f8">
+<title>Health Hub</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f6f8; overflow-x: hidden; }
+  #root { min-height: 100vh; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+
+
+// ═══ PROGRAM ═══
+const PROG = {
+  name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
+  mobility:[
+    {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
+    {name:"Thoracic Extensions",dur:"10 reps",cue:"Pin lower back flat, only upper back moves"},
+    {name:"Band Pull-Aparts",dur:"15 reps",cue:"Squeeze shoulder blades like cracking a walnut"},
+    {name:"World's Greatest Stretch",dur:"5/side",cue:"Rotate chest to ceiling, reach through"},
+  ],
+  days:{
+    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",
+      exercises:[
+        {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
+        {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
+        {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
+      ]},
+    tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,
+      exercises:[
+        {id:"smith-flat-bench",name:"Smith Flat Bench",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
+        {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
+        {id:"smith-ohp",name:"Smith OHP",sets:3,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Adjust wk 2",cue:"Brace core tight, press straight overhead not forward"},
+        {id:"lat-pulldown",name:"Lat Pulldown",sets:3,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
+        {id:"preacher-curl",name:"Preacher Curl Machine",sets:3,rr:[5,8],rest:90,sw:70,inc:5,unit:"lbs",notes:"Try 75",cue:"Slow eccentric, don't let it free-fall at bottom"},
+        {id:"tricep-dips",name:"Tricep Dips",sets:3,rr:[5,8],rest:90,sw:0,inc:0,unit:"BW",notes:"Add weight at 3×8",cue:"Lean slightly forward, lock out fully at top"},
+      ]},
+    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,
+      exercises:[
+        {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
+        {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
+        {id:"hack-squat-a",name:"Hack Squat",sets:3,rr:[5,8],rest:120,sw:180,inc:10,unit:"lbs",notes:"Full depth",cue:"Knees track over toes, stay upright through core"},
+        {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
+        {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
+      ]},
+    thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+      exercises:[
+        {id:"smith-incline",name:"Smith Incline Press",sets:3,rr:[10,12],rest:90,sw:105,inc:5,unit:"lbs",notes:"30-45°",cue:"Feel upper chest stretch at bottom, squeeze at top"},
+        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:3,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
+        {id:"lateral-raise",name:"Cable Lateral Raise",sets:3,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Elbows above wrists, pour water out of a pitcher"},
+        {id:"reverse-fly",name:"Reverse Fly",sets:3,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
+        {id:"incline-db-curl",name:"Incline DB Curl",sets:3,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
+        {id:"oh-tricep-ext",name:"OH Cable Rope Ext",sets:3,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"3×12 then +5",cue:"Elbows locked by ears, extend fully, squeeze tricep"},
+      ]},
+    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+      exercises:[
+        {id:"hack-squat-b",name:"Hack Squat",sets:3,rr:[10,12],rest:120,sw:140,inc:10,unit:"lbs",notes:"Or LP 300-320",cue:"Slow descent, drive through heels on the way up"},
+        {id:"walking-lunges",name:"Walking Lunges DB",sets:3,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Long stride, back knee kisses floor, front knee stacks"},
+        {id:"sldl",name:"Stiff-Leg Deadlift",sets:3,rr:[10,12],rest:90,sw:95,inc:10,unit:"lbs",notes:"Start at 95",cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
+        {id:"leg-extension",name:"Leg Extension",sets:3,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Lock out at top, squeeze quad hard for 1 second"},
+        {id:"hip-thrust",name:"Hip Thrust BB",sets:3,rr:[10,12],rest:90,sw:160,inc:10,unit:"lbs",notes:"1s hold top",cue:"Drive through heels, squeeze glutes at lockout, chin tucked"},
+        {id:"seated-calf",name:"Seated Calf Raise",sets:3,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
+      ]},
+  }
+};
+const WU=w=>{if(!w||w<=0)return[];const s=[];
+  if(w>=95)s.push({w:Math.round(w*.5/5)*5,r:10,l:"50%"});
+  if(w>=135)s.push({w:Math.round(w*.7/5)*5,r:5,l:"70%"});
+  if(w>=155)s.push({w:Math.round(w*.85/5)*5,r:3,l:"85%"});return s;};
+
+const SK="dhub6";
+const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
+const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{}});
+
+// Parse pasted HealthKit data (the markdown table format from Claude iOS)
+const parseHealthImport=(text)=>{
+  const d={wt:{},steps:{},rec:{},nut:{}};
+  const lines=text.split("\n");
+  let section="";
+  for(const line of lines){
+    if(line.includes("WEIGHT"))section="wt";
+    else if(line.includes("STEPS"))section="steps";
+    else if(line.includes("RESTING HEART RATE"))section="rhr";
+    else if(line.includes("SLEEP"))section="sleep";
+    else if(line.includes("CALORIES"))section="cal";
+    else if(line.includes("PROTEIN"))section="pro";
+    const m=line.match(/\|(\d{4}-\d{2}-\d{2})\s*\|(.+?)\|/);
+    if(!m)continue;
+    const date=m[1],val=m[2].replace(/,/g,"").trim();
+    const num=parseFloat(val);
+    if(isNaN(num))continue;
+    if(section==="wt")d.wt[date]=num;
+    else if(section==="steps")d.steps[date]=num;
+    else if(section==="rhr"){if(!d.rec[date])d.rec[date]={};d.rec[date].rhr=num;}
+    else if(section==="cal"){
+      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+      d.nut[date].totalCal=num;d.nut[date].meals=[{description:"MFP Import",cal:num,protein:0,carbs:0,fat:0,fiber:0,source:"import"}];
+    }else if(section==="pro"){
+      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+      d.nut[date].totalProtein=num;if(d.nut[date].meals.length)d.nut[date].meals[0].protein=num;
+    }
+  }
+  // Parse sleep separately (different table format)
+  let inSleep=false;
+  for(const line of lines){
+    if(line.includes("SLEEP"))inSleep=true;
+    if(line.includes("CALORIES"))inSleep=false;
+    if(!inSleep)continue;
+    const sm=line.match(/\|(\d{4}-\d{2}-\d{2})\s*\|.+?\|.+?\|\s*~?([\d.]+)/);
+    if(sm){const date=sm[1],hrs=parseFloat(sm[2]);
+      if(!d.rec[date])d.rec[date]={};d.rec[date].sleepHours=hrs;}
+  }
+  return d;
+};
+const migrate=(d)=>{const b=bl();return{...b,...d,
+  wk:d.wk||d.workoutLog||{},
+  nut:d.nut||d.nutritionLog||{},
+  wt:d.wt||d.weightLog||{},
+  rec:d.rec||d.recoveryLog||{},
+  steps:d.steps||{},
+  prog:d.prog||d.progressionState||{},
+  qm:d.qm||d.quickMeals||[],
+  mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{}};};
+const td=()=>new Date().toISOString().split("T")[0];
+const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
+const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
+const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
+
+const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
+  p:"#1a73e8",pl:"#e8f0fe",g:"#0d7c3e",gl:"#e6f4ea",r:"#c5221f",rl:"#fce8e6",
+  a:"#b06d00",al:"#fef7e0",v:"#6a1b9a",vl:"#f3e8fd",
+  t:"#1a1a1a",t2:"#5f6368",t3:"#9aa0a6"};
+
+const N=({value,onChange,placeholder,style={}})=>(
+  <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={e=>onChange(e.target.value)}
+    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,padding:"9px 10px",
+    color:C.t,fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
+);
+const T=({value,onChange,placeholder,style={}})=>(
+  <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+    style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,padding:"9px 10px",color:C.t,
+    fontSize:13,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
+);
+const B=({children,onClick,color=C.p,disabled,full,small,outline,style={}})=>(
+  <button onClick={onClick} disabled={disabled} style={{
+    background:outline?"transparent":color,color:outline?color:"#fff",
+    border:outline?`1px solid ${color}`:"none",borderRadius:3,
+    padding:small?"6px 10px":"9px 16px",fontSize:small?11:13,fontWeight:600,
+    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,
+    width:full?"100%":"auto",fontFamily:"inherit",...style,
+  }}>{children}</button>
+);
+const X=({children,style={},...p})=>(
+  <div style={{background:C.cd,borderRadius:3,padding:14,border:`1px solid ${C.bd}`,...style}} {...p}>{children}</div>
+);
+const L=({children})=><div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{children}</div>;
+const S=({title,children})=><div style={{marginTop:6}}><div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4}}>{title}</div>{children}</div>;
+const Br=({v,max,color=C.p,h=4})=>(
+  <div style={{height:h,background:C.bl,borderRadius:2,overflow:"hidden"}}>
+    <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:2,transition:"width 0.3s"}}/>
+  </div>
+);
+
+const TabBar=({active,set})=>(
+  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"sticky",bottom:0,zIndex:100}}>
+    {[{id:"dashboard",l:"Home"},{id:"training",l:"Train"},{id:"nutrition",l:"Food"},{id:"weight",l:"Scale"},{id:"recovery",l:"Whoop"}].map(t=>(
+      <button key={t.id} onClick={()=>set(t.id)} style={{
+        flex:1,padding:"10px 4px 12px",background:"transparent",border:"none",cursor:"pointer",
+        color:active===t.id?C.p:C.t3,fontSize:11,fontWeight:active===t.id?700:500,fontFamily:"inherit",
+        borderTop:active===t.id?`2px solid ${C.p}`:"2px solid transparent",
+      }}>{t.l}</button>
+    ))}
+  </div>
+);
+
+// ═══ CHART ═══
+const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
+  if(!data||data.length<2){
+    if(!empty)return null;
+    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
+      <div style={{height,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <span style={{fontSize:11,color:C.t3}}>{empty}</span>
+      </div></X>);
+  }
+  const vals=data.map(d=>d.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1,pad=rng*0.12;
+  const w=data.length*32,h=height;
+  const pts=data.map((d,i)=>[i*(w/(data.length-1)),h-6-((d.v-(mn-pad))/(rng+pad*2))*(h-16)]);
+  const line=pts.map(p=>p.join(",")).join(" ");
+  return(
+    <X style={{padding:"10px 14px"}}>
+      {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+        <span style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
+        <span style={{fontSize:11,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
+      </div>}
+      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height}} preserveAspectRatio="none">
+        <defs><linearGradient id={`f${color.slice(1)}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.08"/><stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient></defs>
+        <polygon points={`0,${h} ${line} ${w},${h}`} fill={`url(#f${color.slice(1)})`}/>
+        <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {pts.map((p,i)=><circle key={i} cx={p[0]} cy={p[1]} r="2" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
+      </svg>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:C.t3,marginTop:2}}>
+        <span>{data[0].d||""}</span><span>{data[data.length-1].d||""}</span>
+      </div>
+    </X>
+  );
+};
+
+// ═══ MORNING DEBRIEF ═══
+const Debrief=({data,setData,onClose})=>{
+  const y=yd();if((data.debrief||{})[y])return null;
+  const [step,setStep]=useState(0);
+  const [f,setF]=useState({wt:"",rs:"",hrv:"",rhr:"",rr:"",sh:"",sp:"",wake:"",
+    alcohol:null,cannabis:null,screens:null,sunlight:null,bed:null,read:null});
+
+  const steps=[
+    {title:"Weight",sub:"Step on the scale",type:"num",field:"wt",ph:"185.0",unit:"lbs"},
+    {title:"Recovery Score",sub:"From Whoop app",type:"num",field:"rs",ph:"72",unit:"%"},
+    {title:"HRV",sub:"Heart rate variability",type:"num",field:"hrv",ph:"68",unit:"ms"},
+    {title:"Resting Heart Rate",sub:"From Whoop",type:"num",field:"rhr",ph:"42",unit:"bpm"},
+    {title:"Respiratory Rate",sub:"From Whoop",type:"num",field:"rr",ph:"15.2",unit:"brpm"},
+    {title:"Sleep",sub:"Total hours",type:"num",field:"sh",ph:"7.5",unit:"hrs"},
+    {title:"Sleep Performance",sub:"From Whoop",type:"num",field:"sp",ph:"85",unit:"%"},
+    {title:"Wake Up Time",sub:"What time did you get up?",type:"num",field:"wake",ph:"6:15",unit:""},
+    {title:"Alcohol Yesterday?",type:"yn",field:"alcohol"},
+    {title:"Cannabis Yesterday?",type:"yn",field:"cannabis"},
+    {title:"Screens Off by 10pm?",type:"yn",field:"screens"},
+    {title:"Morning Sunlight Within 30 Min?",type:"yn",field:"sunlight"},
+    {title:"In Bed by 10:30?",type:"yn",field:"bed"},
+    {title:"Read Before Bed?",type:"yn",field:"read"},
+  ];
+
+  const cur=steps[step];
+  const canNext=cur.type==="yn"?f[cur.field]!==null:true;
+
+  const submit=()=>{
+    const t=td();
+    const nd={...data,debrief:{...data.debrief,[y]:true}};
+    if(f.wt)nd.wt={...nd.wt,[t]:Number(f.wt)};
+    nd.rec={...nd.rec,[t]:{...(nd.rec[t]||{}),
+      recoveryScore:+f.rs||undefined,hrv:+f.hrv||undefined,rhr:+f.rhr||undefined,
+      respiratoryRate:+f.rr||undefined,sleepHours:+f.sh||undefined,sleepPerformance:+f.sp||undefined,
+      wakeTime:f.wake||undefined}};
+    nd.habits={...nd.habits,[y]:{alcohol:f.alcohol,cannabis:f.cannabis,screensOff:f.screens,
+      sunlight:f.sunlight,bedBy1030:f.bed,readBeforeBed:f.read}};
+    setData(nd);sv(nd);onClose();
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.cd,borderRadius:3,padding:20,width:"100%",maxWidth:340,border:`1px solid ${C.bd}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.t}}>Morning Debrief</div>
+            <div style={{fontSize:10,color:C.t3}}>{step+1}/{steps.length}</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:14}}>✕</button>
+        </div>
+        <Br v={step+1} max={steps.length} color={C.p} h={2}/>
+
+        <div style={{margin:"20px 0"}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.t}}>{cur.title}</div>
+          {cur.sub&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{cur.sub}</div>}
+
+          {cur.type==="num"&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+              <N value={f[cur.field]} onChange={v=>setF({...f,[cur.field]:v})} placeholder={cur.ph}
+                style={{fontSize:24,padding:"16px",fontWeight:700}}/>
+              {cur.unit&&<span style={{fontSize:13,color:C.t3,minWidth:30}}>{cur.unit}</span>}
+            </div>
+          )}
+
+          {cur.type==="yn"&&(
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              {[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=>(
+                <button key={o.l} onClick={()=>setF({...f,[cur.field]:o.v})} style={{
+                  flex:1,padding:"14px",borderRadius:3,fontSize:14,fontWeight:700,cursor:"pointer",
+                  background:f[cur.field]===o.v?(o.v?C.gl:C.rl):"transparent",
+                  border:`1px solid ${f[cur.field]===o.v?(o.v?C.g:C.r):C.bd}`,
+                  color:f[cur.field]===o.v?(o.v?C.g:C.r):C.t2,fontFamily:"inherit",
+                }}>{o.l}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{display:"flex",gap:6}}>
+          {step>0&&<B outline onClick={()=>setStep(step-1)} style={{flex:1}}>Back</B>}
+          <B full disabled={cur.type==="yn"&&!canNext} onClick={step<steps.length-1?()=>setStep(step+1):submit}
+            color={step===steps.length-1?C.g:C.p} style={{flex:2}}>
+            {step===steps.length-1?"Done":"Next"}
+          </B>
+        </div>
+        <button onClick={()=>{
+          if(step<steps.length-1)setStep(step+1);else submit();
+        }} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:10,marginTop:8,width:"100%",textAlign:"center",fontFamily:"inherit"}}>Skip</button>
+      </div>
+    </div>
+  );
+};
+
+// ═══ DASHBOARD ═══
+const Dashboard=({data,setData})=>{
+  const [showImport,setShowImport]=useState(false);
+  const [importText,setImportText]=useState("");
+  const [importStatus,setImportStatus]=useState("");
+
+  const doImport=()=>{
+    try{
+      const parsed=parseHealthImport(importText);
+      const counts={wt:Object.keys(parsed.wt).length,steps:Object.keys(parsed.steps).length,
+        rhr:Object.values(parsed.rec).filter(r=>r.rhr).length,sleep:Object.values(parsed.rec).filter(r=>r.sleepHours).length,
+        cal:Object.keys(parsed.nut).length};
+      const nd={...data,
+        wt:{...parsed.wt,...data.wt},
+        steps:{...parsed.steps,...data.steps},
+        rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
+        nut:{...parsed.nut,...data.nut},
+      };
+      setData(nd);sv(nd);
+      setImportStatus(`Imported: ${counts.wt} weight, ${counts.steps} steps, ${counts.rhr} RHR, ${counts.sleep} sleep, ${counts.cal} nutrition entries`);
+      setImportText("");
+    }catch(e){setImportStatus("Error parsing data. Make sure you pasted the full HealthKit export.");}
+  };
+  const t=td(),dn=dw(t),w=wkn(t);
+  const sess=PROG.days[dn],nut=data.nut[t],rec=data.rec[t];
+  const wts=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
+  const lw=wts[0]?.[1],pw=wts[1]?.[1],wc=lw&&pw?(lw-pw).toFixed(1):null;
+  const steps=data.steps?.[t]||0;
+  const ws=rec?.recoveryScore;
+
+  let streak=0;const sd=new Date();
+  for(let i=0;i<60;i++){const ds=sd.toISOString().split("T")[0];const d=dw(ds);
+    if(["saturday","sunday"].includes(d)){sd.setDate(sd.getDate()-1);continue;}
+    if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
+
+  const calT=dn==="monday"?1200:2600,proT=dn==="monday"?120:["saturday","sunday"].includes(dn)?150:200;
+  const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
+
+  const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
+  const recCh=Object.entries(data.rec).filter(([_,v])=>v.recoveryScore).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
+  const rhrCh=Object.entries(data.rec).filter(([_,v])=>v.rhr).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.rhr,d:d.slice(5)}));
+  const stCh=Object.entries(data.steps||{}).filter(([_,v])=>v>0).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v,d:d.slice(5)}));
+  const slCh=Object.entries(data.rec).filter(([_,v])=>v.sleepHours).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.sleepHours,d:d.slice(5)}));
+  const lifts=Object.values(data.prog).filter(p=>p.progressed).length;
+  const totalL=Object.keys(data.prog).length;
+
+  // Habit streak
+  const habitDays=Object.entries(data.habits||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+  const habitScore=habitDays.length?Math.round(habitDays.reduce((s,[_,h])=>{
+    if(!h)return s;let c=0;
+    if(h.alcohol===false)c++;if(h.cannabis===false)c++;if(h.screensOff===true)c++;
+    if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;
+    return s+c/6;},0)/habitDays.length*100):null;
+
+  const dks=["monday","tuesday","wednesday","thursday","friday"];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      <div>
+        <div style={{fontSize:16,fontWeight:700,color:C.t}}>Home</div>
+        <div style={{fontSize:11,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}</div>
+      </div>
+
+      <X style={{borderLeft:`3px solid ${C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
+            <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
+            {sess&&<div style={{fontSize:11,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div>}
+          </div>
+          {data.wk[t]?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Complete</span>
+           :sess?<span style={{fontSize:11,fontWeight:600,color:C.p}}>Ready</span>:null}
+        </div>
+      </X>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4}}>
+        {[{l:"Weight",v:lw?lw.toFixed(1):"—",s:wc?`${wc>0?"+":""}${wc}`:"",sc:wc&&wc<0?C.g:wc&&wc>0?C.r:C.t3},
+          {l:"Recovery",v:ws??"-",s:ws!=null?"%":"",sc:ws>=67?C.g:ws>=34?C.a:ws!=null?C.r:C.t3},
+          {l:"Steps",v:steps?steps.toLocaleString():"—",sc:C.t3},
+          {l:"Streak",v:streak,s:"d",sc:streak>=5?C.g:C.a},
+        ].map((m,i)=>(
+          <X key={i} style={{padding:"8px 4px",textAlign:"center"}}>
+            <div style={{fontSize:17,fontWeight:700,color:C.t,lineHeight:1}}>{m.v}</div>
+            {m.s&&<div style={{fontSize:9,color:m.sc||C.t3,fontWeight:600}}>{m.s}</div>}
+            <div style={{fontSize:8,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
+          </X>
+        ))}
+      </div>
+
+      <X style={{padding:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          {[{l:"Calories",v:tCal,x:calT,c:tCal>calT?C.a:C.p},{l:"Protein",v:`${tPro}g`,x:proT,c:tPro>=proT?C.g:C.r},
+            {l:"Fiber",v:`${tFib}g`,x:30,c:C.v}].map((s,i)=>(
+            <div key={i}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t2,marginBottom:2}}>
+                <span>{s.l}</span><span style={{fontWeight:600,color:s.c}}>{s.v}/{typeof s.x==="number"?s.x:s.x}</span>
+              </div>
+              <Br v={typeof s.v==="string"?parseInt(s.v):s.v} max={s.x} color={s.c}/>
+            </div>
+          ))}
+        </div>
+      </X>
+
+      {/* Habit score */}
+      {habitScore!=null&&(
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11}}>
+            <span style={{fontWeight:600,color:C.t2}}>Habit Score (7-day avg)</span>
+            <span style={{fontWeight:700,color:habitScore>=70?C.g:habitScore>=40?C.a:C.r}}>{habitScore}%</span>
+          </div>
+          <Br v={habitScore} max={100} color={habitScore>=70?C.g:habitScore>=40?C.a:C.r} h={3}/>
+        </X>
+      )}
+
+      {/* Charts */}
+      <Ch data={wCh} color={C.p} label="Weight" yUnit=" lbs" empty="Log weight to see trend"/>
+      <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log Whoop recovery to see trend"/>
+      <Ch data={rhrCh} color={C.v} label="Resting Heart Rate" yUnit=" bpm" empty="Log RHR to see trend"/>
+      <Ch data={stCh} color={C.a} label="Steps" empty="Log steps to see trend"/>
+      <Ch data={slCh} color={C.p} label="Sleep" yUnit=" hrs" empty="Log sleep to see trend"/>
+
+      {totalL>0&&(
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+            <span style={{color:C.t2,fontWeight:600}}>Lift Progressions</span>
+            <span style={{color:C.g,fontWeight:700}}>{lifts}/{totalL}</span>
+          </div>
+          <Br v={lifts} max={totalL} color={C.g} h={3}/>
+        </X>
+      )}
+
+      <div style={{display:"flex",gap:2}}>
+        {dks.map((dk,i)=>{
+          const isToday=dk===dn,done=Object.keys(data.wk).some(ws=>dw(ws)===dk&&wkn(ws)===w);
+          return(<div key={dk} style={{flex:1,borderRadius:2,padding:"5px 2px",textAlign:"center",
+            background:isToday?C.pl:C.cd,border:`1px solid ${done?C.g:isToday?C.p:C.bd}`}}>
+            <div style={{fontSize:9,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F"][i]}</div>
+            {done&&<div style={{width:4,height:4,borderRadius:2,background:C.g,margin:"2px auto 0"}}/>}
+          </div>);
+        })}
+      </div>
+
+      {/* Import / Settings */}
+      <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:8}}>
+        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:600}}>
+          {showImport?"Hide Import":"Import Health Data"}
+        </button>
+        {showImport&&(
+          <div style={{marginTop:8}}>
+            <div style={{fontSize:11,color:C.t2,marginBottom:6}}>
+              Paste your HealthKit export from Claude iOS (the markdown table format). Existing data won't be overwritten.
+            </div>
+            <textarea value={importText} onChange={e=>setImportText(e.target.value)}
+              placeholder="Paste HealthKit data export here..."
+              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:3,
+                padding:10,color:C.t,fontSize:12,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+            <div style={{display:"flex",gap:4,marginTop:4}}>
+              <B full onClick={doImport} disabled={!importText.trim()}>Import Data</B>
+            </div>
+            {importStatus&&<div style={{fontSize:11,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
+            <button onClick={()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);}}}
+              style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:10,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
+              Reset All Data
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ═══ TRAINING ═══
+const Training=({data,setData})=>{
+  const t=td(),dn=dw(t);
+  const [sel,setSel]=useState(dn);
+  const [act,setAct]=useState(null);
+  const [rl,setRl]=useState(0);
+  const [rt,setRt]=useState(0);
+  const [showMob,setShowMob]=useState(false);
+  const [mobDone,setMobDone]=useState(!!data.mob?.[t]);
+  const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
+  const tr=useRef(null);
+  const sess=PROG.days[sel];
+
+  const gw=(id,def)=>data.prog[id]?.currentWeight??def;
+  const startW=()=>{if(!sess)return;
+    setAct({day:sel,exercises:sess.exercises.map(ex=>({id:ex.id,
+      wu:WU(gw(ex.id,ex.sw)).map(w=>({...w,done:false})),
+      sets:Array.from({length:ex.sets},()=>({weight:gw(ex.id,ex.sw),reps:0,done:false})),
+    })),start:Date.now()});};
+  const uS=(ei,si,f,v)=>setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
+  const dWU=(ei,wi)=>setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].wu[wi].done=true;return n;});
+  const dS=(ei,si,rest)=>{
+    setAct(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;return n;});
+    if(rest>0){if(tr.current)clearInterval(tr.current);setRl(rest);setRt(rest);
+      tr.current=setInterval(()=>{setRl(p=>{if(p<=1){clearInterval(tr.current);setRt(0);return 0;}return p-1;});},1000);}
+  };
+  const finish=()=>{
+    if(!act)return;const nd={...data};
+    nd.wk={...nd.wk,[t]:{day:act.day,exercises:act.exercises,dur:Math.round((Date.now()-act.start)/6e4)}};
+    const s=PROG.days[act.day];
+    act.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe||pe.inc===0)return;
+      const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
+      const cw=gw(pe.id,pe.sw);
+      nd.prog={...nd.prog,[pe.id]:{currentWeight:hit?cw+pe.inc:cw,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit}};
+    });setData(nd);sv(nd);setAct(null);if(tr.current)clearInterval(tr.current);setRt(0);};
+  const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
+  const logMob=()=>{const nd={...data,mob:{...data.mob,[t]:true}};setData(nd);sv(nd);setMobDone(true);setShowMob(false);};
+
+  const dks=["monday","tuesday","wednesday","thursday","friday"];
+
+  if(act){
+    const s=PROG.days[act.day];
+    return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:3,textAlign:"center"}}>
+        <div style={{fontSize:9,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>Rest</div>
+        <div style={{fontSize:32,fontWeight:700,color:"#fff"}}>{Math.floor(rl/60)}:{String(rl%60).padStart(2,"0")}</div>
+      </div>)}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontSize:15,fontWeight:700,color:C.t}}>{s.name}</div><div style={{fontSize:11,color:C.t3}}>{s.focus}</div></div>
+        <B onClick={finish} color={C.g}>Finish</B>
+      </div>
+
+      {s.exercises.map((ex,ei)=>{
+        const wuSets=act.exercises[ei].wu;
+        return(<X key={ex.id} style={{padding:10}}>
+          <div style={{marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{ex.name}</div>
+            <div style={{fontSize:10,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+            <div style={{fontSize:10,color:C.p,marginTop:2}}>{ex.cue}</div>
+          </div>
+          {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
+            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginBottom:2}}>Warm-up</div>
+            {wuSets.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",opacity:wu.done?0.3:0.6,fontSize:12}}>
+              <span style={{color:C.t3,width:28}}>{wu.l}</span>
+              <span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
+              {!wu.done?<B small outline onClick={()=>dWU(ei,wi)} color={C.t3}>✓</B>:<span style={{color:C.g}}>✓</span>}
+            </div>))}
+          </div>)}
+          {act.exercises[ei].sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 0",
+            borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
+            <span style={{fontSize:10,color:C.t3,width:16,fontWeight:600}}>{si+1}</span>
+            <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:62,fontSize:14}}/>
+            <span style={{color:C.t3,fontSize:11}}>×</span>
+            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:50,fontSize:14}}/>
+            {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:14}}>✓</span>}
+          </div>))}
+        </X>);
+      })}
+
+      {s.stepper&&(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>Stairstepper</div><div style={{fontSize:10,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
+        {stpDone?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
+      </X>)}
+    </div>);
+  }
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Training</div>
+    <div style={{display:"flex",gap:2}}>
+      {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"6px 2px",borderRadius:2,
+        border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
+        fontSize:10,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+    </div>
+
+    <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:10,color:C.t3}}>5 min — optional</div></div>
+      {mobDone?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B small outline onClick={()=>setShowMob(!showMob)}>{showMob?"Hide":"View"}</B>}
+    </X>
+    {showMob&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
+      {PROG.mobility.map((m,i)=>(<div key={i} style={{padding:"5px 0",borderBottom:i<PROG.mobility.length-1?`1px solid ${C.bl}`:"none"}}>
+        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:12,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:10,color:C.t3}}>{m.dur}</span></div>
+        <div style={{fontSize:10,color:C.p,marginTop:1}}>{m.cue}</div>
+      </div>))}
+      <B full small color={C.g} style={{marginTop:6}} onClick={logMob}>Mark Complete</B>
+    </X>)}
+
+    {sess?(<>
+      <X style={{borderLeft:`3px solid ${C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontSize:14,fontWeight:700,color:C.t}}>{sess.name}</div>
+            <div style={{fontSize:11,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div></div>
+          {data.wk[t]&&sel===dn?<span style={{fontSize:11,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
+        </div>
+      </X>
+      {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
+        return(<X key={ex.id} style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600,color:C.t}}>{ex.name}</div>
+              <div style={{fontSize:10,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+              <div style={{fontSize:10,color:C.p,marginTop:1}}>{ex.cue}</div>
+            </div>
+            <div style={{textAlign:"right",minWidth:44}}>
+              <div style={{fontSize:18,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
+              <div style={{fontSize:9,color:C.t3}}>{ex.unit}</div>
+              {prog?.lastReps&&<div style={{fontSize:9,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
+            </div>
+          </div>
+        </X>);})}
+    </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:12}}>Rest Day</div></X>}
+  </div>);
+};
+
+// ═══ NUTRITION ═══
+const Nutrition=({data,setData})=>{
+  const t=td(),dn=dw(t);
+  const [mode,setMode]=useState("ai");
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [selM,setSelM]=useState(null);
+  const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
+
+  const tl=data.nut[t]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+  const calT=dn==="monday"?1200:2600,proT=dn==="monday"?120:["saturday","sunday"].includes(dn)?150:200;
+
+  const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
+    totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
+  const add=m=>{const nl=rc([...tl.meals,m]);const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);};
+  const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);setSelM(null);};
+  const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
+
+  const aiGo=async()=>{if(!input.trim())return;setLoading(true);
+    try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+        system:"Estimate meal nutrition. Return ONLY JSON: {\"description\":\"name\",\"cal\":num,\"protein\":num,\"carbs\":num,\"fat\":num,\"fiber\":num,\"components\":[{\"item\":\"name\",\"cal\":num,\"protein\":num,\"carbs\":num,\"fat\":num,\"fiber\":num}]}. No markdown. Realistic portions.",
+        messages:[{role:"user",content:input}]})});
+      const res=await r.json();const parsed=JSON.parse((res.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      add({...parsed,source:"ai",raw:input,components:parsed.components||[]});setInput("");
+    }catch{add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
+    setLoading(false);};
+
+  if(selM!==null){
+    const meal=tl.meals[selM];if(!meal){setSelM(null);return null;}
+    const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
+    const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
+    return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+      <button onClick={()=>setSelM(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
+      <X><div style={{fontSize:14,fontWeight:700,color:C.t}}>{meal.description}</div>
+        {meal.raw&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>{meal.raw}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
+          {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
+            {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
+            <div key={i}><div style={{fontSize:15,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
+        </div>
+        <div style={{display:"flex",height:5,borderRadius:2,overflow:"hidden",marginBottom:2}}>
+          <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.a}}/><div style={{width:`${fp}%`,background:C.r}}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
+      </X>
+      {meal.components?.length>0&&(<X><L>Components</L>
+        {meal.components.map((c,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i?`1px solid ${C.bl}`:"none",fontSize:11}}>
+          <span style={{fontWeight:600,color:C.t}}>{c.item}</span>
+          <span style={{color:C.t2}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
+        </div>))}</X>)}
+      <div style={{display:"flex",gap:4}}>
+        {meal.source==="ai"&&!data.qm?.find(q=>q.description===meal.description)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
+        <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
+      </div>
+    </div>);
+  }
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Food</div>
+    <X style={{padding:10}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:2,textAlign:"center"}}>
+        {[{l:"Cal",v:tl.totalCal,x:calT,c:tl.totalCal>calT?C.a:C.p},{l:"Pro",v:`${tl.totalProtein}g`,x:`${proT}g`,c:tl.totalProtein>=proT?C.g:C.r},
+          {l:"Carb",v:`${tl.totalCarbs}g`,x:"—",c:C.t},{l:"Fat",v:`${tl.totalFat}g`,x:"—",c:C.t},{l:"Fib",v:`${tl.totalFiber||0}g`,x:"30g",c:C.v}
+        ].map((s,i)=>(<div key={i}><div style={{fontSize:14,fontWeight:700,color:s.c}}>{s.v}</div><div style={{fontSize:8,color:C.t3}}>/{s.x}</div>
+          <div style={{fontSize:7,color:C.t3,textTransform:"uppercase",fontWeight:600,marginTop:1}}>{s.l}</div></div>))}
+      </div>
+    </X>
+    <div style={{display:"flex",gap:2}}>
+      {[["ai","AI"],["manual","Manual"],["quick","Quick"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
+        flex:1,padding:"6px",borderRadius:2,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
+        color:mode===m?C.p:C.t3,fontSize:10,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
+    </div>
+    {mode==="ai"&&(<X style={{padding:10}}>
+      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder='Describe your meal...'
+        style={{width:"100%",minHeight:44,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:2,padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+      <B full onClick={aiGo} disabled={loading||!input.trim()} style={{marginTop:4}}>{loading?"Estimating...":"Estimate"}</B>
+    </X>)}
+    {mode==="manual"&&(<X style={{padding:10}}>
+      <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What?" style={{marginBottom:4}}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:2}}>
+        <N value={mf.cal} onChange={v=>setMf({...mf,cal:v})} placeholder="Cal"/>
+        <N value={mf.pro} onChange={v=>setMf({...mf,pro:v})} placeholder="Pro"/>
+        <N value={mf.carb} onChange={v=>setMf({...mf,carb:v})} placeholder="Carb"/>
+        <N value={mf.fat} onChange={v=>setMf({...mf,fat:v})} placeholder="Fat"/>
+        <N value={mf.fib} onChange={v=>setMf({...mf,fib:v})} placeholder="Fib"/>
+      </div>
+      <B full style={{marginTop:4}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual",components:[]});
+        setMf({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
+    </X>)}
+    {mode==="quick"&&(<X style={{padding:10}}>
+      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:11,padding:8,textAlign:"center"}}>No saved meals</div>
+      :(data.qm||[]).map((q,i)=>(<button key={i} onClick={()=>add({...q,source:"quick"})} style={{display:"flex",justifyContent:"space-between",
+        alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:2,padding:"7px 10px",cursor:"pointer",
+        marginBottom:2,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:12}}>
+        <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:10}}>{q.cal} · {q.protein}gP</span></button>))}
+    </X>)}
+    <S title={`Today (${tl.meals.length})`}>
+      {tl.meals.map((m,i)=>(<X key={i} onClick={()=>setSelM(i)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontSize:12,fontWeight:600,color:C.t}}>{m.description}</div>
+            <div style={{fontSize:10,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
+          <span style={{color:C.t3,fontSize:11}}>→</span>
+        </div>
+      </X>))}
+    </S>
+  </div>);
+};
+
+// ═══ WEIGHT ═══
+const Weight=({data,setData})=>{
+  const [nw,setNw]=useState("");const t=td();
+  const entries=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
+  const latest=entries[0]?.[1],oldest=entries[entries.length-1]?.[1];
+  const tc=latest&&oldest?(latest-oldest).toFixed(1):null;
+  const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
+  const add=()=>{if(!nw)return;const nd={...data,wt:{...data.wt,[t]:Number(nw)}};setData(nd);sv(nd);setNw("");};
+  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Scale</div>
+    <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
+      <div style={{display:"flex",gap:6,marginTop:3}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1}}/><B onClick={add}>Log</B></div>
+      {data.wt[t]&&<div style={{fontSize:11,color:C.g,marginTop:4,fontWeight:600}}>Today: {data.wt[t]} lbs</div>}
+    </X>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
+    </div>
+    <Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>
+    <S title="History">
+      {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
+        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:12}}>
+          <span style={{color:C.t2}}>{fmt(d)}</span>
+          <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:10}}>{diff>0?"+":""}{diff}</span>}</span>
+        </div>);})}
+    </S>
+  </div>);
+};
+
+// ═══ RECOVERY ═══
+const Recovery=({data,setData})=>{
+  const t=td(),tr=data.rec[t]||{};
+  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",n:tr.notes||"",steps:data.steps?.[t]||""});
+  const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
+  const saveR=()=>{const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs,hrv:+f.hrv,rhr:+f.rhr,respiratoryRate:+f.rr,sleepHours:+f.sh,sleepPerformance:+f.sp,strain:+f.str,notes:f.n}},
+    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);};
+  const recent=Object.entries(data.rec).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
+  const avgR=recent.filter(e=>e[1].recoveryScore).length?Math.round(recent.filter(e=>e[1].recoveryScore).reduce((s,e)=>s+e[1].recoveryScore,0)/recent.filter(e=>e[1].recoveryScore).length):null;
+  const recCh=recent.filter(e=>e[1].recoveryScore).reverse().map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
+  const hrvCh=recent.filter(e=>e[1].hrv).reverse().map(([d,v])=>({v:v.hrv,d:d.slice(5)}));
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+    <div style={{fontSize:15,fontWeight:700,color:C.t}}>Whoop Recovery</div>
+    <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:4}}>
+        <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72"/></div>
+        <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
+        <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:4}}>
+        <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
+        <div><L>Sleep hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
+        <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85"/></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:4}}>
+        <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
+        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
+      </div>
+      <div style={{marginTop:4}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
+      <B full style={{marginTop:6}} onClick={saveR}>Save</B>
+    </X>
+    {avgR!=null&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:sc(avgR)}}>{avgR}%</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg Recovery</div></X>
+      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:20,fontWeight:700,color:C.v}}>{recent.filter(e=>e[1].hrv).length?Math.round(recent.filter(e=>e[1].hrv).reduce((s,e)=>s+e[1].hrv,0)/recent.filter(e=>e[1].hrv).length):"-"}</div><div style={{fontSize:8,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg HRV</div></X>
+    </div>)}
+    <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
+    <Ch data={hrvCh} color={C.v} label="HRV" yUnit=" ms" empty="Log HRV to see trend"/>
+    <S title="Recent">
+      {recent.map(([d,r])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:`1px solid ${C.bl}`,fontSize:11}}>
+        <span style={{color:C.t2,fontWeight:600}}>{fmt(d)}</span>
+        <div style={{display:"flex",gap:6,color:C.t2}}>
+          {r.recoveryScore&&<span style={{fontWeight:700,color:sc(r.recoveryScore)}}>{r.recoveryScore}%</span>}
+          {r.hrv&&<span>HRV {r.hrv}</span>}{r.rhr&&<span>RHR {r.rhr}</span>}{r.sleepHours&&<span>{r.sleepHours}h</span>}
+        </div>
+      </div>))}
+    </S>
+  </div>);
+};
+
+// ═══ APP ═══
+window.App = function App(){
+  const [tab,setTab]=useState("dashboard");
+  const [data,setData]=useState(()=>{const raw=ld();return raw?migrate(raw):bl();});
+  const [showD,setShowD]=useState(()=>!(data.debrief||{})[yd()]);
+  useEffect(()=>{sv(data);},[data]);
+  return(
+    <div style={{background:C.bg,color:C.t,minHeight:"100vh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+      {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
+      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:64}}>
+        {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
+        {tab==="training"&&<Training data={data} setData={setData}/>}
+        {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
+        {tab==="weight"&&<Weight data={data} setData={setData}/>}
+        {tab==="recovery"&&<Recovery data={data} setData={setData}/>}
+      </div>
+      <TabBar active={tab} set={setTab}/>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
