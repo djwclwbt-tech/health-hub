@@ -784,8 +784,57 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   }
 
   // Program view (not in workout)
+  const [viewW,setViewW]=useState(null); // viewing a past workout
+  const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
+
+  // Calendar helpers
+  const now=new Date();
+  const [calMonth,setCalMonth]=useState(now.getMonth());
+  const [calYear,setCalYear]=useState(now.getFullYear());
+  const calDays=()=>{
+    const first=new Date(calYear,calMonth,1);
+    const last=new Date(calYear,calMonth+1,0);
+    const startPad=first.getDay(); // 0=Sun
+    const days=[];
+    for(let i=0;i<startPad;i++)days.push(null);
+    for(let d=1;d<=last.getDate();d++)days.push(d);
+    return days;
+  };
+  const calKey=(d)=>`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // Past workout detail view
+  if(viewW){
+    const [vDate,vData]=viewW;
+    const vSess=PROG.days[vData.day];
+    return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+      <button onClick={()=>setViewW(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
+      <X style={{borderLeft:`3px solid ${C.g}`}}>
+        <div style={{fontSize:17,fontWeight:700,color:C.t}}>{vSess?.name||vData.day}</div>
+        <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} — {vData.dur||"?"}min</div>
+      </X>
+      {vData.exercises?.map((ex,ei)=>{
+        const pe=vSess?.exercises[ei];
+        return(<X key={ei} style={{padding:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}}>{pe?.name||ex.id}</div>
+          {ex.sets?.map((s,si)=>(
+            <div key={si} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:si>0?`1px solid ${C.bl}`:"none",fontSize:14}}>
+              <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
+              <span style={{fontWeight:600,color:C.t}}>{s.weight||"BW"}</span>
+              <span style={{color:C.t3}}>×</span>
+              <span style={{fontWeight:600,color:s.reps>=((pe?.rr||[])[1]||999)?C.g:C.t}}>{s.reps}</span>
+              {s.done?<span style={{color:C.g,marginLeft:"auto"}}>✓</span>:<span style={{color:C.r,marginLeft:"auto",fontSize:12}}>skipped</span>}
+            </div>
+          ))}
+        </X>);
+      })}
+    </div>);
+  }
+
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
+
+    {/* Weekly schedule selector */}
     <div style={{display:"flex",gap:3}}>
       {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
         border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
@@ -812,22 +861,78 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
           {data.wk[t]&&sel===dn?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
         </div>
       </X>
-      {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
-        return(<X key={ex.id} style={{padding:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
-              <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
-              <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
+      <S title="Exercises" collapsible>
+        {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
+          return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
+                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+                <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
+              </div>
+              <div style={{textAlign:"right",minWidth:48}}>
+                <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
+                <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
+                {prog?.lastReps&&<div style={{fontSize:10,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
+              </div>
             </div>
-            <div style={{textAlign:"right",minWidth:48}}>
-              <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
-              <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
-              {prog?.lastReps&&<div style={{fontSize:10,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
-            </div>
-          </div>
-        </X>);})}
+          </X>);})}
+      </S>
     </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:14}}>Rest Day</div></X>}
+
+    {/* ═══ CALENDAR ═══ */}
+    <X style={{padding:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <button onClick={()=>{if(calMonth===0){setCalMonth(11);setCalYear(calYear-1);}else setCalMonth(calMonth-1);}}
+          style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>‹</button>
+        <span style={{fontSize:14,fontWeight:700,color:C.t}}>{monthNames[calMonth]} {calYear}</span>
+        <button onClick={()=>{if(calMonth===11){setCalMonth(0);setCalYear(calYear+1);}else setCalMonth(calMonth+1);}}
+          style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
+        {["S","M","T","W","T","F","S"].map((d,i)=>(
+          <div key={i} style={{fontSize:10,fontWeight:700,color:C.t3,padding:"2px 0"}}>{d}</div>
+        ))}
+        {calDays().map((d,i)=>{
+          if(!d)return <div key={`e${i}`}/>;
+          const dk=calKey(d);
+          const isToday=dk===t;
+          const hasWorkout=!!data.wk[dk];
+          const dayName=dw(dk);
+          const isRestDay=["saturday","sunday"].includes(dayName);
+          return(
+            <div key={dk} onClick={hasWorkout?()=>setViewW([dk,data.wk[dk]]):undefined}
+              style={{padding:"4px 2px",borderRadius:4,cursor:hasWorkout?"pointer":"default",
+                background:isToday?C.pl:hasWorkout?C.gl:"transparent",
+                border:isToday?`1px solid ${C.p}`:"1px solid transparent",
+                position:"relative",minHeight:28,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <span style={{fontSize:12,fontWeight:isToday?700:400,color:isRestDay?C.t3:C.t}}>{d}</span>
+              {hasWorkout&&<div style={{width:5,height:5,borderRadius:3,background:C.g,marginTop:1}}/>}
+            </div>
+          );
+        })}
+      </div>
+    </X>
+
+    {/* ═══ WORKOUT HISTORY ═══ */}
+    <S title={`Workout History (${allWk.length})`} collapsible>
+      {allWk.length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No workouts logged yet</div>
+      :allWk.slice(0,15).map(([d,w])=>{
+        const wSess=PROG.days[w.day];
+        const totalSets=w.exercises?w.exercises.reduce((s,e)=>s+(e.sets?.filter(s=>s.done).length||0),0):0;
+        return(
+          <X key={d} onClick={()=>setViewW([d,w])} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:C.t}}>{wSess?.name||w.day}</div>
+                <div style={{fontSize:12,color:C.t2}}>{fmt(d)} — {w.dur||"?"}min — {totalSets} sets</div>
+              </div>
+              <span style={{color:C.t3,fontSize:13}}>→</span>
+            </div>
+          </X>
+        );
+      })}
+    </S>
   </div>);
 };
 
