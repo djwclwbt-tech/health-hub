@@ -722,6 +722,11 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
   const dks=["monday","tuesday","wednesday","thursday","friday"];
   const mobList=getMobility(sel);
+  const [viewW,setViewW]=useState(null);
+  const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
+  const now=new Date();
+  const [calMonth,setCalMonth]=useState(now.getMonth());
+  const [calYear,setCalYear]=useState(now.getFullYear());
 
   // Active workout view
   if(workout){
@@ -784,13 +789,8 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   }
 
   // Program view (not in workout)
-  const [viewW,setViewW]=useState(null); // viewing a past workout
-  const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
 
   // Calendar helpers
-  const now=new Date();
-  const [calMonth,setCalMonth]=useState(now.getMonth());
-  const [calYear,setCalYear]=useState(now.getFullYear());
   const calDays=()=>{
     const first=new Date(calYear,calMonth,1);
     const last=new Date(calYear,calMonth+1,0);
