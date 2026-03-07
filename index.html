@@ -101,7 +101,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{}});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{}});
 
 const parseHealthImport=(text)=>{
   const d={wt:{},steps:{},rec:{},nut:{}};
@@ -144,7 +144,7 @@ const parseHealthImport=(text)=>{
 const migrate=(d)=>{const b=bl();return{...b,...d,
   wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
   rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
-  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{}};};
+  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{}};};
 const td=()=>new Date().toISOString().split("T")[0];
 const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
@@ -538,17 +538,15 @@ const Dashboard=({data,setData})=>{
         </X>
       </div>
 
-      {/* Water Intake placeholder */}
-      <X style={{padding:10,opacity:0.5,border:`1px dashed ${C.bd}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Water</div>
-            <div style={{fontSize:16,fontWeight:700,color:C.t}}>— / 128 oz</div>
-          </div>
-          <span style={{fontSize:12,color:C.t3}}>Coming soon</span>
+      {/* Water Intake */}
+      {(()=>{const wt=data.water?.[t]||0;return(
+      <X style={{padding:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Water</span>
+          <span style={{fontSize:16,fontWeight:700,color:wt>=128?C.g:C.p}}>{wt} <span style={{fontSize:12,color:C.t3,fontWeight:500}}>/ 128 oz</span></span>
         </div>
-        <Br v={0} max={128} color={C.p} h={6}/>
-      </X>
+        <Br v={wt} max={128} color={wt>=128?C.g:C.p} h={6}/>
+      </X>);})()}
 
       {/* Nutrition — larger with full macro breakdown */}
       <X style={{padding:12}}>
@@ -665,6 +663,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
+  const [aiQ,setAiQ]=useState("");
+  const [aiA,setAiA]=useState("");
+  const [aiLoading,setAiLoading]=useState(false);
+  const [aiCooldown,setAiCooldown]=useState(false);
+  const [aiExIdx,setAiExIdx]=useState(null);
+  const [showAi,setShowAi]=useState(false);
   const tr=useRef(null);
   const sess=PROG.days[sel];
 
@@ -720,6 +724,22 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
   const logMob=()=>{const nd={...data,mob:{...data.mob,[t]:true}};setData(nd);sv(nd);setMobDone(true);setShowMob(false);};
 
+  const askCoach=async(q,exIdx)=>{
+    if(!q.trim()||aiLoading||aiCooldown)return;
+    setAiLoading(true);setAiA("");
+    const ex=workout&&exIdx!=null?PROG.days[workout.day]?.exercises[exIdx]:null;
+    const cw=ex?gw(ex.id,ex.sw):null;
+    try{
+      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
+          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:PROG.days[workout?.day]?.focus||""})});
+      const d=await r.json();
+      setAiA(d.answer||d.error||"No response");
+    }catch(e){setAiA("Error connecting to coach");}
+    setAiLoading(false);setAiCooldown(true);
+    setTimeout(()=>setAiCooldown(false),10000);
+  };
+
   const dks=["monday","tuesday","wednesday","thursday","friday"];
   const mobList=getMobility(sel);
   const [viewW,setViewW]=useState(null);
@@ -758,9 +778,15 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
         const wuSets=workout.exercises[ei].wu;
         return(<X key={ex.id} style={{padding:10}}>
           <div style={{marginBottom:6}}>
-            <div style={{fontSize:15,fontWeight:700,color:C.t}}>{ex.name}</div>
-            <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
-            <div style={{fontSize:12,color:C.p,marginTop:2}}>{ex.cue}</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:C.t}}>{ex.name}</div>
+                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+                <div style={{fontSize:12,color:C.p,marginTop:2}}>{ex.cue}</div>
+              </div>
+              <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
+                style={{background:C.vl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:10,fontWeight:600,color:C.v,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",marginLeft:6}}>AI</button>
+            </div>
           </div>
           {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
             <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",marginBottom:3}}>Warm-up</div>
@@ -785,6 +811,37 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
         <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Stairstepper</div><div style={{fontSize:12,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
         {stpDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
       </X>)}
+
+      {/* AI Coach */}
+      <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.v}}>AI Coach</div>
+          <button onClick={()=>{setShowAi(!showAi);setAiA("");}} style={{background:"none",border:"none",color:C.v,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showAi?"Hide":"Ask"}</button>
+        </div>
+        {showAi&&(<div>
+          {/* Quick prompts */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
+            {[{l:"Substitute?",q:"What's a good substitute for this exercise with the equipment I have?"},{l:"Drop weight?",q:"Should I drop weight on this? I'm struggling with form."},
+              {l:"Form check",q:"Give me the top form cue for this exercise."},{l:"Deload?",q:"My reps are dropping. Should I deload or push through?"}
+            ].map((p,i)=>(
+              <button key={i} onClick={()=>{setAiQ(p.q);setAiExIdx(null);askCoach(p.q,null);}} disabled={aiLoading||aiCooldown}
+                style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:aiLoading||aiCooldown?"not-allowed":"pointer",
+                  background:C.vl,border:"none",color:C.v,fontFamily:"inherit",opacity:aiLoading||aiCooldown?0.4:1}}>{p.l}</button>
+            ))}
+          </div>
+          {/* Free-form */}
+          <div style={{display:"flex",gap:4}}>
+            <input type="text" value={aiQ} onChange={e=>setAiQ(e.target.value)} placeholder="Ask about an exercise..."
+              onKeyDown={e=>{if(e.key==="Enter")askCoach(aiQ,aiExIdx);}}
+              style={{flex:1,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+            <B small onClick={()=>askCoach(aiQ,aiExIdx)} disabled={aiLoading||aiCooldown||!aiQ.trim()} color={C.v}>
+              {aiLoading?"...":"Ask"}
+            </B>
+          </div>
+          {aiCooldown&&!aiLoading&&<div style={{fontSize:10,color:C.t3,marginTop:4}}>Cooldown — wait a few seconds</div>}
+          {aiA&&(<div style={{marginTop:8,padding:10,background:C.vl,borderRadius:6,fontSize:13,color:C.t,lineHeight:1.5}}>{aiA}</div>)}
+        </div>)}
+      </X>
     </div>);
   }
 
@@ -937,6 +994,8 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 };
 
 // ═══ NUTRITION ═══
+const MEAL_TYPES=["Breakfast","Lunch","Dinner","Snack"];
+
 const Nutrition=({data,setData})=>{
   const t=td(),dn=dw(t);
   const [mode,setMode]=useState("ai");
@@ -944,15 +1003,20 @@ const Nutrition=({data,setData})=>{
   const [loading,setLoading]=useState(false);
   const [selM,setSelM]=useState(null);
   const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
+  const [mealType,setMealType]=useState("Lunch");
 
   const tl=data.nut[t]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
   const calT=dn==="monday"?1200:2600,proT=dn==="monday"?120:["saturday","sunday"].includes(dn)?150:200;
+  const waterToday=data.water?.[t]||0;
+  const waterGoal=128;
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const nl=rc([...tl.meals,m]);const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);};
+  const add=m=>{const ml={...m,mealType:mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
+  const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
+  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);};
 
   const aiGo=async()=>{if(!input.trim())return;setLoading(true);
     try{const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -963,13 +1027,17 @@ const Nutrition=({data,setData})=>{
     }catch(e){console.error(e);add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
     setLoading(false);};
 
+  // Meal detail view
   if(selM!==null){
     const meal=tl.meals[selM];if(!meal){setSelM(null);return null;}
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
       <button onClick={()=>setSelM(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
-      <X><div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
+      <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
+          {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
+        </div>
         {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
           {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
@@ -993,23 +1061,73 @@ const Nutrition=({data,setData})=>{
     </div>);
   }
 
+  // Group meals by type
+  const grouped={};
+  MEAL_TYPES.forEach(mt=>{grouped[mt]=[];});
+  tl.meals.forEach((m,i)=>{const mt=m.mealType||"Snack";if(!grouped[mt])grouped[mt]=[];grouped[mt].push({...m,_idx:i});});
+
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
-    <X style={{padding:10}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:2,textAlign:"center"}}>
-        {[{l:"Cal",v:tl.totalCal,x:calT,c:tl.totalCal>calT?C.a:C.p},{l:"Pro",v:`${tl.totalProtein}g`,x:`${proT}g`,c:tl.totalProtein>=proT?C.g:C.r},
-          {l:"Carb",v:`${tl.totalCarbs}g`,x:"—",c:C.t},{l:"Fat",v:`${tl.totalFat}g`,x:"—",c:C.t},{l:"Fib",v:`${tl.totalFiber||0}g`,x:"30g",c:C.v}
-        ].map((s,i)=>(<div key={i}><div style={{fontSize:16,fontWeight:700,color:s.c}}>{s.v}</div><div style={{fontSize:10,color:C.t3}}>/{s.x}</div>
-          <div style={{fontSize:9,color:C.t3,textTransform:"uppercase",fontWeight:600,marginTop:1}}>{s.l}</div></div>))}
+
+    {/* Macro summary */}
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+        <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.a:C.p}}>{tl.totalCal}</div>
+        <div style={{fontSize:13,color:C.t3}}>/ {calT} cal</div>
+      </div>
+      <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.a:C.p} h={7}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:10}}>
+        {[{l:"Protein",v:tl.totalProtein,x:proT,u:"g",c:tl.totalProtein>=proT?C.g:C.r},
+          {l:"Carbs",v:tl.totalCarbs,x:null,u:"g",c:C.a},
+          {l:"Fat",v:tl.totalFat,x:null,u:"g",c:C.t2},
+          {l:"Fiber",v:tl.totalFiber||0,x:30,u:"g",c:C.v}].map((m,i)=>(
+          <div key={i} style={{textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
+            {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
+            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:1}}>{m.l}</div>
+          </div>
+        ))}
       </div>
     </X>
+
+    {/* Water tracker */}
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div>
+          <span style={{fontSize:13,fontWeight:700,color:C.t}}>Water </span>
+          <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}</span>
+          <span style={{fontSize:13,color:C.t3}}> / {waterGoal} oz</span>
+        </div>
+        {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
+      </div>
+      <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={8}/>
+      <div style={{display:"flex",gap:6,marginTop:8}}>
+        {[12,24,36].map(oz=>(
+          <button key={oz} onClick={()=>addWater(oz)} style={{
+            flex:1,padding:"10px 4px",borderRadius:6,fontSize:15,fontWeight:700,cursor:"pointer",
+            background:C.pl,border:`1px solid ${C.p}`,color:C.p,fontFamily:"inherit",minHeight:44,
+          }}>+{oz}oz</button>
+        ))}
+      </div>
+    </X>
+
+    {/* Meal type selector + input mode */}
+    <div style={{display:"flex",gap:2}}>
+      {MEAL_TYPES.map(mt=>(
+        <button key={mt} onClick={()=>setMealType(mt)} style={{
+          flex:1,padding:"7px 2px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${mealType===mt?C.p:C.bd}`,background:mealType===mt?C.pl:"transparent",color:mealType===mt?C.p:C.t3,
+        }}>{mt}</button>
+      ))}
+    </div>
+
     <div style={{display:"flex",gap:3}}>
       {[["ai","AI Estimate"],["manual","Manual"],["quick","Quick Add"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
         flex:1,padding:"8px",borderRadius:4,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
         color:mode===m?C.p:C.t3,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
     </div>
     {mode==="ai"&&(<X style={{padding:10}}>
-      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder='Describe your meal...'
+      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}...`}
         style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
       <B full onClick={aiGo} disabled={loading||!input.trim()} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
     </X>)}
@@ -1032,15 +1150,25 @@ const Nutrition=({data,setData})=>{
         marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:14}}>
         <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:12}}>{q.cal} · {q.protein}gP</span></button>))}
     </X>)}
-    <S title={`Today (${tl.meals.length})`}>
-      {tl.meals.map((m,i)=>(<X key={i} onClick={()=>setSelM(i)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{m.description}</div>
-            <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
-          <span style={{color:C.t3,fontSize:13}}>→</span>
-        </div>
-      </X>))}
-    </S>
+
+    {/* Meals grouped by type */}
+    {MEAL_TYPES.map(mt=>{
+      const meals=grouped[mt];
+      if(meals.length===0)return null;
+      const mtCal=meals.reduce((s,m)=>s+(m.cal||0),0);
+      return(
+        <S key={mt} title={`${mt} (${meals.length}) — ${mtCal} cal`}>
+          {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{m.description}</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
+              <span style={{color:C.t3,fontSize:13}}>→</span>
+            </div>
+          </X>))}
+        </S>
+      );
+    })}
+    {tl.meals.length===0&&<div style={{color:C.t3,fontSize:13,padding:12,textAlign:"center"}}>No meals logged today</div>}
   </div>);
 };
 
