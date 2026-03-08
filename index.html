@@ -135,69 +135,44 @@ const syncToSB=async(d)=>{
   if(syncTimer)clearTimeout(syncTimer);
   syncTimer=setTimeout(async()=>{
     try{
-      // Weight
-      for(const[date,value]of Object.entries(d.wt||{})){
-        await sb.upsert("weight",{date,value});
-      }
-      // Steps
-      for(const[date,value]of Object.entries(d.steps||{})){
-        await sb.upsert("steps",{date,value:Math.round(value)});
-      }
-      // Water
-      for(const[date,oz]of Object.entries(d.water||{})){
-        await sb.upsert("water",{date,oz:Math.round(oz)});
-      }
-      // Recovery
+      for(const[date,value]of Object.entries(d.wt||{})){await sb.upsert("weight",{date,value});}
+      for(const[date,value]of Object.entries(d.steps||{})){await sb.upsert("steps",{date,value:Math.round(value)});}
+      for(const[date,oz]of Object.entries(d.water||{})){await sb.upsert("water",{date,oz:Math.round(oz)});}
       for(const[date,r]of Object.entries(d.rec||{})){
         await sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
           respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
           strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null});
       }
-      // Habits
       for(const[date,h]of Object.entries(d.habits||{})){
         if(!h)continue;
         await sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
           sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed});
       }
-      // Workouts
       for(const[date,w]of Object.entries(d.wk||{})){
         await sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null});
       }
-      // Nutrition
       for(const[date,n]of Object.entries(d.nut||{})){
         await sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
           total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0});
       }
-      // Progression
       for(const[exId,p]of Object.entries(d.prog||{})){
         await sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
           last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id");
       }
-      // Quick meals (clear and re-insert)
       if(d.qm&&d.qm.length>0){
         for(const q of d.qm){
           await sb.upsert("quick_meals",{description:q.description,cal:q.cal||0,protein:q.protein||0,
             carbs:q.carbs||0,fat:q.fat||0,fiber:q.fiber||0,components:q.components||[]},"description");
         }
       }
-      // Mobility
-      for(const[date]of Object.entries(d.mob||{})){
-        await sb.upsert("mobility",{date,completed:true});
-      }
-      // Stepper
-      for(const[date]of Object.entries(d.stp||{})){
-        await sb.upsert("stepper",{date,completed:true});
-      }
-      // Debrief
-      for(const[date]of Object.entries(d.debrief||{})){
-        await sb.upsert("debrief",{date,completed:true});
-      }
+      for(const[date]of Object.entries(d.mob||{})){await sb.upsert("mobility",{date,completed:true});}
+      for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
+      for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
       console.log("[SB] Full sync complete");
     }catch(e){console.error("[SB] Sync error:",e);}
   },2000);
 };
 
-// Save single-table change to SB (fast, targeted)
 const svSB={
   weight:(date,value)=>sb.upsert("weight",{date,value}),
   steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
@@ -217,7 +192,6 @@ const svSB={
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
 };
 
-// Load from Supabase → build data object
 const loadFromSB=async()=>{
   try{
     const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief]=await Promise.all([
@@ -296,7 +270,6 @@ const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturd
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
 
-// Auto-format time: "615" → "6:15", "1030" → "10:30"
 const fmtTime=(v)=>{
   const digits=v.replace(/\D/g,"");
   if(digits.length<=2)return digits;
@@ -305,7 +278,6 @@ const fmtTime=(v)=>{
   return digits;
 };
 
-// Format elapsed seconds to mm:ss or h:mm:ss
 const fmtElapsed=(secs)=>{
   const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
   if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
@@ -317,7 +289,7 @@ const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
   a:"#b06d00",al:"#fef7e0",v:"#6a1b9a",vl:"#f3e8fd",
   t:"#1a1a1a",t2:"#5f6368",t3:"#9aa0a6"};
 
-// ═══ BASE COMPONENTS (larger sizes) ═══
+// ═══ BASE COMPONENTS ═══
 const N=({value,onChange,placeholder,style={}})=>(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={e=>onChange(e.target.value)}
     placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
@@ -365,7 +337,7 @@ const Br=({v,max,color=C.p,h=5})=>(
   </div>
 );
 
-// ═══ TAB BAR (even larger) ═══
+// ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
   <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
     {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"}].map(t=>(
@@ -385,7 +357,7 @@ const TabBar=({active,set,hasActiveWorkout})=>(
   </div>
 );
 
-// ═══ WORKOUT TIMER BAR (shows on ALL tabs when workout active) ═══
+// ═══ WORKOUT TIMER BAR ═══
 const WorkoutTimerBar=({workout,onTap,compact})=>{
   const [elapsed,setElapsed]=useState(0);
   useEffect(()=>{
@@ -440,7 +412,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   );
 };
 
-// ═══ MORNING DEBRIEF (redesigned: Whoop as single page, then habits) ═══
+// ═══ MORNING DEBRIEF ═══
 const Debrief=({data,setData,onClose})=>{
   const y=yd();if((data.debrief||{})[y])return null;
   const [step,setStep]=useState(0);
@@ -580,6 +552,219 @@ const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",conf
   </div>
 );
 
+// ═══ ANALYSIS SECTION ═══
+const AnalysisSection=({data})=>{
+  const [range,setRange]=useState("7d");
+  const [loading,setLoading]=useState(false);
+  const [result,setResult]=useState(null);
+  const [error,setError]=useState("");
+
+  const runAnalysis=async()=>{
+    setLoading(true);setResult(null);setError("");
+    try{
+      const days=range==="7d"?7:range==="14d"?14:30;
+      const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);
+      const cutStr=cutoff.toISOString().split("T")[0];
+
+      // Summarize data within range
+      const wkEntries=Object.entries(data.wk||{}).filter(([d])=>d>=cutStr);
+      const nutEntries=Object.entries(data.nut||{}).filter(([d])=>d>=cutStr);
+      const recEntries=Object.entries(data.rec||{}).filter(([d])=>d>=cutStr);
+      const wtEntries=Object.entries(data.wt||{}).filter(([d])=>d>=cutStr).sort((a,b)=>a[0].localeCompare(b[0]));
+      const stepsEntries=Object.entries(data.steps||{}).filter(([d])=>d>=cutStr);
+      const habitsEntries=Object.entries(data.habits||{}).filter(([d])=>d>=cutStr);
+      const waterEntries=Object.entries(data.water||{}).filter(([d])=>d>=cutStr);
+
+      // Nutrition averages
+      const nutAvg=nutEntries.length?{
+        cal:Math.round(nutEntries.reduce((s,[,n])=>s+(n.totalCal||0),0)/nutEntries.length),
+        protein:Math.round(nutEntries.reduce((s,[,n])=>s+(n.totalProtein||0),0)/nutEntries.length),
+        carbs:Math.round(nutEntries.reduce((s,[,n])=>s+(n.totalCarbs||0),0)/nutEntries.length),
+        fat:Math.round(nutEntries.reduce((s,[,n])=>s+(n.totalFat||0),0)/nutEntries.length),
+        fiber:Math.round(nutEntries.reduce((s,[,n])=>s+(n.totalFiber||0),0)/nutEntries.length),
+        days:nutEntries.length,
+      }:null;
+
+      // Recovery averages
+      const recWithScore=recEntries.filter(([,r])=>r.recoveryScore);
+      const recAvg=recWithScore.length?{
+        recovery:Math.round(recWithScore.reduce((s,[,r])=>s+r.recoveryScore,0)/recWithScore.length),
+        hrv:Math.round(recEntries.filter(([,r])=>r.hrv).reduce((s,[,r])=>s+r.hrv,0)/(recEntries.filter(([,r])=>r.hrv).length||1)),
+        rhr:Math.round(recEntries.filter(([,r])=>r.rhr).reduce((s,[,r])=>s+r.rhr,0)/(recEntries.filter(([,r])=>r.rhr).length||1)),
+        sleep:+(recEntries.filter(([,r])=>r.sleepHours).reduce((s,[,r])=>s+r.sleepHours,0)/(recEntries.filter(([,r])=>r.sleepHours).length||1)).toFixed(1),
+        days:recWithScore.length,
+      }:null;
+
+      // Weight trend
+      const wtTrend=wtEntries.length>=2?{
+        start:wtEntries[0][1],end:wtEntries[wtEntries.length-1][1],
+        change:+(wtEntries[wtEntries.length-1][1]-wtEntries[0][1]).toFixed(1),
+        entries:wtEntries.length,
+      }:wtEntries.length===1?{current:wtEntries[0][1],entries:1}:null;
+
+      // Steps avg
+      const stepsAvg=stepsEntries.length?Math.round(stepsEntries.reduce((s,[,v])=>s+v,0)/stepsEntries.length):null;
+
+      // Workout summary
+      const wkSummary={count:wkEntries.length,days:wkEntries.map(([d,w])=>w.day),
+        progressions:Object.entries(data.prog||{}).filter(([,p])=>p.lastDate&&p.lastDate>=cutStr&&p.progressed).length};
+
+      // Habits summary
+      const habScores=habitsEntries.map(([,h])=>{if(!h)return null;
+        let c=0;
+        if(h.alcohol===false)c++;if(h.cannabis===false)c++;if(h.screensOff===true)c++;
+        if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;
+        return c/6;}).filter(v=>v!==null);
+      const habAvg=habScores.length?Math.round(habScores.reduce((a,b)=>a+b,0)/habScores.length*100):null;
+
+      // Water avg
+      const waterAvg=waterEntries.length?Math.round(waterEntries.reduce((s,[,v])=>s+v,0)/waterEntries.length):null;
+
+      const payload={
+        range,days,
+        workouts:wkSummary,
+        nutrition:nutAvg,
+        recovery:recAvg,
+        weight:wtTrend,
+        steps:stepsAvg,
+        habits:habAvg,
+        water:waterAvg,
+        program:{name:PROG.name,week:wkn(td()),totalWeeks:PROG.weeks},
+        targets:{calories:2430,protein:180,steps:10000,water:128,sleep:7.5},
+      };
+
+      const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const resp=await r.json();
+      if(resp.error)throw new Error(resp.error);
+      setResult(resp);
+    }catch(e){setError(e.message||"Analysis failed");}
+    setLoading(false);
+  };
+
+  const ScoreBar=({label,score,color})=>(
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}>
+        <span style={{color:C.t2,fontWeight:600}}>{label}</span>
+        <span style={{color,fontWeight:700}}>{score}/100</span>
+      </div>
+      <Br v={score} max={100} color={color} h={6}/>
+    </div>
+  );
+
+  const scoreColor=(s)=>s>=70?C.g:s>=45?C.a:C.r;
+
+  return(
+    <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>AI Analysis</div>
+        <div style={{display:"flex",gap:3}}>
+          {["7d","14d","30d"].map(r=>(
+            <button key={r} onClick={()=>setRange(r)} style={{
+              padding:"5px 10px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              border:`1px solid ${range===r?C.p:C.bd}`,background:range===r?C.pl:"transparent",color:range===r?C.p:C.t3,
+            }}>{r}</button>
+          ))}
+        </div>
+      </div>
+
+      <B full onClick={runAnalysis} disabled={loading} color={C.v} style={{marginBottom:8}}>
+        {loading?"Analyzing...":"⚡ Run Analysis"}
+      </B>
+
+      {error&&<div style={{fontSize:13,color:C.r,padding:"8px 10px",background:C.rl,borderRadius:6,marginBottom:8}}>{error}</div>}
+
+      {result&&(
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {/* Scores */}
+          {result.scores&&(
+            <X style={{padding:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Scores — Last {range}</div>
+              {result.scores.overall!=null&&<ScoreBar label="Overall" score={result.scores.overall} color={scoreColor(result.scores.overall)}/>}
+              {result.scores.training!=null&&<ScoreBar label="Training" score={result.scores.training} color={scoreColor(result.scores.training)}/>}
+              {result.scores.nutrition!=null&&<ScoreBar label="Nutrition" score={result.scores.nutrition} color={scoreColor(result.scores.nutrition)}/>}
+              {result.scores.recovery!=null&&<ScoreBar label="Recovery" score={result.scores.recovery} color={scoreColor(result.scores.recovery)}/>}
+              {result.scores.habits!=null&&<ScoreBar label="Habits" score={result.scores.habits} color={scoreColor(result.scores.habits)}/>}
+            </X>
+          )}
+
+          {/* Summary */}
+          {result.summary&&(
+            <X style={{padding:12,borderLeft:`3px solid ${C.v}`}}>
+              <div style={{fontSize:13,color:C.t,lineHeight:1.6}}>{result.summary}</div>
+            </X>
+          )}
+
+          {/* Wins & Gaps */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            {result.wins&&result.wins.length>0&&(
+              <X style={{padding:10,borderTop:`3px solid ${C.g}`}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Wins</div>
+                {result.wins.map((w,i)=>(
+                  <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.gl}`}}>{w}</div>
+                ))}
+              </X>
+            )}
+            {result.gaps&&result.gaps.length>0&&(
+              <X style={{padding:10,borderTop:`3px solid ${C.r}`}}>
+                <div style={{fontSize:11,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Gaps</div>
+                {result.gaps.map((g,i)=>(
+                  <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
+                ))}
+              </X>
+            )}
+          </div>
+
+          {/* Trends */}
+          {result.trends&&result.trends.length>0&&(
+            <X style={{padding:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Trends</div>
+              {result.trends.map((t,i)=>(
+                <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
+                  <span style={{color:C.a,fontWeight:700,minWidth:14}}>→</span>
+                  <span>{t}</span>
+                </div>
+              ))}
+            </X>
+          )}
+
+          {/* Correlations */}
+          {result.correlations&&result.correlations.length>0&&(
+            <X style={{padding:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Correlations</div>
+              {result.correlations.map((c,i)=>(
+                <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
+                  <span style={{color:C.v,fontWeight:700,minWidth:14}}>↔</span>
+                  <span>{c}</span>
+                </div>
+              ))}
+            </X>
+          )}
+
+          {/* Recommendations */}
+          {result.recommendations&&result.recommendations.length>0&&(
+            <X style={{padding:10,borderLeft:`3px solid ${C.p}`}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Recommendations</div>
+              {result.recommendations.map((r,i)=>(
+                <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
+                  <span style={{fontWeight:700,color:C.p}}>{i+1}. </span>{r}
+                </div>
+              ))}
+            </X>
+          )}
+
+          {/* Next Week Focus */}
+          {result.nextWeekFocus&&(
+            <X style={{padding:12,background:C.pl,border:`1px solid ${C.p}`}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Next Week Focus</div>
+              <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
+            </X>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ═══ DASHBOARD ═══
 const Dashboard=({data,setData})=>{
   const [showImport,setShowImport]=useState(false);
@@ -654,7 +839,6 @@ const Dashboard=({data,setData})=>{
       </X>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-        {/* Weight mini-trend */}
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Weight</span>
@@ -672,7 +856,6 @@ const Dashboard=({data,setData})=>{
           ):<div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"4px 0"}}>No data yet</div>}
         </X>
 
-        {/* Steps mini-trend */}
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
@@ -683,7 +866,6 @@ const Dashboard=({data,setData})=>{
         </X>
       </div>
 
-      {/* Water Intake */}
       {(()=>{const wt=data.water?.[t]||0;return(
       <X style={{padding:10}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -693,7 +875,6 @@ const Dashboard=({data,setData})=>{
         <Br v={wt} max={128} color={wt>=128?C.g:C.p} h={6}/>
       </X>);})()}
 
-      {/* Nutrition — larger with full macro breakdown */}
       <X style={{padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <span style={{fontSize:13,fontWeight:700,color:C.t}}>Nutrition</span>
@@ -771,6 +952,9 @@ const Dashboard=({data,setData})=>{
         })}
       </div>
 
+      {/* ═══ AI ANALYSIS ═══ */}
+      <AnalysisSection data={data}/>
+
       <div style={{marginTop:4,borderTop:`1px solid ${C.bl}`,paddingTop:8}}>
         <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:600}}>
           {showImport?"Hide Import":"Import Health Data"}
@@ -819,7 +1003,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
 
-  // Get mobility for current day
   const getMobility=(dayKey)=>{
     const day=PROG.days[dayKey];
     if(!day)return PROG.mobility.core;
@@ -893,14 +1076,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [calMonth,setCalMonth]=useState(now.getMonth());
   const [calYear,setCalYear]=useState(now.getFullYear());
 
-  // Active workout view
   if(workout){
     const s=PROG.days[workout.day];
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
 
-      {/* Always-visible workout elapsed timer */}
       <WorkoutTimerBar workout={workout} compact/>
 
       {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center"}}>
@@ -957,14 +1138,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
         {stpDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
       </X>)}
 
-      {/* AI Coach */}
       <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
           <div style={{fontSize:13,fontWeight:700,color:C.v}}>AI Coach</div>
           <button onClick={()=>{setShowAi(!showAi);setAiA("");}} style={{background:"none",border:"none",color:C.v,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showAi?"Hide":"Ask"}</button>
         </div>
         {showAi&&(<div>
-          {/* Quick prompts */}
           <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
             {[{l:"Substitute?",q:"What's a good substitute for this exercise with the equipment I have?"},{l:"Drop weight?",q:"Should I drop weight on this? I'm struggling with form."},
               {l:"Form check",q:"Give me the top form cue for this exercise."},{l:"Deload?",q:"My reps are dropping. Should I deload or push through?"}
@@ -974,7 +1153,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
                   background:C.vl,border:"none",color:C.v,fontFamily:"inherit",opacity:aiLoading||aiCooldown?0.4:1}}>{p.l}</button>
             ))}
           </div>
-          {/* Free-form */}
           <div style={{display:"flex",gap:4}}>
             <input type="text" value={aiQ} onChange={e=>setAiQ(e.target.value)} placeholder="Ask about an exercise..."
               onKeyDown={e=>{if(e.key==="Enter")askCoach(aiQ,aiExIdx);}}
@@ -990,13 +1168,10 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     </div>);
   }
 
-  // Program view (not in workout)
-
-  // Calendar helpers
   const calDays=()=>{
     const first=new Date(calYear,calMonth,1);
     const last=new Date(calYear,calMonth+1,0);
-    const startPad=first.getDay(); // 0=Sun
+    const startPad=first.getDay();
     const days=[];
     for(let i=0;i<startPad;i++)days.push(null);
     for(let d=1;d<=last.getDate();d++)days.push(d);
@@ -1005,7 +1180,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const calKey=(d)=>`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
   const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  // Past workout detail view
   if(viewW){
     const [vDate,vData]=viewW;
     const vSess=PROG.days[vData.day];
@@ -1036,7 +1210,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
 
-    {/* Weekly schedule selector */}
     <div style={{display:"flex",gap:3}}>
       {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
         border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
@@ -1082,7 +1255,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
       </S>
     </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:14}}>Rest Day</div></X>}
 
-    {/* ═══ CALENDAR ═══ */}
     <X style={{padding:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <button onClick={()=>{if(calMonth===0){setCalMonth(11);setCalYear(calYear-1);}else setCalMonth(calMonth-1);}}
@@ -1116,7 +1288,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
       </div>
     </X>
 
-    {/* ═══ WORKOUT HISTORY ═══ */}
     <S title={`Workout History (${allWk.length})`} collapsible>
       {allWk.length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No workouts logged yet</div>
       :allWk.slice(0,15).map(([d,w])=>{
@@ -1172,7 +1343,6 @@ const Nutrition=({data,setData})=>{
     }catch(e){console.error(e);add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
     setLoading(false);};
 
-  // Meal detail view
   if(selM!==null){
     const meal=tl.meals[selM];if(!meal){setSelM(null);return null;}
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
@@ -1206,7 +1376,6 @@ const Nutrition=({data,setData})=>{
     </div>);
   }
 
-  // Group meals by type
   const grouped={};
   MEAL_TYPES.forEach(mt=>{grouped[mt]=[];});
   tl.meals.forEach((m,i)=>{const mt=m.mealType||"Snack";if(!grouped[mt])grouped[mt]=[];grouped[mt].push({...m,_idx:i});});
@@ -1214,7 +1383,6 @@ const Nutrition=({data,setData})=>{
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
 
-    {/* Macro summary */}
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
         <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.a:C.p}}>{tl.totalCal}</div>
@@ -1235,7 +1403,6 @@ const Nutrition=({data,setData})=>{
       </div>
     </X>
 
-    {/* Water tracker */}
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div>
@@ -1256,7 +1423,6 @@ const Nutrition=({data,setData})=>{
       </div>
     </X>
 
-    {/* Meal type selector + input mode */}
     <div style={{display:"flex",gap:2}}>
       {MEAL_TYPES.map(mt=>(
         <button key={mt} onClick={()=>setMealType(mt)} style={{
@@ -1296,7 +1462,6 @@ const Nutrition=({data,setData})=>{
         <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:12}}>{q.cal} · {q.protein}gP</span></button>))}
     </X>)}
 
-    {/* Meals grouped by type */}
     {MEAL_TYPES.map(mt=>{
       const meals=grouped[mt];
       if(meals.length===0)return null;
@@ -1406,7 +1571,6 @@ window.App = function App(){
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
 
-  // On mount: load from Supabase, merge with localStorage
   useEffect(()=>{
     (async()=>{
       const sbData=await loadFromSB();
@@ -1414,7 +1578,6 @@ window.App = function App(){
         const local=ld();
         if(local){
           const merged=migrate(local);
-          // Merge: Supabase wins for existing keys, local fills gaps
           const final={...merged};
           Object.keys(sbData).forEach(k=>{
             if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
@@ -1426,7 +1589,6 @@ window.App = function App(){
             }
           });
           setData(final);sv(final);
-          // If local had data but SB was empty, push local to SB
           const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
           const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
           if(localHasData&&sbEmpty){
@@ -1443,7 +1605,6 @@ window.App = function App(){
     })();
   },[]);
 
-  // Save to localStorage + Supabase on every data change
   useEffect(()=>{
     sv(data);
     if(sbLoaded)syncToSB(data);
@@ -1454,10 +1615,7 @@ window.App = function App(){
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
-
-      {/* Workout timer bar visible on all tabs when workout active */}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")}/>}
-
       <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab}/>}
