@@ -101,7 +101,8 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{}});
+const DEFAULTS={calories:2430,protein:180,water:128,steps:10000,sleep:7.5,fiber:30};
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},settings:{...DEFAULTS}});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -263,7 +264,8 @@ const parseHealthImport=(text)=>{
 const migrate=(d)=>{const b=bl();return{...b,...d,
   wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
   rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
-  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{}};};
+  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
+  settings:{...DEFAULTS,...(d.settings||{})}};};
 const td=()=>new Date().toISOString().split("T")[0];
 const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
@@ -290,11 +292,21 @@ const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
   t:"#1a1a1a",t2:"#5f6368",t3:"#9aa0a6"};
 
 // ═══ BASE COMPONENTS ═══
-const N=({value,onChange,placeholder,style={}})=>(
-  <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={e=>onChange(e.target.value)}
+const N=({value,onChange,placeholder,style={},min=0,max})=>{
+  const handleChange=(e)=>{
+    const v=e.target.value;
+    if(v===""||v==="."){onChange(v);return;}
+    const num=parseFloat(v);
+    if(isNaN(num))return;
+    if(num<min)return;
+    if(max!==undefined&&num>max)return;
+    onChange(v);
+  };
+  return(
+  <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={handleChange}
     placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
     color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
-);
+);};
 const TimeInput=({value,onChange,placeholder,style={}})=>{
   const handleChange=(e)=>{
     const raw=e.target.value.replace(/\D/g,"");
@@ -340,7 +352,7 @@ const Br=({v,max,color=C.p,h=5})=>(
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
   <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
-    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"}].map(t=>(
+    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
         flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
         color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?700:600,fontFamily:"inherit",
@@ -414,7 +426,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
 
 // ═══ MORNING DEBRIEF ═══
 const Debrief=({data,setData,onClose})=>{
-  const y=yd();if((data.debrief||{})[y])return null;
+  const today=td();if((data.debrief||{})[today])return null;
   const [step,setStep]=useState(0);
   const lastWt=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]||"";
   const [f,setF]=useState({wt:lastWt?""+lastWt:"",rs:"",hrv:"",rhr:"",rr:"",sh:"",sp:"",str:"",steps:"",wake:"",
@@ -422,8 +434,9 @@ const Debrief=({data,setData,onClose})=>{
 
   const steps=[
     {title:"Weight",sub:"Step on the scale",type:"weight"},
-    {title:"Whoop Recovery",sub:"Enter your recovery data",type:"whoop"},
+    {title:"Whoop Recovery",sub:"Enter today's recovery data from Whoop",type:"whoop"},
     {title:"Wake Up Time",sub:"What time did you get up?",type:"time",field:"wake",ph:"630"},
+    {title:"Yesterday's Steps",sub:"How many steps did you get yesterday?",type:"steps"},
     {title:"Habits",sub:"Yesterday's habits",type:"habits"},
   ];
 
@@ -431,14 +444,14 @@ const Debrief=({data,setData,onClose})=>{
   const canNext=cur.type==="habits"?(f.alcohol!==null&&f.cannabis!==null&&f.screens!==null&&f.sunlight!==null&&f.bed!==null&&f.read!==null):true;
 
   const submit=()=>{
-    const t=td();
-    const nd={...data,debrief:{...data.debrief,[y]:true}};
-    if(f.wt)nd.wt={...nd.wt,[t]:Number(f.wt)};
-    nd.rec={...nd.rec,[t]:{...(nd.rec[t]||{}),
+    const y=yd();
+    const nd={...data,debrief:{...data.debrief,[today]:true}};
+    if(f.wt)nd.wt={...nd.wt,[today]:Number(f.wt)};
+    nd.rec={...nd.rec,[today]:{...(nd.rec[today]||{}),
       recoveryScore:+f.rs||undefined,hrv:+f.hrv||undefined,rhr:+f.rhr||undefined,
       respiratoryRate:+f.rr||undefined,sleepHours:+f.sh||undefined,sleepPerformance:+f.sp||undefined,
       strain:+f.str||undefined,wakeTime:f.wake||undefined}};
-    if(f.steps)nd.steps={...nd.steps,[t]:+f.steps};
+    if(f.steps)nd.steps={...nd.steps,[y]:+f.steps};
     nd.habits={...nd.habits,[y]:{alcohol:f.alcohol,cannabis:f.cannabis,screensOff:f.screens,
       sunlight:f.sunlight,bedBy1030:f.bed,readBeforeBed:f.read}};
     setData(nd);sv(nd);onClose();
@@ -480,19 +493,26 @@ const Debrief=({data,setData,onClose})=>{
           {cur.type==="whoop"&&(
             <div style={{marginTop:12}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72"/></div>
+                <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
                 <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
                 <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
                 <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
                 <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
-                <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85"/></div>
+                <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85" max={100}/></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
                 <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
-                <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
               </div>
+            </div>
+          )}
+
+          {cur.type==="steps"&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+              <N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"
+                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
+              <span style={{fontSize:15,color:C.t3,minWidth:40}}>steps</span>
             </div>
           )}
 
@@ -630,14 +650,14 @@ const AnalysisSection=({data})=>{
         habits:habAvg,
         water:waterAvg,
         program:{name:PROG.name,week:wkn(td()),totalWeeks:PROG.weeks},
-        targets:{calories:2430,protein:180,steps:10000,water:128,sleep:7.5},
+        targets:data.settings||DEFAULTS,
       };
 
       const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const resp=await r.json();
       if(resp.error)throw new Error(resp.error);
       setResult(resp);
-    }catch(e){setError(e.message||"Analysis failed");}
+    }catch(e){setError(e.message||"Analysis failed. Check your connection and try again.");}
     setLoading(false);
   };
 
@@ -799,7 +819,8 @@ const Dashboard=({data,setData})=>{
     if(["saturday","sunday"].includes(d)){sd.setDate(sd.getDate()-1);continue;}
     if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
 
-  const calT=dn==="monday"?1200:2600,proT=dn==="monday"?120:["saturday","sunday"].includes(dn)?150:200;
+  const st=data.settings||DEFAULTS;
+  const calT=st.calories||2430,proT=st.protein||180;
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
@@ -817,7 +838,7 @@ const Dashboard=({data,setData})=>{
     if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;
     return s+c/6;},0)/habitDays.length*100):null;
 
-  const dks=["monday","tuesday","wednesday","thursday","friday"];
+  const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -861,18 +882,18 @@ const Dashboard=({data,setData})=>{
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
           </div>
-          <Br v={steps} max={10000} color={steps>=10000?C.g:C.a} h={6}/>
-          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/10000*100):0}% of 10k</div>
+          <Br v={steps} max={st.steps||10000} color={steps>=(st.steps||10000)?C.g:C.a} h={6}/>
+          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/(st.steps||10000)*100):0}% of {((st.steps||10000)/1000).toFixed(0)}k</div>
         </X>
       </div>
 
-      {(()=>{const wt=data.water?.[t]||0;return(
+      {(()=>{const wt=data.water?.[t]||0;const waterG=st.water||128;return(
       <X style={{padding:10}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
           <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Water</span>
-          <span style={{fontSize:16,fontWeight:700,color:wt>=128?C.g:C.p}}>{wt} <span style={{fontSize:12,color:C.t3,fontWeight:500}}>/ 128 oz</span></span>
+          <span style={{fontSize:16,fontWeight:700,color:wt>=waterG?C.g:C.p}}>{wt} <span style={{fontSize:12,color:C.t3,fontWeight:500}}>/ {waterG} oz</span></span>
         </div>
-        <Br v={wt} max={128} color={wt>=128?C.g:C.p} h={6}/>
+        <Br v={wt} max={waterG} color={wt>=waterG?C.g:C.p} h={6}/>
       </X>);})()}
 
       <X style={{padding:12}}>
@@ -889,7 +910,7 @@ const Dashboard=({data,setData})=>{
           {[{l:"Protein",v:tPro,x:proT,u:"g",c:tPro>=proT?C.g:C.r},
             {l:"Carbs",v:nut?.totalCarbs||0,x:null,u:"g",c:C.a},
             {l:"Fat",v:nut?.totalFat||0,x:null,u:"g",c:C.t2},
-            {l:"Fiber",v:tFib,x:30,u:"g",c:C.v}].map((m,i)=>(
+            {l:"Fiber",v:tFib,x:st.fiber||30,u:"g",c:C.v}].map((m,i)=>(
             <div key={i} style={{textAlign:"center"}}>
               <div style={{fontSize:20,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
               {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
@@ -946,7 +967,7 @@ const Dashboard=({data,setData})=>{
           const isToday=dk===dn,done=Object.keys(data.wk).some(ws=>dw(ws)===dk&&wkn(ws)===w);
           return(<div key={dk} style={{flex:1,borderRadius:4,padding:"6px 2px",textAlign:"center",
             background:isToday?C.pl:C.cd,border:`1px solid ${done?C.g:isToday?C.p:C.bd}`}}>
-            <div style={{fontSize:11,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F"][i]}</div>
+            <div style={{fontSize:11,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F","S","S"][i]}</div>
             {done&&<div style={{width:6,height:6,borderRadius:3,background:C.g,margin:"2px auto 0"}}/>}
           </div>);
         })}
@@ -1068,7 +1089,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     setTimeout(()=>setAiCooldown(false),10000);
   };
 
-  const dks=["monday","tuesday","wednesday","thursday","friday"];
+  const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const mobList=getMobility(sel);
   const [viewW,setViewW]=useState(null);
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -1213,7 +1234,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     <div style={{display:"flex",gap:3}}>
       {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
         border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-        fontSize:12,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+        fontSize:11,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
     </div>
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1321,15 +1342,20 @@ const Nutrition=({data,setData})=>{
   const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
 
-  const tl=data.nut[t]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-  const calT=dn==="monday"?1200:2600,proT=dn==="monday"?120:["saturday","sunday"].includes(dn)?150:200;
+  const [viewDate,setViewDate]=useState(t);
+  const viewNut=data.nut[viewDate]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+  const tl=viewDate===t?viewNut:viewNut;
+  const isViewingToday=viewDate===t;
+  const st=data.settings||DEFAULTS;
+  const calT=st.calories||2430,proT=st.protein||180;
   const waterToday=data.water?.[t]||0;
-  const waterGoal=128;
+  const waterGoal=st.water||128;
+  const navDate=(dir)=>{const d=new Date(viewDate+"T12:00:00");d.setDate(d.getDate()+dir);const ds=d.toISOString().split("T")[0];if(ds<=t)setViewDate(ds);};
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const ml={...m,mealType:mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);};
-  const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[t]:nl}};setData(nd);sv(nd);setSelM(null);};
+  const add=m=>{const ml={...m,mealType:mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
+  const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
   const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
   const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);};
@@ -1381,7 +1407,14 @@ const Nutrition=({data,setData})=>{
   tl.meals.forEach((m,i)=>{const mt=m.mealType||"Snack";if(!grouped[mt])grouped[mt]=[];grouped[mt].push({...m,_idx:i});});
 
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <button onClick={()=>navDate(-1)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>‹</button>
+        <span style={{fontSize:13,fontWeight:600,color:isViewingToday?C.p:C.t2,minWidth:80,textAlign:"center"}}>{isViewingToday?"Today":fmt(viewDate)}</span>
+        <button onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:"none",color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
+      </div>
+    </div>
 
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
@@ -1393,7 +1426,7 @@ const Nutrition=({data,setData})=>{
         {[{l:"Protein",v:tl.totalProtein,x:proT,u:"g",c:tl.totalProtein>=proT?C.g:C.r},
           {l:"Carbs",v:tl.totalCarbs,x:null,u:"g",c:C.a},
           {l:"Fat",v:tl.totalFat,x:null,u:"g",c:C.t2},
-          {l:"Fiber",v:tl.totalFiber||0,x:30,u:"g",c:C.v}].map((m,i)=>(
+          {l:"Fiber",v:tl.totalFiber||0,x:st.fiber||30,u:"g",c:C.v}].map((m,i)=>(
           <div key={i} style={{textAlign:"center"}}>
             <div style={{fontSize:18,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
             {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
@@ -1515,10 +1548,12 @@ const Weight=({data,setData})=>{
 // ═══ RECOVERY ═══
 const Recovery=({data,setData})=>{
   const t=td(),tr=data.rec[t]||{};
+  const hasSaved=!!(tr.recoveryScore||tr.hrv||tr.rhr);
+  const [editing,setEditing]=useState(!hasSaved);
   const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",n:tr.notes||"",steps:data.steps?.[t]||""});
   const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
   const saveR=()=>{const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs,hrv:+f.hrv,rhr:+f.rhr,respiratoryRate:+f.rr,sleepHours:+f.sh,sleepPerformance:+f.sp,strain:+f.str,notes:f.n}},
-    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);};
+    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);setEditing(false);};
   const recent=Object.entries(data.rec).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
   const avgR=recent.filter(e=>e[1].recoveryScore).length?Math.round(recent.filter(e=>e[1].recoveryScore).reduce((s,e)=>s+e[1].recoveryScore,0)/recent.filter(e=>e[1].recoveryScore).length):null;
   const recCh=recent.filter(e=>e[1].recoveryScore).reverse().map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
@@ -1526,23 +1561,40 @@ const Recovery=({data,setData})=>{
 
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Whoop Recovery</div>
-    <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
-        <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72"/></div>
-        <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
-        <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
+    <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <L>Log — {fmt(t)}</L>
+        {!editing&&hasSaved&&<button onClick={()=>setEditing(true)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
-        <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
-        <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
-        <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85"/></div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
-        <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
-        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
-      </div>
-      <div style={{marginTop:6}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
-      <B full style={{marginTop:8}} onClick={saveR}>Save</B>
+      {!editing&&hasSaved?(
+        <div style={{marginTop:6}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
+            {f.rs&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:sc(+f.rs)}}>{f.rs}%</div><div style={{fontSize:10,color:C.t3}}>Recovery</div></div>}
+            {f.hrv&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.v}}>{f.hrv}</div><div style={{fontSize:10,color:C.t3}}>HRV</div></div>}
+            {f.rhr&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.p}}>{f.rhr}</div><div style={{fontSize:10,color:C.t3}}>RHR</div></div>}
+          </div>
+          <div style={{fontSize:12,color:C.g,marginTop:6,fontWeight:600,textAlign:"center"}}>Saved for today</div>
+        </div>
+      ):(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
+            <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
+            <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
+            <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
+            <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
+            <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
+            <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85" max={100}/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
+            <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
+            <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
+          </div>
+          <div style={{marginTop:6}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
+          <B full style={{marginTop:8}} onClick={saveR}>Save</B>
+        </div>
+      )}
     </X>
     {avgR!=null&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
       <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:sc(avgR)}}>{avgR}%</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg Recovery</div></X>
@@ -1562,12 +1614,86 @@ const Recovery=({data,setData})=>{
   </div>);
 };
 
+// ═══ SETTINGS ═══
+const Settings=({data,setData})=>{
+  const st=data.settings||DEFAULTS;
+  const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+st.steps,sleep:""+st.sleep,fiber:""+(st.fiber||30)});
+  const [saved,setSaved]=useState(false);
+  const [showExport,setShowExport]=useState(false);
+  const [showDeleteQm,setShowDeleteQm]=useState(null);
+
+  const saveSettings=()=>{
+    const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
+      water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber}};
+    setData(nd);sv(nd);setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+
+  const exportData=()=>{
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`health-hub-export-${td()}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  };
+
+  const deleteQm=(i)=>{
+    const nd={...data,qm:(data.qm||[]).filter((_,j)=>j!==i)};setData(nd);sv(nd);setShowDeleteQm(null);
+  };
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+
+    <X style={{borderLeft:`3px solid ${C.p}`}}>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div><L>Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="2430"/></div>
+        <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="180"/></div>
+        <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
+        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="10000"/></div>
+        <div><L>Sleep (hrs)</L><N value={f.sleep} onChange={v=>setF({...f,sleep:v})} placeholder="7.5"/></div>
+        <div><L>Fiber (g)</L><N value={f.fiber} onChange={v=>setF({...f,fiber:v})} placeholder="30"/></div>
+      </div>
+      <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
+    </X>
+
+    <X>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Quick Meals Library</div>
+      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No saved quick meals</div>
+      :(data.qm||[]).map((q,i)=>(
+        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:600,color:C.t}}>{q.description}</div>
+            <div style={{fontSize:12,color:C.t3}}>{q.cal} cal · {q.protein}gP · {q.carbs}gC · {q.fat}gF</div>
+          </div>
+          <button onClick={()=>setShowDeleteQm(i)} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:16,padding:4}}>✕</button>
+        </div>
+      ))}
+      {showDeleteQm!==null&&<ConfirmModal title="Delete Quick Meal?" message={`Remove "${(data.qm||[])[showDeleteQm]?.description}" from your library?`}
+        onConfirm={()=>deleteQm(showDeleteQm)} onCancel={()=>setShowDeleteQm(null)} confirmText="Delete" confirmColor={C.r}/>}
+    </X>
+
+    <X>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Data</div>
+      <div style={{display:"flex",gap:6}}>
+        <B full outline onClick={exportData}>Export Data (JSON)</B>
+      </div>
+      <div style={{fontSize:11,color:C.t3,marginTop:6}}>Download all your health data as a JSON file for backup.</div>
+    </X>
+
+    <X>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Program</div>
+      <div style={{fontSize:13,color:C.t2}}>{PROG.name}</div>
+      <div style={{fontSize:12,color:C.t3}}>Week {wkn(td())}/{PROG.weeks} · Started {fmt(PROG.start)}</div>
+    </X>
+  </div>);
+};
+
 // ═══ APP ═══
 window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return raw?migrate(raw):bl();});
-  const [showD,setShowD]=useState(()=>!(data.debrief||{})[yd()]);
-  const [workout,setWorkout]=useState(null);
+  const [showD,setShowD]=useState(()=>!(data.debrief||{})[td()]);
+  const [workout,setWorkoutRaw]=useState(()=>{try{const w=localStorage.getItem("dhub6_workout");return w?JSON.parse(w):null;}catch{return null;}});
+  const setWorkout=(v)=>{setWorkoutRaw(v);try{if(v)localStorage.setItem("dhub6_workout",JSON.stringify(v));else localStorage.removeItem("dhub6_workout");}catch{}};
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
 
@@ -1622,6 +1748,7 @@ window.App = function App(){
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
         {tab==="recovery"&&<Recovery data={data} setData={setData}/>}
+        {tab==="settings"&&<Settings data={data} setData={setData}/>}
       </div>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
     </div>
