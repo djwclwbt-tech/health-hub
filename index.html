@@ -29,42 +29,22 @@ const { useState, useEffect, useRef, useCallback } = React;
 // ═══ PROGRAM ═══
 const PROG = {
   name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
-  mobility:{
-    upper:[
-      {name:"Band Pull-Aparts",dur:"15 reps",cue:"Squeeze shoulder blades like cracking a walnut"},
-      {name:"Thoracic Extensions",dur:"10 reps",cue:"Pin lower back flat, only upper back moves"},
-      {name:"Wall Slides",dur:"10 reps",cue:"Keep wrists and elbows glued to wall, slide up slow"},
-      {name:"Face Pulls (light band)",dur:"15 reps",cue:"Pull to forehead, externally rotate at end"},
-    ],
-    lower:[
-      {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
-      {name:"World's Greatest Stretch",dur:"5/side",cue:"Rotate chest to ceiling, reach through"},
-      {name:"Leg Swings (front/lateral)",dur:"10/direction",cue:"Controlled swing, brace core, full ROM"},
-      {name:"Glute Bridges",dur:"15 reps",cue:"Squeeze glutes hard at top, 2s hold"},
-    ],
-    core:[
-      {name:"Hip 90/90",dur:"30s/side",cue:"Drive knee to floor, feel deep in hip socket"},
-      {name:"Cat-Cow",dur:"10 reps",cue:"Full spinal flexion to extension, breathe with it"},
-      {name:"Dead Bug",dur:"10/side",cue:"Press low back into floor, opposite arm and leg extend"},
-      {name:"Bird Dog",dur:"10/side",cue:"Extend arm and leg, keep hips square to floor"},
-    ],
-    evening:[
-      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
-      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-    ],
-  },
+  mobility:[
+    {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+    {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+    {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+    {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+    {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+    {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+  ],
   days:{
-    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,mobilityKey:"core",
+    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,
       exercises:[
         {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
         {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
         {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
       ]},
-    tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,mobilityKey:"upper",
+    tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,
       exercises:[
         {id:"smith-flat-bench",name:"Smith Flat Bench",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
         {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
@@ -73,7 +53,7 @@ const PROG = {
         {id:"preacher-curl",name:"Preacher Curl Machine",sets:3,rr:[5,8],rest:90,sw:70,inc:5,unit:"lbs",notes:"Try 75",cue:"Slow eccentric, don't let it free-fall at bottom"},
         {id:"tricep-dips",name:"Tricep Dips",sets:3,rr:[5,8],rest:90,sw:0,inc:0,unit:"BW",notes:"Add weight at 3×8",cue:"Lean slightly forward, lock out fully at top"},
       ]},
-    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,mobilityKey:"lower",
+    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,
       exercises:[
         {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
         {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
@@ -81,7 +61,7 @@ const PROG = {
         {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
         {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
-    thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,mobilityKey:"upper",
+    thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,
       exercises:[
         {id:"smith-incline",name:"Smith Incline Press",sets:3,rr:[10,12],rest:90,sw:105,inc:5,unit:"lbs",notes:"30-45°",cue:"Feel upper chest stretch at bottom, squeeze at top"},
         {id:"overhand-cable-row",name:"Overhand Cable Row",sets:3,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
@@ -90,7 +70,7 @@ const PROG = {
         {id:"incline-db-curl",name:"Incline DB Curl",sets:3,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
         {id:"oh-tricep-ext",name:"OH Cable Rope Ext",sets:3,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"3×12 then +5",cue:"Elbows locked by ears, extend fully, squeeze tricep"},
       ]},
-    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,mobilityKey:"lower",
+    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,
       exercises:[
         {id:"hack-squat-b",name:"Hack Squat",sets:3,rr:[10,12],rest:120,sw:140,inc:10,unit:"lbs",notes:"Or LP 300-320",cue:"Slow descent, drive through heels on the way up"},
         {id:"walking-lunges",name:"Walking Lunges DB",sets:3,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Long stride, back knee kisses floor, front knee stacks"},
@@ -174,7 +154,7 @@ const syncToSB=async(d)=>{
             carbs:q.carbs||0,fat:q.fat||0,fiber:q.fiber||0,components:q.components||[]},"description");
         }
       }
-      for(const[date]of Object.entries(d.mob||{})){await sb.upsert("mobility",{date,completed:true});}
+      for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
       for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
       console.log("[SB] Full sync complete");
@@ -197,7 +177,7 @@ const svSB={
   progression:(exId,p)=>sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
     last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id"),
   debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
-  mobility:(date)=>sb.upsert("mobility",{date,completed:true}),
+  mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
 };
 
@@ -224,7 +204,7 @@ const loadFromSB=async()=>{
     prog.forEach(r=>{d.prog[r.exercise_id]={currentWeight:Number(r.current_weight),lastReps:r.last_reps,
       lastDate:r.last_date,progressed:r.progressed};});
     qm.forEach(r=>{d.qm.push({description:r.description,cal:r.cal,protein:r.protein,carbs:r.carbs,fat:r.fat,fiber:r.fiber,components:r.components});});
-    mob.forEach(r=>{d.mob[r.date]=true;});
+    mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
     return d;
@@ -269,10 +249,12 @@ const parseHealthImport=(text)=>{
   }
   return d;
 };
-const migrate=(d)=>{const b=bl();return{...b,...d,
+const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
+  for(const[date,v]of Object.entries(rawMob)){mob[date]=v===true?{done:true,dur:null}:v;}
+  return{...b,...d,
   wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
   rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
-  qm:d.qm||d.quickMeals||[],mob:d.mob||{},stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
+  qm:d.qm||d.quickMeals||[],mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
   settings:{...DEFAULTS,...(d.settings||{})}};};
 const td=()=>new Date().toISOString().split("T")[0];
@@ -1173,7 +1155,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
   const [showMob,setShowMob]=useState(false);
-  const [mobDone,setMobDone]=useState(!!data.mob?.[t]);
+  const mobEntry=data.mob?.[t];
+  const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
+  const [mobRunning,setMobRunning]=useState(false);
+  const [mobTimer,setMobTimer]=useState(0);
+  const mobStartRef=useRef(null);
+  const mobIvRef=useRef(null);
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
@@ -1187,12 +1174,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const sess=PROG.days[sel];
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
-
-  const getMobility=(dayKey)=>{
-    const day=PROG.days[dayKey];
-    if(!day)return PROG.mobility.evening;
-    return PROG.mobility[day.mobilityKey]||PROG.mobility.core;
-  };
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
@@ -1239,6 +1220,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     document.addEventListener("visibilitychange",onVis);
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[]);
+  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);},[]);
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
@@ -1259,7 +1241,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   };
 
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
-  const logMob=()=>{const nd={...data,mob:{...data.mob,[t]:true}};setData(nd);sv(nd);setMobDone(true);setShowMob(false);};
+  const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
+    mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
+  const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
+    const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
+    const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
+    setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
   const logCardio=(type,dur)=>{const nd={...data,cardio:{...data.cardio,[t]:{type,duration:dur,done:true}}};setData(nd);sv(nd);};
 
   const askCoach=async(q,exIdx)=>{
@@ -1279,7 +1266,6 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   };
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
-  const mobList=getMobility(sel);
   const [viewW,setViewW]=useState(null);
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
   const now=new Date();
@@ -1438,15 +1424,17 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     </div>
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:12,color:C.t3}}>{PROG.days[sel]?`5 min — ${PROG.days[sel].mobilityKey} focus`:"10 min — hip & spine recovery"}</div></div>
-      {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small outline onClick={()=>setShowMob(!showMob)}>{showMob?"Hide":"View"}</B>}
+      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):"~10 min — hip & spine recovery"}</div></div>
+      {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+        :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
+        :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View</B>}<B small onClick={startMob}>Start</B></div>}
     </X>
-    {showMob&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
-      {mobList.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<mobList.length-1?`1px solid ${C.bl}`:"none"}}>
+    {(showMob||mobRunning)&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
+      {PROG.mobility.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<PROG.mobility.length-1?`1px solid ${C.bl}`:"none"}}>
         <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:12,color:C.t3}}>{m.dur}</span></div>
         <div style={{fontSize:12,color:C.p,marginTop:1}}>{m.cue}</div>
       </div>))}
-      <B full small color={C.g} style={{marginTop:8}} onClick={logMob}>Mark Complete</B>
+      {!mobRunning&&<B full small outline style={{marginTop:8}} onClick={()=>setShowMob(false)}>Hide</B>}
     </X>)}
 
     {/* ═══ DELOAD BANNER ═══ */}
