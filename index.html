@@ -20,6 +20,7 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -1776,6 +1777,22 @@ const Nutrition=({data,setData})=>{
   const fileRef=useRef(null);
   const galRef=useRef(null);
 
+  // Barcode scan state
+  const [scanResult,setScanResult]=useState(null);
+  const [scanLoading,setScanLoading]=useState(false);
+  const [scanError,setScanError]=useState(null);
+  const scannerRef=useRef(null);
+  const [scanServings,setScanServings]=useState(1);
+  const [scanGrams,setScanGrams]=useState(100);
+
+  // Food search state
+  const [searchQuery,setSearchQuery]=useState("");
+  const [searchResults,setSearchResults]=useState([]);
+  const [searchLoading,setSearchLoading]=useState(false);
+  const [selectedProduct,setSelectedProduct]=useState(null);
+  const [searchServings,setSearchServings]=useState(1);
+  const [searchGrams,setSearchGrams]=useState(100);
+
   const handlePhoto=(e)=>{
     const file=e.target.files?.[0];if(!file)return;
     setPhotoPreview(URL.createObjectURL(file));
@@ -1784,6 +1801,87 @@ const Nutrition=({data,setData})=>{
     reader.readAsDataURL(file);
   };
   const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";if(galRef.current)galRef.current.value="";};
+
+  // Normalize Open Food Facts product into consistent format
+  const normalizeOFF=(p)=>{
+    const n=p.nutriments||{};
+    const hasSrv=n["energy-kcal_serving"]!=null;
+    const suffix=hasSrv?"_serving":"_100g";
+    const srvLabel=hasSrv?(p.serving_size||"1 serving"):"100g";
+    const kcal=n[`energy-kcal${suffix}`]||n[`energy${suffix}`]&&n[`energy${suffix}`]/4.184||0;
+    return {
+      name:p.product_name||"Unknown product",
+      brand:p.brands||"",
+      barcode:p.code||"",
+      servingLabel:srvLabel,
+      cal:Math.round(kcal),
+      protein:Math.round(n[`proteins${suffix}`]||0),
+      carbs:Math.round(n[`carbohydrates${suffix}`]||0),
+      fat:Math.round(n[`fat${suffix}`]||0),
+      fiber:Math.round(n[`fiber${suffix}`]||0),
+      per100g:!hasSrv,
+      imageUrl:p.image_front_small_url||null
+    };
+  };
+
+  // Barcode lookup via Open Food Facts
+  const lookupBarcode=async(barcode)=>{
+    setScanLoading(true);setScanError(null);setScanResult(null);
+    try{
+      const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      const d=await r.json();
+      if(d.status!==1||!d.product){setScanError({message:"Product not found.",barcode});return;}
+      const p=normalizeOFF(d.product);
+      p.barcode=barcode;
+      if(!p.cal&&!p.protein&&!p.carbs&&!p.fat){setScanError({message:"No nutrition data available for this product.",barcode});return;}
+      setScanResult(p);setScanServings(1);setScanGrams(100);
+    }catch(e){setScanError({message:"Network error. Check your connection.",barcode});}
+    finally{setScanLoading(false);}
+  };
+
+  // Food search via Open Food Facts
+  const searchFood=async()=>{
+    if(!searchQuery.trim())return;
+    setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
+    try{
+      const q=encodeURIComponent(searchQuery.trim());
+      const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&json=1&page_size=10&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_front_small_url,code`);
+      const d=await r.json();
+      setSearchResults((d.products||[]).filter(p=>p.product_name).map(normalizeOFF));
+    }catch(e){setSearchResults([]);}
+    setSearchLoading(false);
+  };
+
+  // Add a looked-up product as a meal
+  const addLookup=(product,mult)=>{
+    add({
+      description:product.brand?`${product.name} (${product.brand})`:product.name,
+      cal:Math.round(product.cal*mult),protein:Math.round(product.protein*mult),
+      carbs:Math.round(product.carbs*mult),fat:Math.round(product.fat*mult),
+      fiber:Math.round(product.fiber*mult),source:"lookup",barcode:product.barcode,components:[]
+    });
+  };
+
+  // Scanner lifecycle
+  useEffect(()=>{
+    if(mode!=="scan")return;
+    setScanResult(null);setScanError(null);setScanLoading(false);
+    let scanner=null;
+    const timer=setTimeout(()=>{
+      try{
+        scanner=new Html5QrcodeScanner("barcode-reader",{
+          fps:10,qrbox:{width:250,height:150},
+          formatsToSupport:[0,1,2,3,7]
+        });
+        scanner.render((decoded)=>{
+          scanner.clear().catch(()=>{});
+          lookupBarcode(decoded);
+        },()=>{});
+        scannerRef.current=scanner;
+      }catch(e){setScanError({message:"Scanner failed to initialize. Enter barcode manually."});}
+    },100);
+    return()=>{clearTimeout(timer);if(scannerRef.current){scannerRef.current.clear().catch(()=>{});}scannerRef.current=null;};
+  },[mode]);
 
   const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
@@ -1849,7 +1947,7 @@ const Nutrition=({data,setData})=>{
           <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
         </div>))}</X>)}
       <div style={{display:"flex",gap:6}}>
-        {meal.source==="ai"&&!data.qm?.find(q=>q.description===meal.description)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
+        {(meal.source==="ai"||meal.source==="lookup")&&!data.qm?.find(q=>q.description===meal.description)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
@@ -1962,9 +2060,9 @@ const Nutrition=({data,setData})=>{
     </div>
 
     <div style={{display:"flex",gap:3}}>
-      {[["ai","AI Estimate"],["manual","Manual"],["quick","Quick Add"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
-        flex:1,padding:"8px",borderRadius:4,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
-        color:mode===m?C.p:C.t3,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
+      {[["ai","AI"],["scan","Scan"],["search","Search"],["manual","Manual"],["quick","Quick"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
+        flex:1,padding:"6px 2px",borderRadius:4,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
+        color:mode===m?C.p:C.t3,fontSize:11,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
     </div>
     {mode==="ai"&&(<X style={{padding:10}}>
       <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}... (include portions for best accuracy)`}
@@ -1988,6 +2086,106 @@ const Nutrition=({data,setData})=>{
       </div>
       {photoPreview&&<div style={{marginTop:6,position:"relative"}}><img src={photoPreview} alt="Food" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:4}}/></div>}
       <B full onClick={aiGo} disabled={loading||(!input.trim()&&!photo)} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
+    </X>)}
+    {mode==="scan"&&(<X style={{padding:10}}>
+      {scanLoading&&<div style={{textAlign:"center",padding:20,color:C.t2}}>Looking up product...</div>}
+      {scanError&&<div style={{padding:10}}>
+        <div style={{color:C.r,fontSize:14,marginBottom:8}}>{scanError.message}</div>
+        {scanError.barcode&&<div style={{color:C.t3,fontSize:12,marginBottom:8}}>Barcode: {scanError.barcode}</div>}
+        <div style={{display:"flex",gap:6}}>
+          <B full outline onClick={()=>{setScanError(null);setMode("search");if(scanError.barcode)setSearchQuery(scanError.barcode);}} color={C.p}>Search by Name</B>
+          <B full outline onClick={()=>{setScanError(null);setMode("manual");}} color={C.t2}>Manual Entry</B>
+          <B full outline onClick={()=>{setScanError(null);setScanResult(null);setMode("ai");setTimeout(()=>setMode("scan"),50);}} color={C.a}>Scan Again</B>
+        </div>
+      </div>}
+      {scanResult&&<div>
+        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
+          {scanResult.imageUrl&&<img src={scanResult.imageUrl} alt="" style={{width:48,height:48,borderRadius:4,objectFit:"cover"}}/>}
+          <div>
+            <div style={{fontWeight:700,fontSize:14,color:C.t}}>{scanResult.name}</div>
+            {scanResult.brand&&<div style={{fontSize:12,color:C.t3}}>{scanResult.brand}</div>}
+            <div style={{fontSize:11,color:C.t3}}>per {scanResult.servingLabel}</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,marginBottom:8,textAlign:"center"}}>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{scanResult.cal}</div><div style={{fontSize:10,color:C.t3}}>cal</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.p}}>{scanResult.protein}g</div><div style={{fontSize:10,color:C.t3}}>protein</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.carbs}g</div><div style={{fontSize:10,color:C.t3}}>carbs</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.fat}g</div><div style={{fontSize:10,color:C.t3}}>fat</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.fiber}g</div><div style={{fontSize:10,color:C.t3}}>fiber</div></div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:13,color:C.t2,whiteSpace:"nowrap"}}>{scanResult.per100g?"Grams:":"Servings:"}</span>
+          <input type="number" value={scanResult.per100g?scanGrams:scanServings}
+            onChange={e=>{const v=Math.max(0,+e.target.value||0);scanResult.per100g?setScanGrams(v):setScanServings(v);}}
+            style={{width:60,padding:"6px 8px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:14,fontFamily:"inherit",textAlign:"center"}}/>
+          {(scanResult.per100g?scanGrams!==100:scanServings!==1)&&<span style={{fontSize:12,color:C.t3}}>
+            = {Math.round(scanResult.cal*(scanResult.per100g?scanGrams/100:scanServings))} cal, {Math.round(scanResult.protein*(scanResult.per100g?scanGrams/100:scanServings))}g P
+          </span>}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <B full onClick={()=>{addLookup(scanResult,scanResult.per100g?scanGrams/100:scanServings);setScanResult(null);}}>Add</B>
+          <B full outline onClick={()=>{setScanResult(null);setMode("ai");setTimeout(()=>setMode("scan"),50);}} color={C.t2}>Scan Again</B>
+        </div>
+      </div>}
+      {!scanResult&&!scanLoading&&!scanError&&<div>
+        <div id="barcode-reader" style={{marginBottom:8}}></div>
+        <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6}}>
+          <input type="text" placeholder="Or enter barcode manually" onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim())lookupBarcode(e.target.value.trim());}}
+            style={{flex:1,padding:"8px 10px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:"inherit"}}/>
+          <B onClick={e=>{const inp=e.target.previousSibling;if(inp&&inp.value.trim())lookupBarcode(inp.value.trim());}}>Look Up</B>
+        </div>
+      </div>}
+    </X>)}
+    {mode==="search"&&(<X style={{padding:10}}>
+      <div style={{display:"flex",gap:4,marginBottom:8}}>
+        <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")searchFood();}}
+          placeholder="Search foods (e.g. Fairlife Core Power)"
+          style={{flex:1,padding:"8px 10px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:"inherit"}}/>
+        <B onClick={searchFood} disabled={searchLoading}>{searchLoading?"...":"Search"}</B>
+      </div>
+      {selectedProduct?<div>
+        <button onClick={()=>setSelectedProduct(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontFamily:"inherit",marginBottom:6,padding:0}}>← Back to results</button>
+        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
+          {selectedProduct.imageUrl&&<img src={selectedProduct.imageUrl} alt="" style={{width:48,height:48,borderRadius:4,objectFit:"cover"}}/>}
+          <div>
+            <div style={{fontWeight:700,fontSize:14,color:C.t}}>{selectedProduct.name}</div>
+            {selectedProduct.brand&&<div style={{fontSize:12,color:C.t3}}>{selectedProduct.brand}</div>}
+            <div style={{fontSize:11,color:C.t3}}>per {selectedProduct.servingLabel}</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,marginBottom:8,textAlign:"center"}}>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{selectedProduct.cal}</div><div style={{fontSize:10,color:C.t3}}>cal</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.p}}>{selectedProduct.protein}g</div><div style={{fontSize:10,color:C.t3}}>protein</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.carbs}g</div><div style={{fontSize:10,color:C.t3}}>carbs</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.fat}g</div><div style={{fontSize:10,color:C.t3}}>fat</div></div>
+          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.fiber}g</div><div style={{fontSize:10,color:C.t3}}>fiber</div></div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:13,color:C.t2,whiteSpace:"nowrap"}}>{selectedProduct.per100g?"Grams:":"Servings:"}</span>
+          <input type="number" value={selectedProduct.per100g?searchGrams:searchServings}
+            onChange={e=>{const v=Math.max(0,+e.target.value||0);selectedProduct.per100g?setSearchGrams(v):setSearchServings(v);}}
+            style={{width:60,padding:"6px 8px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:14,fontFamily:"inherit",textAlign:"center"}}/>
+          {(selectedProduct.per100g?searchGrams!==100:searchServings!==1)&&<span style={{fontSize:12,color:C.t3}}>
+            = {Math.round(selectedProduct.cal*(selectedProduct.per100g?searchGrams/100:searchServings))} cal, {Math.round(selectedProduct.protein*(selectedProduct.per100g?searchGrams/100:searchServings))}g P
+          </span>}
+        </div>
+        <B full onClick={()=>{addLookup(selectedProduct,selectedProduct.per100g?searchGrams/100:searchServings);setSelectedProduct(null);}}>Add</B>
+      </div>
+      :searchResults.length>0?<div>
+        {searchResults.map((p,i)=>(<button key={i} onClick={()=>{setSelectedProduct(p);setSearchServings(1);setSearchGrams(100);}} style={{display:"flex",justifyContent:"space-between",
+          alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 12px",cursor:"pointer",
+          marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:13,gap:8}}>
+          {p.imageUrl&&<img src={p.imageUrl} alt="" style={{width:32,height:32,borderRadius:3,objectFit:"cover",flexShrink:0}}/>}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+            {p.brand&&<div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.brand}</div>}
+          </div>
+          <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{p.cal} · {p.protein}gP</span>
+        </button>))}
+      </div>
+      :!searchLoading&&searchQuery&&searchResults.length===0&&<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No results found. Try different keywords.</div>}
     </X>)}
     {mode==="manual"&&(<X style={{padding:10}}>
       <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>
