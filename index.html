@@ -1008,6 +1008,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [sel,setSel]=useState(dn);
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
+  const restEndRef=useRef(0);
   const [showMob,setShowMob]=useState(false);
   const [mobDone,setMobDone]=useState(!!data.mob?.[t]);
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
@@ -1048,9 +1049,30 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
   const startRestTimer=(rest)=>{
     if(tr.current)clearInterval(tr.current);
+    const endTime=Date.now()+rest*1000;
+    restEndRef.current=endTime;
     setRl(rest);setRt(rest);
-    tr.current=setInterval(()=>{setRl(p=>{if(p<=1){clearInterval(tr.current);setRt(0);return 0;}return p-1;});},1000);
+    const tick=()=>{
+      const left=Math.round((restEndRef.current-Date.now())/1000);
+      if(left<=0){clearInterval(tr.current);setRt(0);setRl(0);
+        if(navigator.vibrate)navigator.vibrate([200,100,200]);
+      }else{setRl(left);}
+    };
+    tr.current=setInterval(tick,500);
   };
+
+  useEffect(()=>{
+    const onVis=()=>{
+      if(document.visibilityState==="visible"&&restEndRef.current>0){
+        const left=Math.round((restEndRef.current-Date.now())/1000);
+        if(left<=0){if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+          if(navigator.vibrate)navigator.vibrate([200,100,200]);
+        }else{setRl(left);}
+      }
+    };
+    document.addEventListener("visibilitychange",onVis);
+    return()=>document.removeEventListener("visibilitychange",onVis);
+  },[]);
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
@@ -1061,12 +1083,12 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
       const cw=gw(pe.id,pe.sw);
       nd.prog={...nd.prog,[pe.id]:{currentWeight:hit?cw+pe.inc:cw,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit}};
     });
-    setData(nd);sv(nd);setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);
+    setData(nd);sv(nd);setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
     setShowFinishConfirm(false);
   };
 
   const cancelWorkout=()=>{
-    setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);
+    setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
     setShowCancelConfirm(false);
   };
 
@@ -1105,9 +1127,10 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
       <WorkoutTimerBar workout={workout} compact/>
 
-      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center"}}>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>Rest</div>
-        <div style={{fontSize:36,fontWeight:700,color:"#fff",fontVariantNumeric:"tabular-nums"}}>{Math.floor(rl/60)}:{String(rl%60).padStart(2,"0")}</div>
+      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:rl<=0?C.g:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center",transition:"background 0.3s"}}>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>{rl<=0?"Done! Go!":"Rest"}</div>
+        <div style={{fontSize:36,fontWeight:700,color:"#fff",fontVariantNumeric:"tabular-nums"}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
+        <button onClick={()=>{if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;}} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
       </div>)}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
