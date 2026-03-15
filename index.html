@@ -101,7 +101,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:2430,protein:180,water:128,steps:10000,sleep:7.5,fiber:30};
+const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},settings:{...DEFAULTS}});
 
 // ═══ SUPABASE CLIENT ═══
