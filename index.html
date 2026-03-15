@@ -39,12 +39,17 @@ const PROG = {
   ],
   days:{
     monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,
+      warmup:{cardio:"5 min stepper",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
       exercises:[
         {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
         {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
         {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
       ]},
     tuesday:{name:"Upper A",focus:"Strength",reps:"5-8",stepper:20,
+      warmup:{cardio:"5 min stepper or bike",moves:[
+        {name:"Band Pull-Aparts",rx:"15 reps"},
+        {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
+      ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
         {id:"smith-flat-bench",name:"Smith Flat Bench",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
         {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
@@ -54,6 +59,11 @@ const PROG = {
         {id:"tricep-dips",name:"Tricep Dips",sets:3,rr:[5,8],rest:90,sw:0,inc:0,unit:"BW",notes:"Add weight at 3×8",cue:"Lean slightly forward, lock out fully at top"},
       ]},
     wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,
+      warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+        {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
+        {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
+        {name:"QL Side Stretch",rx:"20s per side"},
+      ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
         {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
         {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
@@ -62,6 +72,10 @@ const PROG = {
         {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
     thursday:{name:"Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+      warmup:{cardio:"5 min stepper or bike",moves:[
+        {name:"Band Pull-Aparts",rx:"15 reps"},
+        {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
+      ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
         {id:"smith-incline",name:"Smith Incline Press",sets:3,rr:[10,12],rest:90,sw:105,inc:5,unit:"lbs",notes:"30-45°",cue:"Feel upper chest stretch at bottom, squeeze at top"},
         {id:"overhand-cable-row",name:"Overhand Cable Row",sets:3,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
@@ -71,6 +85,11 @@ const PROG = {
         {id:"oh-tricep-ext",name:"OH Cable Rope Ext",sets:3,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"3×12 then +5",cue:"Elbows locked by ears, extend fully, squeeze tricep"},
       ]},
     friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,
+      warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+        {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
+        {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
+        {name:"QL Side Stretch",rx:"20s per side"},
+      ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
         {id:"hack-squat-b",name:"Hack Squat",sets:3,rr:[10,12],rest:120,sw:140,inc:10,unit:"lbs",notes:"Or LP 300-320",cue:"Slow descent, drive through heels on the way up"},
         {id:"walking-lunges",name:"Walking Lunges DB",sets:3,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Long stride, back knee kisses floor, front knee stacks"},
@@ -1170,6 +1189,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [aiCooldown,setAiCooldown]=useState(false);
   const [aiExIdx,setAiExIdx]=useState(null);
   const [showAi,setShowAi]=useState(false);
+  const [wuDone,setWuDone]=useState(false);
   const tr=useRef(null);
   const sess=PROG.days[sel];
 
@@ -1182,7 +1202,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
       return{id:ex.id,
       wu:isDeload?[]:WU(wt).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
-    };}),start:Date.now(),isDeload});};
+    };}),start:Date.now(),isDeload});setWuDone(false);};
 
   const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
   const dWU=(ei,wi,rest)=>{
@@ -1300,6 +1320,26 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
           <B small onClick={()=>setShowFinishConfirm(true)} color={C.g}>Finish</B>
         </div>
       </div>
+
+      {s.warmup&&!wuDone&&(<X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.t}}>Warm-Up</div>
+          <B small onClick={()=>setWuDone(true)} color={C.g}>Done</B>
+        </div>
+        <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
+        {s.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{s.warmup.note}</div>}
+        {s.warmup.moves.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
+            <span style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</span>
+            <span style={{fontSize:12,color:C.t3}}>{m.rx}</span>
+          </div>
+        ))}
+        {s.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{s.warmup.ramp}</div>}
+      </X>)}
+      {s.warmup&&wuDone&&(<X style={{padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:0.6}}>
+        <span style={{fontSize:13,fontWeight:600,color:C.t}}>Warm-Up</span>
+        <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done ✓</span>
+      </X>)}
 
       {s.exercises.map((ex,ei)=>{
         const wuSets=workout.exercises[ei].wu;
@@ -1473,6 +1513,19 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
           {data.wk[t]&&sel===dn?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
         </div>
       </X>
+      {sess.warmup&&(<S title="Warm-Up" collapsible>
+        <X style={{padding:10}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:sess.warmup.moves.length?6:0}}>{sess.warmup.cardio}</div>
+          {sess.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{sess.warmup.note}</div>}
+          {sess.warmup.moves.map((m,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
+              <span style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</span>
+              <span style={{fontSize:12,color:C.t3}}>{m.rx}</span>
+            </div>
+          ))}
+          {sess.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{sess.warmup.ramp}</div>}
+        </X>
+      </S>)}
       <S title="Exercises" collapsible>
         {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
           return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
