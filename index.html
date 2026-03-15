@@ -317,6 +317,8 @@ const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString()
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
+const estTime=(sess)=>{if(!sess)return"";const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
+  const work=sess.exercises.reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);return Math.round(wu+work);};
 
 const fmtTime=(v)=>{
   const digits=v.replace(/\D/g,"");
@@ -1027,7 +1029,7 @@ const Dashboard=({data,setData})=>{
           <div>
             <div style={{fontSize:11,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
             <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
-            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div>}
+            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div>}
           </div>
           {data.wk[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Complete</span>
            :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
@@ -1608,7 +1610,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <X style={{borderLeft:`3px solid ${C.p}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
-            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m ${sel==="monday"?"stairmaster":"stepper"}`:""}</div></div>
+            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div></div>
           {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
             <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={startW}>Start</B>}
