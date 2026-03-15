@@ -29,14 +29,50 @@ const { useState, useEffect, useRef, useCallback } = React;
 // ═══ PROGRAM ═══
 const PROG = {
   name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
-  mobility:[
-    {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-    {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
-    {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-    {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-    {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-    {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-  ],
+  mobility:{
+    monday:[
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+    tuesday:[
+      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
+      {name:"Cross-Body Shoulder Stretch",dur:"30s/side",cue:"Pull arm across chest with opposite hand. Keep shoulder down, don't shrug"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+    ],
+    wednesday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+    thursday:[
+      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
+      {name:"Overhead Tricep Stretch",dur:"30s/side",cue:"Reach hand behind head, gently pull elbow with opposite hand. Feel stretch along tricep and lat"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+    ],
+    friday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+    ],
+    saturday:[
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+    ],
+    sunday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+  },
   days:{
     monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,
       warmup:{cardio:"5 min stepper",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
@@ -1292,12 +1328,17 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
+  const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);setStpDone(false);};
+  const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);};
+  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);};
   const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
   const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
     const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
+  const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);
+    setMobDone(false);setMobRunning(false);setShowMob(false);};
   const logCardio=(type,dur)=>{const nd={...data,cardio:{...data.cardio,[t]:{type,duration:dur,done:true}}};setData(nd);sv(nd);};
 
   const applyCoachActions=(actions)=>{
@@ -1437,7 +1478,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
       {s.stepper&&(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{workout.day==="monday"?"Stairmaster":"Stairstepper"}</div><div style={{fontSize:12,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
-        {stpDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
+        {stpDone?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span><B small outline onClick={undoStp}>Undo</B></div>:<B small onClick={logStp}>Complete</B>}
       </X>)}
 
       <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
@@ -1521,17 +1562,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):"~10 min — hip & spine recovery"}</div></div>
-      {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+      {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+          <B small outline onClick={undoMob}>Undo</B></div>
         :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
         :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View</B>}<B small onClick={startMob}>Start</B></div>}
     </X>
-    {(showMob||mobRunning)&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
-      {PROG.mobility.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<PROG.mobility.length-1?`1px solid ${C.bl}`:"none"}}>
+    {(()=>{const dayMob=PROG.mobility[dw(t)]||PROG.mobility.monday;return (showMob||mobRunning)&&!mobDone?(<X style={{background:C.bg,padding:10}}>
+      {dayMob.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<dayMob.length-1?`1px solid ${C.bl}`:"none"}}>
         <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:12,color:C.t3}}>{m.dur}</span></div>
         <div style={{fontSize:12,color:C.p,marginTop:1}}>{m.cue}</div>
       </div>))}
       {!mobRunning&&<B full small outline style={{marginTop:8}} onClick={()=>setShowMob(false)}>Hide</B>}
-    </X>)}
+    </X>):null;})()}
 
     {/* ═══ DELOAD BANNER ═══ */}
     {isDeload&&(<X style={{padding:10,background:C.al,border:`1px solid ${C.a}`}}>
@@ -1556,7 +1599,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       if(!isWeekend)return null;
       return(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Peloton (Zone 2)</div><div style={{fontSize:12,color:C.t3}}>30-45 min steady state</div></div>
-        {cardioToday?.done?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>
+        {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span><B small outline onClick={undoCardio}>Undo</B></div>
           :<B small onClick={()=>logCardio("peloton",35)}>Complete</B>}
       </X>);
     })()}
@@ -1566,7 +1609,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
             <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m ${sel==="monday"?"stairmaster":"stepper"}`:""}</div></div>
-          {data.wk[t]&&sel===dn?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
+          {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
+            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={startW}>Start</B>}
         </div>
       </X>
       {sess.warmup&&(<S title="Warm-Up" collapsible>
