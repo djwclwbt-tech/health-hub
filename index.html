@@ -212,6 +212,10 @@ const syncToSB=async(d)=>{
       for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
       for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
+      for(const[date,c]of Object.entries(d.cardio||{})){await sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true});}
+      for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
+        await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
+      for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
       console.log("[SB] Full sync complete");
     }catch(e){console.error("[SB] Sync error:",e);}
   },2000);
@@ -234,15 +238,19 @@ const svSB={
   debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
   mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
+  cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true}),
+  bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
+  travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
 };
 
 const loadFromSB=async()=>{
   try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief]=await Promise.all([
+    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief,cardio,bodyComp,travel]=await Promise.all([
       sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
       sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
       sb.select("progression","exercise_id","asc"),sb.select("quick_meals","created_at","asc"),
       sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
+      sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
     ]);
     const d=bl();
     wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
@@ -262,6 +270,9 @@ const loadFromSB=async()=>{
     mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
+    cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
+    bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
+    travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
 };
@@ -365,20 +376,23 @@ const getRecentMeals=(data,limit=10)=>{
 };
 
 // ═══ DAY-TYPE HELPERS ═══
-const getDayType=(dateStr)=>{
+const getDayType=(dateStr,travelDays)=>{
+  if(travelDays?.[dateStr])return"travel";
   const day=dw(dateStr);
   if(day==="monday")return"monday";
   if(["tuesday","wednesday","thursday","friday"].includes(day))return"training";
   return"weekend";
 };
-const getDayCalTarget=(dateStr,settings)=>{
-  const dt=getDayType(dateStr);
+const getDayCalTarget=(dateStr,settings,travelDays)=>{
+  const dt=getDayType(dateStr,travelDays);
+  if(dt==="travel")return settings?.trainingCal||2600;
   if(dt==="monday")return settings?.mondayCal||1300;
   if(dt==="training")return settings?.trainingCal||2600;
   return settings?.weekendCal||2500;
 };
-const getDayProTarget=(dateStr,settings)=>{
-  const dt=getDayType(dateStr);
+const getDayProTarget=(dateStr,settings,travelDays)=>{
+  const dt=getDayType(dateStr,travelDays);
+  if(dt==="travel")return settings?.protein||200;
   if(dt==="monday")return 120;
   if(dt==="training")return settings?.protein||200;
   return 150;
@@ -990,9 +1004,9 @@ const Dashboard=({data,setData})=>{
     if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
 
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(t,st),proT=getDayProTarget(t,st);
+  const calT=getDayCalTarget(t,st,data.travelDays),proT=getDayProTarget(t,st,data.travelDays);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
-  const dayType=getDayType(t);
+  const dayType=getDayType(t,data.travelDays);
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
   const redDays=getConsecutiveRedDays(data.rec);
@@ -1021,7 +1035,7 @@ const Dashboard=({data,setData})=>{
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       <div>
         <div style={{fontSize:18,fontWeight:700,color:C.t}}>Home</div>
-        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}</div>
+        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}{dayType==="travel"?" — TRAVEL DAY":""}</div>
       </div>
 
       <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
@@ -1243,6 +1257,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
   const [showMob,setShowMob]=useState(false);
+  const [showCardio,setShowCardio]=useState(false);
+  const [cardioType,setCardioType]=useState("peloton");
+  const [cardioDur,setCardioDur]=useState("35");
   const mobEntry=data.mob?.[t];
   const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
   const [mobRunning,setMobRunning]=useState(false);
@@ -1341,7 +1358,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
   const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);
     setMobDone(false);setMobRunning(false);setShowMob(false);};
-  const logCardio=(type,dur)=>{const nd={...data,cardio:{...data.cardio,[t]:{type,duration:dur,done:true}}};setData(nd);sv(nd);};
+  const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
 
   const applyCoachActions=(actions)=>{
     if(!actions||!actions.length)return;
@@ -1595,15 +1612,33 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </div>))}
       </X>):null;})()}
 
-    {/* ═══ PELOTON / CARDIO ═══ */}
+    {/* ═══ CARDIO ═══ */}
     {(()=>{const dayName=dw(t);const isWeekend=["saturday","sunday"].includes(dayName);
       const cardioToday=data.cardio?.[t];
       if(!isWeekend)return null;
-      return(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Peloton (Zone 2)</div><div style={{fontSize:12,color:C.t3}}>30-45 min steady state</div></div>
-        {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span><B small outline onClick={undoCardio}>Undo</B></div>
-          :<B small onClick={()=>logCardio("peloton",35)}>Complete</B>}
-      </X>);
+      return(<>
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>Zone 2 steady state</div></div>
+            {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:13,fontWeight:600,color:C.g}}>{cardioToday.type} · {cardioToday.duration}m</span><B small outline onClick={undoCardio}>Undo</B></div>
+              :showCardio?null:<B small onClick={()=>setShowCardio(true)}>Log</B>}
+          </div>
+          {showCardio&&!cardioToday?.done&&(<div style={{marginTop:8}}>
+            <div style={{display:"flex",gap:3,marginBottom:6}}>
+              {["peloton","bike","walk","stairs","rowing"].map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
+                flex:1,padding:"6px 2px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize",
+                border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{ct}</button>))}
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <N value={cardioDur} onChange={setCardioDur} placeholder="35" style={{flex:1}}/>
+              <span style={{fontSize:12,color:C.t3}}>min</span>
+              <B small onClick={()=>{logCardio(cardioType,+cardioDur||35);setShowCardio(false);}}>Log</B>
+              <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
+            </div>
+          </div>)}
+        </X>
+      </>);
     })()}
 
     {sess?(<>
@@ -1714,13 +1749,14 @@ const Nutrition=({data,setData})=>{
   const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
 
+  const [showWaterHist,setShowWaterHist]=useState(false);
   const [viewDate,setViewDate]=useState(t);
   const viewNut=data.nut[viewDate]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
   const tl=viewDate===t?viewNut:viewNut;
   const isViewingToday=viewDate===t;
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(viewDate,st),proT=getDayProTarget(viewDate,st);
-  const viewDayType=getDayType(viewDate);
+  const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
+  const viewDayType=getDayType(viewDate,data.travelDays);
   const viewFatPct=tl.totalCal>0?Math.round(((tl.totalFat||0)*9/tl.totalCal)*100):0;
   const waterToday=data.water?.[t]||0;
   const waterGoal=st.water||128;
@@ -1852,7 +1888,7 @@ const Nutrition=({data,setData})=>{
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
-        <span style={{fontWeight:600,color:C.t2}}>{viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
+        <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:C.t2}}>{viewDayType==="travel"?"Travel Day":viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <span>{calT} cal · {proT}g pro target</span>
       </div>
       {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:4,fontSize:11,color:C.r,fontWeight:600}}>
@@ -1886,7 +1922,10 @@ const Nutrition=({data,setData})=>{
           <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}</span>
           <span style={{fontSize:13,color:C.t3}}> / {waterGoal} oz</span>
         </div>
-        {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
+          {Object.keys(data.water||{}).length>1&&<button onClick={()=>setShowWaterHist(!showWaterHist)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{showWaterHist?"Hide":"7d"}</button>}
+        </div>
       </div>
       <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={8}/>
       <div style={{display:"flex",gap:6,marginTop:8}}>
@@ -1897,6 +1936,20 @@ const Nutrition=({data,setData})=>{
           }}>+{oz}oz</button>
         ))}
       </div>
+      {showWaterHist&&(()=>{
+        const entries=Object.entries(data.water||{}).filter(([d])=>d!==t).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+        const avg=entries.length?Math.round(entries.reduce((s,[_,v])=>s+v,0)/entries.length):0;
+        return(<div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:6}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days — avg {avg} oz</div>
+          {entries.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
+            <span style={{fontSize:12,color:C.t2}}>{fmt(d)}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:60}}><Br v={v} max={waterGoal} color={v>=waterGoal?C.g:C.p} h={4}/></div>
+              <span style={{fontSize:12,fontWeight:600,color:v>=waterGoal?C.g:C.t,width:40,textAlign:"right"}}>{v}oz</span>
+            </div>
+          </div>))}
+        </div>);
+      })()}
     </X>
 
     <div style={{display:"flex",gap:2}}>
@@ -2094,12 +2147,37 @@ const Settings=({data,setData})=>{
   const isTravel=!!(data.travelDays||{})[t];
 
   const toggleTravel=()=>{
-    const nd={...data,travelDays:{...data.travelDays,[t]:!isTravel}};
-    setData(nd);sv(nd);
+    const newVal=!isTravel;
+    const nd={...data,travelDays:{...data.travelDays,[t]:newVal}};
+    setData(nd);sv(nd);svSB.travelDay(t,newVal);
   };
-  const logBodyComp=()=>{
-    const nd={...data,bodyComp:{...data.bodyComp,[t]:true}};
-    setData(nd);sv(nd);
+  const bcFileRef=useRef(null);
+  const [bcLoading,setBcLoading]=useState(false);
+  const [bcResult,setBcResult]=useState(null);
+  const [showBcHistory,setShowBcHistory]=useState(false);
+
+  const analyzeBodyComp=async(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    setBcLoading(true);setBcResult(null);
+    try{
+      const reader=new FileReader();
+      const base64=await new Promise((resolve)=>{reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});
+      const [header,dataStr]=base64.split(",");
+      const mediaType=header.match(/data:(.*?);/)?.[1]||"image/jpeg";
+      // Find previous assessment for comparison
+      const prevEntries=Object.entries(data.bodyComp||{}).filter(([d,v])=>d!==t&&v&&typeof v==="object"&&v.analysis).sort((a,b)=>b[0].localeCompare(a[0]));
+      const prev=prevEntries[0];
+      const context={currentWeight:data.wt[t]||Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]};
+      if(prev){context.previousAssessment=prev[1].analysis;context.previousDate=prev[0];}
+      const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:{mediaType,data:dataStr},context})});
+      const result=await resp.json();
+      if(resp.ok){
+        setBcResult(result);
+        const nd={...data,bodyComp:{...data.bodyComp,[t]:{photoTaken:true,analysis:result}}};setData(nd);sv(nd);svSB.bodyComp(t,{analysis:result});
+      }else{setBcResult({error:result.error||"Analysis failed"});}
+    }catch(err){setBcResult({error:err.message});}
+    setBcLoading(false);if(bcFileRef.current)bcFileRef.current.value="";
   };
 
   const saveSettings=()=>{
@@ -2167,8 +2245,11 @@ const Settings=({data,setData})=>{
 
     {/* ═══ BODY COMP ═══ */}
     <X>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Progress Photos</div>
-      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Take front + side photos in same lighting, same time. Repeat every 2-3 weeks. The mirror is your real measurement during recomp.</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>Progress Photos</div>
+        {Object.keys(data.bodyComp||{}).length>0&&<button onClick={()=>setShowBcHistory(!showBcHistory)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showBcHistory?"Hide":"History"}</button>}
+      </div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Upload a progress photo for AI body composition analysis. Same lighting, same time, every 2-3 weeks.</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
           {(()=>{const photoDates=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -2180,9 +2261,47 @@ const Settings=({data,setData})=>{
             </div>);
           })()}
         </div>
-        {data.bodyComp?.[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Logged</span>
-          :<B small onClick={logBodyComp}>Log Photo Taken</B>}
+        <input ref={bcFileRef} type="file" accept="image/*" capture="environment" onChange={analyzeBodyComp} style={{display:"none"}}/>
+        {bcLoading?<span style={{fontSize:12,color:C.p,fontWeight:600}}>Analyzing...</span>
+          :<B small onClick={()=>bcFileRef.current?.click()}>Upload Photo</B>}
       </div>
+      {(bcResult||data.bodyComp?.[t]?.analysis)&&!bcResult?.error&&(()=>{
+        const a=bcResult||data.bodyComp[t].analysis;
+        return(<div style={{marginTop:8,padding:10,background:C.bg,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:15,fontWeight:700,color:C.p}}>{a.bodyFatRange}</span>
+            <span style={{fontSize:11,color:C.t3}}>estimated BF%</span>
+          </div>
+          {a.muscleDevelopment?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",marginBottom:3}}>Muscle Development</div>
+            {a.muscleDevelopment.map((m,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{m}</div>))}
+          </div>)}
+          {a.areasOfProgress?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.g,textTransform:"uppercase",marginBottom:3}}>Progress</div>
+            {a.areasOfProgress.map((p,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{p}</div>))}
+          </div>)}
+          {a.focusAreas?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",marginBottom:3}}>Focus Areas</div>
+            {a.focusAreas.map((f,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.a}`,marginBottom:3}}>{f}</div>))}
+          </div>)}
+          {a.notes&&<div style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>{a.notes}</div>}
+        </div>);
+      })()}
+      {bcResult?.error&&<div style={{marginTop:6,fontSize:12,color:C.r}}>{bcResult.error}</div>}
+      {showBcHistory&&(()=>{
+        const entries=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));
+        return(<div style={{marginTop:8}}>
+          {entries.map(([date,v])=>{const a=typeof v==="object"?v.analysis:null;
+            return(<div key={date} style={{padding:"8px 0",borderTop:`1px solid ${C.bl}`}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.t}}>{fmt(date)}</span>
+                {a?.bodyFatRange&&<span style={{fontSize:13,fontWeight:600,color:C.p}}>{a.bodyFatRange}</span>}
+              </div>
+              {a?.notes&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{a.notes}</div>}
+            </div>);
+          })}
+        </div>);
+      })()}
     </X>
 
     <X>
