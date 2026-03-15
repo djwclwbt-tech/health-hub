@@ -296,6 +296,36 @@ const fmtElapsed=(secs)=>{
   return `${m}:${String(s).padStart(2,"0")}`;
 };
 
+// ═══ CORRECTION & HISTORY COLLECTORS ═══
+const getRecentCorrections=(data,limit=10)=>{
+  const corr=[];
+  const dates=Object.keys(data.nut||{}).sort().reverse();
+  for(const d of dates){
+    if(corr.length>=limit)break;
+    for(const m of(data.nut[d]?.meals||[])){
+      if(corr.length>=limit)break;
+      if(m.source==="ai"&&m.aiOriginal){
+        const changed=["cal","protein","carbs","fat","fiber"].some(k=>(m[k]||0)!==(m.aiOriginal[k]||0));
+        if(changed)corr.push({description:m.description,raw:m.raw,aiEstimate:m.aiOriginal,
+          userCorrection:{cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber}});
+      }
+    }
+  }
+  return corr;
+};
+const getRecentMeals=(data,limit=10)=>{
+  const meals=[];
+  const dates=Object.keys(data.nut||{}).sort().reverse();
+  for(const d of dates){
+    if(meals.length>=limit)break;
+    for(const m of(data.nut[d]?.meals||[])){
+      if(meals.length>=limit)break;
+      meals.push({description:m.description,cal:m.cal,protein:m.protein,source:m.source});
+    }
+  }
+  return meals;
+};
+
 // ═══ DAY-TYPE HELPERS ═══
 const getDayType=(dateStr)=>{
   const day=dw(dateStr);
@@ -1651,7 +1681,7 @@ const Nutrition=({data,setData})=>{
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const ml={...m,mealType:mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
+  const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
   const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
@@ -1661,6 +1691,7 @@ const Nutrition=({data,setData})=>{
   const [photoPreview,setPhotoPreview]=useState(null);
   const [portionSize,setPortionSize]=useState("normal");
   const fileRef=useRef(null);
+  const galRef=useRef(null);
 
   const handlePhoto=(e)=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -1669,12 +1700,13 @@ const Nutrition=({data,setData})=>{
     reader.onload=()=>{const b64=reader.result.split(",")[1];setPhoto({data:b64,mediaType:file.type});};
     reader.readAsDataURL(file);
   };
-  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";};
+  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";if(galRef.current)galRef.current.value="";};
 
   const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
     const fullInput=input?(input+portionHint):null;
-    try{const body={context:{calories:st.calories||2430,protein:st.protein||180}};
+    try{const body={context:{calories:st.calories||2430,protein:st.protein||180,
+      corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
       if(fullInput)body.input=fullInput;
       if(photo)body.image=photo;
       const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -1707,6 +1739,8 @@ const Nutrition=({data,setData})=>{
         </div>
         {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
         {meal.notes&&<div style={{fontSize:11,color:C.a,marginTop:2,fontStyle:"italic"}}>{meal.notes}</div>}
+        {meal.aiOriginal&&["cal","protein","carbs","fat"].some(k=>(meal[k]||0)!==(meal.aiOriginal[k]||0))&&
+          <div style={{fontSize:10,color:C.v,marginTop:3}}>Corrected from AI estimate ({meal.aiOriginal.cal} cal → {meal.cal} cal) — improves future estimates</div>}
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
             {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
@@ -1836,9 +1870,13 @@ const Nutrition=({data,setData})=>{
       <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}... (include portions for best accuracy)`}
         style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+      <input ref={galRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       <div style={{display:"flex",gap:4,marginTop:6,alignItems:"center"}}>
         <button onClick={()=>fileRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          {photo?"✓ Photo":"📷 Photo"}
+          📷 Camera
+        </button>
+        <button onClick={()=>galRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+          🖼 Gallery
         </button>
         {photo&&<button onClick={clearPhoto} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>✕</button>}
         <div style={{display:"flex",gap:2,flex:1}}>
