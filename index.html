@@ -48,6 +48,14 @@ const PROG = {
       {name:"Dead Bug",dur:"10/side",cue:"Press low back into floor, opposite arm and leg extend"},
       {name:"Bird Dog",dur:"10/side",cue:"Extend arm and leg, keep hips square to floor"},
     ],
+    evening:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
   },
   days:{
     monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,mobilityKey:"core",
@@ -1182,7 +1190,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
   const getMobility=(dayKey)=>{
     const day=PROG.days[dayKey];
-    if(!day)return PROG.mobility.core;
+    if(!day)return PROG.mobility.evening;
     return PROG.mobility[day.mobilityKey]||PROG.mobility.core;
   };
 
@@ -1430,7 +1438,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     </div>
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:12,color:C.t3}}>5 min — {PROG.days[sel]?.mobilityKey||"core"} focus</div></div>
+      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Mobility</div><div style={{fontSize:12,color:C.t3}}>{PROG.days[sel]?`5 min — ${PROG.days[sel].mobilityKey} focus`:"10 min — hip & spine recovery"}</div></div>
       {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small outline onClick={()=>setShowMob(!showMob)}>{showMob?"Hide":"View"}</B>}
     </X>
     {showMob&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
