@@ -1360,32 +1360,71 @@ const Nutrition=({data,setData})=>{
   const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
   const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);};
 
-  const aiGo=async()=>{if(!input.trim())return;setLoading(true);
-    try{const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({input:input})});
+  const [photo,setPhoto]=useState(null);
+  const [photoPreview,setPhotoPreview]=useState(null);
+  const [portionSize,setPortionSize]=useState("normal");
+  const fileRef=useRef(null);
+
+  const handlePhoto=(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    setPhotoPreview(URL.createObjectURL(file));
+    const reader=new FileReader();
+    reader.onload=()=>{const b64=reader.result.split(",")[1];setPhoto({data:b64,mediaType:file.type});};
+    reader.readAsDataURL(file);
+  };
+  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";};
+
+  const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
+    const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
+    const fullInput=input?(input+portionHint):null;
+    try{const body={context:{calories:st.calories||2430,protein:st.protein||180}};
+      if(fullInput)body.input=fullInput;
+      if(photo)body.image=photo;
+      const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(body)});
       const parsed=await r.json();
       if(parsed.error){throw new Error(parsed.error);}
-      add({...parsed,source:"ai",raw:input,components:parsed.components||[]});setInput("");
-    }catch(e){console.error(e);add({description:input,cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");}
+      add({...parsed,source:"ai",raw:input||"Photo estimate",components:parsed.components||[],confidence:parsed.confidence,notes:parsed.notes});setInput("");clearPhoto();
+    }catch(e){console.error(e);add({description:input||"Photo estimate",cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");clearPhoto();}
     setLoading(false);};
+
+  const [editing,setEditing]=useState(null);
+  const updateMeal=(idx,updates)=>{
+    const newMeals=tl.meals.map((m,i)=>i===idx?{...m,...updates}:m);
+    const nl=rc(newMeals);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);
+  };
 
   if(selM!==null){
     const meal=tl.meals[selM];if(!meal){setSelM(null);return null;}
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
+    const confColor=meal.confidence==="high"?C.g:meal.confidence==="low"?C.a:C.t3;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <button onClick={()=>setSelM(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
+      <button onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
-          {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
+          <div style={{display:"flex",gap:4,alignItems:"center"}}>
+            {meal.confidence&&<span style={{fontSize:9,fontWeight:700,color:confColor,background:meal.confidence==="high"?C.gl:meal.confidence==="low"?C.al:"transparent",padding:"2px 6px",borderRadius:8,textTransform:"uppercase"}}>{meal.confidence}</span>}
+            {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
+          </div>
         </div>
         {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
-          {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
-            {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
-            <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
-        </div>
-        <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginBottom:2}}>
+        {meal.notes&&<div style={{fontSize:11,color:C.a,marginTop:2,fontStyle:"italic"}}>{meal.notes}</div>}
+        {editing==="macros"?(<div style={{margin:"8px 0"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
+            {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
+              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>updateMeal(selM,{[f.k]:+v||0})} placeholder={f.l}/><div style={{fontSize:9,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
+          </div>
+          <B full small style={{marginTop:6}} onClick={()=>setEditing(null)}>Done</B>
+        </div>):(<div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
+            {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
+              {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
+              <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
+          </div>
+          <button onClick={()=>setEditing("macros")} style={{background:"none",border:`1px dashed ${C.bd}`,borderRadius:4,padding:"4px 10px",color:C.t2,fontSize:11,cursor:"pointer",fontWeight:600,fontFamily:"inherit",width:"100%"}}>Edit Macros</button>
+        </div>)}
+        <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginTop:6,marginBottom:2}}>
           <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.a}}/><div style={{width:`${fp}%`,background:C.r}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
@@ -1471,9 +1510,23 @@ const Nutrition=({data,setData})=>{
         color:mode===m?C.p:C.t3,fontSize:12,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
     </div>
     {mode==="ai"&&(<X style={{padding:10}}>
-      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}...`}
+      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}... (include portions for best accuracy)`}
         style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-      <B full onClick={aiGo} disabled={loading||!input.trim()} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+      <div style={{display:"flex",gap:4,marginTop:6,alignItems:"center"}}>
+        <button onClick={()=>fileRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+          {photo?"✓ Photo":"📷 Photo"}
+        </button>
+        {photo&&<button onClick={clearPhoto} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+        <div style={{display:"flex",gap:2,flex:1}}>
+          {["small","normal","large"].map(s=>(<button key={s} onClick={()=>setPortionSize(s)} style={{
+            flex:1,padding:"7px 2px",borderRadius:3,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize",
+            border:`1px solid ${portionSize===s?C.p:C.bd}`,background:portionSize===s?C.pl:"transparent",color:portionSize===s?C.p:C.t3,
+          }}>{s}</button>))}
+        </div>
+      </div>
+      {photoPreview&&<div style={{marginTop:6,position:"relative"}}><img src={photoPreview} alt="Food" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:4}}/></div>}
+      <B full onClick={aiGo} disabled={loading||(!input.trim()&&!photo)} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
     </X>)}
     {mode==="manual"&&(<X style={{padding:10}}>
       <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>

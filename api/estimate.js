@@ -18,9 +18,56 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { input } = req.body;
-    if (!input) {
+    const { input, image, context } = req.body;
+    if (!input && !image) {
       return res.status(400).json({ error: 'No input provided' });
+    }
+
+    const systemPrompt = `You are a precise nutrition estimator for a strength athlete tracking body recomposition. Your job is to estimate calories and macros as accurately as possible.
+
+CRITICAL RULES:
+1. ALWAYS estimate portions on the HIGHER end of realistic. People underestimate what they eat — you must compensate.
+2. Account for ALL hidden calories: cooking oils (1 tbsp = 120 cal), butter, sauces, dressings, marinades, cheese, cream.
+3. Restaurant portions are typically 1.5-2x homemade. A restaurant chicken breast is often 8-10oz, not 4oz.
+4. If no portion is specified, use these DEFAULTS for an adult male strength athlete:
+   - Meat/protein: 8oz raw (6oz cooked) unless specified
+   - Rice/pasta: 1.5 cups cooked
+   - Bread: 2 slices
+   - Salad with dressing: include 2 tbsp dressing (~140 cal)
+   - Sandwich: include condiments (~50-80 cal)
+   - Pizza slice: large slice (~300 cal for cheese, +50-100 per topping)
+   - Burrito/bowl: 800-1100 cal range for restaurant
+5. USDA reference weights (use these for per-gram calculations):
+   - Chicken breast cooked: 165 cal, 31g protein per 100g
+   - White rice cooked: 130 cal, 2.7g protein per 100g
+   - 80/20 ground beef cooked: 254 cal, 26g protein per 100g
+   - Salmon cooked: 208 cal, 20g protein per 100g
+   - Whole egg: 72 cal, 6g protein each
+   - Olive oil: 119 cal per tbsp (always account for cooking oil)
+6. Cross-check: total calories must approximately equal (protein×4 + carbs×4 + fat×9). If they don't match, fix it.
+7. When a photo is provided, identify all visible food items and estimate portions based on plate size, utensils, and relative proportions. Note any sauces, oils, or toppings visible.
+
+${context ? `USER CONTEXT: Daily targets are ${context.calories || 2430} cal, ${context.protein || 180}g protein. Use this to sanity-check — a single meal for this person is typically 400-900 cal unless it's clearly a large meal.` : ''}
+
+Return ONLY valid JSON (no markdown, no backticks):
+{"description":"concise meal name","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"components":[{"item":"specific item with portion","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number}],"confidence":"high|medium|low","notes":"brief note if portion was assumed or ambiguous"}`;
+
+    // Build message content — supports text, image, or both
+    const content = [];
+    if (image) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: image.mediaType,
+          data: image.data,
+        },
+      });
+    }
+    if (input) {
+      content.push({ type: 'text', text: input });
+    } else if (image) {
+      content.push({ type: 'text', text: 'Estimate the nutrition for the food in this photo. Identify all items and portions.' });
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -32,9 +79,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: 'Estimate meal nutrition. Return ONLY JSON: {"description":"name","cal":num,"protein":num,"carbs":num,"fat":num,"fiber":num,"components":[{"item":"name","cal":num,"protein":num,"carbs":num,"fat":num,"fiber":num}]}. No markdown. Realistic portions.',
-        messages: [{ role: 'user', content: input }],
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content }],
       }),
     });
 
