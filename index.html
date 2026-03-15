@@ -29,14 +29,50 @@ const { useState, useEffect, useRef, useCallback } = React;
 // ═══ PROGRAM ═══
 const PROG = {
   name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
-  mobility:[
-    {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-    {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
-    {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-    {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-    {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-    {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-  ],
+  mobility:{
+    monday:[
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+    tuesday:[
+      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
+      {name:"Cross-Body Shoulder Stretch",dur:"30s/side",cue:"Pull arm across chest with opposite hand. Keep shoulder down, don't shrug"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+    ],
+    wednesday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+    thursday:[
+      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
+      {name:"Overhead Tricep Stretch",dur:"30s/side",cue:"Reach hand behind head, gently pull elbow with opposite hand. Feel stretch along tricep and lat"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+    ],
+    friday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+    ],
+    saturday:[
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
+    ],
+    sunday:[
+      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
+      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
+      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
+      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    ],
+  },
   days:{
     monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,
       warmup:{cardio:"5 min stepper",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
@@ -109,7 +145,7 @@ const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},travelDays:{},settings:{...DEFAULTS}});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -176,6 +212,10 @@ const syncToSB=async(d)=>{
       for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
       for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
+      for(const[date,c]of Object.entries(d.cardio||{})){await sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true});}
+      for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
+        await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
+      for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
       console.log("[SB] Full sync complete");
     }catch(e){console.error("[SB] Sync error:",e);}
   },2000);
@@ -198,15 +238,19 @@ const svSB={
   debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
   mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
+  cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true}),
+  bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
+  travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
 };
 
 const loadFromSB=async()=>{
   try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief]=await Promise.all([
+    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief,cardio,bodyComp,travel]=await Promise.all([
       sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
       sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
       sb.select("progression","exercise_id","asc"),sb.select("quick_meals","created_at","asc"),
       sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
+      sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
     ]);
     const d=bl();
     wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
@@ -226,6 +270,9 @@ const loadFromSB=async()=>{
     mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
+    cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
+    bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
+    travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
 };
@@ -275,12 +322,14 @@ const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
   qm:d.qm||d.quickMeals||[],mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
-  settings:{...DEFAULTS,...(d.settings||{})}};};
+  settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
 const td=()=>new Date().toISOString().split("T")[0];
 const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
+const estTime=(sess)=>{if(!sess)return"";const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
+  const work=sess.exercises.reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);return Math.round(wu+work);};
 
 const fmtTime=(v)=>{
   const digits=v.replace(/\D/g,"");
@@ -296,21 +345,54 @@ const fmtElapsed=(secs)=>{
   return `${m}:${String(s).padStart(2,"0")}`;
 };
 
+// ═══ CORRECTION & HISTORY COLLECTORS ═══
+const getRecentCorrections=(data,limit=10)=>{
+  const corr=[];
+  const dates=Object.keys(data.nut||{}).sort().reverse();
+  for(const d of dates){
+    if(corr.length>=limit)break;
+    for(const m of(data.nut[d]?.meals||[])){
+      if(corr.length>=limit)break;
+      if(m.source==="ai"&&m.aiOriginal){
+        const changed=["cal","protein","carbs","fat","fiber"].some(k=>(m[k]||0)!==(m.aiOriginal[k]||0));
+        if(changed)corr.push({description:m.description,raw:m.raw,aiEstimate:m.aiOriginal,
+          userCorrection:{cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber}});
+      }
+    }
+  }
+  return corr;
+};
+const getRecentMeals=(data,limit=10)=>{
+  const meals=[];
+  const dates=Object.keys(data.nut||{}).sort().reverse();
+  for(const d of dates){
+    if(meals.length>=limit)break;
+    for(const m of(data.nut[d]?.meals||[])){
+      if(meals.length>=limit)break;
+      meals.push({description:m.description,cal:m.cal,protein:m.protein,source:m.source});
+    }
+  }
+  return meals;
+};
+
 // ═══ DAY-TYPE HELPERS ═══
-const getDayType=(dateStr)=>{
+const getDayType=(dateStr,travelDays)=>{
+  if(travelDays?.[dateStr])return"travel";
   const day=dw(dateStr);
   if(day==="monday")return"monday";
   if(["tuesday","wednesday","thursday","friday"].includes(day))return"training";
   return"weekend";
 };
-const getDayCalTarget=(dateStr,settings)=>{
-  const dt=getDayType(dateStr);
+const getDayCalTarget=(dateStr,settings,travelDays)=>{
+  const dt=getDayType(dateStr,travelDays);
+  if(dt==="travel")return settings?.trainingCal||2600;
   if(dt==="monday")return settings?.mondayCal||1300;
   if(dt==="training")return settings?.trainingCal||2600;
   return settings?.weekendCal||2500;
 };
-const getDayProTarget=(dateStr,settings)=>{
-  const dt=getDayType(dateStr);
+const getDayProTarget=(dateStr,settings,travelDays)=>{
+  const dt=getDayType(dateStr,travelDays);
+  if(dt==="travel")return settings?.protein||200;
   if(dt==="monday")return 120;
   if(dt==="training")return settings?.protein||200;
   return 150;
@@ -345,7 +427,8 @@ const getConsecutiveRedDays=(rec)=>{
 };
 
 // ═══ STALL DETECTION ═══
-const getStalls=(prog,wk)=>{
+const getStalls=(prog,wk,programDays)=>{
+  const days=programDays||PROG.days;
   const stalls=[];
   Object.entries(prog).forEach(([id,p])=>{
     if(!p.lastDate)return;
@@ -356,13 +439,13 @@ const getStalls=(prog,wk)=>{
       const wkEntry=wk[d];
       const ex=wkEntry?.exercises?.find(e=>e.id===id);
       if(!ex)return false;
-      const pe=Object.values(PROG.days).flatMap(day=>day.exercises).find(e=>e.id===id);
+      const pe=Object.values(days).flatMap(day=>day.exercises).find(e=>e.id===id);
       if(!pe)return false;
       const cs=ex.sets?.filter(s=>s.done)||[];
       return!(cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]));
     });
     if(allNotProgressed){
-      const exDef=Object.values(PROG.days).flatMap(d=>d.exercises).find(e=>e.id===id);
+      const exDef=Object.values(days).flatMap(d=>d.exercises).find(e=>e.id===id);
       stalls.push({id,name:exDef?.name||id,weeks:recentDates.length,currentWeight:p.currentWeight});
     }
   });
@@ -470,7 +553,7 @@ const TabBar=({active,set,hasActiveWorkout})=>(
 );
 
 // ═══ WORKOUT TIMER BAR ═══
-const WorkoutTimerBar=({workout,onTap,compact})=>{
+const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   const [elapsed,setElapsed]=useState(0);
   useEffect(()=>{
     if(!workout)return;
@@ -478,7 +561,7 @@ const WorkoutTimerBar=({workout,onTap,compact})=>{
     return()=>clearInterval(iv);
   },[workout]);
   if(!workout)return null;
-  const sess=PROG.days[workout.day];
+  const sess=(programDays||PROG.days)[workout.day];
   return(
     <div onClick={onTap} style={{background:C.p,padding:compact?"6px 14px":"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?6:0}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -909,7 +992,7 @@ const Dashboard=({data,setData})=>{
     }catch(e){setImportStatus("Error parsing data. Make sure you pasted the full HealthKit export.");}
   };
   const t=td(),dn=dw(t),w=wkn(t);
-  const sess=PROG.days[dn],nut=data.nut[t],rec=data.rec[t];
+  const sess=data.program[dn],nut=data.nut[t],rec=data.rec[t];
   const wts=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
   const lw=wts[0]?.[1],pw=wts[1]?.[1],wc=lw&&pw?(lw-pw).toFixed(1):null;
   const steps=data.steps?.[t]||0;
@@ -921,15 +1004,15 @@ const Dashboard=({data,setData})=>{
     if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
 
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(t,st),proT=getDayProTarget(t,st);
+  const calT=getDayCalTarget(t,st,data.travelDays),proT=getDayProTarget(t,st,data.travelDays);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
-  const dayType=getDayType(t);
+  const dayType=getDayType(t,data.travelDays);
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
   const weightTrend=getWeightTrend(data.wt);
-  const stalls=getStalls(data.prog,data.wk);
+  const stalls=getStalls(data.prog,data.wk,data.program);
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const recCh=Object.entries(data.rec).filter(([_,v])=>v.recoveryScore).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
@@ -952,7 +1035,7 @@ const Dashboard=({data,setData})=>{
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       <div>
         <div style={{fontSize:18,fontWeight:700,color:C.t}}>Home</div>
-        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}</div>
+        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}{dayType==="travel"?" — TRAVEL DAY":""}</div>
       </div>
 
       <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
@@ -960,7 +1043,7 @@ const Dashboard=({data,setData})=>{
           <div>
             <div style={{fontSize:11,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
             <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
-            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m stepper`:""}</div>}
+            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div>}
           </div>
           {data.wk[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Complete</span>
            :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
@@ -1167,13 +1250,16 @@ const Dashboard=({data,setData})=>{
 };
 
 // ═══ TRAINING ═══
-const Training=({data,setData,workout,setWorkout,setTab})=>{
+const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const t=td(),dn=dw(t);
   const [sel,setSel]=useState(dn);
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
   const [showMob,setShowMob]=useState(false);
+  const [showCardio,setShowCardio]=useState(false);
+  const [cardioType,setCardioType]=useState("peloton");
+  const [cardioDur,setCardioDur]=useState("35");
   const mobEntry=data.mob?.[t];
   const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
   const [mobRunning,setMobRunning]=useState(false);
@@ -1191,7 +1277,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [showAi,setShowAi]=useState(false);
   const [wuDone,setWuDone]=useState(false);
   const tr=useRef(null);
-  const sess=PROG.days[sel];
+  const sess=data.program[sel];
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
 
@@ -1245,7 +1331,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
     nd.wk={...nd.wk,[t]:{day:workout.day,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
-    const s=PROG.days[workout.day];
+    const s=data.program[workout.day];
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe||pe.inc===0)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=gw(pe.id,pe.sw);
@@ -1261,25 +1347,55 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   };
 
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
+  const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);setStpDone(false);};
+  const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);};
+  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);};
   const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
   const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
     const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
-  const logCardio=(type,dur)=>{const nd={...data,cardio:{...data.cardio,[t]:{type,duration:dur,done:true}}};setData(nd);sv(nd);};
+  const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);
+    setMobDone(false);setMobRunning(false);setShowMob(false);};
+  const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
+
+  const applyCoachActions=(actions)=>{
+    if(!actions||!actions.length)return;
+    const nd=JSON.parse(JSON.stringify(data));
+    actions.forEach(c=>{
+      try{
+        if(c.type==="settings"&&c.field){
+          nd.settings={...nd.settings,[c.field]:c.value};
+          if(addToast)addToast(`${c.field}: updated to ${c.value}`,"success");
+        }else if(c.type==="exercise"&&c.action==="update"&&c.exerciseId){
+          for(const day of Object.values(nd.program)){
+            const ex=day.exercises?.find(e=>e.id===c.exerciseId);
+            if(ex&&c.fields){Object.assign(ex,c.fields);if(addToast)addToast(`Updated ${ex.name}`,"success");}
+          }
+        }else if(c.type==="exercise"&&c.action==="swap"&&c.oldExerciseId&&c.newExercise){
+          for(const day of Object.values(nd.program)){
+            const idx=day.exercises?.findIndex(e=>e.id===c.oldExerciseId);
+            if(idx>=0){const old=day.exercises[idx].name;day.exercises[idx]=c.newExercise;if(addToast)addToast(`Swapped ${old} → ${c.newExercise.name}`,"success");}
+          }
+        }
+      }catch(e){console.error("[coach] Failed to apply action:",e);}
+    });
+    setData(nd);sv(nd);
+  };
 
   const askCoach=async(q,exIdx)=>{
     if(!q.trim()||aiLoading||aiCooldown)return;
     setAiLoading(true);setAiA("");
-    const ex=workout&&exIdx!=null?PROG.days[workout.day]?.exercises[exIdx]:null;
+    const ex=workout&&exIdx!=null?data.program[workout.day]?.exercises[exIdx]:null;
     const cw=ex?gw(ex.id,ex.sw):null;
     try{
       const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
-          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:PROG.days[workout?.day]?.focus||""})});
+          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:data.program[workout?.day]?.focus||""})});
       const d=await r.json();
       setAiA(d.answer||d.error||"No response");
+      if(d.actions&&d.actions.length)applyCoachActions(d.actions);
     }catch(e){setAiA("Error connecting to coach");}
     setAiLoading(false);setAiCooldown(true);
     setTimeout(()=>setAiCooldown(false),10000);
@@ -1293,7 +1409,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
   const [calYear,setCalYear]=useState(now.getFullYear());
 
   if(workout){
-    const s=PROG.days[workout.day];
+    const s=data.program[workout.day];
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
@@ -1381,7 +1497,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
       {s.stepper&&(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{workout.day==="monday"?"Stairmaster":"Stairstepper"}</div><div style={{fontSize:12,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
-        {stpDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B small onClick={logStp}>Complete</B>}
+        {stpDone?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span><B small outline onClick={undoStp}>Undo</B></div>:<B small onClick={logStp}>Complete</B>}
       </X>)}
 
       <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
@@ -1428,7 +1544,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
   if(viewW){
     const [vDate,vData]=viewW;
-    const vSess=PROG.days[vData.day];
+    const vSess=data.program[vData.day];
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       <button onClick={()=>setViewW(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X style={{borderLeft:`3px solid ${C.g}`}}>
@@ -1465,17 +1581,19 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):"~10 min — hip & spine recovery"}</div></div>
-      {mobDone?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+      {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+          <B small outline onClick={undoMob}>Undo</B></div>
         :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
         :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View</B>}<B small onClick={startMob}>Start</B></div>}
     </X>
-    {(showMob||mobRunning)&&!mobDone&&(<X style={{background:C.bg,padding:10}}>
-      {PROG.mobility.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<PROG.mobility.length-1?`1px solid ${C.bl}`:"none"}}>
+    {(()=>{const dayMob=PROG.mobility[dw(t)]||PROG.mobility.monday;return (showMob||mobRunning)&&!mobDone?(<X style={{background:C.bg,padding:10}}>
+      {dayMob.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<dayMob.length-1?`1px solid ${C.bl}`:"none"}}>
         <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:12,color:C.t3}}>{m.dur}</span></div>
         <div style={{fontSize:12,color:C.p,marginTop:1}}>{m.cue}</div>
       </div>))}
       {!mobRunning&&<B full small outline style={{marginTop:8}} onClick={()=>setShowMob(false)}>Hide</B>}
-    </X>)}
+    </X>):null;})()}
 
     {/* ═══ DELOAD BANNER ═══ */}
     {isDeload&&(<X style={{padding:10,background:C.al,border:`1px solid ${C.a}`}}>
@@ -1484,7 +1602,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     </X>)}
 
     {/* ═══ STALL WARNINGS ═══ */}
-    {(()=>{const stalls=getStalls(data.prog,data.wk);const weekAvg=getWeeklyRecoveryAvg(data.rec);
+    {(()=>{const stalls=getStalls(data.prog,data.wk,data.program);const weekAvg=getWeeklyRecoveryAvg(data.rec);
       return stalls.length>0?(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
         <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Stalled Lifts (3+ sessions)</div>
         {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:3}}>
@@ -1494,23 +1612,43 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
         </div>))}
       </X>):null;})()}
 
-    {/* ═══ PELOTON / CARDIO ═══ */}
+    {/* ═══ CARDIO ═══ */}
     {(()=>{const dayName=dw(t);const isWeekend=["saturday","sunday"].includes(dayName);
       const cardioToday=data.cardio?.[t];
       if(!isWeekend)return null;
-      return(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Peloton (Zone 2)</div><div style={{fontSize:12,color:C.t3}}>30-45 min steady state</div></div>
-        {cardioToday?.done?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>
-          :<B small onClick={()=>logCardio("peloton",35)}>Complete</B>}
-      </X>);
+      return(<>
+        <X style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>Zone 2 steady state</div></div>
+            {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:13,fontWeight:600,color:C.g}}>{cardioToday.type} · {cardioToday.duration}m</span><B small outline onClick={undoCardio}>Undo</B></div>
+              :showCardio?null:<B small onClick={()=>setShowCardio(true)}>Log</B>}
+          </div>
+          {showCardio&&!cardioToday?.done&&(<div style={{marginTop:8}}>
+            <div style={{display:"flex",gap:3,marginBottom:6}}>
+              {["peloton","bike","walk","stairs","rowing"].map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
+                flex:1,padding:"6px 2px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize",
+                border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{ct}</button>))}
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <N value={cardioDur} onChange={setCardioDur} placeholder="35" style={{flex:1}}/>
+              <span style={{fontSize:12,color:C.t3}}>min</span>
+              <B small onClick={()=>{logCardio(cardioType,+cardioDur||35);setShowCardio(false);}}>Log</B>
+              <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
+            </div>
+          </div>)}
+        </X>
+      </>);
     })()}
 
     {sess?(<>
       <X style={{borderLeft:`3px solid ${C.p}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
-            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex{sess.stepper?` — ${sess.stepper}m ${sel==="monday"?"stairmaster":"stepper"}`:""}</div></div>
-          {data.wk[t]&&sel===dn?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span>:<B onClick={startW}>Start</B>}
+            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div></div>
+          {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
+            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={startW}>Start</B>}
         </div>
       </X>
       {sess.warmup&&(<S title="Warm-Up" collapsible>
@@ -1581,7 +1719,7 @@ const Training=({data,setData,workout,setWorkout,setTab})=>{
     <S title={`Workout History (${allWk.length})`} collapsible>
       {allWk.length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No workouts logged yet</div>
       :allWk.slice(0,15).map(([d,w])=>{
-        const wSess=PROG.days[w.day];
+        const wSess=data.program[w.day];
         const totalSets=w.exercises?w.exercises.reduce((s,e)=>s+(e.sets?.filter(s=>s.done).length||0),0):0;
         return(
           <X key={d} onClick={()=>setViewW([d,w])} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
@@ -1611,13 +1749,14 @@ const Nutrition=({data,setData})=>{
   const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
 
+  const [showWaterHist,setShowWaterHist]=useState(false);
   const [viewDate,setViewDate]=useState(t);
   const viewNut=data.nut[viewDate]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
   const tl=viewDate===t?viewNut:viewNut;
   const isViewingToday=viewDate===t;
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(viewDate,st),proT=getDayProTarget(viewDate,st);
-  const viewDayType=getDayType(viewDate);
+  const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
+  const viewDayType=getDayType(viewDate,data.travelDays);
   const viewFatPct=tl.totalCal>0?Math.round(((tl.totalFat||0)*9/tl.totalCal)*100):0;
   const waterToday=data.water?.[t]||0;
   const waterGoal=st.water||128;
@@ -1625,7 +1764,7 @@ const Nutrition=({data,setData})=>{
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const ml={...m,mealType:mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
+  const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
   const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
@@ -1635,6 +1774,7 @@ const Nutrition=({data,setData})=>{
   const [photoPreview,setPhotoPreview]=useState(null);
   const [portionSize,setPortionSize]=useState("normal");
   const fileRef=useRef(null);
+  const galRef=useRef(null);
 
   const handlePhoto=(e)=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -1643,12 +1783,13 @@ const Nutrition=({data,setData})=>{
     reader.onload=()=>{const b64=reader.result.split(",")[1];setPhoto({data:b64,mediaType:file.type});};
     reader.readAsDataURL(file);
   };
-  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";};
+  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";if(galRef.current)galRef.current.value="";};
 
   const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
     const fullInput=input?(input+portionHint):null;
-    try{const body={context:{calories:st.calories||2430,protein:st.protein||180}};
+    try{const body={context:{calories:st.calories||2430,protein:st.protein||180,
+      corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
       if(fullInput)body.input=fullInput;
       if(photo)body.image=photo;
       const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -1681,6 +1822,8 @@ const Nutrition=({data,setData})=>{
         </div>
         {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
         {meal.notes&&<div style={{fontSize:11,color:C.a,marginTop:2,fontStyle:"italic"}}>{meal.notes}</div>}
+        {meal.aiOriginal&&["cal","protein","carbs","fat"].some(k=>(meal[k]||0)!==(meal.aiOriginal[k]||0))&&
+          <div style={{fontSize:10,color:C.v,marginTop:3}}>Corrected from AI estimate ({meal.aiOriginal.cal} cal → {meal.cal} cal) — improves future estimates</div>}
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
             {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
@@ -1745,7 +1888,7 @@ const Nutrition=({data,setData})=>{
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
-        <span style={{fontWeight:600,color:C.t2}}>{viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
+        <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:C.t2}}>{viewDayType==="travel"?"Travel Day":viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <span>{calT} cal · {proT}g pro target</span>
       </div>
       {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:4,fontSize:11,color:C.r,fontWeight:600}}>
@@ -1779,7 +1922,10 @@ const Nutrition=({data,setData})=>{
           <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}</span>
           <span style={{fontSize:13,color:C.t3}}> / {waterGoal} oz</span>
         </div>
-        {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
+          {Object.keys(data.water||{}).length>1&&<button onClick={()=>setShowWaterHist(!showWaterHist)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{showWaterHist?"Hide":"7d"}</button>}
+        </div>
       </div>
       <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={8}/>
       <div style={{display:"flex",gap:6,marginTop:8}}>
@@ -1790,6 +1936,20 @@ const Nutrition=({data,setData})=>{
           }}>+{oz}oz</button>
         ))}
       </div>
+      {showWaterHist&&(()=>{
+        const entries=Object.entries(data.water||{}).filter(([d])=>d!==t).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+        const avg=entries.length?Math.round(entries.reduce((s,[_,v])=>s+v,0)/entries.length):0;
+        return(<div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:6}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days — avg {avg} oz</div>
+          {entries.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
+            <span style={{fontSize:12,color:C.t2}}>{fmt(d)}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:60}}><Br v={v} max={waterGoal} color={v>=waterGoal?C.g:C.p} h={4}/></div>
+              <span style={{fontSize:12,fontWeight:600,color:v>=waterGoal?C.g:C.t,width:40,textAlign:"right"}}>{v}oz</span>
+            </div>
+          </div>))}
+        </div>);
+      })()}
     </X>
 
     <div style={{display:"flex",gap:2}}>
@@ -1810,9 +1970,13 @@ const Nutrition=({data,setData})=>{
       <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}... (include portions for best accuracy)`}
         style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
+      <input ref={galRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
       <div style={{display:"flex",gap:4,marginTop:6,alignItems:"center"}}>
         <button onClick={()=>fileRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          {photo?"✓ Photo":"📷 Photo"}
+          📷 Camera
+        </button>
+        <button onClick={()=>galRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+          🖼 Gallery
         </button>
         {photo&&<button onClick={clearPhoto} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>✕</button>}
         <div style={{display:"flex",gap:2,flex:1}}>
@@ -1894,9 +2058,13 @@ const Weight=({data,setData})=>{
     <Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>
     <S title="History" collapsible>
       {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
-        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14}}>
+        const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);}};
+        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
-          <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
+            <button onClick={del} style={{background:"none",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:"2px 4px",opacity:0.6}}>✕</button>
+          </div>
         </div>);})}
     </S>
   </div>);
@@ -1983,12 +2151,37 @@ const Settings=({data,setData})=>{
   const isTravel=!!(data.travelDays||{})[t];
 
   const toggleTravel=()=>{
-    const nd={...data,travelDays:{...data.travelDays,[t]:!isTravel}};
-    setData(nd);sv(nd);
+    const newVal=!isTravel;
+    const nd={...data,travelDays:{...data.travelDays,[t]:newVal}};
+    setData(nd);sv(nd);svSB.travelDay(t,newVal);
   };
-  const logBodyComp=()=>{
-    const nd={...data,bodyComp:{...data.bodyComp,[t]:true}};
-    setData(nd);sv(nd);
+  const bcFileRef=useRef(null);
+  const [bcLoading,setBcLoading]=useState(false);
+  const [bcResult,setBcResult]=useState(null);
+  const [showBcHistory,setShowBcHistory]=useState(false);
+
+  const analyzeBodyComp=async(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    setBcLoading(true);setBcResult(null);
+    try{
+      const reader=new FileReader();
+      const base64=await new Promise((resolve)=>{reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});
+      const [header,dataStr]=base64.split(",");
+      const mediaType=header.match(/data:(.*?);/)?.[1]||"image/jpeg";
+      // Find previous assessment for comparison
+      const prevEntries=Object.entries(data.bodyComp||{}).filter(([d,v])=>d!==t&&v&&typeof v==="object"&&v.analysis).sort((a,b)=>b[0].localeCompare(a[0]));
+      const prev=prevEntries[0];
+      const context={currentWeight:data.wt[t]||Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]};
+      if(prev){context.previousAssessment=prev[1].analysis;context.previousDate=prev[0];}
+      const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:{mediaType,data:dataStr},context})});
+      const result=await resp.json();
+      if(resp.ok){
+        setBcResult(result);
+        const nd={...data,bodyComp:{...data.bodyComp,[t]:{photoTaken:true,analysis:result}}};setData(nd);sv(nd);svSB.bodyComp(t,{analysis:result});
+      }else{setBcResult({error:result.error||"Analysis failed"});}
+    }catch(err){setBcResult({error:err.message});}
+    setBcLoading(false);if(bcFileRef.current)bcFileRef.current.value="";
   };
 
   const saveSettings=()=>{
@@ -2056,8 +2249,11 @@ const Settings=({data,setData})=>{
 
     {/* ═══ BODY COMP ═══ */}
     <X>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Progress Photos</div>
-      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Take front + side photos in same lighting, same time. Repeat every 2-3 weeks. The mirror is your real measurement during recomp.</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>Progress Photos</div>
+        {Object.keys(data.bodyComp||{}).length>0&&<button onClick={()=>setShowBcHistory(!showBcHistory)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showBcHistory?"Hide":"History"}</button>}
+      </div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Upload a progress photo for AI body composition analysis. Same lighting, same time, every 2-3 weeks.</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
           {(()=>{const photoDates=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -2069,9 +2265,47 @@ const Settings=({data,setData})=>{
             </div>);
           })()}
         </div>
-        {data.bodyComp?.[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Logged</span>
-          :<B small onClick={logBodyComp}>Log Photo Taken</B>}
+        <input ref={bcFileRef} type="file" accept="image/*" capture="environment" onChange={analyzeBodyComp} style={{display:"none"}}/>
+        {bcLoading?<span style={{fontSize:12,color:C.p,fontWeight:600}}>Analyzing...</span>
+          :<B small onClick={()=>bcFileRef.current?.click()}>Upload Photo</B>}
       </div>
+      {(bcResult||data.bodyComp?.[t]?.analysis)&&!bcResult?.error&&(()=>{
+        const a=bcResult||data.bodyComp[t].analysis;
+        return(<div style={{marginTop:8,padding:10,background:C.bg,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:15,fontWeight:700,color:C.p}}>{a.bodyFatRange}</span>
+            <span style={{fontSize:11,color:C.t3}}>estimated BF%</span>
+          </div>
+          {a.muscleDevelopment?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",marginBottom:3}}>Muscle Development</div>
+            {a.muscleDevelopment.map((m,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{m}</div>))}
+          </div>)}
+          {a.areasOfProgress?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.g,textTransform:"uppercase",marginBottom:3}}>Progress</div>
+            {a.areasOfProgress.map((p,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{p}</div>))}
+          </div>)}
+          {a.focusAreas?.length>0&&(<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",marginBottom:3}}>Focus Areas</div>
+            {a.focusAreas.map((f,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.a}`,marginBottom:3}}>{f}</div>))}
+          </div>)}
+          {a.notes&&<div style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>{a.notes}</div>}
+        </div>);
+      })()}
+      {bcResult?.error&&<div style={{marginTop:6,fontSize:12,color:C.r}}>{bcResult.error}</div>}
+      {showBcHistory&&(()=>{
+        const entries=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));
+        return(<div style={{marginTop:8}}>
+          {entries.map(([date,v])=>{const a=typeof v==="object"?v.analysis:null;
+            return(<div key={date} style={{padding:"8px 0",borderTop:`1px solid ${C.bl}`}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.t}}>{fmt(date)}</span>
+                {a?.bodyFatRange&&<span style={{fontSize:13,fontWeight:600,color:C.p}}>{a.bodyFatRange}</span>}
+              </div>
+              {a?.notes&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{a.notes}</div>}
+            </div>);
+          })}
+        </div>);
+      })()}
     </X>
 
     <X>
@@ -2103,7 +2337,60 @@ const Settings=({data,setData})=>{
       <div style={{fontSize:13,color:C.t2}}>{PROG.name}</div>
       <div style={{fontSize:12,color:C.t3}}>Week {wkn(td())}/{PROG.weeks} · Started {fmt(PROG.start)}</div>
     </X>
+
+    <div style={{textAlign:"center",padding:"12px 0",fontSize:11,color:C.t3,opacity:0.5}}>Health Hub v2025.03.15</div>
   </div>);
+};
+
+// ═══ TOAST ═══
+const ToastStack=({toasts})=>{
+  if(!toasts.length)return null;
+  return(<div style={{position:"fixed",bottom:70,left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:6,maxWidth:440,width:"90%"}}>
+    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:C.v,color:"#fff",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,.15)",animation:"toastIn .3s ease"}}>{t.message}</div>))}
+  </div>);
+};
+
+// ═══ APPLY PROGRAM UPDATES ═══
+const applyProgramUpdates=async(currentData)=>{
+  const applied=[];
+  try{
+    const rows=await sb.select("program_updates","created_at","asc",50);
+    const pending=rows.filter(r=>!r.applied);
+    if(!pending.length)return{data:currentData,applied:[]};
+    const nd=JSON.parse(JSON.stringify(currentData));
+    for(const row of pending){
+      const c=typeof row.payload==="string"?JSON.parse(row.payload):row.payload;
+      try{
+        if(c.type==="settings"&&c.field){
+          const old=nd.settings[c.field];
+          nd.settings={...nd.settings,[c.field]:c.value};
+          applied.push(`${c.field}: ${old||"unset"} → ${c.value}`);
+        }else if(c.type==="exercise"){
+          if(c.action==="update"&&c.exerciseId){
+            for(const day of Object.values(nd.program)){
+              const ex=day.exercises?.find(e=>e.id===c.exerciseId);
+              if(ex&&c.fields){Object.assign(ex,c.fields);applied.push(`Updated ${ex.name}: ${Object.keys(c.fields).join(", ")}`);}
+            }
+          }else if(c.action==="swap"&&c.oldExerciseId&&c.newExercise){
+            for(const day of Object.values(nd.program)){
+              const idx=day.exercises?.findIndex(e=>e.id===c.oldExerciseId);
+              if(idx>=0){const oldName=day.exercises[idx].name;day.exercises[idx]=c.newExercise;applied.push(`Swapped ${oldName} → ${c.newExercise.name}`);}
+            }
+          }else if(c.action==="add"&&c.day&&c.exercise){
+            if(nd.program[c.day]){nd.program[c.day].exercises.push(c.exercise);applied.push(`Added ${c.exercise.name} to ${c.day}`);}
+          }else if(c.action==="remove"&&c.day&&c.exerciseId){
+            if(nd.program[c.day]){
+              const idx=nd.program[c.day].exercises.findIndex(e=>e.id===c.exerciseId);
+              if(idx>=0){const name=nd.program[c.day].exercises[idx].name;nd.program[c.day].exercises.splice(idx,1);applied.push(`Removed ${name} from ${c.day}`);}
+            }
+          }
+        }
+        // Mark applied in Supabase
+        await fetch(`${SB_URL}/rest/v1/program_updates?id=eq.${row.id}`,{method:"PATCH",headers:{...sbh,"Prefer":"return=minimal"},body:JSON.stringify({applied:true})});
+      }catch(e){console.error("[update] Failed to apply:",e);}
+    }
+    return{data:nd,applied};
+  }catch(e){console.error("[update] Error fetching updates:",e);return{data:currentData,applied:[]};}
 };
 
 // ═══ APP ═══
@@ -2115,10 +2402,17 @@ window.App = function App(){
   const setWorkout=(v)=>{setWorkoutRaw(v);try{if(v)localStorage.setItem("dhub6_workout",JSON.stringify(v));else localStorage.removeItem("dhub6_workout");}catch{}};
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
+  const [toasts,setToasts]=useState([]);
+  const addToast=useCallback((message,type="info")=>{
+    const id=Date.now()+Math.random();
+    setToasts(p=>[...p,{id,message,type}]);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),4000);
+  },[]);
 
   useEffect(()=>{
     (async()=>{
       const sbData=await loadFromSB();
+      let finalData;
       if(sbData){
         const local=ld();
         if(local){
@@ -2133,7 +2427,7 @@ window.App = function App(){
               final[k]=sbData[k];
             }
           });
-          setData(final);sv(final);
+          finalData=final;
           const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
           const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
           if(localHasData&&sbEmpty){
@@ -2143,9 +2437,15 @@ window.App = function App(){
             setTimeout(()=>setSyncStatus(""),3000);
           }
         }else{
-          setData(sbData);sv(sbData);
+          finalData=sbData;
         }
+      }else{
+        finalData=data;
       }
+      // Apply pending program updates from Supabase queue
+      const{data:updated,applied}=await applyProgramUpdates(finalData);
+      setData(updated);sv(updated);
+      applied.forEach(msg=>addToast(msg,"success"));
       setSbLoaded(true);
     })();
   },[]);
@@ -2157,19 +2457,20 @@ window.App = function App(){
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
-      {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")}/>}
+      {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
       <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
-        {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab}/>}
+        {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
         {tab==="recovery"&&<Recovery data={data} setData={setData}/>}
         {tab==="settings"&&<Settings data={data} setData={setData}/>}
       </div>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
+      <ToastStack toasts={toasts}/>
     </div>
   );
 }

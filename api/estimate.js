@@ -49,6 +49,17 @@ CRITICAL RULES:
 
 ${context ? `USER CONTEXT: Daily targets are ${context.calories || 2430} cal, ${context.protein || 180}g protein. Use this to sanity-check — a single meal for this person is typically 400-900 cal unless it's clearly a large meal.` : ''}
 
+${context?.corrections?.length ? `USER CORRECTION HISTORY — This user has corrected your past estimates. Calibrate your estimates to match their specific portions, brands, and cooking style:
+${context.corrections.slice(0,10).map(c =>
+  `- "${c.raw||c.description}": AI estimated ${c.aiEstimate.cal}cal/${c.aiEstimate.protein}gP/${c.aiEstimate.carbs}gC/${c.aiEstimate.fat}gF → User corrected to ${c.userCorrection.cal}cal/${c.userCorrection.protein}gP/${c.userCorrection.carbs}gC/${c.userCorrection.fat}gF`
+).join('\n')}
+If you see a similar food item, adjust your estimates toward the user's correction patterns.` : ''}
+
+${context?.recentMeals?.length ? `RECENT MEALS (for portion pattern context):
+${context.recentMeals.slice(0,10).map(m =>
+  `- ${m.description}: ${m.cal}cal, ${m.protein}gP (${m.source})`
+).join('\n')}` : ''}
+
 Return ONLY valid JSON (no markdown, no backticks):
 {"description":"concise meal name","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"components":[{"item":"specific item with portion","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number}],"confidence":"high|medium|low","notes":"brief note if portion was assumed or ambiguous"}`;
 

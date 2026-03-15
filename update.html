@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Hub — Push Update</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f6f8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: 12px; padding: 24px; max-width: 520px; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  p { font-size: 13px; color: #5f6368; margin-bottom: 16px; }
+  label { font-size: 12px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 6px; }
+  input, textarea { width: 100%; border: 1px solid #dfe3e8; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; margin-bottom: 12px; }
+  textarea { height: 200px; font-family: monospace; font-size: 13px; resize: vertical; }
+  button { background: #6a1b9a; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
+  button:hover { background: #7b1fa2; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .result { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .result.ok { background: #e6f4ea; color: #0d7c3e; }
+  .result.err { background: #fce8e6; color: #c5221f; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Push Program Update</h1>
+  <p>Paste the HEALTH_HUB_UPDATE JSON from your Claude conversation below.</p>
+
+  <label>Bearer Token</label>
+  <input type="password" id="token" placeholder="Your UPDATE_TOKEN" />
+
+  <label>Update JSON</label>
+  <textarea id="json" placeholder='{"changes":[{"type":"settings","field":"trainingCal","value":2800}],"reason":"Bumping training cals"}'></textarea>
+
+  <button id="btn" onclick="pushUpdate()">Push to Health Hub</button>
+  <div id="result"></div>
+</div>
+<script>
+  // Persist token in localStorage
+  const tokenInput = document.getElementById('token');
+  tokenInput.value = localStorage.getItem('hh_update_token') || '';
+  tokenInput.addEventListener('input', () => localStorage.setItem('hh_update_token', tokenInput.value));
+
+  async function pushUpdate() {
+    const token = document.getElementById('token').value.trim();
+    const jsonStr = document.getElementById('json').value.trim();
+    const result = document.getElementById('result');
+    const btn = document.getElementById('btn');
+
+    if (!token) { result.className = 'result err'; result.textContent = 'Token required'; return; }
+    if (!jsonStr) { result.className = 'result err'; result.textContent = 'JSON required'; return; }
+
+    let payload;
+    try { payload = JSON.parse(jsonStr); } catch(e) { result.className = 'result err'; result.textContent = 'Invalid JSON: ' + e.message; return; }
+
+    btn.disabled = true; btn.textContent = 'Pushing...'; result.textContent = '';
+
+    try {
+      const r = await fetch('/api/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        result.className = 'result ok';
+        result.textContent = 'Pushed ' + d.count + ' change(s). Open Health Hub to apply.';
+        document.getElementById('json').value = '';
+      } else {
+        result.className = 'result err';
+        result.textContent = 'Error: ' + (d.error || r.statusText);
+      }
+    } catch(e) {
+      result.className = 'result err';
+      result.textContent = 'Network error: ' + e.message;
+    }
+    btn.disabled = false; btn.textContent = 'Push to Health Hub';
+  }
+</script>
+</body>
+</html>
