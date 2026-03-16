@@ -42,10 +42,12 @@ IMPORTANT: Only include actions when the athlete explicitly asks for a change. N
     try {
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
-      if (parsed.answer) {
-        return res.status(200).json({ answer: parsed.answer, actions: parsed.actions || [] });
+      const answer = parsed.answer || parsed.response || parsed.text || parsed.message;
+      if (answer) {
+        return res.status(200).json({ answer, actions: parsed.actions || [] });
       }
-      // JSON parsed but no answer field — fall through to plain text
+      // JSON parsed but no recognizable answer field — return as plain text
+      return res.status(200).json({ answer: text, actions: parsed.actions || [] });
     } catch {}
 
     // Fallback: plain text answer

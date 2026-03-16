@@ -1591,6 +1591,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [mobTimer,setMobTimer]=useState(0);
   const mobStartRef=useRef(null);
   const mobIvRef=useRef(null);
+  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem("dhub6_mob_active"));
+    if(saved?.running&&saved.startedAt&&!mobDone){mobStartRef.current=saved.startedAt;setMobRunning(true);setShowMob(true);
+      setMobTimer(Math.floor((Date.now()-saved.startedAt)/1000));
+      mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);
+    }else{localStorage.removeItem("dhub6_mob_active");}
+  }catch{}},[]); // restore in-progress mobility on mount
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
@@ -1675,13 +1681,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);svSB.delStepper(t);setStpDone(false);};
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
-  const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
+  const startMob=()=>{const st=Date.now();mobStartRef.current=st;setMobRunning(true);setMobTimer(0);setShowMob(true);
+    try{localStorage.setItem("dhub6_mob_active",JSON.stringify({running:true,startedAt:st}));}catch{}
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
   const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
+    try{localStorage.removeItem("dhub6_mob_active");}catch{}
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
     const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
   const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);svSB.delMobility(t);
+    try{localStorage.removeItem("dhub6_mob_active");}catch{}
     setMobDone(false);setMobRunning(false);setShowMob(false);};
   const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
 
@@ -3095,8 +3104,17 @@ window.App = function App(){
         if(local){
           const merged=migrate(local);
           const final={...merged};
+          // Smart merge: local wins for date-keyed data (user's most recent actions),
+          // Supabase fills in anything missing locally
+          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays"]);
           Object.keys(sbData).forEach(k=>{
-            if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
+            if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
+              // For date-keyed data: start with Supabase, then overlay local (local wins)
+              final[k]={...sbData[k],...merged[k]};
+            }else if(k==="prog"&&typeof sbData[k]==="object"&&sbData[k]!==null){
+              // Progression: local wins (most recent workout actions)
+              final[k]={...sbData[k],...merged[k]};
+            }else if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               final[k]={...merged[k],...sbData[k]};
             }else if(Array.isArray(sbData[k])&&sbData[k].length>0){
               final[k]=sbData[k];
