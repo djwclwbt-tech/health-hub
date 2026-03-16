@@ -2257,7 +2257,8 @@ const Nutrition=({data,setData})=>{
       if(fullInput&&!photo){
         try{
           const slr=await fetch("/api/smart-lookup",{method:"POST",headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({input:fullInput,context:{calories:st.calories||2430,protein:st.protein||180}})});
+            body:JSON.stringify({input:fullInput,context:{calories:st.calories||2430,protein:st.protein||180,
+              corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}})});
           const sld=await slr.json();
           if(slr.ok&&sld.cal>0){
             const src=sld.method==="usda"?"usda":sld.method==="off"?"lookup":"ai";
