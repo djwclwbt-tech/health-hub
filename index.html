@@ -217,6 +217,8 @@ const syncToSB=async(d)=>{
       for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
         await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
       for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
+      if(d.settings)await sb.upsert("settings",{id:"user",...d.settings},"id");
+      if(d.program)await sb.upsert("program",{id:"user",data:d.program},"id");
       console.log("[SB] Full sync complete");
     }catch(e){console.error("[SB] Sync error:",e);}
   },2000);
@@ -242,16 +244,26 @@ const svSB={
   cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true}),
   bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
   travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
+  settings:(s)=>sb.upsert("settings",{id:"user",...s},"id"),
+  program:(p)=>sb.upsert("program",{id:"user",data:p},"id"),
+  delWeight:(date)=>sb.deleteRow("weight","date",date),
+  delStepper:(date)=>sb.deleteRow("stepper","date",date),
+  delCardio:(date)=>sb.deleteRow("cardio","date",date),
+  delWorkout:(date)=>sb.deleteRow("workouts","date",date),
+  delMobility:(date)=>sb.deleteRow("mobility","date",date),
+  delWater:(date)=>sb.deleteRow("water","date",date),
+  delQuickMeal:(desc)=>sb.deleteRow("quick_meals","description",desc),
 };
 
 const loadFromSB=async()=>{
   try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief,cardio,bodyComp,travel]=await Promise.all([
+    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief,cardio,bodyComp,travel,settingsRows,programRows]=await Promise.all([
       sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
       sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
       sb.select("progression","exercise_id","asc"),sb.select("quick_meals","created_at","asc"),
       sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
       sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
+      sb.select("settings","id","asc",1),sb.select("program","id","asc",1),
     ]);
     const d=bl();
     wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
@@ -274,6 +286,8 @@ const loadFromSB=async()=>{
     cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
+    if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,mondayCal:s.mondayCal||s.monday_cal,trainingCal:s.trainingCal||s.training_cal,weekendCal:s.weekendCal||s.weekend_cal};}
+    if(programRows.length>0&&programRows[0].data){d.program=programRows[0].data;}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
 };
@@ -1348,16 +1362,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
-  const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);setStpDone(false);};
-  const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);};
-  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);};
+  const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);svSB.delStepper(t);setStpDone(false);};
+  const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
+  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
   const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
   const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
     const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
-  const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);
+  const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);svSB.delMobility(t);
     setMobDone(false);setMobRunning(false);setShowMob(false);};
   const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
 
@@ -1382,7 +1396,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         }
       }catch(e){console.error("[coach] Failed to apply action:",e);}
     });
-    setData(nd);sv(nd);
+    setData(nd);sv(nd);svSB.program(nd.program);if(nd.settings)svSB.settings(nd.settings);
   };
 
   const askCoach=async(q,exIdx)=>{
@@ -1766,10 +1780,10 @@ const Nutrition=({data,setData})=>{
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
   const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
-  const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);setSelM(null);};
+  const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
   const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
-  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);};
+  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
 
   const [photo,setPhoto]=useState(null);
   const [photoPreview,setPhotoPreview]=useState(null);
@@ -2256,7 +2270,7 @@ const Weight=({data,setData})=>{
     <Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>
     <S title="History" collapsible>
       {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
-        const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);}};
+        const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);svSB.delWeight(d);}};
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2386,7 +2400,7 @@ const Settings=({data,setData})=>{
     const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
       mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500}};
-    setData(nd);sv(nd);setSaved(true);setTimeout(()=>setSaved(false),2000);
+    setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
   const exportData=()=>{
@@ -2397,7 +2411,8 @@ const Settings=({data,setData})=>{
   };
 
   const deleteQm=(i)=>{
-    const nd={...data,qm:(data.qm||[]).filter((_,j)=>j!==i)};setData(nd);sv(nd);setShowDeleteQm(null);
+    const desc=(data.qm||[])[i]?.description;
+    const nd={...data,qm:(data.qm||[]).filter((_,j)=>j!==i)};setData(nd);sv(nd);if(desc)svSB.delQuickMeal(desc);setShowDeleteQm(null);
   };
 
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
