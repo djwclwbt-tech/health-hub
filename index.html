@@ -338,8 +338,9 @@ const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   qm:d.qm||d.quickMeals||[],mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
   settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
-const td=()=>new Date().toISOString().split("T")[0];
-const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split("T")[0];};
+const lds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const td=()=>lds(new Date());
+const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return lds(d)};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
@@ -423,7 +424,7 @@ const PROTEIN_CHECKPOINTS=[
 const getWeeklyRecoveryAvg=(rec)=>{
   const now=new Date();const entries=[];
   for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);
-    const ds=d.toISOString().split("T")[0];
+    const ds=lds(d);
     if(rec[ds]?.recoveryScore)entries.push(rec[ds].recoveryScore);}
   return entries.length>=3?Math.round(entries.reduce((a,b)=>a+b,0)/entries.length):null;
 };
@@ -436,7 +437,7 @@ const getAutoregulation=(avgRec)=>{
 const getConsecutiveRedDays=(rec)=>{
   let count=0;const now=new Date();
   for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);
-    const ds=d.toISOString().split("T")[0];
+    const ds=lds(d);
     if(rec[ds]?.recoveryScore&&rec[ds].recoveryScore<34)count++;else break;}
   return count;
 };
@@ -472,7 +473,7 @@ const getWeightTrend=(wt)=>{
   const entries=Object.entries(wt).sort((a,b)=>a[0].localeCompare(b[0]));
   if(entries.length<2)return null;
   const now=new Date();const weekAgo=new Date(now);weekAgo.setDate(weekAgo.getDate()-7);
-  const weekStr=weekAgo.toISOString().split("T")[0];
+  const weekStr=lds(weekAgo);
   const recent=entries.filter(([d])=>d>=weekStr);
   const older=entries.filter(([d])=>d<weekStr);
   if(recent.length<1||older.length<1)return null;
@@ -783,7 +784,7 @@ const AnalysisSection=({data})=>{
     try{
       const days=range==="7d"?7:range==="14d"?14:30;
       const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);
-      const cutStr=cutoff.toISOString().split("T")[0];
+      const cutStr=lds(cutoff);
 
       // Summarize data within range
       const wkEntries=Object.entries(data.wk||{}).filter(([d])=>d>=cutStr);
@@ -1014,7 +1015,7 @@ const Dashboard=({data,setData})=>{
   const ws=rec?.recoveryScore;
 
   let streak=0;const sd=new Date();
-  for(let i=0;i<60;i++){const ds=sd.toISOString().split("T")[0];const d=dw(ds);
+  for(let i=0;i<60;i++){const ds=lds(sd);const d=dw(ds);
     if(["saturday","sunday"].includes(d)){sd.setDate(sd.getDate()-1);continue;}
     if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
 
@@ -1775,7 +1776,7 @@ const Nutrition=({data,setData})=>{
   const viewFatPct=tl.totalCal>0?Math.round(((tl.totalFat||0)*9/tl.totalCal)*100):0;
   const waterToday=data.water?.[t]||0;
   const waterGoal=st.water||128;
-  const navDate=(dir)=>{const d=new Date(viewDate+"T12:00:00");d.setDate(d.getDate()+dir);const ds=d.toISOString().split("T")[0];if(ds<=t)setViewDate(ds);};
+  const navDate=(dir)=>{const d=new Date(viewDate+"T12:00:00");d.setDate(d.getDate()+dir);const ds=lds(d);if(ds<=t)setViewDate(ds);};
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
