@@ -344,6 +344,28 @@ const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   qm:d.qm||d.quickMeals||[],mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
   settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
+
+// Historical MFP data seed for TDEE bootstrap
+const SEED_DATA=[
+  {date:"2026-03-09",cal:1986,protein:172,carbs:152,fat:55,weight:188.7},
+  {date:"2026-03-10",cal:1844,protein:176,carbs:175,fat:49,weight:188.2},
+  {date:"2026-03-11",cal:2119,protein:200,carbs:231,fat:52,weight:188.5},
+  {date:"2026-03-12",cal:2358,protein:208,carbs:229,fat:65,weight:186.5},
+  {date:"2026-03-13",cal:2602,protein:217,carbs:213,fat:107,weight:185.0},
+  {date:"2026-03-14",cal:2809,protein:212,carbs:215,fat:157,weight:181.4},
+  {date:"2026-03-15",cal:3000,protein:180,carbs:0,fat:0,weight:182.8},
+];
+const seedHistorical=(d)=>{
+  for(const s of SEED_DATA){
+    if(!d.wt[s.date])d.wt[s.date]=s.weight;
+    if(!d.nut[s.date]||!d.nut[s.date].totalCal){
+      d.nut[s.date]={meals:[{description:"MFP Import",cal:s.cal,protein:s.protein,carbs:s.carbs,fat:s.fat,fiber:0,source:"import"}],
+        totalCal:s.cal,totalProtein:s.protein,totalCarbs:s.carbs,totalFat:s.fat,totalFiber:0};
+    }
+  }
+  return d;
+};
+
 const lds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const td=()=>lds(new Date());
 const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return lds(d)};
@@ -541,27 +563,30 @@ const getInsights=(data)=>{
 };
 
 const getRecompScore=(data)=>{
-  const wEntries=Object.entries(data.wt||{}).sort((a,b)=>a[0].localeCompare(b[0]));
+  const planStart=PROG.start;
+  const wEntries=Object.entries(data.wt||{}).filter(([d])=>d>=planStart).sort((a,b)=>a[0].localeCompare(b[0]));
   if(wEntries.length<3)return null;
-  const recent=wEntries.slice(-7),older=wEntries.slice(-14,-7);
-  if(recent.length<2||older.length<1)return null;
-  const rAvg=recent.reduce((s,[_,v])=>s+v,0)/recent.length;
-  const oAvg=older.reduce((s,[_,v])=>s+v,0)/older.length;
-  const wkChange=Math.abs(rAvg-oAvg);
+  const mid=Math.floor(wEntries.length/2);
+  const firstHalf=wEntries.slice(0,mid),secondHalf=wEntries.slice(mid);
+  if(secondHalf.length<1||firstHalf.length<1)return null;
+  const rAvg=secondHalf.reduce((s,[_,v])=>s+v,0)/secondHalf.length;
+  const oAvg=firstHalf.reduce((s,[_,v])=>s+v,0)/firstHalf.length;
+  const weeks=Math.max(1,(new Date(wEntries[wEntries.length-1][0])-new Date(wEntries[0][0]))/6048e5);
+  const wkChange=Math.abs(rAvg-oAvg)/weeks;
   const wScore=wkChange<=0.5?100:wkChange<=1?85:wkChange<=1.5?65:wkChange<=2?45:20;
   const totalL=Object.keys(data.prog||{}).length;
   const progL=Object.values(data.prog||{}).filter(p=>p.progressed).length;
   const lScore=totalL>0?Math.round(progL/totalL*100):50;
-  const dates=Object.keys(data.nut||{}).sort().reverse().slice(0,14);
+  const nutDates=Object.keys(data.nut||{}).filter(d=>d>=planStart).sort();
   let pH=0,pDays=0;
-  for(const d of dates){
+  for(const d of nutDates){
     const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays);
     const p=data.nut[d]?.totalProtein||0;
     if(p>0){pDays++;if(p>=pt)pH++;}
   }
   const pScore=pDays>0?Math.round(pH/pDays*100):50;
   const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
-  return{score:total,weight:{score:wScore,change:+(rAvg-oAvg).toFixed(1)},
+  return{score:total,weight:{score:wScore,change:+((rAvg-oAvg)/weeks).toFixed(1)},
     lifts:{score:lScore,progressed:progL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
 };
 
@@ -580,6 +605,39 @@ const getFrequentMeals=(data)=>{
   return Object.values(map).filter(m=>m.n>=2)
     .map(m=>({description:m.desc,cal:avg(m.cs),protein:avg(m.ps),carbs:avg(m.bs),fat:avg(m.fs),fiber:avg(m.fbs),count:m.n}))
     .sort((a,b)=>b.n-a.n).slice(0,30);
+};
+
+const calcEWMA=(values,alpha=0.1)=>{
+  if(!values.length)return[];
+  const result=[values[0]];
+  for(let i=1;i<values.length;i++)result.push(alpha*values[i]+(1-alpha)*result[i-1]);
+  return result;
+};
+
+const calcAdaptiveTDEE=(wt,nut,settings,travelDays)=>{
+  const planStart=PROG.start;
+  const allDates=[];
+  const today=td();
+  let d=new Date(planStart+"T12:00:00");
+  while(lds(d)<=today){allDates.push(lds(d));d.setDate(d.getDate()+1);}
+  const paired=allDates.filter(dt=>wt[dt]!=null&&nut[dt]?.totalCal>0);
+  if(paired.length<3)return{daysUsed:paired.length,daysNeeded:7,phase:"collecting"};
+  const weights=paired.map(dt=>wt[dt]);
+  const calories=paired.map(dt=>nut[dt].totalCal);
+  const trendW=calcEWMA(weights,0.1);
+  const smoothCal=calcEWMA(calories,0.3);
+  const avgCal=Math.round(smoothCal.reduce((s,v)=>s+v,0)/smoothCal.length);
+  const firstW=trendW[0],lastW=trendW[trendW.length-1];
+  const totalDays=Math.max(1,(new Date(paired[paired.length-1])-new Date(paired[0]))/864e5);
+  const weeklyChange=(lastW-firstW)/(totalDays/7);
+  const tdee=Math.round(avgCal-(weeklyChange*3500/7));
+  const confidence=Math.min(95,Math.round(paired.length*4.5));
+  const calT=getDayCalTarget(today,settings,travelDays);
+  const deficit=tdee-calT;
+  const trendWeight=+trendW[trendW.length-1].toFixed(1);
+  return{tdee,confidence,avgCalories:avgCal,weeklyChange:+weeklyChange.toFixed(2),
+    daysUsed:paired.length,phase:paired.length<7?"collecting":confidence<60?"early":"confident",
+    deficit,trendWeight,trendWeights:paired.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
 };
 
 const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
@@ -1126,6 +1184,7 @@ const Dashboard=({data,setData})=>{
   const calT=getDayCalTarget(t,st,data.travelDays),proT=getDayProTarget(t,st,data.travelDays);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
   const dayType=getDayType(t,data.travelDays);
+  const tdeeData=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
   const redDays=getConsecutiveRedDays(data.rec);
@@ -1254,6 +1313,59 @@ const Dashboard=({data,setData})=>{
         <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{dayType==="monday"?"Monday (Light)":dayType==="training"?"Training Day":"Weekend"}</div>
         <div style={{fontSize:12,color:C.t2}}>{calT} cal · {proT}g protein target</div>
       </X>
+
+      {/* ═══ ADAPTIVE TDEE ═══ */}
+      {(()=>{
+        const td=tdeeData;
+        if(!td)return null;
+        const borderColor=td.phase==="confident"?C.g:td.phase==="early"?C.a:C.p;
+        if(td.phase==="collecting")return(
+          <X style={{padding:12,borderLeft:`3px solid ${C.p}`}}>
+            <L>Adaptive TDEE</L>
+            <div style={{fontSize:14,fontWeight:600,color:C.t2,marginTop:4}}>Collecting data...</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:4}}>Log weight + meals for {Math.max(1,7-td.daysUsed)} more day{7-td.daysUsed!==1?"s":""} to unlock your personalized TDEE</div>
+            <div style={{marginTop:8}}><Br v={td.daysUsed} max={7} color={C.p} h={6}/></div>
+            <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{td.daysUsed}/7 days</div>
+          </X>
+        );
+        const deficitLabel=td.deficit>0?"surplus":td.deficit<0?"deficit":"on target";
+        const deficitColor=td.deficit>0?C.a:td.deficit<0?C.g:C.t2;
+        const paceLabel=td.weeklyChange<0?`~${Math.abs(td.weeklyChange).toFixed(1)} lbs/wk loss`
+          :td.weeklyChange>0?`~${td.weeklyChange.toFixed(1)} lbs/wk gain`:"weight stable";
+        return(
+          <X style={{padding:12,borderLeft:`3px solid ${borderColor}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <L>Adaptive TDEE{td.phase==="early"?" — early estimate":""}</L>
+              <span style={{fontSize:10,color:C.t3}}>{td.daysUsed}d of data</span>
+            </div>
+            <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
+              <span style={{fontSize:26,fontWeight:800,color:C.t}}>{td.phase==="early"?"~":""}{td.tdee.toLocaleString()}</span>
+              <span style={{fontSize:13,color:C.t3}}>cal/day</span>
+            </div>
+            <Br v={td.confidence} max={100} color={borderColor} h={5}/>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.phase==="early"?" — keep logging for accuracy":""}</div>
+            {td.phase==="confident"&&(<>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                  <div style={{fontSize:14,fontWeight:700,color:td.weeklyChange<0?C.g:td.weeklyChange>0?C.a:C.t2}}>{td.weeklyChange>0?"+":""}{td.weeklyChange.toFixed(1)}</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
+                </div>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                  <div style={{fontSize:14,fontWeight:700,color:C.t2}}>{td.avgCalories.toLocaleString()}</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>avg in</div>
+                </div>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                  <div style={{fontSize:14,fontWeight:700,color:deficitColor}}>{Math.abs(td.deficit)}</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{deficitLabel}</div>
+                </div>
+              </div>
+              <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:4,fontSize:11,color:C.g}}>
+                Eating {Math.abs(td.deficit)} cal {td.deficit<0?"below":"above"} TDEE — {paceLabel}
+              </div>
+            </>)}
+          </X>
+        );
+      })()}
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         <X style={{padding:10}}>
@@ -1479,6 +1591,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [mobTimer,setMobTimer]=useState(0);
   const mobStartRef=useRef(null);
   const mobIvRef=useRef(null);
+  useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem("dhub6_mob_active"));
+    if(saved?.running&&saved.startedAt&&!mobDone){mobStartRef.current=saved.startedAt;setMobRunning(true);setShowMob(true);
+      setMobTimer(Math.floor((Date.now()-saved.startedAt)/1000));
+      mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);
+    }else{localStorage.removeItem("dhub6_mob_active");}
+  }catch{}},[]); // restore in-progress mobility on mount
   const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
@@ -1563,13 +1681,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);svSB.delStepper(t);setStpDone(false);};
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
-  const startMob=()=>{mobStartRef.current=Date.now();setMobRunning(true);setMobTimer(0);setShowMob(true);
+  const startMob=()=>{const st=Date.now();mobStartRef.current=st;setMobRunning(true);setMobTimer(0);setShowMob(true);
+    try{localStorage.setItem("dhub6_mob_active",JSON.stringify({running:true,startedAt:st}));}catch{}
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
   const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
+    try{localStorage.removeItem("dhub6_mob_active");}catch{}
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
     const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
     setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
   const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);svSB.delMobility(t);
+    try{localStorage.removeItem("dhub6_mob_active");}catch{}
     setMobDone(false);setMobRunning(false);setShowMob(false);};
   const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
 
@@ -1988,6 +2109,9 @@ const Nutrition=({data,setData})=>{
   const [portionSize,setPortionSize]=useState("normal");
   const fileRef=useRef(null);
   const galRef=useRef(null);
+  const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
+  const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
+  const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
 
   // Barcode scan state
   const [scanResult,setScanResult]=useState(null);
@@ -2248,6 +2372,57 @@ const Nutrition=({data,setData})=>{
       </div>)}
     </X>
 
+    {/* ═══ TDEE SMART BANNER ═══ */}
+    {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
+      <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
+        <div style={{fontSize:11,color:C.t2}}>
+          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit<0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit<0?"deficit":"surplus"}</span>
+        </div>
+        <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
+      </div>
+    )}
+
+    {/* ═══ TDEE ADJUST MODAL ═══ */}
+    {showTDEEAdjust&&nutTDEE&&nutTDEE.tdee&&(
+      <X style={{padding:14,borderLeft:`3px solid ${C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <L>Adjust Targets Based on TDEE</L>
+          <button onClick={()=>setShowTDEEAdjust(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:16}}>✕</button>
+        </div>
+        <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Your adaptive TDEE: <span style={{fontWeight:700,color:C.t}}>{nutTDEE.tdee.toLocaleString()} cal/day</span></div>
+        {[
+          {id:"aggressive_cut",label:"Aggressive cut",offset:-500,desc:"~1 lb/wk loss"},
+          {id:"moderate_cut",label:"Moderate cut",offset:-250,desc:"~0.5 lb/wk loss"},
+          {id:"maintenance",label:"Maintenance",offset:0,desc:"maintain weight"},
+          {id:"lean_bulk",label:"Lean bulk",offset:200,desc:"~0.4 lb/wk gain"}
+        ].map(opt=>(
+          <div key={opt.id} onClick={()=>setTdeeGoal(opt.id)} style={{
+            display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:4,
+            background:tdeeGoal===opt.id?C.pl:C.bg,borderRadius:6,cursor:"pointer",
+            border:tdeeGoal===opt.id?`2px solid ${C.p}`:`2px solid transparent`
+          }}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:C.t}}>{opt.label} <span style={{fontWeight:400,color:C.t3}}>({opt.offset>0?"+":""}{opt.offset})</span></div>
+              <div style={{fontSize:11,color:C.t3}}>{opt.desc}</div>
+            </div>
+            <div style={{fontSize:15,fontWeight:700,color:tdeeGoal===opt.id?C.p:C.t2}}>{(nutTDEE.tdee+opt.offset).toLocaleString()}</div>
+          </div>
+        ))}
+        <B full color={C.p} onClick={()=>{
+          const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0,lean_bulk:200}[tdeeGoal]||0;
+          const newCal=nutTDEE.tdee+opt;
+          const ratio=newCal/(st.calories||2430);
+          const nd={...data,settings:{...st,
+            calories:Math.round(newCal),
+            trainingCal:Math.round((st.trainingCal||2600)*ratio),
+            weekendCal:Math.round((st.weekendCal||2500)*ratio),
+            mondayCal:Math.round((st.mondayCal||1300)*ratio)
+          }};
+          setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
+        }} style={{marginTop:8}}>Apply to Settings</B>
+      </X>
+    )}
+
     {/* ═══ PROTEIN CHECKPOINTS ═══ */}
     {viewDayType==="training"&&isViewingToday&&(<X style={{padding:10}}>
       <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Protein Checkpoints</div>
@@ -2503,11 +2678,14 @@ const Nutrition=({data,setData})=>{
 // ═══ WEIGHT ═══
 const Weight=({data,setData})=>{
   const [nw,setNw]=useState("");const t=td();
+  const st=data.settings||DEFAULTS;
   const entries=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
   const latest=entries[0]?.[1],oldest=entries[entries.length-1]?.[1];
   const tc=latest&&oldest?(latest-oldest).toFixed(1):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getWeightTrend(data.wt);
+  const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
+  const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Scale</div>
@@ -2521,12 +2699,48 @@ const Weight=({data,setData})=>{
       <div style={{display:"flex",gap:6,marginTop:4}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:18}}/><B onClick={add}>Log</B></div>
       {data.wt[t]&&<div style={{fontSize:13,color:C.g,marginTop:4,fontWeight:600}}>Today: {data.wt[t]} lbs</div>}
     </X>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+    <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
       <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
+      {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
       <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
       <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
     </div>
-    <Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>
+    {/* Weight chart with trend line overlay */}
+    {trendWeights&&trendWeights.length>=2?(()=>{
+      const rawPts=trendWeights.map(tw=>({v:tw.raw,d:tw.d.slice(5)}));
+      const trendPts=trendWeights.map(tw=>({v:tw.v,d:tw.d.slice(5)}));
+      const allVals=[...rawPts.map(p=>p.v),...trendPts.map(p=>p.v)];
+      const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1,pad=rng*0.12;
+      const w=rawPts.length*32,h=52;
+      const toY=v=>h-6-((v-(mn-pad))/(rng+pad*2))*(h-16);
+      const rawLine=rawPts.map((p,i)=>`${i*(w/(rawPts.length-1))},${toY(p.v)}`).join(" ");
+      const trendLine=trendPts.map((p,i)=>`${i*(w/(trendPts.length-1))},${toY(p.v)}`).join(" ");
+      return(
+        <X style={{padding:"10px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight + Trend</span>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:10,color:C.t3}}>· raw</span>
+              <span style={{fontSize:10,color:C.g}}>— trend</span>
+              <span style={{fontSize:13,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight} lbs</span>
+            </div>
+          </div>
+          <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
+            <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1" strokeDasharray="3,3" strokeLinecap="round"/>
+            {rawPts.map((p,i)=><circle key={i} cx={i*(w/(rawPts.length-1))} cy={toY(p.v)} r="2.5" fill={C.cd} stroke={C.t3} strokeWidth="1"/>)}
+            <polyline points={trendLine} fill="none" stroke={C.g} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}>
+            <span>{rawPts[0]?.d}</span><span>{rawPts[rawPts.length-1]?.d}</span>
+          </div>
+          {wtTDEE.weeklyChange!==0&&(
+            <div style={{marginTop:6,fontSize:11,color:wtTDEE.weeklyChange<0?C.g:C.a,fontWeight:600}}>
+              Trend: {wtTDEE.weeklyChange>0?"+":""}{wtTDEE.weeklyChange.toFixed(1)} lbs/wk
+            </div>
+          )}
+        </X>
+      );
+    })():<Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>}
     <S title="History" collapsible>
       {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
         const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);svSB.delWeight(d);}};
@@ -2868,7 +3082,7 @@ const applyProgramUpdates=async(currentData)=>{
 // ═══ APP ═══
 window.App = function App(){
   const [tab,setTab]=useState("dashboard");
-  const [data,setData]=useState(()=>{const raw=ld();return raw?migrate(raw):bl();});
+  const [data,setData]=useState(()=>{const raw=ld();return seedHistorical(raw?migrate(raw):bl());});
   const [showD,setShowD]=useState(()=>!(data.debrief||{})[td()]);
   const [workout,setWorkoutRaw]=useState(()=>{try{const w=localStorage.getItem("dhub6_workout");return w?JSON.parse(w):null;}catch{return null;}});
   const setWorkout=(v)=>{setWorkoutRaw(v);try{if(v)localStorage.setItem("dhub6_workout",JSON.stringify(v));else localStorage.removeItem("dhub6_workout");}catch{}};
@@ -2890,8 +3104,17 @@ window.App = function App(){
         if(local){
           const merged=migrate(local);
           const final={...merged};
+          // Smart merge: local wins for date-keyed data (user's most recent actions),
+          // Supabase fills in anything missing locally
+          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays"]);
           Object.keys(sbData).forEach(k=>{
-            if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
+            if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
+              // For date-keyed data: start with Supabase, then overlay local (local wins)
+              final[k]={...sbData[k],...merged[k]};
+            }else if(k==="prog"&&typeof sbData[k]==="object"&&sbData[k]!==null){
+              // Progression: local wins (most recent workout actions)
+              final[k]={...sbData[k],...merged[k]};
+            }else if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               final[k]={...merged[k],...sbData[k]};
             }else if(Array.isArray(sbData[k])&&sbData[k].length>0){
               final[k]=sbData[k];
