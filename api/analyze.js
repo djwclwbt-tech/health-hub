@@ -94,7 +94,7 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
       const cleaned = raw.replace(/```json|```/g, '').trim();
       parsed = JSON.parse(cleaned);
     } catch (e) {
-      return res.status(200).json({ error: 'Failed to parse analysis', raw });
+      return res.status(422).json({ error: 'Failed to parse analysis', raw });
     }
 
     return res.status(200).json(parsed);
