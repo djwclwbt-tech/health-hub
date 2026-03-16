@@ -171,6 +171,12 @@ const sb={
     try{
       await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`,{method:"DELETE",headers:sbh});
     }catch{}
+  },
+  async deleteAll(table){
+    try{
+      await fetch(`${SB_URL}/rest/v1/${table}?id=gt.0`,{method:"DELETE",headers:{...sbh,"Prefer":""}});
+      await fetch(`${SB_URL}/rest/v1/${table}?date=gt.2000-01-01`,{method:"DELETE",headers:{...sbh,"Prefer":""}});
+    }catch{}
   }
 };
 
@@ -653,7 +659,13 @@ const Debrief=({data,setData,onClose})=>{
     if(f.steps)nd.steps={...nd.steps,[y]:+f.steps};
     nd.habits={...nd.habits,[y]:{alcohol:f.alcohol,cannabis:f.cannabis,screensOff:f.screens,
       sunlight:f.sunlight,bedBy1030:f.bed,readBeforeBed:f.read,supplements:f.supplements}};
-    setData(nd);sv(nd);onClose();
+    setData(nd);sv(nd);
+    if(nd.wt[today])svSB.weight(today,nd.wt[today]);
+    svSB.recovery(today,nd.rec[today]);
+    if(nd.steps[y])svSB.steps(y,nd.steps[y]);
+    svSB.habits(y,nd.habits[y]);
+    svSB.debrief(today);
+    onClose();
   };
 
   const habitItems=[
@@ -1002,7 +1014,7 @@ const Dashboard=({data,setData})=>{
         rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
         nut:{...parsed.nut,...data.nut},
       };
-      setData(nd);sv(nd);
+      setData(nd);sv(nd);syncToSB(nd);
       setImportStatus(`Imported: ${counts.wt} weight, ${counts.steps} steps, ${counts.rhr} RHR, ${counts.sleep} sleep, ${counts.cal} nutrition entries`);
       setImportText("");
     }catch(e){setImportStatus("Error parsing data. Make sure you pasted the full HealthKit export.");}
@@ -1254,7 +1266,7 @@ const Dashboard=({data,setData})=>{
                 padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
             <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
             {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
-            <button onClick={()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);}}}
+            <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","quick_meals","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
               style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
               Reset All Data
             </button>
@@ -1302,7 +1314,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setWorkout({day:sel,exercises:sess.exercises.map(ex=>{
       const cw=gw(ex.id,ex.sw);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
       return{id:ex.id,
-      wu:isDeload?[]:WU(wt).map(w=>({...w,done:false})),
+      wu:WU(wt).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
     };}),start:Date.now(),isDeload});setWuDone(false);};
 
@@ -1325,7 +1337,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       const left=Math.round((restEndRef.current-Date.now())/1000);
       if(left<=0){clearInterval(tr.current);setRt(0);setRl(0);
         if(navigator.vibrate)navigator.vibrate([200,100,200]);
-      }else{setRl(left);}
+      }else{setRl(Math.max(0,left));}
     };
     tr.current=setInterval(tick,500);
   };
@@ -1348,12 +1360,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(!workout)return;const nd={...data};
     nd.wk={...nd.wk,[t]:{day:workout.day,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
     const s=data.program[workout.day];
-    workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe||pe.inc===0)return;
+    workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=gw(pe.id,pe.sw);
-      nd.prog={...nd.prog,[pe.id]:{currentWeight:hit?cw+pe.inc:cw,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit}};
+      nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0}};
     });
-    setData(nd);sv(nd);setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(pe&&nd.prog[pe.id])svSB.progression(pe.id,nd.prog[pe.id]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
     setShowFinishConfirm(false);
   };
 
@@ -1362,7 +1374,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setShowCancelConfirm(false);
   };
 
-  const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);setStpDone(true);};
+  const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);svSB.stepper(t);setStpDone(true);};
   const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);svSB.delStepper(t);setStpDone(false);};
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
@@ -1381,7 +1393,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const nd=JSON.parse(JSON.stringify(data));
     actions.forEach(c=>{
       try{
-        if(c.type==="settings"&&c.field){
+        if(c.type==="settings"&&c.field&&['calories','protein','water','steps','sleep','fiber','trainingCal','mondayCal','weekendCal','trainingPro','mondayPro','weekendPro'].includes(c.field)){
           nd.settings={...nd.settings,[c.field]:c.value};
           if(addToast)addToast(`${c.field}: updated to ${c.value}`,"success");
         }else if(c.type==="exercise"&&c.action==="update"&&c.exerciseId){
@@ -1782,7 +1794,7 @@ const Nutrition=({data,setData})=>{
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
   const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
-  const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
+  const sq=m=>{const ml={...m,mealType:m.mealType||mealType};const nd={...data,qm:[...(data.qm||[]),ml]};setData(nd);sv(nd);syncToSB(nd);};
   const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
   const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
 
@@ -1799,6 +1811,7 @@ const Nutrition=({data,setData})=>{
   const scannerRef=useRef(null);
   const [scanServings,setScanServings]=useState(1);
   const [scanGrams,setScanGrams]=useState(100);
+  const [scanKey,setScanKey]=useState(0);
 
   // Food search state
   const [searchQuery,setSearchQuery]=useState("");
@@ -1886,7 +1899,7 @@ const Nutrition=({data,setData})=>{
       try{
         scanner=new Html5QrcodeScanner("barcode-reader",{
           fps:10,qrbox:{width:250,height:150},
-          formatsToSupport:[0,1,2,3,7]
+          formatsToSupport:[9,10,14,15,5]
         });
         scanner.render((decoded)=>{
           scanner.clear().catch(()=>{});
@@ -1896,7 +1909,7 @@ const Nutrition=({data,setData})=>{
       }catch(e){setScanError({message:"Scanner failed to initialize. Enter barcode manually."});}
     },100);
     return()=>{clearTimeout(timer);if(scannerRef.current){scannerRef.current.clear().catch(()=>{});}scannerRef.current=null;};
-  },[mode]);
+  },[mode,scanKey]);
 
   const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
@@ -1962,7 +1975,7 @@ const Nutrition=({data,setData})=>{
           <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
         </div>))}</X>)}
       <div style={{display:"flex",gap:6}}>
-        {(meal.source==="ai"||meal.source==="lookup")&&!data.qm?.find(q=>q.description===meal.description)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
+        {(meal.source==="ai"||meal.source==="lookup")&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
@@ -2110,7 +2123,7 @@ const Nutrition=({data,setData})=>{
         <div style={{display:"flex",gap:6}}>
           <B full outline onClick={()=>{setScanError(null);setMode("search");if(scanError.barcode)setSearchQuery(scanError.barcode);}} color={C.p}>Search by Name</B>
           <B full outline onClick={()=>{setScanError(null);setMode("manual");}} color={C.t2}>Manual Entry</B>
-          <B full outline onClick={()=>{setScanError(null);setScanResult(null);setMode("ai");setTimeout(()=>setMode("scan"),50);}} color={C.a}>Scan Again</B>
+          <B full outline onClick={()=>{setScanError(null);setScanResult(null);setScanKey(k=>k+1);}} color={C.a}>Scan Again</B>
         </div>
       </div>}
       {scanResult&&<div>
@@ -2140,7 +2153,7 @@ const Nutrition=({data,setData})=>{
         </div>
         <div style={{display:"flex",gap:6}}>
           <B full onClick={()=>{addLookup(scanResult,scanResult.per100g?scanGrams/100:scanServings);setScanResult(null);}}>Add</B>
-          <B full outline onClick={()=>{setScanResult(null);setMode("ai");setTimeout(()=>setMode("scan"),50);}} color={C.t2}>Scan Again</B>
+          <B full outline onClick={()=>{setScanResult(null);setScanKey(k=>k+1);}} color={C.t2}>Scan Again</B>
         </div>
       </div>}
       {!scanResult&&!scanLoading&&!scanError&&<div>
@@ -2291,7 +2304,7 @@ const Recovery=({data,setData})=>{
   const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",n:tr.notes||"",steps:data.steps?.[t]||""});
   const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
   const saveR=()=>{const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs,hrv:+f.hrv,rhr:+f.rhr,respiratoryRate:+f.rr,sleepHours:+f.sh,sleepPerformance:+f.sp,strain:+f.str,notes:f.n}},
-    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);setEditing(false);};
+    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);svSB.recovery(t,nd.rec[t]);if(nd.steps[t])svSB.steps(t,nd.steps[t]);setEditing(false);};
   const recent=Object.entries(data.rec).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
   const avgR=recent.filter(e=>e[1].recoveryScore).length?Math.round(recent.filter(e=>e[1].recoveryScore).reduce((s,e)=>s+e[1].recoveryScore,0)/recent.filter(e=>e[1].recoveryScore).length):null;
   const recCh=recent.filter(e=>e[1].recoveryScore).reverse().map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));

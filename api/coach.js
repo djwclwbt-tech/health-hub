@@ -45,6 +45,7 @@ IMPORTANT: Only include actions when the athlete explicitly asks for a change. N
       if (parsed.answer) {
         return res.status(200).json({ answer: parsed.answer, actions: parsed.actions || [] });
       }
+      // JSON parsed but no answer field — fall through to plain text
     } catch {}
 
     // Fallback: plain text answer
