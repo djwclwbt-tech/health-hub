@@ -1768,7 +1768,7 @@ const Nutrition=({data,setData})=>{
   const [showWaterHist,setShowWaterHist]=useState(false);
   const [viewDate,setViewDate]=useState(t);
   const viewNut=data.nut[viewDate]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-  const tl=viewDate===t?viewNut:viewNut;
+  const tl=viewNut;
   const isViewingToday=viewDate===t;
   const st=data.settings||DEFAULTS;
   const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
@@ -1780,10 +1780,10 @@ const Nutrition=({data,setData})=>{
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);};
+  const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
   const sq=m=>{const nd={...data,qm:[...(data.qm||[]),m]};setData(nd);sv(nd);};
-  const addWater=(oz)=>{const nd={...data,water:{...data.water,[t]:(data.water?.[t]||0)+oz}};setData(nd);sv(nd);};
+  const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
   const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
 
   const [photo,setPhoto]=useState(null);
@@ -1823,7 +1823,7 @@ const Nutrition=({data,setData})=>{
     const hasSrv=n["energy-kcal_serving"]!=null;
     const suffix=hasSrv?"_serving":"_100g";
     const srvLabel=hasSrv?(p.serving_size||"1 serving"):"100g";
-    const kcal=n[`energy-kcal${suffix}`]||n[`energy${suffix}`]&&n[`energy${suffix}`]/4.184||0;
+    const kcal=(n[`energy-kcal${suffix}`]!=null)?n[`energy-kcal${suffix}`]:((n[`energy${suffix}`]!=null)?(n[`energy${suffix}`]/4.184):0);
     return {
       name:p.product_name||"Unknown product",
       brand:p.brands||"",
@@ -1916,7 +1916,7 @@ const Nutrition=({data,setData})=>{
   const [editing,setEditing]=useState(null);
   const updateMeal=(idx,updates)=>{
     const newMeals=tl.meals.map((m,i)=>i===idx?{...m,...updates}:m);
-    const nl=rc(newMeals);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);
+    const nl=rc(newMeals);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);
   };
 
   if(selM!==null){
@@ -2250,7 +2250,7 @@ const Weight=({data,setData})=>{
   const tc=latest&&oldest?(latest-oldest).toFixed(1):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getWeightTrend(data.wt);
-  const add=()=>{if(!nw)return;const nd={...data,wt:{...data.wt,[t]:Number(nw)}};setData(nd);sv(nd);setNw("");};
+  const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Scale</div>
     {wTrend&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
