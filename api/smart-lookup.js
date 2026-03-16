@@ -12,7 +12,80 @@ export default async function handler(req, res) {
     const { input, context } = req.body;
     if (!input) return res.status(400).json({ error: 'No input provided' });
 
+    // Helper: extract per-100g nutrition from a USDA food item
+    const extractUsda = (food) => {
+      const get = (id) => {
+        const n = food.foodNutrients?.find(n => n.nutrientId === id);
+        return n ? n.value : 0;
+      };
+      return {
+        cal: get(1008), protein: get(1003),
+        carbs: get(1005), fat: get(1004), fiber: get(1079),
+        servingSize: food.servingSize || 100,
+        servingUnit: food.servingSizeUnit || 'g',
+        description: food.description,
+        brand: food.brandName || food.brandOwner || null,
+        dataType: food.dataType,
+      };
+    };
+
+    // Helper: scale per-100g data to actual portion
+    const scaleNutrition = (per100g, grams, cookingMultiplier = 1) => {
+      const mult = (grams / 100) * cookingMultiplier;
+      return {
+        cal: Math.round(per100g.cal * mult),
+        protein: Math.round(per100g.protein * mult),
+        carbs: Math.round(per100g.carbs * mult),
+        fat: Math.round(per100g.fat * mult),
+        fiber: Math.round(per100g.fiber * mult),
+      };
+    };
+
+    // ──────────────────────────────────────────────────────────────
+    // Step 0: Quick branded product check with raw input
+    // Before parsing, try USDA Branded search directly. This catches
+    // branded products like "Nutricost whey isolate peanut butter"
+    // without losing the brand name through Haiku parsing.
+    // ──────────────────────────────────────────────────────────────
+    if (usdaKey) {
+      try {
+        const quickRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: input, dataType: ['Branded'], pageSize: 5 }),
+        });
+        const quickData = await quickRes.json();
+        const quickFoods = (quickData.foods || []).filter(f => {
+          const cal = f.foodNutrients?.find(n => n.nutrientId === 1008);
+          return cal && cal.value > 0;
+        });
+
+        if (quickFoods.length > 0) {
+          const food = quickFoods[0];
+          const per100g = extractUsda(food);
+          // For branded products, use the serving size from the label
+          const grams = per100g.servingSize || 100;
+          const nutrition = scaleNutrition(per100g, grams);
+          const brandLabel = per100g.brand ? ` (${per100g.brand})` : '';
+
+          return res.status(200).json({
+            description: input,
+            ...nutrition,
+            method: 'usda',
+            confidence: 'high',
+            components: [{
+              item: `${per100g.description}${brandLabel} (${Math.round(grams)}${per100g.servingUnit})`,
+              ...nutrition,
+            }],
+            notes: `USDA Branded Foods database — ${per100g.description}${brandLabel}`,
+          });
+        }
+      } catch {}
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Step 1: Use Claude to parse the input into structured items
+    // ──────────────────────────────────────────────────────────────
     let parsed;
     if (anthropicKey) {
       try {
@@ -26,7 +99,15 @@ export default async function handler(req, res) {
           body: JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 300,
-            system: 'Parse the food description into structured items. Return ONLY valid JSON, no markdown.\n{"items":[{"name":"food name for USDA search","quantity":number,"unit":"g|oz|cups|each|serving","cooking":"raw|grilled|baked|fried|steamed|boiled|none"}],"isRestaurant":false}\nExamples:\n"8oz grilled chicken breast" → {"items":[{"name":"chicken breast","quantity":227,"unit":"g","cooking":"grilled"}],"isRestaurant":false}\n"Chipotle burrito bowl" → {"items":[{"name":"chipotle burrito bowl","quantity":1,"unit":"serving","cooking":"none"}],"isRestaurant":true}\n"2 eggs and toast" → {"items":[{"name":"egg whole","quantity":2,"unit":"each","cooking":"none"},{"name":"bread white toast","quantity":2,"unit":"each","cooking":"none"}],"isRestaurant":false}',
+            system: `Parse the food description into structured items. Return ONLY valid JSON, no markdown.
+IMPORTANT: Keep brand names in the food name — brand is critical for database lookup accuracy. Do NOT strip or simplify brand names.
+{"items":[{"name":"food name including brand for database search","quantity":number,"unit":"g|oz|cups|each|serving","cooking":"raw|grilled|baked|fried|steamed|boiled|none"}],"isRestaurant":false}
+Examples:
+"8oz grilled chicken breast" → {"items":[{"name":"chicken breast","quantity":227,"unit":"g","cooking":"grilled"}],"isRestaurant":false}
+"Nutricost whey isolate peanut butter" → {"items":[{"name":"Nutricost whey isolate peanut butter","quantity":1,"unit":"serving","cooking":"none"}],"isRestaurant":false}
+"Fairlife Core Power Elite 42g" → {"items":[{"name":"Fairlife Core Power Elite 42g","quantity":1,"unit":"serving","cooking":"none"}],"isRestaurant":false}
+"Chipotle burrito bowl" → {"items":[{"name":"chipotle burrito bowl","quantity":1,"unit":"serving","cooking":"none"}],"isRestaurant":true}
+"2 eggs and toast" → {"items":[{"name":"egg whole","quantity":2,"unit":"each","cooking":"none"},{"name":"bread white toast","quantity":2,"unit":"each","cooking":"none"}],"isRestaurant":false}`,
             messages: [{ role: 'user', content: input }],
           }),
         });
@@ -45,11 +126,13 @@ export default async function handler(req, res) {
     let method = 'ai'; // default fallback
     let allUsda = true;
 
-    // Step 2: For each item, try USDA first
+    // ──────────────────────────────────────────────────────────────
+    // Step 2: For each item, try USDA Foundation/SR Legacy first
+    // ──────────────────────────────────────────────────────────────
     for (const item of items) {
       let found = false;
 
-      // Try USDA
+      // Try USDA Foundation/SR Legacy (whole foods)
       if (usdaKey) {
         try {
           const usdaRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaKey}`, {
@@ -66,54 +149,73 @@ export default async function handler(req, res) {
 
           if (foods.length > 0) {
             const food = foods[0];
-            const get = (id) => {
-              const n = food.foodNutrients?.find(n => n.nutrientId === id);
-              return n ? n.value : 0;
-            };
-
-            // Per 100g values from USDA
-            const per100g = {
-              cal: get(1008), protein: get(1003),
-              carbs: get(1005), fat: get(1004), fiber: get(1079),
-            };
+            const per100g = extractUsda(food);
 
             // Convert quantity to grams
-            let grams = 100; // default
+            let grams = 100;
             if (item.unit === 'g') grams = item.quantity;
             else if (item.unit === 'oz') grams = item.quantity * 28.35;
             else if (item.unit === 'cups') grams = item.quantity * 240;
             else if (item.unit === 'each') {
-              // Common "each" weights
               const eachWeights = {
                 egg: 50, banana: 118, apple: 182, orange: 131,
                 'bread': 30, 'toast': 30, 'slice': 30, 'tortilla': 49,
               };
               const key = Object.keys(eachWeights).find(k => item.name.toLowerCase().includes(k));
-              grams = (key ? eachWeights[key] : (food.servingSize || 100)) * item.quantity;
+              grams = (key ? eachWeights[key] : (per100g.servingSize || 100)) * item.quantity;
             } else if (item.unit === 'serving') {
-              grams = (food.servingSize || 100) * item.quantity;
+              grams = (per100g.servingSize || 100) * item.quantity;
             }
 
             // Cooking method adjustments
             let cookingMultiplier = 1;
             if (item.cooking === 'grilled' || item.cooking === 'baked') {
-              // Cooked meat loses ~25% water weight, so calories per gram increase
-              // But if the user specified cooked weight, no adjustment needed
-              // USDA data for "chicken breast" is raw; for "chicken breast, cooked" it's cooked
               const isRawData = !food.description?.toLowerCase().includes('cooked');
-              if (isRawData) cookingMultiplier = 1.33; // 25% water loss = 1/0.75
+              if (isRawData) cookingMultiplier = 1.33;
             } else if (item.cooking === 'fried') {
-              cookingMultiplier = 1.15; // absorbs ~15% weight in oil
+              cookingMultiplier = 1.15;
             }
 
-            const mult = (grams / 100) * cookingMultiplier;
+            const nutrition = scaleNutrition(per100g, grams, cookingMultiplier);
             components.push({
               item: `${item.name} (${Math.round(grams)}g${item.cooking !== 'none' ? ', ' + item.cooking : ''})`,
-              cal: Math.round(per100g.cal * mult),
-              protein: Math.round(per100g.protein * mult),
-              carbs: Math.round(per100g.carbs * mult),
-              fat: Math.round(per100g.fat * mult),
-              fiber: Math.round(per100g.fiber * mult),
+              ...nutrition,
+              source: 'usda',
+              usdaName: food.description,
+            });
+            found = true;
+          }
+        } catch {}
+      }
+
+      // ──────────────────────────────────────────────────────────
+      // Step 2b: Try USDA Branded if Foundation/SR Legacy missed
+      // ──────────────────────────────────────────────────────────
+      if (!found && usdaKey) {
+        try {
+          const brandRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: item.name, dataType: ['Branded'], pageSize: 3 }),
+          });
+          const brandData = await brandRes.json();
+          const brandFoods = (brandData.foods || []).filter(f => {
+            const cal = f.foodNutrients?.find(n => n.nutrientId === 1008);
+            return cal && cal.value > 0;
+          });
+
+          if (brandFoods.length > 0) {
+            const food = brandFoods[0];
+            const per100g = extractUsda(food);
+            const grams = item.unit === 'g' ? item.quantity
+              : item.unit === 'oz' ? item.quantity * 28.35
+              : (per100g.servingSize || 100) * item.quantity;
+
+            const nutrition = scaleNutrition(per100g, grams);
+            const brandLabel = per100g.brand ? ` (${per100g.brand})` : '';
+            components.push({
+              item: `${per100g.description}${brandLabel} (${Math.round(grams)}${per100g.servingUnit})`,
+              ...nutrition,
               source: 'usda',
               usdaName: food.description,
             });
@@ -180,10 +282,8 @@ export default async function handler(req, res) {
     const hasUnknown = components.some(c => c.source === 'unknown');
 
     if (hasUnknown) {
-      // Fall back to AI for the whole meal
       if (anthropicKey) {
         try {
-          // Forward to estimate endpoint logic
           const estimateRes = await fetch(`https://${req.headers.host}/api/estimate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -213,11 +313,11 @@ export default async function handler(req, res) {
       carbs: acc.carbs + c.carbs, fat: acc.fat + c.fat, fiber: acc.fiber + c.fiber,
     }), { cal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
-    // Macro math cross-check
+    // Macro math cross-check (relaxed tolerance for USDA rounding/fiber gaps)
     const computedCal = totals.protein * 4 + totals.carbs * 4 + totals.fat * 9;
     if (totals.cal > 0 && computedCal > 0) {
       const ratio = totals.cal / computedCal;
-      if (ratio < 0.85 || ratio > 1.15) {
+      if (ratio < 0.75 || ratio > 1.25) {
         totals.calOriginal = totals.cal;
         totals.cal = computedCal;
         totals.calAdjusted = true;

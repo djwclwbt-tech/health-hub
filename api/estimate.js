@@ -146,7 +146,7 @@ Return ONLY valid JSON (no markdown, no backticks):
     const computedCal = parsed.protein * 4 + parsed.carbs * 4 + parsed.fat * 9;
     if (parsed.cal > 0 && computedCal > 0) {
       const ratio = parsed.cal / computedCal;
-      if (ratio < 0.85 || ratio > 1.15) {
+      if (ratio < 0.75 || ratio > 1.25) {
         parsed.calOriginal = parsed.cal;
         parsed.cal = computedCal;
         parsed.calAdjusted = true;
