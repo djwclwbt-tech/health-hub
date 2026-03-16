@@ -614,6 +614,15 @@ const calcEWMA=(values,alpha=0.1)=>{
   return result;
 };
 
+const linReg=(ys)=>{
+  const n=ys.length;if(n<2)return{slope:0};
+  const mx=(n-1)/2;
+  const my=ys.reduce((s,v)=>s+v,0)/n;
+  let num=0,den=0;
+  for(let i=0;i<n;i++){num+=(i-mx)*(ys[i]-my);den+=(i-mx)**2;}
+  return{slope:den?num/den:0};
+};
+
 const calcAdaptiveTDEE=(wt,nut,settings,travelDays)=>{
   const planStart=PROG.start;
   const allDates=[];
@@ -625,12 +634,10 @@ const calcAdaptiveTDEE=(wt,nut,settings,travelDays)=>{
   const weights=paired.map(dt=>wt[dt]);
   const calories=paired.map(dt=>nut[dt].totalCal);
   const trendW=calcEWMA(weights,0.1);
-  const smoothCal=calcEWMA(calories,0.3);
-  const avgCal=Math.round(smoothCal.reduce((s,v)=>s+v,0)/smoothCal.length);
-  const firstW=trendW[0],lastW=trendW[trendW.length-1];
-  const totalDays=Math.max(1,(new Date(paired[paired.length-1])-new Date(paired[0]))/864e5);
-  const weeklyChange=(lastW-firstW)/(totalDays/7);
-  const tdee=Math.round(avgCal-(weeklyChange*3500/7));
+  const avgCal=Math.round(calories.reduce((s,v)=>s+v,0)/calories.length);
+  const weeklyChange=linReg(weights).slope*7;
+  const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
+  const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
   const confidence=Math.min(95,Math.round(paired.length*4.5));
   const calT=getDayCalTarget(today,settings,travelDays);
   const deficit=tdee-calT;
