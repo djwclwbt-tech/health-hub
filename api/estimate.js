@@ -46,7 +46,10 @@ CRITICAL RULES:
    - Whole egg: 72 cal, 6g protein each
    - Olive oil: 119 cal per tbsp (always account for cooking oil)
 6. Cross-check: total calories must approximately equal (protein×4 + carbs×4 + fat×9). If they don't match, fix it.
-7. When a photo is provided, identify all visible food items and estimate portions based on plate size, utensils, and relative proportions. Note any sauces, oils, or toppings visible.
+7. When a photo is provided, identify all visible food items and estimate portions using visual reference points: standard dinner plate ~10in diameter, fork ~7in, knife ~9in, adult hand ~7in across. Estimate each item's weight in grams based on these references. Note any visible sauces, glazes, oils, or toppings.
+8. ALWAYS reason step-by-step before providing numbers. For each component: identify the item → estimate the portion size (with weight in grams/oz) → note the cooking method → look up per-gram nutritional data → calculate. Show this reasoning in the "reasoning" field.
+9. COOKING METHOD ADJUSTMENTS: Raw-to-cooked calorie density changes significantly. Fried foods absorb 8-15% of their weight in oil. Grilled/baked proteins lose ~25% weight but concentrate calories per gram. Always note the cooking method and adjust accordingly.
+10. HIDDEN CALORIE CHECKLIST — for every meal, explicitly consider and account for if likely present: cooking oil/butter used? sauce or dressing? cheese? cream or milk? sugar or honey? nuts or seeds as garnish? bread or tortilla wrap?
 
 ${context ? `USER CONTEXT: Daily targets are ${context.calories || 2430} cal, ${context.protein || 180}g protein. Use this to sanity-check — a single meal for this person is typically 400-900 cal unless it's clearly a large meal.` : ''}
 
@@ -62,7 +65,7 @@ ${context.recentMeals.slice(0,10).map(m =>
 ).join('\n')}` : ''}
 
 Return ONLY valid JSON (no markdown, no backticks):
-{"description":"concise meal name","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"components":[{"item":"specific item with portion","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number}],"confidence":"high|medium|low","notes":"brief note if portion was assumed or ambiguous"}`;
+{"reasoning":"Step-by-step: 1) identify each food item and portion, 2) note cooking method, 3) check hidden calorie sources, 4) calculate each component using USDA data, 5) sum and cross-check","description":"concise meal name","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"components":[{"item":"specific item with portion and cooking method","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number}],"confidence":"high|medium|low","notes":"brief note if portion was assumed or ambiguous"}`;
 
     // Build message content — supports text, image, or both
     const content = [];
@@ -106,6 +109,49 @@ Return ONLY valid JSON (no markdown, no backticks):
     const text = data.content?.[0]?.text || '{}';
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
+
+    // Strip reasoning field (used for CoT accuracy, not needed by client)
+    delete parsed.reasoning;
+
+    // Validate and coerce required numeric fields
+    const requiredFields = ['cal', 'protein', 'carbs', 'fat', 'fiber'];
+    for (const field of requiredFields) {
+      parsed[field] = Math.round(Number(parsed[field]) || 0);
+      if (parsed[field] < 0) parsed[field] = 0;
+    }
+
+    // Ensure description exists
+    if (!parsed.description || typeof parsed.description !== 'string') {
+      parsed.description = input || 'Unknown meal';
+    }
+
+    // Validate confidence value
+    if (!['high', 'medium', 'low'].includes(parsed.confidence)) {
+      parsed.confidence = 'medium';
+    }
+
+    // Validate components array
+    if (parsed.components && Array.isArray(parsed.components)) {
+      parsed.components = parsed.components.map(c => ({
+        item: c.item || 'Unknown',
+        cal: Math.round(Number(c.cal) || 0),
+        protein: Math.round(Number(c.protein) || 0),
+        carbs: Math.round(Number(c.carbs) || 0),
+        fat: Math.round(Number(c.fat) || 0),
+        fiber: Math.round(Number(c.fiber) || 0),
+      }));
+    }
+
+    // Macro math cross-check: cal should ≈ protein*4 + carbs*4 + fat*9
+    const computedCal = parsed.protein * 4 + parsed.carbs * 4 + parsed.fat * 9;
+    if (parsed.cal > 0 && computedCal > 0) {
+      const ratio = parsed.cal / computedCal;
+      if (ratio < 0.85 || ratio > 1.15) {
+        parsed.calOriginal = parsed.cal;
+        parsed.cal = computedCal;
+        parsed.calAdjusted = true;
+      }
+    }
 
     return res.status(200).json(parsed);
   } catch (err) {
