@@ -491,6 +491,97 @@ const getWeightTrend=(wt)=>{
   return null;
 };
 
+// ═══ DATA INTELLIGENCE ═══
+const getTopProteinMeals=(data,limit=5)=>{
+  const map={};
+  for(const[d,n] of Object.entries(data.nut||{})){
+    for(const m of(n.meals||[])){
+      if(!m.description||(m.cal||0)<50)continue;
+      const k=m.description.toLowerCase().trim();
+      if(!map[k])map[k]={desc:m.description,tp:0,tc:0,n:0};
+      map[k].tp+=(m.protein||0);map[k].tc+=(m.cal||0);map[k].n++;
+    }
+  }
+  return Object.values(map).filter(m=>m.tp/m.n>=20)
+    .map(m=>({desc:m.desc,pro:Math.round(m.tp/m.n),cal:Math.round(m.tc/m.n),n:m.n}))
+    .sort((a,b)=>b.pro-a.pro).slice(0,limit);
+};
+
+const getInsights=(data)=>{
+  const ins=[];
+  const dates=Object.keys(data.nut||{}).sort().reverse().slice(0,30);
+  let pH=0,pD=0;
+  for(const d of dates){
+    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const p=data.nut[d]?.totalProtein||0;
+    if(p>0){pD++;if(p>=pt)pH++;}
+  }
+  if(pD>=5){const r=Math.round(pH/pD*100);
+    ins.push({type:r>=70?"win":"gap",text:`Protein target hit ${r}% of tracked days (${pH}/${pD})`});}
+  const sr=[];
+  for(const[d,r] of Object.entries(data.rec||{})){
+    if(r.sleepHours&&r.recoveryScore)sr.push({s:r.sleepHours,r:r.recoveryScore});}
+  if(sr.length>=7){
+    const gs=sr.filter(x=>x.s>=7.5),ps=sr.filter(x=>x.s<7);
+    if(gs.length>=3&&ps.length>=3){
+      const ga=Math.round(gs.reduce((s,d)=>s+d.r,0)/gs.length);
+      const pa=Math.round(ps.reduce((s,d)=>s+d.r,0)/ps.length);
+      if(ga-pa>=5)ins.push({type:"insight",text:`7.5h+ sleep averages ${ga}% recovery vs ${pa}% on <7h nights`});
+    }
+  }
+  let cH=0,cD=0;
+  for(const d of dates){
+    const ct=getDayCalTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const c=data.nut[d]?.totalCal||0;
+    if(c>0){cD++;if(Math.abs(c-ct)<=ct*0.1)cH++;}
+  }
+  if(cD>=5){const r=Math.round(cH/cD*100);
+    ins.push({type:r>=60?"win":"gap",text:`Calories within 10% of target ${r}% of days`});}
+  return ins.slice(0,4);
+};
+
+const getRecompScore=(data)=>{
+  const wEntries=Object.entries(data.wt||{}).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(wEntries.length<3)return null;
+  const recent=wEntries.slice(-7),older=wEntries.slice(-14,-7);
+  if(recent.length<2||older.length<1)return null;
+  const rAvg=recent.reduce((s,[_,v])=>s+v,0)/recent.length;
+  const oAvg=older.reduce((s,[_,v])=>s+v,0)/older.length;
+  const wkChange=Math.abs(rAvg-oAvg);
+  const wScore=wkChange<=0.5?100:wkChange<=1?85:wkChange<=1.5?65:wkChange<=2?45:20;
+  const totalL=Object.keys(data.prog||{}).length;
+  const progL=Object.values(data.prog||{}).filter(p=>p.progressed).length;
+  const lScore=totalL>0?Math.round(progL/totalL*100):50;
+  const dates=Object.keys(data.nut||{}).sort().reverse().slice(0,14);
+  let pH=0,pDays=0;
+  for(const d of dates){
+    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const p=data.nut[d]?.totalProtein||0;
+    if(p>0){pDays++;if(p>=pt)pH++;}
+  }
+  const pScore=pDays>0?Math.round(pH/pDays*100):50;
+  const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
+  return{score:total,weight:{score:wScore,change:+(rAvg-oAvg).toFixed(1)},
+    lifts:{score:lScore,progressed:progL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
+};
+
+const getFrequentMeals=(data)=>{
+  const map={};
+  for(const[d,n] of Object.entries(data.nut||{})){
+    for(const m of(n.meals||[])){
+      if(!m.description)continue;
+      const k=m.description.toLowerCase().trim();
+      if(!map[k])map[k]={desc:m.description,cs:[],ps:[],bs:[],fs:[],fbs:[],n:0};
+      map[k].cs.push(m.cal||0);map[k].ps.push(m.protein||0);
+      map[k].bs.push(m.carbs||0);map[k].fs.push(m.fat||0);map[k].fbs.push(m.fiber||0);map[k].n++;
+    }
+  }
+  const avg=a=>Math.round(a.reduce((s,v)=>s+v,0)/a.length);
+  return Object.values(map).filter(m=>m.n>=2)
+    .map(m=>({description:m.desc,cal:avg(m.cs),protein:avg(m.ps),carbs:avg(m.bs),fat:avg(m.fs),fiber:avg(m.fbs),count:m.n}))
+    .sort((a,b)=>b.n-a.n).slice(0,30);
+};
+
 const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
   p:"#1a73e8",pl:"#e8f0fe",g:"#0d7c3e",gl:"#e6f4ea",r:"#c5221f",rl:"#fce8e6",
   a:"#b06d00",al:"#fef7e0",v:"#6a1b9a",vl:"#f3e8fd",
@@ -1057,6 +1148,18 @@ const Dashboard=({data,setData})=>{
     if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;if(h.supplements===true)c++;
     return s+c/7;},0)/habitDays.length*100):null;
 
+  const hour=new Date().getHours();
+  const mealsLogged=(nut?.meals||[]).length;
+  const proRemaining=Math.max(0,proT-tPro);
+  const calRemaining=Math.max(0,calT-tCal);
+  const mealSlots=hour<10?4:hour<14?3:hour<17?2:hour<20?1:0;
+  const dinnerPro=Math.min(35,proRemaining);
+  const preDinnerSlots=Math.max(0,mealSlots-1);
+  const perMealPro=preDinnerSlots>0?Math.ceil(Math.max(0,proRemaining-dinnerPro)/preDinnerSlots):0;
+  const topProMeals=getTopProteinMeals(data);
+  const recomp=getRecompScore(data);
+  const dataInsights=getInsights(data);
+
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 
   return(
@@ -1077,6 +1180,46 @@ const Dashboard=({data,setData})=>{
            :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
         </div>
       </X>
+
+      {/* ═══ MORNING GAME PLAN ═══ */}
+      {mealSlots>0&&proRemaining>0&&(
+        <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Game Plan</div>
+          <div style={{fontSize:13,color:C.t,marginBottom:8}}>
+            <span style={{fontWeight:700}}>{proRemaining}g protein</span> remaining across <span style={{fontWeight:700}}>{mealSlots} meal{mealSlots!==1?"s":""}</span>
+            {calRemaining>0&&<span style={{color:C.t2}}> / {calRemaining} cal left</span>}
+          </div>
+          {preDinnerSlots>0&&(
+            <div style={{fontSize:12,color:C.t2,marginBottom:4}}>
+              {Array.from({length:preDinnerSlots}).map((_,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:`1px solid ${C.bl}`}}>
+                  <span>{preDinnerSlots===1?"Next meal":`Meal ${mealsLogged+i+1}`}</span>
+                  <span style={{fontWeight:600,color:C.t}}>~{perMealPro}g protein · ~{Math.round(calRemaining/mealSlots)} cal</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:12}}>
+            <span style={{color:C.t2}}>Dinner (flexible)</span>
+            <span style={{fontWeight:600,color:C.t}}>~{dinnerPro}g protein — eat what you want</span>
+          </div>
+          {topProMeals.length>0&&(
+            <div style={{marginTop:8,paddingTop:6,borderTop:`1px solid ${C.bl}`}}>
+              <div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>HIGH-PROTEIN FROM YOUR HISTORY</div>
+              {topProMeals.slice(0,3).map((m,i)=>(
+                <div key={i} style={{fontSize:12,color:C.t2,padding:"2px 0"}}>
+                  {m.desc} — <span style={{fontWeight:600,color:C.g}}>{m.pro}g pro</span>, {m.cal} cal
+                </div>
+              ))}
+            </div>
+          )}
+          {rec?.recoveryScore!=null&&rec.recoveryScore<55&&(
+            <div style={{marginTop:6,padding:"6px 8px",background:C.al,borderRadius:4,fontSize:11,color:C.a,fontWeight:600}}>
+              Recovery at {rec.recoveryScore}% — add ~25g protein today. Don't cut calories, your body needs fuel to recover.
+            </div>
+          )}
+        </X>
+      )}
 
       {/* ═══ AUTOREGULATION CARD ═══ */}
       {autoreg&&(<X style={{padding:10,borderLeft:`3px solid ${autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.a:C.r}`}}>
@@ -1214,6 +1357,48 @@ const Dashboard=({data,setData})=>{
             <span style={{fontWeight:700,color:habitScore>=70?C.g:habitScore>=40?C.a:C.r}}>{habitScore}%</span>
           </div>
           <Br v={habitScore} max={100} color={habitScore>=70?C.g:habitScore>=40?C.a:C.r}/>
+        </X>
+      )}
+
+      {/* ═══ RECOMP SCORE ═══ */}
+      {recomp&&(
+        <X style={{padding:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Recomp Score</div>
+              <div style={{fontSize:10,color:C.t3}}>Weight stable + lifts up = recomp working</div>
+            </div>
+            <div style={{fontSize:28,fontWeight:800,color:recomp.score>=70?C.g:recomp.score>=45?C.a:C.r}}>{recomp.score}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+              <div style={{fontSize:14,fontWeight:700,color:recomp.weight.score>=70?C.g:C.a}}>{recomp.weight.change>0?"+":""}{recomp.weight.change}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
+            </div>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+              <div style={{fontSize:14,fontWeight:700,color:recomp.lifts.score>=50?C.g:C.a}}>{recomp.lifts.progressed}/{recomp.lifts.total}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Up</div>
+            </div>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+              <div style={{fontSize:14,fontWeight:700,color:recomp.protein.score>=70?C.g:C.a}}>{recomp.protein.hit}/{recomp.protein.days}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Pro Days</div>
+            </div>
+          </div>
+        </X>
+      )}
+
+      {/* ═══ DATA INSIGHTS ═══ */}
+      {dataInsights.length>0&&(
+        <X style={{padding:10}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Insights</div>
+          {dataInsights.map((ins,i)=>(
+            <div key={i} style={{display:"flex",gap:6,alignItems:"flex-start",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
+              <span style={{fontSize:12,color:ins.type==="win"?C.g:ins.type==="gap"?C.a:C.p,fontWeight:700,minWidth:14}}>
+                {ins.type==="win"?"+":ins.type==="gap"?"!":"~"}
+              </span>
+              <span style={{fontSize:12,color:C.t2}}>{ins.text}</span>
+            </div>
+          ))}
         </X>
       )}
 
@@ -1873,9 +2058,19 @@ const Nutrition=({data,setData})=>{
     setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
     try{
       const q=encodeURIComponent(searchQuery.trim());
-      const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&json=1&page_size=10&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_front_small_url,code`);
-      const d=await r.json();
-      setSearchResults((d.products||[]).filter(p=>p.product_name).map(normalizeOFF));
+      // Dual-source search: Open Food Facts + USDA in parallel
+      const [offRes,usdaRes]=await Promise.all([
+        fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&json=1&page_size=8&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_front_small_url,code`).then(r=>r.json()).catch(()=>({products:[]})),
+        fetch("/api/usda",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:searchQuery.trim()})}).then(r=>r.json()).catch(()=>({results:[]})),
+      ]);
+      const offProducts=(offRes.products||[]).filter(p=>p.product_name).map(normalizeOFF);
+      const usdaProducts=((usdaRes.results||[]).map(u=>({
+        name:u.name,brand:u.brand,cal:Math.round(u.cal),protein:Math.round(u.protein),
+        carbs:Math.round(u.carbs),fat:Math.round(u.fat),fiber:Math.round(u.fiber),
+        servingLabel:`${u.servingSize}${u.servingUnit}`,per100g:true,source:"usda",
+      })));
+      // USDA results first (more accurate), then OFF
+      setSearchResults([...usdaProducts,...offProducts]);
     }catch(e){setSearchResults([]);}
     setSearchLoading(false);
   };
@@ -1886,7 +2081,8 @@ const Nutrition=({data,setData})=>{
       description:product.brand?`${product.name} (${product.brand})`:product.name,
       cal:Math.round(product.cal*mult),protein:Math.round(product.protein*mult),
       carbs:Math.round(product.carbs*mult),fat:Math.round(product.fat*mult),
-      fiber:Math.round(product.fiber*mult),source:"lookup",barcode:product.barcode,components:[]
+      fiber:Math.round(product.fiber*mult),source:product.source||"lookup",barcode:product.barcode,
+      confidence:product.source==="usda"?"high":"medium",components:[]
     });
   };
 
@@ -1911,11 +2107,37 @@ const Nutrition=({data,setData})=>{
     return()=>{clearTimeout(timer);if(scannerRef.current){scannerRef.current.clear().catch(()=>{});}scannerRef.current=null;};
   },[mode,scanKey]);
 
-  const aiGo=async()=>{if(!input.trim()&&!photo)return;setLoading(true);
+  const aiGo=async()=>{if(!input.trim()&&!photo)return;
+    // Pre-cache: check frequent meals first (text only, not photos)
+    if(input.trim()&&!photo){
+      const freq=getFrequentMeals(data);
+      const inputLower=input.toLowerCase().trim();
+      const match=freq.find(f=>f.description.toLowerCase().trim()===inputLower);
+      if(match){
+        add({...match,source:"history",raw:input,components:[],confidence:"high",notes:`Matched from ${match.count} previous logs`});
+        setInput("");return;
+      }
+    }
+    setLoading(true);
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
     const fullInput=input?(input+portionHint):null;
-    try{const body={context:{calories:st.calories||2430,protein:st.protein||180,
-      corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
+    try{
+      // Photos go directly to AI (needs vision). Text tries smart-lookup first (USDA → OFF → AI).
+      if(fullInput&&!photo){
+        try{
+          const slr=await fetch("/api/smart-lookup",{method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({input:fullInput,context:{calories:st.calories||2430,protein:st.protein||180}})});
+          const sld=await slr.json();
+          if(slr.ok&&sld.cal>0){
+            const src=sld.method==="usda"?"usda":sld.method==="off"?"lookup":"ai";
+            add({...sld,source:src,raw:input,components:sld.components||[],confidence:sld.confidence,notes:sld.notes});
+            setInput("");setLoading(false);return;
+          }
+        }catch{}
+      }
+      // Fallback: full AI estimation (or photo input)
+      const body={context:{calories:st.calories||2430,protein:st.protein||180,
+        corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
       if(fullInput)body.input=fullInput;
       if(photo)body.image=photo;
       const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -1942,6 +2164,10 @@ const Nutrition=({data,setData})=>{
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
+            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,textTransform:"uppercase",
+              color:meal.source==="usda"?C.g:meal.source==="history"?C.g:meal.source==="lookup"?C.p:meal.source==="ai"?C.a:C.t3,
+              background:meal.source==="usda"?C.gl:meal.source==="history"?C.gl:meal.source==="lookup"?C.pl:meal.source==="ai"?C.al:"transparent",
+            }}>{meal.source==="usda"?"USDA":meal.source==="history"?"History":meal.source==="lookup"?"OFF":meal.source==="ai"?"AI":meal.source}</span>}
             {meal.confidence&&<span style={{fontSize:9,fontWeight:700,color:confColor,background:meal.confidence==="high"?C.gl:meal.confidence==="low"?C.al:"transparent",padding:"2px 6px",borderRadius:8,textTransform:"uppercase"}}>{meal.confidence}</span>}
             {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
           </div>
@@ -1975,7 +2201,7 @@ const Nutrition=({data,setData})=>{
           <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
         </div>))}</X>)}
       <div style={{display:"flex",gap:6}}>
-        {(meal.source==="ai"||meal.source==="lookup")&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
+        {["ai","lookup","usda","history"].includes(meal.source)&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
@@ -2114,6 +2340,20 @@ const Nutrition=({data,setData})=>{
       </div>
       {photoPreview&&<div style={{marginTop:6,position:"relative"}}><img src={photoPreview} alt="Food" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:4}}/></div>}
       <B full onClick={aiGo} disabled={loading||(!input.trim()&&!photo)} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
+      {!input.trim()&&!photo&&(()=>{const freq=getFrequentMeals(data);return freq.length>0?(
+        <div style={{marginTop:8}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Your Frequent Meals</div>
+          {freq.slice(0,5).map((m,i)=>(<button key={i} onClick={()=>add({...m,source:"history",components:[],confidence:"high",notes:`Avg of ${m.count} logs`})}
+            style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,
+              padding:"8px 12px",cursor:"pointer",marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:13}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</div>
+              <div style={{fontSize:10,color:C.t3}}>{m.count}x logged</div>
+            </div>
+            <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{m.cal} cal · {m.protein}gP</span>
+          </button>))}
+        </div>
+      ):null;})()}
     </X>)}
     {mode==="scan"&&(<X style={{padding:10}}>
       {scanLoading&&<div style={{textAlign:"center",padding:20,color:C.t2}}>Looking up product...</div>}
@@ -2210,7 +2450,10 @@ const Nutrition=({data,setData})=>{
             <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
             {p.brand&&<div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.brand}</div>}
           </div>
-          <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{p.cal} · {p.protein}gP</span>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",flexShrink:0}}>
+            <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap"}}>{p.cal} · {p.protein}gP</span>
+            {p.source==="usda"&&<span style={{fontSize:8,fontWeight:700,color:C.g,marginTop:2}}>USDA</span>}
+          </div>
         </button>))}
       </div>
       :!searchLoading&&searchQuery&&searchResults.length===0&&<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No results found. Try different keywords.</div>}
@@ -2243,7 +2486,9 @@ const Nutrition=({data,setData})=>{
         <S key={mt} title={`${mt} (${meals.length}) — ${mtCal} cal`}>
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{m.description}</div>
+              <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
+                {m.source&&["usda","history"].includes(m.source)&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>{m.source==="usda"?"USDA":"HIS"}</span>}
+              </div>
                 <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
             </div>
