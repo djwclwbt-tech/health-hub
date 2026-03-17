@@ -61,50 +61,49 @@ export default async function handler(req, res) {
         });
 
         if (quickFoods.length > 0) {
-          // Score results: prefer brand name match + reasonable serving size
-          const inputLower = input.toLowerCase();
-          const scored = quickFoods.map(f => {
-            const info = extractUsda(f);
-            let score = 0;
-            const descLower = (f.description || '').toLowerCase();
-            const brandLower = (f.brandName || f.brandOwner || '').toLowerCase();
-            // Brand name match
-            if (inputLower.split(/\s+/).some(w => brandLower.includes(w))) score += 3;
-            // Description keyword overlap
-            const inputWords = inputLower.split(/\s+/).filter(w => w.length > 2);
-            const descWords = descLower.split(/[\s,]+/);
-            const overlap = inputWords.filter(w => descWords.some(d => d.includes(w))).length;
-            score += overlap;
-            // Prefer standard serving sizes (30-50g for powders, 200-500ml for drinks)
-            const ss = info.servingSize || 100;
-            if (ss >= 25 && ss <= 500) score += 1;
-            // Penalize very small servings (<20g) — likely partial/split servings
-            if (ss < 20) score -= 2;
-            return { food: f, info, score };
-          });
+          const food = quickFoods[0];
+          const per100g = extractUsda(food);
 
-          scored.sort((a, b) => b.score - a.score);
-          const best = scored[0];
-          const food = best.food;
-          const per100g = best.info;
-          const grams = per100g.servingSize || 100;
+          // Try to extract real serving grams from householdServingFullText
+          // e.g., "1 scoop (30g)" → 30, "2 scoops (62g)" → 62
+          let grams = per100g.servingSize || 100;
+          const hsText = food.householdServingFullText || '';
+          const hsMatch = hsText.match(/\((\d+\.?\d*)\s*g\)/i);
+          if (hsMatch) {
+            const hsGrams = parseFloat(hsMatch[1]);
+            // Use householdServing grams if it's larger (more likely full serving)
+            if (hsGrams > grams) grams = hsGrams;
+          }
+
+          // Sanity check: if per-serving protein > 50g/100g (likely protein supplement)
+          // and serving size is tiny (<25g), it's probably a half-scoop entry — double it
+          const isHighProtein = per100g.protein > 50;
+          if (isHighProtein && grams < 25) {
+            grams = Math.max(grams * 2, 30); // at minimum one standard scoop (~30g)
+          }
+
           const nutrition = scaleNutrition(per100g, grams);
           const brandLabel = per100g.brand ? ` (${per100g.brand})` : '';
-          const servingNote = food.householdServingFullText
-            ? ` — serving: ${food.householdServingFullText}`
+          const servingNote = hsText
+            ? ` — serving: ${hsText}`
             : ` — serving: ${Math.round(grams)}${per100g.servingUnit}`;
 
-          return res.status(200).json({
-            description: input,
-            ...nutrition,
-            method: 'usda',
-            confidence: grams >= 20 ? 'high' : 'medium',
-            components: [{
-              item: `${per100g.description}${brandLabel} (${Math.round(grams)}${per100g.servingUnit})`,
+          // Skip Step 0 if nutrition still looks unreasonably low — let AI handle it
+          if (nutrition.cal < 30 && nutrition.protein < 5) {
+            // Fall through to normal pipeline
+          } else {
+            return res.status(200).json({
+              description: input,
               ...nutrition,
-            }],
-            notes: `USDA Branded Foods database — ${per100g.description}${brandLabel}${servingNote}`,
-          });
+              method: 'usda',
+              confidence: 'high',
+              components: [{
+                item: `${per100g.description}${brandLabel} (${Math.round(grams)}${per100g.servingUnit})`,
+                ...nutrition,
+              }],
+              notes: `USDA Branded Foods database — ${per100g.description}${brandLabel}${servingNote}`,
+            });
+          }
         }
       } catch {}
     }
