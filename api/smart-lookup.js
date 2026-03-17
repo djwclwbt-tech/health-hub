@@ -43,11 +43,14 @@ export default async function handler(req, res) {
 
     // ──────────────────────────────────────────────────────────────
     // Step 0: Quick branded product check with raw input
-    // Before parsing, try USDA Branded search directly. This catches
-    // branded products like "Nutricost whey isolate peanut butter"
-    // without losing the brand name through Haiku parsing.
+    // Only for inputs that look like a single branded product name.
+    // Skip if: multi-item (contains "and"), has gram/oz weights,
+    // or is clearly a generic whole food.
     // ──────────────────────────────────────────────────────────────
-    if (usdaKey) {
+    const looksGeneric = /\b(grams?|oz|ounces?|cups?|tbsp|tsp|slices?|pieces?)\b/i.test(input)
+      || /\band\b/i.test(input)
+      || /\b(banana|apple|chicken|rice|egg|bread|milk|oat|yogurt|salad|broccoli|potato|steak|salmon)\b/i.test(input);
+    if (usdaKey && !looksGeneric) {
       try {
         const quickRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaKey}`, {
           method: 'POST',
