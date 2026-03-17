@@ -2333,7 +2333,7 @@ const Nutrition=({data,setData})=>{
           <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
         </div>))}</X>)}
       <div style={{display:"flex",gap:6}}>
-        {["ai","lookup","usda","history"].includes(meal.source)&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
+        {["ai","lookup","usda","history","manual"].includes(meal.source)&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
