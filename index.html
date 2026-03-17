@@ -20,7 +20,6 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -146,7 +145,7 @@ const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},qm:[],steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -210,12 +209,6 @@ const syncToSB=async(d)=>{
         await sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
           last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id");
       }
-      if(d.qm&&d.qm.length>0){
-        for(const q of d.qm){
-          await sb.upsert("quick_meals",{description:q.description,cal:q.cal||0,protein:q.protein||0,
-            carbs:q.carbs||0,fat:q.fat||0,fiber:q.fiber||0,components:q.components||[]},"description");
-        }
-      }
       for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
       for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
@@ -258,15 +251,14 @@ const svSB={
   delWorkout:(date)=>sb.deleteRow("workouts","date",date),
   delMobility:(date)=>sb.deleteRow("mobility","date",date),
   delWater:(date)=>sb.deleteRow("water","date",date),
-  delQuickMeal:(desc)=>sb.deleteRow("quick_meals","description",desc),
 };
 
 const loadFromSB=async()=>{
   try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,qm,mob,stp,debrief,cardio,bodyComp,travel,settingsRows,programRows]=await Promise.all([
+    const [wt,steps,water,rec,habits,wk,nut,prog,mob,stp,debrief,cardio,bodyComp,travel,settingsRows,programRows]=await Promise.all([
       sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
       sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
-      sb.select("progression","exercise_id","asc"),sb.select("quick_meals","created_at","asc"),
+      sb.select("progression","exercise_id","asc"),
       sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
       sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
       sb.select("settings","id","asc",1),sb.select("program","id","asc",1),
@@ -285,7 +277,6 @@ const loadFromSB=async()=>{
       totalCarbs:r.total_carbs,totalFat:r.total_fat,totalFiber:r.total_fiber};});
     prog.forEach(r=>{d.prog[r.exercise_id]={currentWeight:Number(r.current_weight),lastReps:r.last_reps,
       lastDate:r.last_date,progressed:r.progressed};});
-    qm.forEach(r=>{d.qm.push({description:r.description,cal:r.cal,protein:r.protein,carbs:r.carbs,fat:r.fat,fiber:r.fiber,components:r.components});});
     mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
@@ -353,7 +344,7 @@ const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   return{...b,...d,
   wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
   rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
-  qm:d.qm||d.quickMeals||[],mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
+  mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
   settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
 
@@ -399,36 +390,6 @@ const fmtElapsed=(secs)=>{
   const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
   if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
   return `${m}:${String(s).padStart(2,"0")}`;
-};
-
-// ═══ CORRECTION & HISTORY COLLECTORS ═══
-const getRecentCorrections=(data,limit=10)=>{
-  const corr=[];
-  const dates=Object.keys(data.nut||{}).sort().reverse();
-  for(const d of dates){
-    if(corr.length>=limit)break;
-    for(const m of(data.nut[d]?.meals||[])){
-      if(corr.length>=limit)break;
-      if(m.source==="ai"&&m.aiOriginal){
-        const changed=["cal","protein","carbs","fat","fiber"].some(k=>(m[k]||0)!==(m.aiOriginal[k]||0));
-        if(changed)corr.push({description:m.description,raw:m.raw,aiEstimate:m.aiOriginal,
-          userCorrection:{cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat,fiber:m.fiber}});
-      }
-    }
-  }
-  return corr;
-};
-const getRecentMeals=(data,limit=10)=>{
-  const meals=[];
-  const dates=Object.keys(data.nut||{}).sort().reverse();
-  for(const d of dates){
-    if(meals.length>=limit)break;
-    for(const m of(data.nut[d]?.meals||[])){
-      if(meals.length>=limit)break;
-      meals.push({description:m.description,cal:m.cal,protein:m.protein,source:m.source});
-    }
-  }
-  return meals;
 };
 
 // ═══ DAY-TYPE HELPERS ═══
@@ -600,23 +561,6 @@ const getRecompScore=(data)=>{
   const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
   return{score:total,weight:{score:wScore,change:+((rAvg-oAvg)/weeks).toFixed(1)},
     lifts:{score:lScore,progressed:progL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
-};
-
-const getFrequentMeals=(data)=>{
-  const map={};
-  for(const[d,n] of Object.entries(data.nut||{})){
-    for(const m of(n.meals||[])){
-      if(!m.description)continue;
-      const k=m.description.toLowerCase().trim();
-      if(!map[k])map[k]={desc:m.description,cs:[],ps:[],bs:[],fs:[],fbs:[],n:0};
-      map[k].cs.push(m.cal||0);map[k].ps.push(m.protein||0);
-      map[k].bs.push(m.carbs||0);map[k].fs.push(m.fat||0);map[k].fbs.push(m.fiber||0);map[k].n++;
-    }
-  }
-  const avg=a=>Math.round(a.reduce((s,v)=>s+v,0)/a.length);
-  return Object.values(map).filter(m=>m.n>=2)
-    .map(m=>({description:m.desc,cal:avg(m.cs),protein:avg(m.ps),carbs:avg(m.bs),fat:avg(m.fs),fiber:avg(m.fbs),count:m.n}))
-    .sort((a,b)=>b.n-a.n).slice(0,30);
 };
 
 const calcEWMA=(values,alpha=0.1)=>{
@@ -1582,7 +1526,7 @@ const Dashboard=({data,setData})=>{
                 padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
             <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
             {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
-            <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","quick_meals","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
+            <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
               style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
               Reset All Data
             </button>
@@ -2095,9 +2039,6 @@ const MEAL_TYPES=["Breakfast","Lunch","Dinner","Snack"];
 
 const Nutrition=({data,setData})=>{
   const t=td(),dn=dw(t);
-  const [mode,setMode]=useState("ai");
-  const [input,setInput]=useState("");
-  const [loading,setLoading]=useState(false);
   const [selM,setSelM]=useState(null);
   const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
@@ -2117,166 +2058,14 @@ const Nutrition=({data,setData})=>{
 
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
-  const add=m=>{const ml={...m,mealType};if(ml.source==="ai"){ml.aiOriginal={cal:ml.cal,protein:ml.protein,carbs:ml.carbs,fat:ml.fat,fiber:ml.fiber};}const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);};
+  const add=m=>{const ml={...m,mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
-  const sq=m=>{const ml={...m,mealType:m.mealType||mealType};const nd={...data,qm:[...(data.qm||[]),ml]};setData(nd);sv(nd);syncToSB(nd);};
   const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
   const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
 
-  const [photo,setPhoto]=useState(null);
-  const [photoPreview,setPhotoPreview]=useState(null);
-  const [portionSize,setPortionSize]=useState("normal");
-  const fileRef=useRef(null);
-  const galRef=useRef(null);
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
   const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
-
-  // Barcode scan state
-  const [scanResult,setScanResult]=useState(null);
-  const [scanLoading,setScanLoading]=useState(false);
-  const [scanError,setScanError]=useState(null);
-  const scannerRef=useRef(null);
-  const [scanServings,setScanServings]=useState(1);
-  const [scanGrams,setScanGrams]=useState(100);
-  const [scanKey,setScanKey]=useState(0);
-
-  // Food search state
-  const [searchQuery,setSearchQuery]=useState("");
-  const [searchResults,setSearchResults]=useState([]);
-  const [searchLoading,setSearchLoading]=useState(false);
-  const [selectedProduct,setSelectedProduct]=useState(null);
-  const [searchServings,setSearchServings]=useState(1);
-  const [searchGrams,setSearchGrams]=useState(100);
-
-  const handlePhoto=(e)=>{
-    const file=e.target.files?.[0];if(!file)return;
-    setPhotoPreview(URL.createObjectURL(file));
-    const reader=new FileReader();
-    reader.onload=()=>{const b64=reader.result.split(",")[1];setPhoto({data:b64,mediaType:file.type});};
-    reader.readAsDataURL(file);
-  };
-  const clearPhoto=()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";if(galRef.current)galRef.current.value="";};
-
-  // Normalize Open Food Facts product into consistent format
-  const normalizeOFF=(p)=>{
-    const n=p.nutriments||{};
-    const hasSrv=n["energy-kcal_serving"]!=null;
-    const suffix=hasSrv?"_serving":"_100g";
-    const srvLabel=hasSrv?(p.serving_size||"1 serving"):"100g";
-    const kcal=(n[`energy-kcal${suffix}`]!=null)?n[`energy-kcal${suffix}`]:((n[`energy${suffix}`]!=null)?(n[`energy${suffix}`]/4.184):0);
-    return {
-      name:p.product_name||"Unknown product",
-      brand:p.brands||"",
-      barcode:p.code||"",
-      servingLabel:srvLabel,
-      cal:Math.round(kcal),
-      protein:Math.round(n[`proteins${suffix}`]||0),
-      carbs:Math.round(n[`carbohydrates${suffix}`]||0),
-      fat:Math.round(n[`fat${suffix}`]||0),
-      fiber:Math.round(n[`fiber${suffix}`]||0),
-      per100g:!hasSrv,
-      imageUrl:p.image_front_small_url||null
-    };
-  };
-
-  // Barcode lookup via Open Food Facts
-  const lookupBarcode=async(barcode)=>{
-    setScanLoading(true);setScanError(null);setScanResult(null);
-    try{
-      const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-      const d=await r.json();
-      if(d.status!==1||!d.product){setScanError({message:"Product not found.",barcode});return;}
-      const p=normalizeOFF(d.product);
-      p.barcode=barcode;
-      if(!p.cal&&!p.protein&&!p.carbs&&!p.fat){setScanError({message:"No nutrition data available for this product.",barcode});return;}
-      setScanResult(p);setScanServings(1);setScanGrams(100);
-    }catch(e){setScanError({message:"Network error. Check your connection.",barcode});}
-    finally{setScanLoading(false);}
-  };
-
-  // Food search via Open Food Facts
-  const searchFood=async()=>{
-    if(!searchQuery.trim())return;
-    setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
-    try{
-      const q=encodeURIComponent(searchQuery.trim());
-      // Dual-source search: Open Food Facts + USDA in parallel
-      const [offRes,usdaRes]=await Promise.all([
-        fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&json=1&page_size=8&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_front_small_url,code`).then(r=>r.json()).catch(()=>({products:[]})),
-        fetch("/api/usda",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:searchQuery.trim()})}).then(r=>r.json()).catch(()=>({results:[]})),
-      ]);
-      const offProducts=(offRes.products||[]).filter(p=>p.product_name).map(normalizeOFF);
-      const usdaProducts=((usdaRes.results||[]).map(u=>({
-        name:u.name,brand:u.brand,cal:Math.round(u.cal),protein:Math.round(u.protein),
-        carbs:Math.round(u.carbs),fat:Math.round(u.fat),fiber:Math.round(u.fiber),
-        servingLabel:`${u.servingSize}${u.servingUnit}`,per100g:true,source:"usda",
-      })));
-      // USDA results first (more accurate), then OFF
-      setSearchResults([...usdaProducts,...offProducts]);
-    }catch(e){setSearchResults([]);}
-    setSearchLoading(false);
-  };
-
-  // Add a looked-up product as a meal
-  const addLookup=(product,mult)=>{
-    add({
-      description:product.brand?`${product.name} (${product.brand})`:product.name,
-      cal:Math.round(product.cal*mult),protein:Math.round(product.protein*mult),
-      carbs:Math.round(product.carbs*mult),fat:Math.round(product.fat*mult),
-      fiber:Math.round(product.fiber*mult),source:product.source||"lookup",barcode:product.barcode,
-      confidence:product.source==="usda"?"high":"medium",components:[]
-    });
-  };
-
-  // Scanner lifecycle
-  useEffect(()=>{
-    if(mode!=="scan")return;
-    setScanResult(null);setScanError(null);setScanLoading(false);
-    let scanner=null;
-    const timer=setTimeout(()=>{
-      try{
-        scanner=new Html5QrcodeScanner("barcode-reader",{
-          fps:10,qrbox:{width:250,height:150},
-          formatsToSupport:[9,10,14,15,5]
-        });
-        scanner.render((decoded)=>{
-          scanner.clear().catch(()=>{});
-          lookupBarcode(decoded);
-        },()=>{});
-        scannerRef.current=scanner;
-      }catch(e){setScanError({message:"Scanner failed to initialize. Enter barcode manually."});}
-    },100);
-    return()=>{clearTimeout(timer);if(scannerRef.current){scannerRef.current.clear().catch(()=>{});}scannerRef.current=null;};
-  },[mode,scanKey]);
-
-  const aiGo=async()=>{if(!input.trim()&&!photo)return;
-    // Pre-cache: check frequent meals first (text only, not photos)
-    if(input.trim()&&!photo){
-      const freq=getFrequentMeals(data);
-      const inputLower=input.toLowerCase().trim();
-      const match=freq.find(f=>f.description.toLowerCase().trim()===inputLower);
-      if(match){
-        add({...match,source:"history",raw:input,components:[],confidence:"high",notes:`Matched from ${match.count} previous logs`});
-        setInput("");return;
-      }
-    }
-    setLoading(true);
-    const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
-    const fullInput=input?(input+portionHint):null;
-    try{
-      // AI estimation for manual entries (MFP sync is primary nutrition input)
-      const body={context:{calories:st.calories||2430,protein:st.protein||180,
-        corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
-      if(fullInput)body.input=fullInput;
-      if(photo)body.image=photo;
-      const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(body)});
-      const parsed=await r.json();
-      if(parsed.error){throw new Error(parsed.error);}
-      add({...parsed,source:"ai",raw:input||"Photo estimate",components:parsed.components||[],confidence:parsed.confidence,notes:parsed.notes});setInput("");clearPhoto();
-    }catch(e){console.error(e);add({description:input||"Photo estimate",cal:0,protein:0,carbs:0,fat:0,fiber:0,source:"manual",raw:input,components:[]});setInput("");clearPhoto();}
-    setLoading(false);};
 
   const [editing,setEditing]=useState(null);
   const updateMeal=(idx,updates)=>{
@@ -2288,24 +2077,18 @@ const Nutrition=({data,setData})=>{
     const meal=tl.meals[selM];if(!meal){setSelM(null);return null;}
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
-    const confColor=meal.confidence==="high"?C.g:meal.confidence==="low"?C.a:C.t3;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
       <button onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
             {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,textTransform:"uppercase",
-              color:meal.source==="usda"?C.g:meal.source==="history"?C.g:meal.source==="lookup"?C.p:meal.source==="ai"?C.a:C.t3,
-              background:meal.source==="usda"?C.gl:meal.source==="history"?C.gl:meal.source==="lookup"?C.pl:meal.source==="ai"?C.al:"transparent",
-            }}>{meal.source==="usda"?"USDA":meal.source==="history"?"History":meal.source==="lookup"?"OFF":meal.source==="ai"?"AI":meal.source}</span>}
-            {meal.confidence&&<span style={{fontSize:9,fontWeight:700,color:confColor,background:meal.confidence==="high"?C.gl:meal.confidence==="low"?C.al:"transparent",padding:"2px 6px",borderRadius:8,textTransform:"uppercase"}}>{meal.confidence}</span>}
+              color:meal.source==="mfp"?C.g:C.t3,
+              background:meal.source==="mfp"?C.gl:"transparent",
+            }}>{meal.source==="mfp"?"MFP":meal.source}</span>}
             {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
           </div>
         </div>
-        {meal.raw&&<div style={{fontSize:12,color:C.t3,marginTop:1}}>{meal.raw}</div>}
-        {meal.notes&&<div style={{fontSize:11,color:C.a,marginTop:2,fontStyle:"italic"}}>{meal.notes}</div>}
-        {meal.aiOriginal&&["cal","protein","carbs","fat"].some(k=>(meal[k]||0)!==(meal.aiOriginal[k]||0))&&
-          <div style={{fontSize:10,color:C.v,marginTop:3}}>Corrected from AI estimate ({meal.aiOriginal.cal} cal → {meal.cal} cal) — improves future estimates</div>}
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
             {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
@@ -2325,13 +2108,7 @@ const Nutrition=({data,setData})=>{
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
-      {meal.components?.length>0&&(<X><L>Components</L>
-        {meal.components.map((c,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:i?`1px solid ${C.bl}`:"none",fontSize:13}}>
-          <span style={{fontWeight:600,color:C.t}}>{c.item}</span>
-          <span style={{color:C.t2,fontSize:12}}>{c.cal} · {c.protein}P · {c.carbs}C · {c.fat}F{c.fiber?` · ${c.fiber}Fib`:""}</span>
-        </div>))}</X>)}
       <div style={{display:"flex",gap:6}}>
-        {["ai","lookup","usda","history","manual"].includes(meal.source)&&!data.qm?.find(q=>q.description===meal.description&&q.cal===meal.cal)&&<B full outline onClick={()=>sq(meal)} color={C.a}>Save Quick</B>}
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
@@ -2498,153 +2275,7 @@ const Nutrition=({data,setData})=>{
         }}>{mt}</button>
       ))}
     </div>
-
-    <div style={{display:"flex",gap:3}}>
-      {[["ai","AI"],["scan","Scan"],["search","Search"],["manual","Manual"],["quick","Quick"]].map(([m,l])=>(<button key={m} onClick={()=>setMode(m)} style={{
-        flex:1,padding:"6px 2px",borderRadius:4,border:`1px solid ${mode===m?C.p:C.bd}`,background:mode===m?C.pl:"transparent",
-        color:mode===m?C.p:C.t3,fontSize:11,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{l}</button>))}
-    </div>
-    {mode==="ai"&&(<X style={{padding:10}}>
-      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={`Describe your ${mealType.toLowerCase()}... (include portions for best accuracy)`}
-        style={{width:"100%",minHeight:48,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:10,color:C.t,fontSize:14,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}}/>
-      <input ref={galRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
-      <div style={{display:"flex",gap:4,marginTop:6,alignItems:"center"}}>
-        <button onClick={()=>fileRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          📷 Camera
-        </button>
-        <button onClick={()=>galRef.current?.click()} style={{padding:"8px 12px",borderRadius:4,border:`1px solid ${C.bd}`,background:photo?C.gl:C.bg,color:photo?C.g:C.t2,fontSize:13,cursor:"pointer",fontWeight:600,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          🖼 Gallery
-        </button>
-        {photo&&<button onClick={clearPhoto} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-        <div style={{display:"flex",gap:2,flex:1}}>
-          {["small","normal","large"].map(s=>(<button key={s} onClick={()=>setPortionSize(s)} style={{
-            flex:1,padding:"7px 2px",borderRadius:3,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize",
-            border:`1px solid ${portionSize===s?C.p:C.bd}`,background:portionSize===s?C.pl:"transparent",color:portionSize===s?C.p:C.t3,
-          }}>{s}</button>))}
-        </div>
-      </div>
-      {photoPreview&&<div style={{marginTop:6,position:"relative"}}><img src={photoPreview} alt="Food" style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:4}}/></div>}
-      <B full onClick={aiGo} disabled={loading||(!input.trim()&&!photo)} style={{marginTop:6}}>{loading?"Estimating...":"Estimate"}</B>
-      {!input.trim()&&!photo&&(()=>{const freq=getFrequentMeals(data);return freq.length>0?(
-        <div style={{marginTop:8}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Your Frequent Meals</div>
-          {freq.slice(0,5).map((m,i)=>(<button key={i} onClick={()=>add({...m,source:"history",components:[],confidence:"high",notes:`Avg of ${m.count} logs`})}
-            style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,
-              padding:"8px 12px",cursor:"pointer",marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:13}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</div>
-              <div style={{fontSize:10,color:C.t3}}>{m.count}x logged</div>
-            </div>
-            <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{m.cal} cal · {m.protein}gP</span>
-          </button>))}
-        </div>
-      ):null;})()}
-    </X>)}
-    {mode==="scan"&&(<X style={{padding:10}}>
-      {scanLoading&&<div style={{textAlign:"center",padding:20,color:C.t2}}>Looking up product...</div>}
-      {scanError&&<div style={{padding:10}}>
-        <div style={{color:C.r,fontSize:14,marginBottom:8}}>{scanError.message}</div>
-        {scanError.barcode&&<div style={{color:C.t3,fontSize:12,marginBottom:8}}>Barcode: {scanError.barcode}</div>}
-        <div style={{display:"flex",gap:6}}>
-          <B full outline onClick={()=>{setScanError(null);setMode("search");if(scanError.barcode)setSearchQuery(scanError.barcode);}} color={C.p}>Search by Name</B>
-          <B full outline onClick={()=>{setScanError(null);setMode("manual");}} color={C.t2}>Manual Entry</B>
-          <B full outline onClick={()=>{setScanError(null);setScanResult(null);setScanKey(k=>k+1);}} color={C.a}>Scan Again</B>
-        </div>
-      </div>}
-      {scanResult&&<div>
-        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
-          {scanResult.imageUrl&&<img src={scanResult.imageUrl} alt="" style={{width:48,height:48,borderRadius:4,objectFit:"cover"}}/>}
-          <div>
-            <div style={{fontWeight:700,fontSize:14,color:C.t}}>{scanResult.name}</div>
-            {scanResult.brand&&<div style={{fontSize:12,color:C.t3}}>{scanResult.brand}</div>}
-            <div style={{fontSize:11,color:C.t3}}>per {scanResult.servingLabel}</div>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,marginBottom:8,textAlign:"center"}}>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{scanResult.cal}</div><div style={{fontSize:10,color:C.t3}}>cal</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.p}}>{scanResult.protein}g</div><div style={{fontSize:10,color:C.t3}}>protein</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.carbs}g</div><div style={{fontSize:10,color:C.t3}}>carbs</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.fat}g</div><div style={{fontSize:10,color:C.t3}}>fat</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{scanResult.fiber}g</div><div style={{fontSize:10,color:C.t3}}>fiber</div></div>
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
-          <span style={{fontSize:13,color:C.t2,whiteSpace:"nowrap"}}>{scanResult.per100g?"Grams:":"Servings:"}</span>
-          <input type="number" value={scanResult.per100g?scanGrams:scanServings}
-            onChange={e=>{const v=Math.max(0,+e.target.value||0);scanResult.per100g?setScanGrams(v):setScanServings(v);}}
-            style={{width:60,padding:"6px 8px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:14,fontFamily:"inherit",textAlign:"center"}}/>
-          {(scanResult.per100g?scanGrams!==100:scanServings!==1)&&<span style={{fontSize:12,color:C.t3}}>
-            = {Math.round(scanResult.cal*(scanResult.per100g?scanGrams/100:scanServings))} cal, {Math.round(scanResult.protein*(scanResult.per100g?scanGrams/100:scanServings))}g P
-          </span>}
-        </div>
-        <div style={{display:"flex",gap:6}}>
-          <B full onClick={()=>{addLookup(scanResult,scanResult.per100g?scanGrams/100:scanServings);setScanResult(null);}}>Add</B>
-          <B full outline onClick={()=>{setScanResult(null);setScanKey(k=>k+1);}} color={C.t2}>Scan Again</B>
-        </div>
-      </div>}
-      {!scanResult&&!scanLoading&&!scanError&&<div>
-        <div id="barcode-reader" style={{marginBottom:8}}></div>
-        <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6}}>
-          <input type="text" placeholder="Or enter barcode manually" onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim())lookupBarcode(e.target.value.trim());}}
-            style={{flex:1,padding:"8px 10px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:"inherit"}}/>
-          <B onClick={e=>{const inp=e.target.previousSibling;if(inp&&inp.value.trim())lookupBarcode(inp.value.trim());}}>Look Up</B>
-        </div>
-      </div>}
-    </X>)}
-    {mode==="search"&&(<X style={{padding:10}}>
-      <div style={{display:"flex",gap:4,marginBottom:8}}>
-        <input type="text" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}
-          onKeyDown={e=>{if(e.key==="Enter")searchFood();}}
-          placeholder="Search foods (e.g. Fairlife Core Power)"
-          style={{flex:1,padding:"8px 10px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:13,fontFamily:"inherit"}}/>
-        <B onClick={searchFood} disabled={searchLoading}>{searchLoading?"...":"Search"}</B>
-      </div>
-      {selectedProduct?<div>
-        <button onClick={()=>setSelectedProduct(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontFamily:"inherit",marginBottom:6,padding:0}}>← Back to results</button>
-        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
-          {selectedProduct.imageUrl&&<img src={selectedProduct.imageUrl} alt="" style={{width:48,height:48,borderRadius:4,objectFit:"cover"}}/>}
-          <div>
-            <div style={{fontWeight:700,fontSize:14,color:C.t}}>{selectedProduct.name}</div>
-            {selectedProduct.brand&&<div style={{fontSize:12,color:C.t3}}>{selectedProduct.brand}</div>}
-            <div style={{fontSize:11,color:C.t3}}>per {selectedProduct.servingLabel}</div>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,marginBottom:8,textAlign:"center"}}>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{selectedProduct.cal}</div><div style={{fontSize:10,color:C.t3}}>cal</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.p}}>{selectedProduct.protein}g</div><div style={{fontSize:10,color:C.t3}}>protein</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.carbs}g</div><div style={{fontSize:10,color:C.t3}}>carbs</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.fat}g</div><div style={{fontSize:10,color:C.t3}}>fat</div></div>
-          <div><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{selectedProduct.fiber}g</div><div style={{fontSize:10,color:C.t3}}>fiber</div></div>
-        </div>
-        <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
-          <span style={{fontSize:13,color:C.t2,whiteSpace:"nowrap"}}>{selectedProduct.per100g?"Grams:":"Servings:"}</span>
-          <input type="number" value={selectedProduct.per100g?searchGrams:searchServings}
-            onChange={e=>{const v=Math.max(0,+e.target.value||0);selectedProduct.per100g?setSearchGrams(v):setSearchServings(v);}}
-            style={{width:60,padding:"6px 8px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:14,fontFamily:"inherit",textAlign:"center"}}/>
-          {(selectedProduct.per100g?searchGrams!==100:searchServings!==1)&&<span style={{fontSize:12,color:C.t3}}>
-            = {Math.round(selectedProduct.cal*(selectedProduct.per100g?searchGrams/100:searchServings))} cal, {Math.round(selectedProduct.protein*(selectedProduct.per100g?searchGrams/100:searchServings))}g P
-          </span>}
-        </div>
-        <B full onClick={()=>{addLookup(selectedProduct,selectedProduct.per100g?searchGrams/100:searchServings);setSelectedProduct(null);}}>Add</B>
-      </div>
-      :searchResults.length>0?<div>
-        {searchResults.map((p,i)=>(<button key={i} onClick={()=>{setSelectedProduct(p);setSearchServings(1);setSearchGrams(100);}} style={{display:"flex",justifyContent:"space-between",
-          alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 12px",cursor:"pointer",
-          marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:13,gap:8}}>
-          {p.imageUrl&&<img src={p.imageUrl} alt="" style={{width:32,height:32,borderRadius:3,objectFit:"cover",flexShrink:0}}/>}
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-            {p.brand&&<div style={{fontSize:11,color:C.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.brand}</div>}
-          </div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",flexShrink:0}}>
-            <span style={{color:C.t3,fontSize:11,whiteSpace:"nowrap"}}>{p.cal} · {p.protein}gP</span>
-            {p.source==="usda"&&<span style={{fontSize:8,fontWeight:700,color:C.g,marginTop:2}}>USDA</span>}
-          </div>
-        </button>))}
-      </div>
-      :!searchLoading&&searchQuery&&searchResults.length===0&&<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No results found. Try different keywords.</div>}
-    </X>)}
-    {mode==="manual"&&(<X style={{padding:10}}>
+    <X style={{padding:10}}>
       <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
         <N value={mf.cal} onChange={v=>setMf({...mf,cal:v})} placeholder="Cal"/>
@@ -2653,16 +2284,9 @@ const Nutrition=({data,setData})=>{
         <N value={mf.fat} onChange={v=>setMf({...mf,fat:v})} placeholder="Fat"/>
         <N value={mf.fib} onChange={v=>setMf({...mf,fib:v})} placeholder="Fib"/>
       </div>
-      <B full style={{marginTop:6}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual",components:[]});
+      <B full style={{marginTop:6}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual"});
         setMf({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
-    </X>)}
-    {mode==="quick"&&(<X style={{padding:10}}>
-      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No saved meals</div>
-      :(data.qm||[]).map((q,i)=>(<button key={i} onClick={()=>add({...q,source:"quick"})} style={{display:"flex",justifyContent:"space-between",
-        alignItems:"center",width:"100%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 12px",cursor:"pointer",
-        marginBottom:3,textAlign:"left",fontFamily:"inherit",color:C.t,fontSize:14}}>
-        <span style={{fontWeight:600}}>{q.description}</span><span style={{color:C.t3,fontSize:12}}>{q.cal} · {q.protein}gP</span></button>))}
-    </X>)}
+    </X>
 
     {MEAL_TYPES.map(mt=>{
       const meals=grouped[mt];
@@ -2673,7 +2297,7 @@ const Nutrition=({data,setData})=>{
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {m.source&&["usda","history"].includes(m.source)&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>{m.source==="usda"?"USDA":"HIS"}</span>}
+                {m.source==="mfp"&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>MFP</span>}
               </div>
                 <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
@@ -2843,7 +2467,6 @@ const Settings=({data,setData})=>{
     mondayCal:""+(st.mondayCal||1300),trainingCal:""+(st.trainingCal||2600),weekendCal:""+(st.weekendCal||2500),syncToken:st.syncToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
-  const [showDeleteQm,setShowDeleteQm]=useState(null);
   const isTravel=!!(data.travelDays||{})[t];
 
   const toggleTravel=()=>{
@@ -2892,11 +2515,6 @@ const Settings=({data,setData})=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`health-hub-export-${td()}.json`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  };
-
-  const deleteQm=(i)=>{
-    const desc=(data.qm||[])[i]?.description;
-    const nd={...data,qm:(data.qm||[]).filter((_,j)=>j!==i)};setData(nd);sv(nd);if(desc)svSB.delQuickMeal(desc);setShowDeleteQm(null);
   };
 
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -3020,22 +2638,6 @@ const Settings=({data,setData})=>{
           })}
         </div>);
       })()}
-    </X>
-
-    <X>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Quick Meals Library</div>
-      {(data.qm||[]).length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No saved quick meals</div>
-      :(data.qm||[]).map((q,i)=>(
-        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:600,color:C.t}}>{q.description}</div>
-            <div style={{fontSize:12,color:C.t3}}>{q.cal} cal · {q.protein}gP · {q.carbs}gC · {q.fat}gF</div>
-          </div>
-          <button onClick={()=>setShowDeleteQm(i)} style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:16,padding:4}}>✕</button>
-        </div>
-      ))}
-      {showDeleteQm!==null&&<ConfirmModal title="Delete Quick Meal?" message={`Remove "${(data.qm||[])[showDeleteQm]?.description}" from your library?`}
-        onConfirm={()=>deleteQm(showDeleteQm)} onCancel={()=>setShowDeleteQm(null)} confirmText="Delete" confirmColor={C.r}/>}
     </X>
 
     <X>
