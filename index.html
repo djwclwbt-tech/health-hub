@@ -309,6 +309,9 @@ const parseHealthImport=(text)=>{
     else if(line.includes("SLEEP"))section="sleep";
     else if(line.includes("CALORIES"))section="cal";
     else if(line.includes("PROTEIN"))section="pro";
+    else if(line.includes("CARBOHYDRATE"))section="carb";
+    else if(line.includes("FAT"))section="fat";
+    else if(line.includes("FIBER"))section="fib";
     const m=line.match(/\|(\d{4}-\d{2}-\d{2})\s*\|(.+?)\|/);
     if(!m)continue;
     const date=m[1],val=m[2].replace(/,/g,"").trim();
@@ -319,10 +322,19 @@ const parseHealthImport=(text)=>{
     else if(section==="rhr"){if(!d.rec[date])d.rec[date]={};d.rec[date].rhr=num;}
     else if(section==="cal"){
       if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalCal=num;d.nut[date].meals=[{description:"MFP Import",cal:num,protein:0,carbs:0,fat:0,fiber:0,source:"import"}];
+      d.nut[date].totalCal=num;d.nut[date].meals=[{description:"MFP Import",cal:num,protein:0,carbs:0,fat:0,fiber:0,source:"mfp"}];
     }else if(section==="pro"){
       if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
       d.nut[date].totalProtein=num;if(d.nut[date].meals.length)d.nut[date].meals[0].protein=num;
+    }else if(section==="carb"){
+      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+      d.nut[date].totalCarbs=num;if(d.nut[date].meals.length)d.nut[date].meals[0].carbs=num;
+    }else if(section==="fat"){
+      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+      d.nut[date].totalFat=num;if(d.nut[date].meals.length)d.nut[date].meals[0].fat=num;
+    }else if(section==="fib"){
+      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
+      d.nut[date].totalFiber=num;if(d.nut[date].meals.length)d.nut[date].meals[0].fiber=num;
     }
   }
   let inSleep=false;
@@ -2253,21 +2265,7 @@ const Nutrition=({data,setData})=>{
     const portionHint=portionSize!=="normal"?` (${portionSize} portion)`:"";
     const fullInput=input?(input+portionHint):null;
     try{
-      // Photos go directly to AI (needs vision). Text tries smart-lookup first (USDA → OFF → AI).
-      if(fullInput&&!photo){
-        try{
-          const slr=await fetch("/api/smart-lookup",{method:"POST",headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({input:fullInput,context:{calories:st.calories||2430,protein:st.protein||180,
-              corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}})});
-          const sld=await slr.json();
-          if(slr.ok&&sld.cal>0){
-            const src=sld.method==="usda"?"usda":sld.method==="off"?"lookup":"ai";
-            add({...sld,source:src,raw:input,components:sld.components||[],confidence:sld.confidence,notes:sld.notes});
-            setInput("");setLoading(false);return;
-          }
-        }catch{}
-      }
-      // Fallback: full AI estimation (or photo input)
+      // AI estimation for manual entries (MFP sync is primary nutrition input)
       const body={context:{calories:st.calories||2430,protein:st.protein||180,
         corrections:getRecentCorrections(data,10),recentMeals:getRecentMeals(data,10)}};
       if(fullInput)body.input=fullInput;
@@ -2373,7 +2371,12 @@ const Nutrition=({data,setData})=>{
       </div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
         <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:C.t2}}>{viewDayType==="travel"?"Travel Day":viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
-        <span>{calT} cal · {proT}g pro target</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {tl.meals?.length===1&&tl.meals[0]?.source==="mfp"&&(
+            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,background:C.gl,color:C.g,textTransform:"uppercase"}}>MFP Synced</span>
+          )}
+          <span>{calT} cal · {proT}g pro target</span>
+        </div>
       </div>
       {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:4,fontSize:11,color:C.r,fontWeight:600}}>
         Fat at {viewFatPct}% of calories (target: 20-25%). Watch cooking oil, cheese, and sauces.
@@ -2837,7 +2840,7 @@ const Settings=({data,setData})=>{
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+st.steps,sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    mondayCal:""+(st.mondayCal||1300),trainingCal:""+(st.trainingCal||2600),weekendCal:""+(st.weekendCal||2500)});
+    mondayCal:""+(st.mondayCal||1300),trainingCal:""+(st.trainingCal||2600),weekendCal:""+(st.weekendCal||2500),syncToken:st.syncToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showDeleteQm,setShowDeleteQm]=useState(null);
@@ -2880,7 +2883,7 @@ const Settings=({data,setData})=>{
   const saveSettings=()=>{
     const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500}};
+      mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500,syncToken:f.syncToken||""}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
@@ -2916,6 +2919,23 @@ const Settings=({data,setData})=>{
         <div><L>Weekend</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="2500"/></div>
       </div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
+    </X>
+
+    {/* ═══ MFP SYNC ═══ */}
+    <X style={{borderLeft:`3px solid ${C.v}`}}>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>MFP Sync (via Apple Health)</div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Auto-sync nutrition from MyFitnessPal via an Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
+      <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
+        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:"#fff",color:C.t,boxSizing:"border-box"}}/></div>
+      <div style={{marginTop:8,padding:8,background:C.bl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6}}>
+        <div style={{fontWeight:700,marginBottom:4}}>Apple Shortcut Setup:</div>
+        1. Open Shortcuts → New Shortcut<br/>
+        2. Add "Find Health Samples" → Type: Dietary Energy, Start: Today, Group: Day<br/>
+        3. Repeat for: Protein, Carbohydrates, Fat Total, Fiber<br/>
+        4. Add "Get Contents of URL" → POST to your-domain.vercel.app/api/sync-nutrition<br/>
+        5. JSON body: {"{"} date, cal, protein, carbs, fat, fiber, token {"}"}<br/>
+        6. Set as daily automation at 9 PM
+      </div>
     </X>
 
     {/* ═══ TRAVEL DAY ═══ */}
