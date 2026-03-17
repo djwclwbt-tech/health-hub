@@ -52,7 +52,7 @@ export default async function handler(req, res) {
         const quickRes = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: input, dataType: ['Branded'], pageSize: 5 }),
+          body: JSON.stringify({ query: input, dataType: ['Branded'], pageSize: 10 }),
         });
         const quickData = await quickRes.json();
         const quickFoods = (quickData.foods || []).filter(f => {
@@ -61,23 +61,49 @@ export default async function handler(req, res) {
         });
 
         if (quickFoods.length > 0) {
-          const food = quickFoods[0];
-          const per100g = extractUsda(food);
-          // For branded products, use the serving size from the label
+          // Score results: prefer brand name match + reasonable serving size
+          const inputLower = input.toLowerCase();
+          const scored = quickFoods.map(f => {
+            const info = extractUsda(f);
+            let score = 0;
+            const descLower = (f.description || '').toLowerCase();
+            const brandLower = (f.brandName || f.brandOwner || '').toLowerCase();
+            // Brand name match
+            if (inputLower.split(/\s+/).some(w => brandLower.includes(w))) score += 3;
+            // Description keyword overlap
+            const inputWords = inputLower.split(/\s+/).filter(w => w.length > 2);
+            const descWords = descLower.split(/[\s,]+/);
+            const overlap = inputWords.filter(w => descWords.some(d => d.includes(w))).length;
+            score += overlap;
+            // Prefer standard serving sizes (30-50g for powders, 200-500ml for drinks)
+            const ss = info.servingSize || 100;
+            if (ss >= 25 && ss <= 500) score += 1;
+            // Penalize very small servings (<20g) — likely partial/split servings
+            if (ss < 20) score -= 2;
+            return { food: f, info, score };
+          });
+
+          scored.sort((a, b) => b.score - a.score);
+          const best = scored[0];
+          const food = best.food;
+          const per100g = best.info;
           const grams = per100g.servingSize || 100;
           const nutrition = scaleNutrition(per100g, grams);
           const brandLabel = per100g.brand ? ` (${per100g.brand})` : '';
+          const servingNote = food.householdServingFullText
+            ? ` — serving: ${food.householdServingFullText}`
+            : ` — serving: ${Math.round(grams)}${per100g.servingUnit}`;
 
           return res.status(200).json({
             description: input,
             ...nutrition,
             method: 'usda',
-            confidence: 'high',
+            confidence: grams >= 20 ? 'high' : 'medium',
             components: [{
               item: `${per100g.description}${brandLabel} (${Math.round(grams)}${per100g.servingUnit})`,
               ...nutrition,
             }],
-            notes: `USDA Branded Foods database — ${per100g.description}${brandLabel}`,
+            notes: `USDA Branded Foods database — ${per100g.description}${brandLabel}${servingNote}`,
           });
         }
       } catch {}
