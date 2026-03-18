@@ -134,7 +134,24 @@ const PROG = {
         {id:"hip-thrust",name:"Hip Thrust BB",sets:3,rr:[10,12],rest:90,sw:160,inc:10,unit:"lbs",notes:"1s hold top",cue:"Drive through heels, squeeze glutes at lockout, chin tucked"},
         {id:"seated-calf",name:"Seated Calf Raise",sets:3,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
       ]},
-  }
+  },
+  variants:{
+    wednesday:{
+      "back-protected":{name:"Lower A (Back-Protected)",focus:"Strength",reps:"5-8",stepper:20,
+        warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+          {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
+          {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
+          {name:"QL Side Stretch",rx:"20s per side"},
+        ],ramp:"1-2 ramp-up sets on your first exercise"},
+        exercises:[
+          {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
+          {id:"leg-extension-bp",name:"Leg Extension",sets:3,rr:[5,8],rest:90,sw:150,inc:5,unit:"lbs",notes:"Full squeeze at top",cue:"Lock out at top, squeeze quad hard for 1 second"},
+          {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
+          {id:"cable-pull-through",name:"Cable Pull-Through",sets:3,rr:[10,12],rest:90,sw:70,inc:5,unit:"lbs",notes:"Hinge pattern, no spinal load",cue:"Push hips back, squeeze glutes at top, arms are just hooks"},
+          {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
+        ]},
+    },
+  },
 };
 const WU=w=>{if(!w||w<=0)return[];const s=[];
   if(w>=95)s.push({w:Math.round(w*.5/5)*5,r:10,l:"50%"});
@@ -1570,14 +1587,18 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [aiExIdx,setAiExIdx]=useState(null);
   const [showAi,setShowAi]=useState(false);
   const [wuDone,setWuDone]=useState(false);
+  const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
+  const setVariant=(day,variant)=>{const nv=variant?{...activeVariant,[day]:variant}:{...activeVariant};if(!variant)delete nv[day];setActiveVariant(nv);try{localStorage.setItem("dhub6_variant",JSON.stringify(nv));}catch{}};
   const tr=useRef(null);
-  const sess=data.program[sel];
+  const hasVariants=PROG.variants?.[sel];
+  const sess=activeVariant[sel]&&PROG.variants?.[sel]?.[activeVariant[sel]]||data.program[sel]:data.program[sel];
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
+  const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
-    setWorkout({day:sel,exercises:sess.exercises.map(ex=>{
+    setWorkout({day:sel,variant:activeVariant[sel]||null,exercises:sess.exercises.map(ex=>{
       const cw=gw(ex.id,ex.sw);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
       return{id:ex.id,
       wu:WU(wt).map(w=>({...w,done:false})),
@@ -1624,8 +1645,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
-    nd.wk={...nd.wk,[t]:{day:workout.day,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
-    const s=data.program[workout.day];
+    nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
+    const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=gw(pe.id,pe.sw);
@@ -1684,12 +1705,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const askCoach=async(q,exIdx)=>{
     if(!q.trim()||aiLoading||aiCooldown)return;
     setAiLoading(true);setAiA("");
-    const ex=workout&&exIdx!=null?data.program[workout.day]?.exercises[exIdx]:null;
+    const wSess=getSess(workout.day,workout.variant);
+    const ex=workout&&exIdx!=null?wSess?.exercises[exIdx]:null;
     const cw=ex?gw(ex.id,ex.sw):null;
     try{
       const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
-          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:data.program[workout?.day]?.focus||""})});
+          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||""})});
       const d=await r.json();
       setAiA(d.answer||d.error||"No response");
       if(d.actions&&d.actions.length)applyCoachActions(d.actions);
@@ -1706,7 +1728,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [calYear,setCalYear]=useState(now.getFullYear());
 
   if(workout){
-    const s=data.program[workout.day];
+    const s=getSess(workout.day,workout.variant);
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
@@ -1841,7 +1863,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   if(viewW){
     const [vDate,vData]=viewW;
-    const vSess=data.program[vData.day];
+    const vSess=getSess(vData.day,vData.variant);
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       <button onClick={()=>setViewW(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X style={{borderLeft:`3px solid ${C.g}`}}>
@@ -1948,6 +1970,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={startW}>Start</B>}
         </div>
       </X>
+      {hasVariants&&!workout&&(<X style={{padding:8,display:"flex",gap:4,flexWrap:"wrap"}}>
+        <button onClick={()=>setVariant(sel,null)} style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${!activeVariant[sel]?C.p:C.bd}`,background:!activeVariant[sel]?C.pl:"transparent",color:!activeVariant[sel]?C.p:C.t3}}>Standard</button>
+        {Object.entries(hasVariants).map(([k,v])=>(<button key={k} onClick={()=>setVariant(sel,k)} style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${activeVariant[sel]===k?C.a:C.bd}`,background:activeVariant[sel]===k?"rgba(245,158,11,0.1)":"transparent",color:activeVariant[sel]===k?C.a:C.t3}}>{v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")}</button>))}
+      </X>)}
       {sess.warmup&&(<S title="Warm-Up" collapsible>
         <X style={{padding:10}}>
           <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:sess.warmup.moves.length?6:0}}>{sess.warmup.cardio}</div>
