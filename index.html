@@ -2547,12 +2547,14 @@ const Settings=({data,setData})=>{
         style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:"#fff",color:C.t,boxSizing:"border-box"}}/></div>
       <div style={{marginTop:8,padding:8,background:C.bl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6}}>
         <div style={{fontWeight:700,marginBottom:4}}>Apple Shortcut Setup:</div>
-        1. Open Shortcuts → New Shortcut<br/>
-        2. Add "Find Health Samples" → Type: Dietary Energy, Start: Today, Group: Day<br/>
-        3. Repeat for: Protein, Carbohydrates, Fat Total, Fiber<br/>
-        4. Add "Get Contents of URL" → POST to your-domain.vercel.app/api/sync-nutrition<br/>
-        5. JSON body: {"{"} date, cal, protein, carbs, fat, fiber, token {"}"}<br/>
-        6. Set as daily automation at 9 PM
+        1. Open Shortcuts → + → New Shortcut<br/>
+        2. Add 5× "Find Health Samples" (Start: Today, Group: Day):<br/>
+        &nbsp;&nbsp;&nbsp;Dietary Energy, Protein, Total Carbohydrates, Total Fat, Dietary Fiber<br/>
+        3. Add "Get Contents of URL" — paste URL below, tap each placeholder to insert the matching Health Sample variable:<br/>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
+          https://your-domain.vercel.app/api/sync-nutrition?token=YOUR_TOKEN&cal=&#123;Energy&#125;&protein=&#123;Protein&#125;&carbs=&#123;Carbs&#125;&fat=&#123;Fat&#125;&fiber=&#123;Fiber&#125;
+        </span>
+        4. Automation tab → Time of Day → 9 PM → Run Shortcut
       </div>
     </X>
 
