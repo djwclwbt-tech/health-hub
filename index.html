@@ -1591,10 +1591,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const setVariant=(day,variant)=>{const nv=variant?{...activeVariant,[day]:variant}:{...activeVariant};if(!variant)delete nv[day];setActiveVariant(nv);try{localStorage.setItem("dhub6_variant",JSON.stringify(nv));}catch{}};
   const tr=useRef(null);
   const hasVariants=PROG.variants?.[sel];
-  const sess=activeVariant[sel]&&PROG.variants?.[sel]?.[activeVariant[sel]]||data.program[sel]:data.program[sel];
+  const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
+  const sess=getSess(sel,activeVariant[sel]);
 
   const gw=(id,def)=>data.prog[id]?.currentWeight??def;
-  const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
