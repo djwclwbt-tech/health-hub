@@ -104,10 +104,9 @@ const exerciseFieldsSchema = z.object({
   unit: z.string().optional(), notes: z.string().optional(), cue: z.string().optional(),
 });
 
-// ── MCP Handler ──
-const handler = createMcpHandler(
+// ── MCP Handler (Web API Request → Response) ──
+const mcpHandler = createMcpHandler(
   (server) => {
-    // Tool 1: get_program
     server.registerTool(
       "get_program",
       {
@@ -120,7 +119,6 @@ const handler = createMcpHandler(
       })
     );
 
-    // Tool 2: update_settings
     server.registerTool(
       "update_settings",
       {
@@ -140,7 +138,6 @@ const handler = createMcpHandler(
       }
     );
 
-    // Tool 3: update_exercise
     server.registerTool(
       "update_exercise",
       {
@@ -200,4 +197,60 @@ const handler = createMcpHandler(
   }
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+// ── Vercel adapter: convert Express-like (req, res) to Web API (Request → Response) ──
+export default async function handler(req, res) {
+  try {
+    // Build the full URL
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+    const url = new URL(req.url, `${proto}://${host}`);
+
+    // Build Web API Request from Vercel's Express-like request
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+    }
+
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    const webRequest = new Request(url.toString(), {
+      method: req.method,
+      headers,
+      body: hasBody ? JSON.stringify(req.body) : undefined,
+      duplex: hasBody ? "half" : undefined,
+    });
+
+    // Call mcp-handler
+    const webResponse = await mcpHandler(webRequest);
+
+    // Convert Web API Response back to Vercel's Express-like response
+    res.status(webResponse.status);
+    for (const [key, value] of webResponse.headers.entries()) {
+      res.setHeader(key, value);
+    }
+
+    // Handle streaming (SSE) vs regular responses
+    const contentType = webResponse.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream") && webResponse.body) {
+      // Stream SSE response
+      const reader = webResponse.body.getReader();
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(decoder.decode(value, { stream: true }));
+        }
+      } finally {
+        res.end();
+      }
+    } else {
+      const body = await webResponse.text();
+      res.end(body);
+    }
+  } catch (err) {
+    console.error("MCP handler error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+}
