@@ -243,11 +243,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Auth — require UPDATE_TOKEN as bearer token
+  // Auth — accept bearer token OR URL key parameter
+  // Claude.ai connectors use OAuth (not bearer tokens) and have a known bug
+  // where the Authorization header isn't sent, so we also accept ?key= in the URL
   const token = process.env.UPDATE_TOKEN;
   if (token) {
     const auth = req.headers.authorization;
-    if (!auth || auth !== `Bearer ${token}`) {
+    const urlKey = req.query?.key || new URL(req.url, "http://localhost").searchParams.get("key");
+    const validBearer = auth === `Bearer ${token}`;
+    const validKey = urlKey === token;
+    if (!validBearer && !validKey) {
       return res.status(401).json({ error: "Unauthorized" });
     }
   }
