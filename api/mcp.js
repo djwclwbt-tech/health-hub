@@ -230,7 +230,18 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method === "DELETE") return res.status(200).end(); // session termination
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method === "HEAD") {
+    res.setHeader("MCP-Protocol-Version", "2025-06-18");
+    return res.status(200).end();
+  }
+  if (req.method === "GET") {
+    res.setHeader("Allow", "POST, HEAD, OPTIONS, DELETE");
+    return res.status(405).end();
+  }
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST, HEAD, OPTIONS, DELETE");
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   // Auth — require UPDATE_TOKEN as bearer token
   const token = process.env.UPDATE_TOKEN;
@@ -276,7 +287,7 @@ async function handleMessage(message, req, res) {
       const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       res.setHeader("Mcp-Session-Id", sessionId);
       return jsonrpc(id, {
-        protocolVersion: "2025-03-26",
+        protocolVersion: "2025-06-18",
         capabilities: {
           tools: { listChanged: false }
         },
