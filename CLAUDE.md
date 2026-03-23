@@ -15,6 +15,8 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/analyze.js` — Weekly health analysis endpoint
 - `api/coach.js` — Mid-workout AI coaching endpoint
 - `api/estimate.js` — Meal nutrition estimation endpoint
+- `api/update.js` — Program update endpoint (curl/script)
+- `api/mcp.js` — Remote MCP server (Claude.ai integration)
 - `manifest.json` — PWA manifest
 
 ## Data Structure
@@ -85,6 +87,26 @@ When making code changes to the repo:
 4. Merge immediately with `gh pr merge --merge --delete-branch`
 
 This gives a paper trail of every change while removing manual work.
+
+## Claude.ai MCP Integration (Remote Connector)
+The app exposes a remote MCP server at `/api/mcp` so regular Claude.ai conversations can directly update the workout program and settings — no code, no CLI needed.
+
+**How it works:**
+1. User chats with Claude on claude.ai (phone, desktop, anywhere)
+2. Says "bump my protein to 200g" or "swap hack squat for belt squat"
+3. Claude calls the MCP tool → writes to Supabase `program_updates` table
+4. App picks up the change on next load (toast notification)
+
+**Setup (one-time):**
+1. In Claude.ai: **Settings → Integrations → Add custom integration**
+2. Enter URL: `https://health-hub-topaz-sigma.vercel.app/api/mcp`
+3. When prompted for auth, use the `UPDATE_TOKEN` as Bearer token
+4. Done — any Claude.ai conversation can now control the app
+
+**Available MCP tools:**
+- `get_program` — View current workout program, exercises, settings
+- `update_settings` — Change a target (calories, protein, water, steps, sleep, fiber, etc.)
+- `update_exercise` — Add, remove, swap, or update exercises in the program
 
 ## Deployment
 Deploy to Vercel with `ANTHROPIC_API_KEY` environment variable set for AI features.
