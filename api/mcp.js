@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 // ── Supabase config (same as update.js) ──
 const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
 const SB_KEY = process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
@@ -275,7 +273,7 @@ async function handleMessage(message, req, res) {
 
   switch (method) {
     case "initialize": {
-      const sessionId = crypto.randomUUID();
+      const sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       res.setHeader("Mcp-Session-Id", sessionId);
       return jsonrpc(id, {
         protocolVersion: "2025-03-26",
