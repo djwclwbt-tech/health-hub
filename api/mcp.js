@@ -1,4 +1,5 @@
-import crypto from 'crypto';
+import { createMcpHandler } from "mcp-handler";
+import { z } from "zod";
 
 // ── Supabase config (same as update.js) ──
 const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
@@ -10,81 +11,9 @@ const sbHeaders = {
   "Prefer": "resolution=merge-duplicates",
 };
 
-// ── Tool definitions ──
+// ── Constants ──
 const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "mondayCal", "trainingCal", "weekendCal"];
 
-const TOOLS = [
-  {
-    name: "update_settings",
-    description: "Update a health/nutrition target. Valid fields: calories, protein (g), water (oz), steps, sleep (hrs), fiber (g), mondayCal, trainingCal, weekendCal. Changes apply on next app load.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        field: { type: "string", enum: SETTINGS_FIELDS, description: "Setting to change" },
-        value: { type: "number", description: "New target value" },
-        reason: { type: "string", description: "Why this change is being made" }
-      },
-      required: ["field", "value", "reason"]
-    }
-  },
-  {
-    name: "update_exercise",
-    description: "Modify the workout program. Actions: 'update' (change fields on existing exercise), 'swap' (replace exercise), 'add' (add to a day), 'remove' (remove from a day). Use get_program first to see current exercise IDs.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: { type: "string", enum: ["add", "remove", "swap", "update"], description: "What to do" },
-        day: { type: "string", enum: ["monday", "tuesday", "wednesday", "thursday", "friday"], description: "Day (for add/remove)" },
-        exerciseId: { type: "string", description: "Exercise ID to modify/remove/swap (for update/remove/swap)" },
-        fields: {
-          type: "object",
-          description: "Fields to update: {name, sets, rr:[min,max], rest, sw, inc, unit, notes, cue}",
-          properties: {
-            name: { type: "string" }, sets: { type: "number" },
-            rr: { type: "array", items: { type: "number" } },
-            rest: { type: "number" }, sw: { type: "number" },
-            inc: { type: "number" }, unit: { type: "string" },
-            notes: { type: "string" }, cue: { type: "string" }
-          }
-        },
-        newExercise: {
-          type: "object",
-          description: "Replacement exercise (for swap). Must include: id, name, sets, rr, rest, sw, inc, unit",
-          properties: {
-            id: { type: "string" }, name: { type: "string" },
-            sets: { type: "number" }, rr: { type: "array", items: { type: "number" } },
-            rest: { type: "number" }, sw: { type: "number" },
-            inc: { type: "number" }, unit: { type: "string" },
-            notes: { type: "string" }, cue: { type: "string" }
-          }
-        },
-        exercise: {
-          type: "object",
-          description: "Exercise to add (for add). Must include: id, name, sets, rr, rest, sw, inc, unit",
-          properties: {
-            id: { type: "string" }, name: { type: "string" },
-            sets: { type: "number" }, rr: { type: "array", items: { type: "number" } },
-            rest: { type: "number" }, sw: { type: "number" },
-            inc: { type: "number" }, unit: { type: "string" },
-            notes: { type: "string" }, cue: { type: "string" }
-          }
-        },
-        reason: { type: "string", description: "Why this change is being made" }
-      },
-      required: ["action", "reason"]
-    }
-  },
-  {
-    name: "get_program",
-    description: "View the current workout program structure — all days, exercises, IDs, weights, and settings. Call this before making changes so you know what exists.",
-    inputSchema: {
-      type: "object",
-      properties: {}
-    }
-  }
-];
-
-// ── Current program snapshot (for get_program tool) ──
 const PROGRAM_SNAPSHOT = {
   settings: { calories: 2430, protein: 200, water: 128, steps: 10000, sleep: 7.5, fiber: 30 },
   days: {
@@ -142,7 +71,7 @@ const PROGRAM_SNAPSHOT = {
   }
 };
 
-// ── Supabase write (same logic as update.js) ──
+// ── Supabase write ──
 async function pushChange(change, reason) {
   const row = {
     type: change.type,
@@ -160,159 +89,168 @@ async function pushChange(change, reason) {
   return true;
 }
 
-// ── Tool execution ──
-async function executeTool(name, args) {
-  if (name === "get_program") {
-    return { content: [{ type: "text", text: JSON.stringify(PROGRAM_SNAPSHOT, null, 2) }] };
+// ── Exercise field schemas ──
+const exerciseSchema = z.object({
+  id: z.string(), name: z.string(), sets: z.number(),
+  rr: z.array(z.number()), rest: z.number().optional(),
+  sw: z.number(), inc: z.number().optional(),
+  unit: z.string(), notes: z.string().optional(), cue: z.string().optional(),
+});
+
+const exerciseFieldsSchema = z.object({
+  name: z.string().optional(), sets: z.number().optional(),
+  rr: z.array(z.number()).optional(), rest: z.number().optional(),
+  sw: z.number().optional(), inc: z.number().optional(),
+  unit: z.string().optional(), notes: z.string().optional(), cue: z.string().optional(),
+});
+
+// ── MCP Handler (Web API Request → Response) ──
+const mcpHandler = createMcpHandler(
+  (server) => {
+    server.registerTool(
+      "get_program",
+      {
+        title: "Get Program",
+        description: "View the current workout program structure — all days, exercises, IDs, weights, and settings. Call this before making changes so you know what exists.",
+        inputSchema: z.object({}),
+      },
+      async () => ({
+        content: [{ type: "text", text: JSON.stringify(PROGRAM_SNAPSHOT, null, 2) }],
+      })
+    );
+
+    server.registerTool(
+      "update_settings",
+      {
+        title: "Update Settings",
+        description: "Update a health/nutrition target. Valid fields: calories, protein (g), water (oz), steps, sleep (hrs), fiber (g), mondayCal, trainingCal, weekendCal. Changes apply on next app load.",
+        inputSchema: z.object({
+          field: z.enum(SETTINGS_FIELDS),
+          value: z.number().describe("New target value"),
+          reason: z.string().describe("Why this change is being made"),
+        }),
+      },
+      async ({ field, value, reason }) => {
+        await pushChange({ type: "settings", field, value }, reason);
+        return {
+          content: [{ type: "text", text: `Done — ${field} updated to ${value}. Change will apply on next app load.` }],
+        };
+      }
+    );
+
+    server.registerTool(
+      "update_exercise",
+      {
+        title: "Update Exercise",
+        description: "Modify the workout program. Actions: 'update' (change fields on existing exercise), 'swap' (replace exercise), 'add' (add to a day), 'remove' (remove from a day). Use get_program first to see current exercise IDs.",
+        inputSchema: z.object({
+          action: z.enum(["add", "remove", "swap", "update"]).describe("What to do"),
+          day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday"]).optional().describe("Day (for add/remove)"),
+          exerciseId: z.string().optional().describe("Exercise ID to modify/remove/swap"),
+          fields: exerciseFieldsSchema.optional().describe("Fields to update (for 'update' action)"),
+          newExercise: exerciseSchema.optional().describe("Replacement exercise (for 'swap' action)"),
+          exercise: exerciseSchema.optional().describe("Exercise to add (for 'add' action)"),
+          reason: z.string().describe("Why this change is being made"),
+        }),
+      },
+      async (args) => {
+        const { action, reason } = args;
+        let change;
+
+        if (action === "update") {
+          if (!args.exerciseId || !args.fields) {
+            return { content: [{ type: "text", text: "Error: 'update' requires exerciseId and fields" }], isError: true };
+          }
+          change = { type: "exercise", action: "update", exerciseId: args.exerciseId, fields: args.fields };
+        } else if (action === "swap") {
+          if (!args.exerciseId || !args.newExercise) {
+            return { content: [{ type: "text", text: "Error: 'swap' requires exerciseId and newExercise" }], isError: true };
+          }
+          change = { type: "exercise", action: "swap", oldExerciseId: args.exerciseId, newExercise: args.newExercise };
+        } else if (action === "add") {
+          if (!args.day || !args.exercise) {
+            return { content: [{ type: "text", text: "Error: 'add' requires day and exercise" }], isError: true };
+          }
+          change = { type: "exercise", action: "add", day: args.day, exercise: args.exercise };
+        } else if (action === "remove") {
+          if (!args.day || !args.exerciseId) {
+            return { content: [{ type: "text", text: "Error: 'remove' requires day and exerciseId" }], isError: true };
+          }
+          change = { type: "exercise", action: "remove", day: args.day, exerciseId: args.exerciseId };
+        } else {
+          return { content: [{ type: "text", text: `Error: unknown action "${action}"` }], isError: true };
+        }
+
+        await pushChange(change, reason);
+        return {
+          content: [{ type: "text", text: `Done — exercise ${action} applied. Change will appear on next app load.` }],
+        };
+      }
+    );
+  },
+  {},
+  {
+    basePath: "/api",
+    disableSse: true,
+    maxDuration: 60,
+    verboseLogs: true,
   }
+);
 
-  if (name === "update_settings") {
-    const { field, value, reason } = args;
-    if (!SETTINGS_FIELDS.includes(field)) {
-      return { content: [{ type: "text", text: `Error: invalid field "${field}". Valid: ${SETTINGS_FIELDS.join(", ")}` }], isError: true };
-    }
-    if (typeof value !== "number") {
-      return { content: [{ type: "text", text: `Error: value must be a number` }], isError: true };
-    }
-    await pushChange({ type: "settings", field, value }, reason);
-    return { content: [{ type: "text", text: `Done — ${field} updated to ${value}. Change will apply on next app load.` }] };
-  }
-
-  if (name === "update_exercise") {
-    const { action, reason } = args;
-    let change;
-
-    if (action === "update") {
-      if (!args.exerciseId || !args.fields) {
-        return { content: [{ type: "text", text: "Error: 'update' requires exerciseId and fields" }], isError: true };
-      }
-      change = { type: "exercise", action: "update", exerciseId: args.exerciseId, fields: args.fields };
-    } else if (action === "swap") {
-      if (!args.exerciseId || !args.newExercise) {
-        return { content: [{ type: "text", text: "Error: 'swap' requires exerciseId and newExercise" }], isError: true };
-      }
-      change = { type: "exercise", action: "swap", oldExerciseId: args.exerciseId, newExercise: args.newExercise };
-    } else if (action === "add") {
-      if (!args.day || !args.exercise) {
-        return { content: [{ type: "text", text: "Error: 'add' requires day and exercise" }], isError: true };
-      }
-      change = { type: "exercise", action: "add", day: args.day, exercise: args.exercise };
-    } else if (action === "remove") {
-      if (!args.day || !args.exerciseId) {
-        return { content: [{ type: "text", text: "Error: 'remove' requires day and exerciseId" }], isError: true };
-      }
-      change = { type: "exercise", action: "remove", day: args.day, exerciseId: args.exerciseId };
-    } else {
-      return { content: [{ type: "text", text: `Error: unknown action "${action}"` }], isError: true };
-    }
-
-    await pushChange(change, reason);
-    return { content: [{ type: "text", text: `Done — exercise ${action} applied. Change will appear on next app load.` }] };
-  }
-
-  return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };
-}
-
-// ── JSON-RPC helpers ──
-function jsonrpc(id, result) {
-  return { jsonrpc: "2.0", id, result };
-}
-function jsonrpcError(id, code, message) {
-  return { jsonrpc: "2.0", id, error: { code, message } };
-}
-
-// ── Main handler ──
+// ── Vercel adapter: convert Express-like (req, res) to Web API (Request → Response) ──
 export default async function handler(req, res) {
-  // CORS
-  const origin = req.headers.origin || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id");
-  res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method === "DELETE") return res.status(200).end(); // session termination
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  // Auth — require UPDATE_TOKEN as bearer token
-  const token = process.env.UPDATE_TOKEN;
-  if (token) {
-    const auth = req.headers.authorization;
-    if (!auth || auth !== `Bearer ${token}`) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-  }
-
   try {
-    const message = req.body;
+    // Build the full URL
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+    const url = new URL(req.url, `${proto}://${host}`);
 
-    // Handle batch requests (array of messages)
-    if (Array.isArray(message)) {
-      const results = [];
-      for (const msg of message) {
-        const result = await handleMessage(msg, req, res);
-        if (result) results.push(result);
-      }
-      if (results.length === 0) return res.status(202).end();
-      return res.status(200).json(results.length === 1 ? results[0] : results);
+    // Build Web API Request from Vercel's Express-like request
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
     }
 
-    const result = await handleMessage(message, req, res);
-    if (!result) return res.status(202).end(); // notification
-    return res.status(200).json(result);
-  } catch (err) {
-    return res.status(500).json(jsonrpcError(null, -32603, err.message));
-  }
-}
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    const webRequest = new Request(url.toString(), {
+      method: req.method,
+      headers,
+      body: hasBody ? JSON.stringify(req.body) : undefined,
+      duplex: hasBody ? "half" : undefined,
+    });
 
-async function handleMessage(message, req, res) {
-  const { method, id, params = {} } = message;
+    // Call mcp-handler
+    const webResponse = await mcpHandler(webRequest);
 
-  // Notifications (no id) — just acknowledge
-  if (id === undefined || id === null) {
-    return null;
-  }
-
-  switch (method) {
-    case "initialize": {
-      const sessionId = crypto.randomUUID();
-      res.setHeader("Mcp-Session-Id", sessionId);
-      return jsonrpc(id, {
-        protocolVersion: "2025-03-26",
-        capabilities: {
-          tools: { listChanged: false }
-        },
-        serverInfo: {
-          name: "Health Hub",
-          version: "1.0.0"
-        },
-        instructions: "Health & fitness tracker for a strength athlete doing body recomposition. Use get_program to see the current workout program and settings before making changes. Use update_settings to change nutrition/health targets. Use update_exercise to modify the workout program."
-      });
+    // Convert Web API Response back to Vercel's Express-like response
+    res.status(webResponse.status);
+    for (const [key, value] of webResponse.headers.entries()) {
+      res.setHeader(key, value);
     }
 
-    case "tools/list":
-      return jsonrpc(id, { tools: TOOLS });
-
-    case "tools/call": {
-      const { name, arguments: args = {} } = params;
+    // Handle streaming (SSE) vs regular responses
+    const contentType = webResponse.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream") && webResponse.body) {
+      // Stream SSE response
+      const reader = webResponse.body.getReader();
+      const decoder = new TextDecoder();
       try {
-        const result = await executeTool(name, args);
-        return jsonrpc(id, result);
-      } catch (err) {
-        return jsonrpc(id, { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(decoder.decode(value, { stream: true }));
+        }
+      } finally {
+        res.end();
       }
+    } else {
+      const body = await webResponse.text();
+      res.end(body);
     }
-
-    case "resources/list":
-      return jsonrpc(id, { resources: [] });
-
-    case "prompts/list":
-      return jsonrpc(id, { prompts: [] });
-
-    case "ping":
-      return jsonrpc(id, {});
-
-    default:
-      return jsonrpcError(id, -32601, `Method not found: ${method}`);
+  } catch (err) {
+    console.error("MCP handler error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
   }
 }
