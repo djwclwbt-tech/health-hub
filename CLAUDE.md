@@ -15,6 +15,8 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/analyze.js` — Weekly health analysis endpoint
 - `api/coach.js` — Mid-workout AI coaching endpoint
 - `api/estimate.js` — Meal nutrition estimation endpoint
+- `api/update.js` — Program update endpoint (curl/script)
+- `api/mcp.js` — Remote MCP server (Claude.ai integration)
 - `manifest.json` — PWA manifest
 
 ## Data Structure
@@ -48,6 +50,64 @@ Stored in `data.settings`:
 - `sleep` — Sleep target in hours (default: 7.5)
 - `fiber` — Daily fiber target in grams (default: 30)
 
+## Pushing Workout & Settings Updates via API
+When the user agrees to a workout program change or settings adjustment during conversation, push it live immediately using the `/api/update` endpoint — no code change or deploy needed.
+
+**How to push an update:**
+```bash
+source /home/user/health-hub/.env
+curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${UPDATE_TOKEN}" \
+  -d '{"changes":[...],"reason":"..."}'
+```
+
+Or use the helper script:
+```bash
+/home/user/health-hub/scripts/push-update.sh '{"changes":[...],"reason":"..."}'
+```
+
+**Payload format**: See `api/schema.md` for the full schema. Supported change types:
+- `{"type":"settings","field":"<name>","value":<number>}` — Update a setting (calories, protein, water, steps, sleep, fiber, mondayCal, trainingCal, weekendCal)
+- `{"type":"exercise","action":"update","exerciseId":"<id>","fields":{...}}` — Modify an existing exercise
+- `{"type":"exercise","action":"swap","oldExerciseId":"<id>","newExercise":{...}}` — Replace an exercise
+- `{"type":"exercise","action":"add","day":"<day>","exercise":{...}}` — Add exercise to a day
+- `{"type":"exercise","action":"remove","day":"<day>","exerciseId":"<id>"}` — Remove exercise from a day
+
+**Rules:**
+- Always include a `reason` field explaining why the change was made
+- Confirm to the user what was pushed and show the API response
+- The app picks up pending updates on next load (toast notification)
+
+## Git Workflow
+When making code changes to the repo:
+1. Commit with a clear message
+2. Push to a feature branch
+3. Create a PR with `gh pr create`
+4. Merge immediately with `gh pr merge --merge --delete-branch`
+
+This gives a paper trail of every change while removing manual work.
+
+## Claude.ai MCP Integration (Remote Connector)
+The app exposes a remote MCP server at `/api/mcp` so regular Claude.ai conversations can directly update the workout program and settings — no code, no CLI needed.
+
+**How it works:**
+1. User chats with Claude on claude.ai (phone, desktop, anywhere)
+2. Says "bump my protein to 200g" or "swap hack squat for belt squat"
+3. Claude calls the MCP tool → writes to Supabase `program_updates` table
+4. App picks up the change on next load (toast notification)
+
+**Setup (one-time):**
+1. In Claude.ai: **Settings → Integrations → Add custom integration**
+2. Enter URL: `https://health-hub-topaz-sigma.vercel.app/api/mcp`
+3. When prompted for auth, use the `UPDATE_TOKEN` as Bearer token
+4. Done — any Claude.ai conversation can now control the app
+
+**Available MCP tools:**
+- `get_program` — View current workout program, exercises, settings
+- `update_settings` — Change a target (calories, protein, water, steps, sleep, fiber, etc.)
+- `update_exercise` — Add, remove, swap, or update exercises in the program
+
 ## Deployment
 Deploy to Vercel with `ANTHROPIC_API_KEY` environment variable set for AI features.
 
@@ -55,3 +115,4 @@ Deploy to Vercel with `ANTHROPIC_API_KEY` environment variable set for AI featur
 - **Add a new exercise**: Add to `PROG.days` object in index.html
 - **Change targets**: Use the Settings tab in the app (or modify defaults in code)
 - **Add API endpoint**: Create new file in `/api/` directory
+- **Push workout/settings change**: Use the `/api/update` endpoint (see above)

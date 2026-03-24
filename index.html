@@ -1594,7 +1594,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
   const sess=getSess(sel,activeVariant[sel]);
 
-  const gw=(id,def)=>data.prog[id]?.currentWeight??def;
+  const gw=(id,def)=>{
+    const p=data.prog[id]?.currentWeight;
+    if(p!=null)return p;
+    const dates=Object.keys(data.wk).sort().reverse();
+    for(const d of dates){
+      const wex=data.wk[d].exercises?.find(e=>e.id===id);
+      if(wex){const ds=wex.sets?.filter(s=>s.done&&s.weight>0);if(ds?.length)return ds[0].weight;}
+    }
+    return def;
+  };
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
@@ -1649,7 +1658,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
-      const cw=gw(pe.id,pe.sw);
+      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(pe.id,pe.sw);
       nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0}};
     });
     setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(pe&&nd.prog[pe.id])svSB.progression(pe.id,nd.prog[pe.id]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
@@ -1991,17 +2000,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </S>)}
       <S title="Exercises" collapsible>
         {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
+          const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
+            for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
+              if(wex){const ds=wex.sets?.filter(s=>s.done);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
+          const hit=lastWk&&lastWk.reps.length===ex.sets&&lastWk.reps.every(r=>r>=ex.rr[1]);
           return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
                 <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
+                {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
+                  <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
+                  <span style={{color:hit?C.g:C.t2}}>{lastWk.weight}{ex.unit!=="BW"?" lbs":""} × {lastWk.reps.join("/")}</span>
+                  {hit&&<span style={{color:C.g,fontWeight:700}}> ✓</span>}
+                  <span style={{color:C.t3,marginLeft:4}}>{fmt(lastWk.date)}</span>
+                </div>}
               </div>
               <div style={{textAlign:"right",minWidth:48}}>
                 <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
                 <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
-                {prog?.lastReps&&<div style={{fontSize:10,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
+                {hit&&<div style={{fontSize:10,color:C.g,fontWeight:600}}>↑ +{ex.inc}</div>}
               </div>
             </div>
           </X>);})}
