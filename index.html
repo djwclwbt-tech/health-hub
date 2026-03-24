@@ -1594,7 +1594,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
   const sess=getSess(sel,activeVariant[sel]);
 
-  const gw=(id,def)=>data.prog[id]?.currentWeight??def;
+  const gw=(id,def)=>{
+    const p=data.prog[id]?.currentWeight;
+    if(p!=null)return p;
+    const dates=Object.keys(data.wk).sort().reverse();
+    for(const d of dates){
+      const wex=data.wk[d].exercises?.find(e=>e.id===id);
+      if(wex){const ds=wex.sets?.filter(s=>s.done&&s.weight>0);if(ds?.length)return ds[0].weight;}
+    }
+    return def;
+  };
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
@@ -1649,7 +1658,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
-      const cw=gw(pe.id,pe.sw);
+      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(pe.id,pe.sw);
       nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0}};
     });
     setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(pe&&nd.prog[pe.id])svSB.progression(pe.id,nd.prog[pe.id]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
