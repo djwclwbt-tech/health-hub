@@ -2000,17 +2000,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </S>)}
       <S title="Exercises" collapsible>
         {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
+          const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
+            for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
+              if(wex){const ds=wex.sets?.filter(s=>s.done);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
+          const hit=lastWk&&lastWk.reps.length===ex.sets&&lastWk.reps.every(r=>r>=ex.rr[1]);
           return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
                 <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
+                {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
+                  <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
+                  <span style={{color:hit?C.g:C.t2}}>{lastWk.weight}{ex.unit!=="BW"?" lbs":""} × {lastWk.reps.join("/")}</span>
+                  {hit&&<span style={{color:C.g,fontWeight:700}}> ✓</span>}
+                  <span style={{color:C.t3,marginLeft:4}}>{fmt(lastWk.date)}</span>
+                </div>}
               </div>
               <div style={{textAlign:"right",minWidth:48}}>
                 <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
                 <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
-                {prog?.lastReps&&<div style={{fontSize:10,color:prog.progressed?C.g:C.t3,fontWeight:600}}>{prog.lastReps.join("/")}{prog.progressed?" ↑":""}</div>}
+                {hit&&<div style={{fontSize:10,color:C.g,fontWeight:600}}>↑ +{ex.inc}</div>}
               </div>
             </div>
           </X>);})}
