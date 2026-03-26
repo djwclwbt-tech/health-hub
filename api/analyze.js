@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    const { range, days, workouts, nutrition, recovery, weight, steps, habits, water, program, targets } = req.body;
+    const { range, days, workouts, nutrition, recovery, weight, steps, habits, water, program, targets, bodyComp } = req.body;
 
     // Build a compact but data-rich summary for the prompt
     const lines = [];
@@ -49,6 +49,16 @@ export default async function handler(req, res) {
     lines.push(`WATER: ${water ? `avg ${water}oz/day (target ${targets?.water || 128}oz)` : 'No data'}`);
     lines.push(`HABITS (7-day score): ${habits != null ? `${habits}%` : 'No data'} — tracked: alcohol-free, cannabis-free, screens off by 10pm, morning sunlight, bed by 10:30, read before bed`);
 
+    if (bodyComp && bodyComp.assessments && bodyComp.assessments.length > 0) {
+      lines.push(`\nBODY COMPOSITION (${bodyComp.count} photo(s) in period):`);
+      bodyComp.assessments.forEach((a, i) => {
+        lines.push(`${i === 0 ? '[Latest] ' : ''}${a.date}: BF ${a.bfRange} — Progress: ${(a.progress || []).join('; ')} — Focus: ${(a.focus || []).join('; ')}`);
+      });
+      lines.push(`Last photo: ${bodyComp.daysSincePhoto} days ago`);
+    } else {
+      lines.push(`\nBODY COMPOSITION: No photos in this period.`);
+    }
+
     const dataStr = lines.join('\n');
 
     const systemPrompt = `You are a health data analyst for a strength athlete doing body recomposition. Analyze the provided data and return ONLY a valid JSON object with this exact structure:
@@ -66,7 +76,8 @@ export default async function handler(req, res) {
   "trends": ["<trend observation 1>", "<trend observation 2>"],
   "correlations": ["<correlation between metrics>"],
   "recommendations": ["<actionable rec 1>", "<actionable rec 2>", "<actionable rec 3>"],
-  "nextWeekFocus": "<1-2 sentence priority focus for next 7 days>"
+  "nextWeekFocus": "<1-2 sentence priority focus for next 7 days>",
+  "bodyComposition": {"bfTrend":"direction or stable","recompSignal":"yes/no with reasoning","muscleQuality":"brief observation","photoReminder":"only if >14 days since last photo, else null"}
 }
 Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs attention. Base scores strictly on data vs targets. Be direct — do not sugarcoat gaps. No markdown, no explanation, JSON only.`;
 
