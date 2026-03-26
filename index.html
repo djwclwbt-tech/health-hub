@@ -253,7 +253,7 @@ const svSB={
   nutrition:(date,n)=>sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
     total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0}),
   progression:(exId,p)=>sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
-    last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id"),
+    last_date:p.lastDate||null,progressed:p.progressed||false,pr:p.pr||null,e1rm_history:p.e1rmHistory||null},"exercise_id"),
   debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
   mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
@@ -459,6 +459,10 @@ const getConsecutiveRedDays=(rec)=>{
     if(rec[ds]?.recoveryScore&&rec[ds].recoveryScore<34)count++;else break;}
   return count;
 };
+
+// ═══ VOLUME & E1RM ═══
+const e1rm=(w,r)=>r<=0||w<=0?0:r===1?w:Math.round(w*(1+r/30));
+const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.done).reduce((s,set)=>s+(set.weight||0)*set.reps,0),0);
 
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
@@ -1529,6 +1533,39 @@ const Dashboard=({data,setData})=>{
         </X>
       )}
 
+      {(()=>{
+        const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
+        const volData=last7.map(d=>({v:(data.wk[d]&&data.wk[d].volume)||0,d:d.slice(5)})).filter(x=>x.v>0);
+        const thisWk=last7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
+        const prev7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-7-i);return lds(d);});
+        const lastWk=prev7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
+        const pct=lastWk>0?Math.round((thisWk-lastWk)/lastWk*100):0;
+        return thisWk>0?(
+          <X style={{padding:10,borderLeft:"3px solid "+C.p}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Weekly Volume</div>
+            <div style={{fontSize:22,fontWeight:700}}>{thisWk.toLocaleString()} lbs</div>
+            {lastWk>0&&<div style={{fontSize:12,color:pct>=0?C.g:C.r,marginTop:2}}>{pct>=0?"+":""}{pct}% vs last week</div>}
+            {volData.length>1&&<Ch data={volData} color={C.p} label="Daily Volume" yUnit=" lbs"/>}
+          </X>
+        ):null;
+      })()}
+
+      {(()=>{
+        const prs=Object.entries(data.prog||{}).filter(([_,v])=>v.pr).map(([id,v])=>({id,name:v.pr.name||id.replace(/-/g," "),e1rm:v.pr.e1rm,weight:v.pr.weight,reps:v.pr.reps,date:v.pr.date})).sort((a,b)=>b.e1rm-a.e1rm);
+        const recent=prs.filter(p=>{const d=new Date(p.date);const ago=new Date();ago.setDate(ago.getDate()-7);return d>=ago;});
+        return prs.length>0?(
+          <X style={{padding:10,borderLeft:"3px solid "+C.a}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Personal Records{recent.length>0?" ("+recent.length+" new this week)":""}</div>
+            {prs.slice(0,8).map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+C.bd}}>
+                <div style={{fontSize:13,textTransform:"capitalize"}}>{p.name}</div>
+                <div style={{fontSize:13,fontWeight:600}}>{p.weight}x{p.reps} <span style={{color:C.t3,fontSize:11}}>e1RM {p.e1rm}</span></div>
+              </div>
+            ))}
+          </X>
+        ):null;
+      })()}
+
       <div style={{display:"flex",gap:3}}>
         {dks.map((dk,i)=>{
           const isToday=dk===dn,done=Object.keys(data.wk).some(ws=>dw(ws)===dk&&wkn(ws)===w);
@@ -1674,8 +1711,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(pe.id,pe.sw);
-      nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0}};
+      const prevPr=(nd.prog[pe.id]||{}).pr;const prevHistory=(nd.prog[pe.id]||{}).e1rmHistory||[];
+      nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
+      const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
+      const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
+      if(newE1rm>0){
+        nd.prog[pe.id].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
+        if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
+      }
     });
+    nd.wk[t].volume=calcVolume(workout.exercises);
     setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(pe&&nd.prog[pe.id])svSB.progression(pe.id,nd.prog[pe.id]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
     setShowFinishConfirm(false);
   };
