@@ -301,7 +301,7 @@ const loadFromSB=async()=>{
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,mondayCal:s.mondayCal||s.monday_cal,trainingCal:s.trainingCal||s.training_cal,weekendCal:s.weekendCal||s.weekend_cal};}
-    if(programRows.length>0&&programRows[0].data){d.program=programRows[0].data;}
+    if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
 };
