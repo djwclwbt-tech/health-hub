@@ -1722,9 +1722,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
           reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||""})});
       const d=await r.json();
-      setAiA(d.answer||d.error||"No response");
+      if(!r.ok){setAiA(d.error||"Coach unavailable — check API key");setAiLoading(false);return;}
+      setAiA(d.answer||"No response");
       if(d.actions&&d.actions.length)applyCoachActions(d.actions);
-    }catch(e){setAiA("Error connecting to coach");}
+    }catch(e){console.error("Coach error:",e);setAiA("Error connecting to coach: "+e.message);}
     setAiLoading(false);setAiCooldown(true);
     setTimeout(()=>setAiCooldown(false),10000);
   };
