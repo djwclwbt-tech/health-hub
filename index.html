@@ -981,6 +981,9 @@ const AnalysisSection=({data})=>{
       // Water avg
       const waterAvg=waterEntries.length?Math.round(waterEntries.reduce((s,[,v])=>s+v,0)/waterEntries.length):null;
 
+      // Body comp assessments in window
+      const bcEntries=Object.entries(data.bodyComp||{}).filter(([d,v])=>d>=cutStr&&v&&typeof v==="object"&&v.analysis).sort((a,b)=>b[0].localeCompare(a[0]));
+
       const payload={
         range,days,
         workouts:wkSummary,
@@ -992,6 +995,7 @@ const AnalysisSection=({data})=>{
         water:waterAvg,
         program:{name:PROG.name,week:wkn(td()),totalWeeks:PROG.weeks},
         targets:data.settings||DEFAULTS,
+        bodyComp:bcEntries.length?{assessments:bcEntries.map(([d,v])=>({date:d,bfRange:v.analysis.bodyFatRange,muscleDev:v.analysis.muscleDevelopment,progress:v.analysis.areasOfProgress,focus:v.analysis.focusAreas,notes:v.analysis.notes})),count:bcEntries.length,lastPhotoDate:bcEntries[0][0],daysSincePhoto:Math.round((new Date()-new Date(bcEntries[0][0]+"T12:00:00"))/864e5)}:null,
       };
 
       const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
@@ -1118,6 +1122,17 @@ const AnalysisSection=({data})=>{
             <X style={{padding:12,background:C.pl,border:`1px solid ${C.p}`}}>
               <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Next Week Focus</div>
               <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
+            </X>
+          )}
+
+          {/* Body Composition */}
+          {result.bodyComposition&&(
+            <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.v,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Body Composition</div>
+              {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
+              {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Recomp Signal: {result.bodyComposition.recompSignal}</div>}
+              {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
+              {result.bodyComposition.photoReminder&&<div style={{fontSize:13,color:C.a}}>{"📸"} {result.bodyComposition.photoReminder}</div>}
             </X>
           )}
         </div>
