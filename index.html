@@ -162,7 +162,7 @@ const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -553,6 +553,20 @@ const getInsights=(data)=>{
   }
   if(cD>=5){const r=Math.round(cH/cD*100);
     ins.push({type:r>=60?"win":"gap",text:`Calories within 10% of target ${r}% of days`});}
+  const recWkPairs=Object.entries(data.rec||{}).filter(([d,r])=>r.recoveryScore&&data.wk[d]).map(([d,r])=>{
+    const wk=data.wk[d];const progDay=wk.exercises?wk.exercises.filter(ex=>ex.sets&&ex.sets.some(s=>s.done)).length:0;
+    return{rec:r.recoveryScore,trained:progDay>0,volume:wk.volume||0};
+  });
+  if(recWkPairs.length>=3){
+    const highRec=recWkPairs.filter(p=>p.rec>=55);
+    const lowRec=recWkPairs.filter(p=>p.rec<55);
+    const highVol=highRec.length?Math.round(highRec.reduce((s,p)=>s+p.volume,0)/highRec.length):0;
+    const lowVol=lowRec.length?Math.round(lowRec.reduce((s,p)=>s+p.volume,0)/lowRec.length):0;
+    if(highVol>0&&lowVol>0){
+      const pct=Math.round((highVol-lowVol)/lowVol*100);
+      ins.push({type:pct>10?"win":"insight",text:`High recovery days (55+): ${highVol.toLocaleString()} lbs avg volume vs ${lowVol.toLocaleString()} lbs on low days (${pct>0?"+":""}${pct}%)`});
+    }
+  }
   return ins.slice(0,4);
 };
 
@@ -1564,6 +1578,49 @@ const Dashboard=({data,setData})=>{
             ))}
           </X>
         ):null;
+      })()}
+
+      {(()=>{
+        const entries=Object.entries(data.bodyMeas||{}).filter(([_,v])=>Object.values(v).some(x=>x)).sort((a,b)=>b[0].localeCompare(a[0]));
+        if(entries.length<2)return null;
+        const latest=entries[0],prev=entries[1];
+        const fields=[{k:"chest",l:"Chest",up:true},{k:"waist",l:"Waist",up:false},{k:"armL",l:"L Arm",up:true},{k:"armR",l:"R Arm",up:true},{k:"thighL",l:"L Thigh",up:true},{k:"thighR",l:"R Thigh",up:true}];
+        const deltas=fields.filter(f=>latest[1][f.k]&&prev[1][f.k]).map(f=>({...f,d:parseFloat((latest[1][f.k]-prev[1][f.k]).toFixed(1))})).filter(f=>f.d!==0);
+        if(!deltas.length)return null;
+        return(
+          <X style={{padding:10,borderLeft:"3px solid "+C.v}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Measurement Changes <span style={{fontWeight:400}}>({fmt(prev[0])} → {fmt(latest[0])})</span></div>
+            {deltas.map(f=>(
+              <div key={f.k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
+                <span style={{fontSize:13}}>{f.l}</span>
+                <span style={{fontSize:13,fontWeight:600,color:f.up?(f.d>0?C.g:C.r):(f.d<0?C.g:C.r)}}>{f.d>0?"+":""}{f.d}"</span>
+              </div>
+            ))}
+          </X>
+        );
+      })()}
+
+      {(()=>{
+        const pairs=Object.entries(data.rec||{}).filter(([d,r])=>r.recoveryScore&&data.wk[d]).map(([d,r])=>({rec:r.recoveryScore,vol:data.wk[d].volume||0}));
+        if(pairs.length<5)return null;
+        const tiers=[{l:"Green (55+)",min:55,max:999,c:C.g},{l:"Yellow (45-54)",min:45,max:54,c:C.a},{l:"Red (<45)",min:0,max:44,c:C.r}];
+        const tierData=tiers.map(t=>{const p=pairs.filter(x=>x.rec>=t.min&&x.rec<=t.max);return{...t,count:p.length,avgVol:p.length?Math.round(p.reduce((s,x)=>s+x.vol,0)/p.length):0};}).filter(t=>t.count>0);
+        return(
+          <X style={{padding:10,borderLeft:"3px solid "+C.g}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Recovery → Performance</div>
+            {tierData.map(t=>(
+              <div key={t.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+C.bd}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{width:8,height:8,borderRadius:4,background:t.c}}/>
+                  <span style={{fontSize:12}}>{t.l}</span>
+                  <span style={{fontSize:11,color:C.t3}}>({t.count} sessions)</span>
+                </div>
+                <span style={{fontSize:13,fontWeight:600}}>{t.avgVol.toLocaleString()} lbs</span>
+              </div>
+            ))}
+            <div style={{fontSize:11,color:C.t2,marginTop:6}}>Average volume output by recovery tier</div>
+          </X>
+        );
       })()}
 
       <div style={{display:"flex",gap:3}}>
@@ -2748,6 +2805,31 @@ const Settings=({data,setData})=>{
           })}
         </div>);
       })()}
+    </X>
+
+    <X>
+      <S title="Body Measurements">
+        {(()=>{
+          const today=t;
+          const cur=data.bodyMeas&&data.bodyMeas[today]||{};
+          const prev=Object.entries(data.bodyMeas||{}).filter(([d])=>d<today).sort((a,b)=>b[0].localeCompare(a[0]))[0];
+          const fields=[{k:"chest",l:"Chest"},{k:"waist",l:"Waist"},{k:"armL",l:"Left Arm"},{k:"armR",l:"Right Arm"},{k:"thighL",l:"Left Thigh"},{k:"thighR",l:"Right Thigh"}];
+          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[today]:{...(data.bodyMeas[today]||{}),[k]:v?parseFloat(v):null}}};setData(nd);sv(nd);};
+          return (<div>
+            <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Measure in inches. Log every 2 weeks for best trend data.</div>
+            {fields.map(f=>(
+              <div key={f.k} style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                <L>{f.l}</L>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <N value={cur[f.k]||""} onChange={v=>saveMeas(f.k,v)} style={{width:70}} placeholder="in"/>
+                  {prev&&prev[1][f.k]&&cur[f.k]?(()=>{const d=(cur[f.k]-prev[1][f.k]).toFixed(1);return d!=0?<span style={{fontSize:11,color:f.k==="waist"?(d<0?C.g:C.r):(d>0?C.g:C.r)}}>{d>0?"+":""}{d}"</span>:null;})():null}
+                </div>
+              </div>
+            ))}
+            {prev&&<div style={{fontSize:11,color:C.t3,marginTop:4}}>Last logged: {fmt(prev[0])}</div>}
+          </div>);
+        })()}
+      </S>
     </X>
 
     <X>
