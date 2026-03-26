@@ -2236,7 +2236,7 @@ const Nutrition=({data,setData})=>{
   const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
   const viewDayType=getDayType(viewDate,data.travelDays);
   const viewFatPct=tl.totalCal>0?Math.round(((tl.totalFat||0)*9/tl.totalCal)*100):0;
-  const waterToday=data.water?.[t]||0;
+  const waterToday=data.water?.[viewDate]||0;
   const waterGoal=st.water||128;
   const navDate=(dir)=>{const d=new Date(viewDate+"T12:00:00");d.setDate(d.getDate()+dir);const ds=lds(d);if(ds<=t)setViewDate(ds);};
 
@@ -2244,8 +2244,8 @@ const Nutrition=({data,setData})=>{
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
   const add=m=>{const ml={...m,mealType};const nl=rc([...tl.meals,ml]);const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);};
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
-  const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
-  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
+  const addWater=(oz)=>{const nv=(data.water?.[viewDate]||0)+oz;const nd={...data,water:{...data.water,[viewDate]:nv}};setData(nd);sv(nd);svSB.water(viewDate,nv);};
+  const resetWater=()=>{const nd={...data,water:{...data.water,[viewDate]:0}};setData(nd);sv(nd);svSB.delWater(viewDate);};
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
@@ -2436,7 +2436,7 @@ const Nutrition=({data,setData})=>{
         ))}
       </div>
       {showWaterHist&&(()=>{
-        const entries=Object.entries(data.water||{}).filter(([d])=>d!==t).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+        const entries=Object.entries(data.water||{}).filter(([d])=>d!==viewDate).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
         const avg=entries.length?Math.round(entries.reduce((s,[_,v])=>s+v,0)/entries.length):0;
         return(<div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:6}}>
           <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days — avg {avg} oz</div>
