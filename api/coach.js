@@ -7,9 +7,13 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
   try {
-    const { question, exercise, weight, reps, sets, focus } = req.body;
+    const { question, exercise, weight, reps, sets, focus, history, recovery, stalled, week } = req.body;
     if (!question) return res.status(400).json({ error: 'No question provided' });
     const ctx = exercise ? `Current exercise: ${exercise}, ${weight}lbs, ${sets}x${reps}, ${focus} day.` : '';
+    const historyCtx = history && history.length ? `\nPROGRESSION HISTORY (last ${history.length} sessions):\n${history.map(h => `${h.date}: ${h.weight}lbs × ${h.reps.join(',')} reps (${h.sets} sets)`).join('\n')}` : '';
+    const recoveryCtx = recovery ? `\nTODAY'S RECOVERY: Score ${recovery.score || '?'}%, HRV ${recovery.hrv || '?'}ms, RHR ${recovery.rhr || '?'}bpm, Sleep ${recovery.sleep || '?'}h` : '';
+    const stallCtx = stalled ? '\n⚠️ This exercise is STALLED (not progressing for 3+ sessions).' : '';
+    const weekCtx = week ? `\nProgram week: ${week}` : '';
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -20,7 +24,15 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 400,
-        system: `You are a concise strength coach mid-workout. ${ctx} Give brief, actionable answers in 1-3 sentences. No fluff. Focus on form cues, substitute exercises, weight adjustments, or technique tips.
+        system: `You are a concise strength coach mid-workout. ${ctx}${historyCtx}${recoveryCtx}${stallCtx}${weekCtx}
+
+Give brief, actionable answers in 1-3 sentences. No fluff. Focus on form cues, substitute exercises, weight adjustments, or technique tips.
+
+When giving advice:
+- Reference progression history to identify trends (weight jumps, rep drops, consistency)
+- If recovery is poor (low score, low HRV, high RHR, low sleep), recommend reducing intensity or volume
+- If the exercise is stalled, suggest technique changes, rep scheme adjustments, or alternative exercises to break through
+- Factor in program week: early weeks = build volume, later weeks = peak intensity, deload week = reduce load and focus on form
 
 If the athlete agrees to a concrete program change (swap exercise, adjust weight, change a setting), return JSON with both "answer" and "actions". Otherwise return JSON with just "answer".
 

@@ -1835,9 +1835,26 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const ex=workout&&exIdx!=null?wSess?.exercises[exIdx]:null;
     const cw=ex?gw(ex.id,ex.sw):null;
     try{
+      const history=ex?Object.entries(data.wk||{})
+        .filter(([d,w])=>w.exercises&&w.exercises.some(e=>e.id===ex.id&&e.sets))
+        .sort((a,b)=>b[0].localeCompare(a[0]))
+        .slice(0,4)
+        .map(([d,w])=>{
+          const logged=w.exercises.find(e=>e.id===ex.id);
+          if(!logged||!logged.sets)return null;
+          const done=logged.sets.filter(s=>s.done);
+          if(!done.length)return null;
+          return{date:d,weight:done[0].weight,reps:done.map(s=>s.reps),sets:done.length};
+        }).filter(Boolean):[];
+      const recovery=data.rec&&data.rec[t]?{
+        score:data.rec[t].recoveryScore||null,hrv:data.rec[t].hrv||null,
+        rhr:data.rec[t].rhr||null,sleep:data.rec[t].sleepHours||null}:null;
+      const stalled=ex?((getStalls(data.prog,data.wk,data.program)||[]).some(s=>s.id===ex.id)):false;
+      const week=wkn(t);
       const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
-          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||""})});
+          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||"",
+          history,recovery,stalled,week})});
       const d=await r.json();
       if(!r.ok){setAiA(d.error||"Coach unavailable — check API key");setAiLoading(false);return;}
       setAiA(d.answer||"No response");
