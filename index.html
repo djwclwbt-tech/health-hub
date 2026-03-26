@@ -464,6 +464,8 @@ const getConsecutiveRedDays=(rec)=>{
 const e1rm=(w,r)=>r<=0||w<=0?0:r===1?w:Math.round(w*(1+r/30));
 const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.done).reduce((s,set)=>s+(set.weight||0)*set.reps,0),0);
 
+const backfillData=(d)=>{Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});const allDays={...PROG.days,...(d.program||{})};Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{if(!w.exercises||!w.day)return;const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;w.exercises.forEach((ex,i)=>{const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;const cs=ex.sets.filter(s=>s.done&&s.weight>0&&s.reps>0);if(!cs.length)return;const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;if(!d.prog[pe.id])d.prog[pe.id]={currentWeight:bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};if(!d.prog[pe.id].e1rmHistory)d.prog[pe.id].e1rmHistory=[];d.prog[pe.id].e1rmHistory.push({date,e1rm:newE1rm});d.prog[pe.id].e1rmHistory=d.prog[pe.id].e1rmHistory.slice(-12);if(!d.prog[pe.id].pr||newE1rm>d.prog[pe.id].pr.e1rm){d.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}});});return d;};
+
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
   const days=programDays||PROG.days;
@@ -2978,7 +2980,7 @@ window.App = function App(){
       }
       // Apply pending program updates from Supabase queue
       const{data:updated,applied}=await applyProgramUpdates(finalData);
-      setData(updated);sv(updated);
+      backfillData(updated);setData(updated);sv(updated);
       applied.forEach(msg=>addToast(msg,"success"));
       setSbLoaded(true);
     })();
