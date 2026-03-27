@@ -161,7 +161,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30};
+const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,customHabits:[]};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -213,7 +213,7 @@ const syncToSB=async(d)=>{
       for(const[date,h]of Object.entries(d.habits||{})){
         if(!h)continue;
         await sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
-          sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements});
+          sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements,custom:h.custom||null});
       }
       for(const[date,w]of Object.entries(d.wk||{})){
         await sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null});
@@ -248,7 +248,7 @@ const svSB={
     respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
     strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null}),
   habits:(date,h)=>sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
-    sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements}),
+    sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements,custom:h.custom||null}),
   workout:(date,w)=>sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null}),
   nutrition:(date,n)=>sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
     total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0}),
@@ -288,7 +288,7 @@ const loadFromSB=async()=>{
       respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
       strain:r.strain,wakeTime:r.wake_time,notes:r.notes};});
     habits.forEach(r=>{d.habits[r.date]={alcohol:r.alcohol,cannabis:r.cannabis,screensOff:r.screens_off,
-      sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed,supplements:r.supplements};});
+      sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed,supplements:r.supplements,custom:r.custom||null};});
     wk.forEach(r=>{d.wk[r.date]={day:r.day_name,exercises:r.exercises,dur:r.duration_min};});
     nut.forEach(r=>{d.nut[r.date]={meals:r.meals,totalCal:r.total_cal,totalProtein:r.total_protein,
       totalCarbs:r.total_carbs,totalFat:r.total_fat,totalFiber:r.total_fiber};});
@@ -706,7 +706,7 @@ const Br=({v,max,color=C.p,h=5})=>(
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
   <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
-    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"recovery",l:"Whoop",icon:"♡"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
+    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"habits",l:"Habits",icon:"✓"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
         flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
         color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?700:600,fontFamily:"inherit",
@@ -775,147 +775,6 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
         <span>{data[0].d||""}</span><span>{data[data.length-1].d||""}</span>
       </div>
     </X>
-  );
-};
-
-// ═══ MORNING DEBRIEF ═══
-const Debrief=({data,setData,onClose})=>{
-  const today=td();if((data.debrief||{})[today])return null;
-  const [step,setStep]=useState(0);
-  const lastWt=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]||"";
-  const [f,setF]=useState({wt:lastWt?""+lastWt:"",rs:"",hrv:"",rhr:"",rr:"",sh:"",sp:"",str:"",steps:"",wake:"",
-    alcohol:null,cannabis:null,screens:null,sunlight:null,bed:null,read:null,supplements:null});
-
-  const steps=[
-    {title:"Weight",sub:"Step on the scale",type:"weight"},
-    {title:"Whoop Recovery",sub:"Enter today's recovery data from Whoop",type:"whoop"},
-    {title:"Wake Up Time",sub:"What time did you get up?",type:"time",field:"wake",ph:"630"},
-    {title:"Yesterday's Steps",sub:"How many steps did you get yesterday?",type:"steps"},
-    {title:"Habits",sub:"Yesterday's habits",type:"habits"},
-  ];
-
-  const cur=steps[step];
-  const canNext=cur.type==="habits"?(f.alcohol!==null&&f.cannabis!==null&&f.screens!==null&&f.sunlight!==null&&f.bed!==null&&f.read!==null&&f.supplements!==null):true;
-
-  const submit=()=>{
-    const y=yd();
-    const nd={...data,debrief:{...data.debrief,[today]:true}};
-    if(f.wt)nd.wt={...nd.wt,[today]:Number(f.wt)};
-    nd.rec={...nd.rec,[today]:{...(nd.rec[today]||{}),
-      recoveryScore:+f.rs||undefined,hrv:+f.hrv||undefined,rhr:+f.rhr||undefined,
-      respiratoryRate:+f.rr||undefined,sleepHours:+f.sh||undefined,sleepPerformance:+f.sp||undefined,
-      strain:+f.str||undefined,wakeTime:f.wake||undefined}};
-    if(f.steps)nd.steps={...nd.steps,[y]:+f.steps};
-    nd.habits={...nd.habits,[y]:{alcohol:f.alcohol,cannabis:f.cannabis,screensOff:f.screens,
-      sunlight:f.sunlight,bedBy1030:f.bed,readBeforeBed:f.read,supplements:f.supplements}};
-    setData(nd);sv(nd);
-    if(nd.wt[today])svSB.weight(today,nd.wt[today]);
-    svSB.recovery(today,nd.rec[today]);
-    if(nd.steps[y])svSB.steps(y,nd.steps[y]);
-    svSB.habits(y,nd.habits[y]);
-    svSB.debrief(today);
-    onClose();
-  };
-
-  const habitItems=[
-    {field:"alcohol",label:"Alcohol Yesterday?"},
-    {field:"cannabis",label:"Cannabis Yesterday?"},
-    {field:"screens",label:"Screens Off by 10pm?"},
-    {field:"sunlight",label:"Morning Sunlight?"},
-    {field:"bed",label:"In Bed by 10:30?"},
-    {field:"read",label:"Read Before Bed?"},
-    {field:"supplements",label:"Supplement Stack Taken?"},
-  ];
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:360,border:`1px solid ${C.bd}`,maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div>
-            <div style={{fontSize:16,fontWeight:700,color:C.t}}>Morning Debrief</div>
-            <div style={{fontSize:12,color:C.t3}}>{step+1}/{steps.length}</div>
-          </div>
-          <button onClick={onClose} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:18,padding:8}}>✕</button>
-        </div>
-        <Br v={step+1} max={steps.length} color={C.p} h={3}/>
-
-        <div style={{margin:"16px 0"}}>
-          <div style={{fontSize:17,fontWeight:700,color:C.t}}>{cur.title}</div>
-          {cur.sub&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>{cur.sub}</div>}
-
-          {cur.type==="weight"&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
-              <N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185.0"
-                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
-              <span style={{fontSize:15,color:C.t3,minWidth:30}}>lbs</span>
-            </div>
-          )}
-
-          {cur.type==="whoop"&&(
-            <div style={{marginTop:12}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
-                <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
-                <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
-                <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
-                <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
-                <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85" max={100}/></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
-                <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
-              </div>
-            </div>
-          )}
-
-          {cur.type==="steps"&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
-              <N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"
-                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
-              <span style={{fontSize:15,color:C.t3,minWidth:40}}>steps</span>
-            </div>
-          )}
-
-          {cur.type==="time"&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
-              <TimeInput value={f.wake} onChange={v=>setF({...f,wake:v})} placeholder="630"
-                style={{fontSize:28,padding:"14px",fontWeight:700}}/>
-            </div>
-          )}
-
-          {cur.type==="habits"&&(
-            <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
-              {habitItems.map(h=>(
-                <div key={h.field} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
-                  <span style={{fontSize:14,fontWeight:500,color:C.t}}>{h.label}</span>
-                  <div style={{display:"flex",gap:4}}>
-                    {[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=>(
-                      <button key={o.l} onClick={()=>setF({...f,[h.field]:o.v})} style={{
-                        padding:"6px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",
-                        background:f[h.field]===o.v?(o.v?C.gl:C.rl):"transparent",
-                        border:`1px solid ${f[h.field]===o.v?(o.v?C.g:C.r):C.bd}`,
-                        color:f[h.field]===o.v?(o.v?C.g:C.r):C.t3,fontFamily:"inherit",
-                      }}>{o.l}</button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{display:"flex",gap:6}}>
-          {step>0&&<B outline onClick={()=>setStep(step-1)} style={{flex:1}}>Back</B>}
-          <B full onClick={step<steps.length-1?()=>setStep(step+1):submit}
-            color={step===steps.length-1?C.g:C.p} style={{flex:2}}>
-            {step===steps.length-1?"Done":"Next"}
-          </B>
-        </div>
-        <button onClick={()=>{if(step<steps.length-1)setStep(step+1);else submit();}}
-          style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,marginTop:8,width:"100%",textAlign:"center",fontFamily:"inherit"}}>Skip</button>
-      </div>
-    </div>
   );
 };
 
@@ -991,11 +850,13 @@ const AnalysisSection=({data})=>{
         progressions:Object.entries(data.prog||{}).filter(([,p])=>p.lastDate&&p.lastDate>=cutStr&&p.progressed).length};
 
       // Habits summary
+      const chLen=(data.settings.customHabits||[]).length;
       const habScores=habitsEntries.map(([,h])=>{if(!h)return null;
-        let c=0;
+        let c=0;const tot=7+chLen;
         if(h.alcohol===false)c++;if(h.cannabis===false)c++;if(h.screensOff===true)c++;
         if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;if(h.supplements===true)c++;
-        return c/7;}).filter(v=>v!==null);
+        c+=Object.values(h.custom||{}).filter(v=>v).length;
+        return c/tot;}).filter(v=>v!==null);
       const habAvg=habScores.length?Math.round(habScores.reduce((a,b)=>a+b,0)/habScores.length*100):null;
 
       // Water avg
@@ -1186,7 +1047,10 @@ const Dashboard=({data,setData})=>{
   const t=td(),dn=dw(t),w=wkn(t);
   const sess=data.program[dn],nut=data.nut[t],rec=data.rec[t];
   const wts=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
-  const lw=wts[0]?.[1],pw=wts[1]?.[1],wc=lw&&pw?(lw-pw).toFixed(1):null;
+  const lw=wts[0]?.[1];
+  const w7ago=(()=>{const d=new Date();d.setDate(d.getDate()-7);const ds=lds(d);
+    const near=wts.filter(([k])=>k<=ds);return near.length?near[0][1]:null;})();
+  const wc=lw&&w7ago?(lw-w7ago).toFixed(1):null;
   const steps=data.steps?.[t]||0;
   const ws=rec?.recoveryScore;
 
@@ -1216,11 +1080,13 @@ const Dashboard=({data,setData})=>{
   const totalL=Object.keys(data.prog).length;
 
   const habitDays=Object.entries(data.habits||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+  const customHLen=(data.settings.customHabits||[]).length;
   const habitScore=habitDays.length?Math.round(habitDays.reduce((s,[_,h])=>{
-    if(!h)return s;let c=0;
+    if(!h)return s;let c=0;const tot=7+customHLen;
     if(h.alcohol===false)c++;if(h.cannabis===false)c++;if(h.screensOff===true)c++;
     if(h.sunlight===true)c++;if(h.bedBy1030===true)c++;if(h.readBeforeBed===true)c++;if(h.supplements===true)c++;
-    return s+c/7;},0)/habitDays.length*100):null;
+    c+=Object.values(h.custom||{}).filter(v=>v).length;
+    return s+c/tot;},0)/habitDays.length*100):null;
 
   const hour=new Date().getHours();
   const mealsLogged=(nut?.meals||[]).length;
@@ -1388,7 +1254,7 @@ const Dashboard=({data,setData})=>{
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Weight</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?lw.toFixed(1):"—"}</span>
           </div>
-          {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:C.r,marginBottom:4}}>{wc>0?"+":""}{wc} lbs</div>}
+          {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:wc>0?C.r:C.t3,marginBottom:4}}>{wc>0?"+":""}{wc} lbs 7d</div>}
           {wCh.length>=2?(
             <svg viewBox={`0 0 ${wCh.length*20} 28`} style={{width:"100%",height:28}} preserveAspectRatio="none">
               {(()=>{const vals=wCh.map(d=>d.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
@@ -2575,29 +2441,129 @@ const Weight=({data,setData})=>{
 };
 
 // ═══ RECOVERY ═══
-const Recovery=({data,setData})=>{
-  const t=td(),tr=data.rec[t]||{};
+const Habits=({data,setData})=>{
+  const t=td();
+  const tr=data.rec[t]||{};
+  const h=data.habits[t]||{};
+  const customHabits=data.settings.customHabits||[];
+  const [showMgmt,setShowMgmt]=useState(false);
+  const [newHabit,setNewHabit]=useState("");
+  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",
+    steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
   const hasSaved=!!(tr.recoveryScore||tr.hrv||tr.rhr);
   const [editing,setEditing]=useState(!hasSaved);
-  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",n:tr.notes||"",steps:data.steps?.[t]||""});
-  const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
-  const saveR=()=>{const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs,hrv:+f.hrv,rhr:+f.rhr,respiratoryRate:+f.rr,sleepHours:+f.sh,sleepPerformance:+f.sp,strain:+f.str,notes:f.n}},
-    steps:{...data.steps,[t]:+f.steps}};setData(nd);sv(nd);svSB.recovery(t,nd.rec[t]);if(nd.steps[t])svSB.steps(t,nd.steps[t]);setEditing(false);};
-  const recent=Object.entries(data.rec).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,10);
-  const avgR=recent.filter(e=>e[1].recoveryScore).length?Math.round(recent.filter(e=>e[1].recoveryScore).reduce((s,e)=>s+e[1].recoveryScore,0)/recent.filter(e=>e[1].recoveryScore).length):null;
-  const recCh=recent.filter(e=>e[1].recoveryScore).reverse().map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
-  const hrvCh=recent.filter(e=>e[1].hrv).reverse().map(([d,v])=>({v:v.hrv,d:d.slice(5)}));
 
-  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Whoop Recovery</div>
+  const systemHabits=[
+    {field:"alcohol",label:"No Alcohol",good:false},
+    {field:"cannabis",label:"No Cannabis",good:false},
+    {field:"screensOff",label:"Screens Off by 10pm",good:true},
+    {field:"sunlight",label:"Morning Sunlight",good:true},
+    {field:"bedBy1030",label:"In Bed by 10:30",good:true},
+    {field:"readBeforeBed",label:"Read Before Bed",good:true},
+    {field:"supplements",label:"Supplement Stack",good:true},
+  ];
+
+  const saveMetrics=()=>{
+    const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs||null,hrv:+f.hrv||null,rhr:+f.rhr||null,respiratoryRate:+f.rr||null,sleepHours:+f.sh||null,sleepPerformance:+f.sp||null,strain:+f.str||null}},
+      steps:{...data.steps,...(f.steps?{[t]:+f.steps}:{})},wt:{...data.wt,...(f.wt?{[t]:+f.wt}:{})}};
+    setData(nd);sv(nd);svSB.recovery(t,nd.rec[t]);if(nd.steps[t])svSB.steps(t,nd.steps[t]);if(nd.wt[t])svSB.weight(t,nd.wt[t]);setEditing(false);
+  };
+
+  const setHabit=(field,val,isSystem)=>{
+    let nh;
+    if(isSystem){nh={...h,[field]:val};}
+    else{nh={...h,custom:{...(h.custom||{}),[field]:val}};}
+    const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
+  };
+
+  // Score calculation
+  const calcScore=(hab)=>{
+    if(!hab)return 0;let c=0;
+    if(hab.alcohol===false)c++;if(hab.cannabis===false)c++;if(hab.screensOff===true)c++;
+    if(hab.sunlight===true)c++;if(hab.bedBy1030===true)c++;if(hab.readBeforeBed===true)c++;if(hab.supplements===true)c++;
+    c+=Object.values(hab.custom||{}).filter(v=>v).length;
+    return c;
+  };
+  const tot=7+customHabits.length;
+  const todayScore=calcScore(h);
+  const todayPct=tot>0?Math.round(todayScore/tot*100):0;
+
+  // 7-day avg
+  const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);});
+  const last7Scores=last7.map(d=>{const hb=data.habits[d];return hb?calcScore(hb)/tot*100:null;}).filter(v=>v!==null);
+  const avg7=last7Scores.length?Math.round(last7Scores.reduce((a,b)=>a+b,0)/last7Scores.length):0;
+
+  // Streak (consecutive days >= 70%)
+  let streak=0;
+  for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
+    const hb=data.habits[ds];if(!hb)break;
+    const pct=calcScore(hb)/tot*100;if(pct>=70)streak++;else break;}
+
+  // Habit management
+  const addCustom=()=>{
+    const name=newHabit.trim();if(!name)return;
+    const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-+$/,"");
+    if(customHabits.some(c=>c.id===id))return;
+    const nc=[...customHabits,{id,label:name}];
+    const nd={...data,settings:{...data.settings,customHabits:nc}};setData(nd);sv(nd);svSB.settings(nd.settings);setNewHabit("");
+  };
+  const removeCustom=(id)=>{
+    const nc=customHabits.filter(c=>c.id!==id);
+    const nd={...data,settings:{...data.settings,customHabits:nc}};setData(nd);sv(nd);svSB.settings(nd.settings);
+  };
+
+  // Trends data (last 30 days)
+  const last30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
+  const compCh=last30.map(d=>{const hb=data.habits[d];return{v:hb?Math.round(calcScore(hb)/tot*100):0,d:d.slice(5)};}).filter(x=>x.v>0);
+  const recCh=last30.map(d=>data.rec[d]?.recoveryScore?{v:data.rec[d].recoveryScore,d:d.slice(5)}:null).filter(Boolean);
+  const hrvCh=last30.map(d=>data.rec[d]?.hrv?{v:data.rec[d].hrv,d:d.slice(5)}:null).filter(Boolean);
+
+  // Per-habit streaks
+  const habitStreaks=[...systemHabits.map(sh=>{
+    let s=0;for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
+      const hb=data.habits[ds];if(!hb)break;
+      const val=hb[sh.field];const good=sh.good?val===true:val===false;
+      if(good)s++;else break;}
+    return{label:sh.label,streak:s};
+  }),...customHabits.map(ch=>{
+    let s=0;for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
+      const hb=data.habits[ds];if(!hb)break;
+      if((hb.custom||{})[ch.id]===true)s++;else break;}
+    return{label:ch.label,streak:s};
+  })].sort((a,b)=>b.streak-a.streak);
+
+  const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
+
+  const HabitToggle=({label,active,good,onSet})=>{
+    const isGood=good?active===true:active===false;
+    const isBad=good?active===false:active===true;
+    return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}>
+      <span style={{fontSize:14,color:C.t,fontWeight:500}}>{label}</span>
+      <div style={{display:"flex",gap:4}}>
+        <button onClick={()=>onSet(true)} style={{padding:"5px 12px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${active===true?(good?C.g:C.r):C.bd}`,background:active===true?(good?C.gl:C.rl):"transparent",color:active===true?(good?C.g:C.r):C.t3}}>Yes</button>
+        <button onClick={()=>onSet(false)} style={{padding:"5px 12px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${active===false?(!good?C.g:C.r):C.bd}`,background:active===false?(!good?C.gl:C.rl):"transparent",color:active===false?(!good?C.g:C.r):C.t3}}>No</button>
+      </div>
+    </div>);
+  };
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div>
+      <div style={{fontSize:18,fontWeight:700,color:C.t}}>Habits</div>
+      <div style={{fontSize:13,color:C.t3}}>{fmt(t)}</div>
+    </div>
+
+    {/* Health Metrics */}
     <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <L>Log — {fmt(t)}</L>
+        <L>Health Metrics</L>
         {!editing&&hasSaved&&<button onClick={()=>setEditing(true)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>}
       </div>
       {!editing&&hasSaved?(
         <div style={{marginTop:6}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
+          {f.wt&&<div style={{textAlign:"center",marginBottom:6}}><span style={{fontSize:24,fontWeight:800,color:C.t}}>{f.wt}</span><span style={{fontSize:13,color:C.t3}}> lbs</span></div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
             {f.rs&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:sc(+f.rs)}}>{f.rs}%</div><div style={{fontSize:10,color:C.t3}}>Recovery</div></div>}
             {f.hrv&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.v}}>{f.hrv}</div><div style={{fontSize:10,color:C.t3}}>HRV</div></div>}
             {f.rhr&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.p}}>{f.rhr}</div><div style={{fontSize:10,color:C.t3}}>RHR</div></div>}
@@ -2606,7 +2572,8 @@ const Recovery=({data,setData})=>{
         </div>
       ):(
         <div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:4}}>
+          <div style={{marginBottom:8}}><L>Weight (lbs)</L><N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185.0" style={{fontSize:20,fontWeight:700}}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
             <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
             <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
             <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
@@ -2620,26 +2587,91 @@ const Recovery=({data,setData})=>{
             <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
             <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
           </div>
-          <div style={{marginTop:6}}><L>Notes</L><T value={f.n} onChange={v=>setF({...f,n:v})} placeholder="Optional"/></div>
-          <B full style={{marginTop:8}} onClick={saveR}>Save</B>
+          <B full style={{marginTop:8}} onClick={saveMetrics}>Save</B>
         </div>
       )}
     </X>
-    {avgR!=null&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:sc(avgR)}}>{avgR}%</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg Recovery</div></X>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:22,fontWeight:700,color:C.v}}>{recent.filter(e=>e[1].hrv).length?Math.round(recent.filter(e=>e[1].hrv).reduce((s,e)=>s+e[1].hrv,0)/recent.filter(e=>e[1].hrv).length):"-"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Avg HRV</div></X>
-    </div>)}
-    <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
-    <Ch data={hrvCh} color={C.v} label="HRV" yUnit=" ms" empty="Log HRV to see trend"/>
-    <S title="Recent" collapsible>
-      {recent.map(([d,r])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:13}}>
-        <span style={{color:C.t2,fontWeight:600}}>{fmt(d)}</span>
-        <div style={{display:"flex",gap:6,color:C.t2}}>
-          {r.recoveryScore&&<span style={{fontWeight:700,color:sc(r.recoveryScore)}}>{r.recoveryScore}%</span>}
-          {r.hrv&&<span>HRV {r.hrv}</span>}{r.rhr&&<span>RHR {r.rhr}</span>}{r.sleepHours&&<span>{r.sleepHours}h</span>}
+
+    {/* Today's Habits */}
+    <X>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>Today's Habits</div>
+        <button onClick={()=>setShowMgmt(true)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t3,padding:4}}>⚙</button>
+      </div>
+      {systemHabits.map(sh=>(<HabitToggle key={sh.field} label={sh.label} active={h[sh.field]} good={sh.good}
+        onSet={(val)=>setHabit(sh.field,val,true)}/>))}
+      {customHabits.length>0&&<div style={{borderTop:`2px solid ${C.bd}`,marginTop:6,paddingTop:6}}>
+        {customHabits.map(ch=>(<HabitToggle key={ch.id} label={ch.label} active={(h.custom||{})[ch.id]} good={true}
+          onSet={(val)=>setHabit(ch.id,val,false)}/>))}
+      </div>}
+    </X>
+
+    {/* Score Card */}
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+        <span style={{fontSize:14,fontWeight:700,color:C.t}}>Today: {todayScore}/{tot} ({todayPct}%)</span>
+      </div>
+      <Br v={todayScore} max={tot} color={todayPct>=70?C.g:todayPct>=40?C.a:C.r} h={8}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
+        <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+          <div style={{fontSize:18,fontWeight:700,color:avg7>=70?C.g:avg7>=40?C.a:C.r}}>{avg7}%</div>
+          <div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>7-Day Avg</div>
         </div>
-      </div>))}
+        <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+          <div style={{fontSize:18,fontWeight:700,color:streak>=5?C.g:streak>=2?C.a:C.r}}>{streak}<span style={{fontSize:12}}>d</span></div>
+          <div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Streak</div>
+        </div>
+      </div>
+    </X>
+
+    {/* Trends */}
+    <S title="Trends" collapsible defaultOpen={false}>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        <Ch data={compCh} color={C.p} label="Habit Compliance" yUnit="%" empty="Track habits to see trend"/>
+        <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
+        <Ch data={hrvCh} color={C.v} label="HRV" yUnit=" ms" empty="Log HRV to see trend"/>
+        {habitStreaks.filter(s=>s.streak>0).length>0&&<X style={{padding:10}}>
+          <L>Habit Streaks</L>
+          {habitStreaks.filter(s=>s.streak>0).map((s,i)=>(<div key={i} style={{marginBottom:6}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
+              <span style={{color:C.t2}}>{s.label}</span><span style={{fontWeight:700,color:C.g}}>{s.streak}d</span>
+            </div>
+            <Br v={s.streak} max={Math.max(30,...habitStreaks.map(x=>x.streak))} color={C.g} h={4}/>
+          </div>))}
+        </X>}
+      </div>
     </S>
+
+    {/* Recent History */}
+    <S title="Recent History" collapsible defaultOpen={false}>
+      {last7.map(d=>{const hb=data.habits[d];const s=hb?calcScore(hb):0;const pct=tot>0?Math.round(s/tot*100):0;
+        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:13}}>
+          <span style={{color:C.t2,fontWeight:600}}>{fmt(d)}</span>
+          <span style={{fontWeight:700,color:pct>=70?C.g:pct>=40?C.a:C.r}}>{s}/{tot} ({pct}%)</span>
+        </div>);
+      })}
+    </S>
+
+    {/* Habit Management Modal */}
+    {showMgmt&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.cd,borderRadius:8,padding:16,width:"100%",maxWidth:360,maxHeight:"80vh",overflowY:"auto",border:`1px solid ${C.bd}`}}>
+        <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:12}}>Manage Habits</div>
+        <L>System Habits</L>
+        {systemHabits.map(sh=>(<div key={sh.field} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
+          <span style={{fontSize:14}}>🔒</span><span style={{fontSize:13,color:C.t}}>{sh.label}</span>
+        </div>))}
+        <div style={{marginTop:12}}><L>Custom Habits</L></div>
+        {customHabits.map(ch=>(<div key={ch.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
+          <span style={{fontSize:13,color:C.t}}>{ch.label}</span>
+          <button onClick={()=>removeCustom(ch.id)} style={{background:"none",border:"none",fontSize:16,color:C.r,cursor:"pointer",padding:"2px 6px"}}>✕</button>
+        </div>))}
+        <div style={{display:"flex",gap:6,marginTop:8}}>
+          <T value={newHabit} onChange={setNewHabit} placeholder="New habit name" style={{flex:1}}/>
+          <B small onClick={addCustom} disabled={!newHabit.trim()}>Add</B>
+        </div>
+        <B full style={{marginTop:12}} onClick={()=>setShowMgmt(false)}>Done</B>
+      </div>
+    </div>)}
   </div>);
 };
 
@@ -2924,7 +2956,6 @@ const applyProgramUpdates=async(currentData)=>{
 window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return seedHistorical(raw?migrate(raw):bl());});
-  const [showD,setShowD]=useState(()=>!(data.debrief||{})[td()]);
   const [workout,setWorkoutRaw]=useState(()=>{try{const w=localStorage.getItem("dhub6_workout");return w?JSON.parse(w):null;}catch{return null;}});
   const setWorkout=(v)=>{setWorkoutRaw(v);try{if(v)localStorage.setItem("dhub6_workout",JSON.stringify(v));else localStorage.removeItem("dhub6_workout");}catch{}};
   const [sbLoaded,setSbLoaded]=useState(false);
@@ -2995,14 +3026,13 @@ window.App = function App(){
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
-      {showD&&<Debrief data={data} setData={setData} onClose={()=>setShowD(false)}/>}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
       <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
-        {tab==="recovery"&&<Recovery data={data} setData={setData}/>}
+        {tab==="habits"&&<Habits data={data} setData={setData}/>}
         {tab==="settings"&&<Settings data={data} setData={setData}/>}
       </div>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
