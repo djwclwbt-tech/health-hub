@@ -42,7 +42,7 @@ Exercise update example: {"type":"exercise","action":"update","exerciseId":"benc
 Exercise swap example: {"type":"exercise","action":"swap","oldExerciseId":"bench-press","newExercise":{"id":"incline-db-press","name":"Incline DB Press","sets":3,"rr":[8,12],"rest":90,"sw":50,"inc":5,"unit":"lbs","notes":"","cue":""}}
 Settings example: {"type":"settings","field":"trainingCal","value":2800}
 
-IMPORTANT: Only include actions when the athlete explicitly asks for a change. Never assume. Always return valid JSON.`,
+IMPORTANT: Only include actions when the athlete explicitly asks for a change. Never assume. Your ENTIRE response must be a single JSON object — no text before or after the JSON. Example: {"answer":"Your coaching advice here."}`,
         messages: [{ role: 'user', content: question }],
       }),
     });
@@ -58,10 +58,18 @@ IMPORTANT: Only include actions when the athlete explicitly asks for a change. N
       if (answer) {
         return res.status(200).json({ answer, actions: parsed.actions || [] });
       }
-      // JSON parsed but no recognizable answer field — return as plain text
       return res.status(200).json({ answer: text, actions: parsed.actions || [] });
-    } catch {}
-
+    } catch {
+      // Claude may return text + JSON — try to extract the JSON object
+      const jsonMatch = text.match(/\{[\s\S]*\}$/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const answer = parsed.answer || parsed.response || parsed.text || parsed.message;
+          if (answer) return res.status(200).json({ answer, actions: parsed.actions || [] });
+        } catch {}
+      }
+    }
     // Fallback: plain text answer
     return res.status(200).json({ answer: text, actions: [] });
   } catch (err) {
