@@ -2090,7 +2090,7 @@ const MEAL_TYPES=["Breakfast","Lunch","Dinner","Snack"];
 const Nutrition=({data,setData})=>{
   const t=td(),dn=dw(t);
   const [selM,setSelM]=useState(null);
-  const [mf,setMf]=useState({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});
+  const [mf,setMf]=useState({d:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
 
   const [showWaterHist,setShowWaterHist]=useState(false);
@@ -2140,9 +2140,9 @@ const Nutrition=({data,setData})=>{
           </div>
         </div>
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
-            {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
-              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>updateMeal(selM,{[f.k]:+v||0})} placeholder={f.l}/><div style={{fontSize:9,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:3}}>
+            {[{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
+              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>{const updated={...meal,[f.k]:+v||0};const cal=(updated.protein||0)*4+(updated.carbs||0)*4+(updated.fat||0)*9;updateMeal(selM,{[f.k]:+v||0,cal});}} placeholder={f.l}/><div style={{fontSize:9,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
           </div>
           <B full small style={{marginTop:6}} onClick={()=>setEditing(null)}>Done</B>
         </div>):(<div>
@@ -2327,15 +2327,14 @@ const Nutrition=({data,setData})=>{
     </div>
     <X style={{padding:10}}>
       <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3}}>
-        <N value={mf.cal} onChange={v=>setMf({...mf,cal:v})} placeholder="Cal"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:3}}>
         <N value={mf.pro} onChange={v=>setMf({...mf,pro:v})} placeholder="Pro"/>
         <N value={mf.carb} onChange={v=>setMf({...mf,carb:v})} placeholder="Carb"/>
         <N value={mf.fat} onChange={v=>setMf({...mf,fat:v})} placeholder="Fat"/>
         <N value={mf.fib} onChange={v=>setMf({...mf,fib:v})} placeholder="Fib"/>
       </div>
-      <B full style={{marginTop:6}} onClick={()=>{add({description:mf.d,cal:+mf.cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual"});
-        setMf({d:"",cal:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
+      <B full style={{marginTop:6}} onClick={()=>{const cal=(+mf.pro*4)+(+mf.carb*4)+(+mf.fat*9);add({description:mf.d,cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual"});
+        setMf({d:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
     </X>
 
     {MEAL_TYPES.map(mt=>{
