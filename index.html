@@ -136,7 +136,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,customHabits:[]};
+const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -3116,7 +3116,8 @@ const Settings=({data,setData})=>{
   const saveSettings=()=>{
     const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500,syncToken:f.syncToken||""}};
+      mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500,syncToken:f.syncToken||"",
+      notifications:data.settings?.notifications||DEFAULTS.notifications}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
@@ -3148,6 +3149,53 @@ const Settings=({data,setData})=>{
       </div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
     </X>
+
+    {/* ═══ NOTIFICATIONS ═══ */}
+    <S title="Notifications">
+      <X style={{padding:10}}>
+        {typeof Notification!=="undefined"&&Notification.permission==="denied"?(
+          <div style={{fontSize:12,color:C.r}}>Notifications blocked. Enable in browser settings.</div>
+        ):(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontSize:14,fontWeight:600,color:C.t}}>Enable Notifications</span>
+              <button onClick={async()=>{
+                const ns=data.settings.notifications||{};
+                if(!ns.enabled){
+                  const perm=await Notification.requestPermission();
+                  if(perm!=="granted")return;
+                }
+                const nd={...data,settings:{...data.settings,notifications:{...ns,enabled:!ns.enabled}}};
+                setData(nd);sv(nd);svSB.settings(nd.settings);
+              }} style={{padding:"6px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                border:`1px solid ${(data.settings.notifications||{}).enabled?C.g:C.bd}`,
+                background:(data.settings.notifications||{}).enabled?C.gl:"transparent",
+                color:(data.settings.notifications||{}).enabled?C.g:C.t3}}>
+                {(data.settings.notifications||{}).enabled?"On":"Off"}
+              </button>
+            </div>
+            {(data.settings.notifications||{}).enabled&&(
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"}].map(n=>{
+                  const ns=data.settings.notifications||{};
+                  const on=ns[n.key]!==false;
+                  return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
+                    <span style={{fontSize:12,color:C.t}}>{n.label}</span>
+                    <button onClick={()=>{
+                      const nd={...data,settings:{...data.settings,notifications:{...ns,[n.key]:!on}}};
+                      setData(nd);sv(nd);svSB.settings(nd.settings);
+                    }} style={{padding:"3px 10px",borderRadius:3,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                      border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:"transparent",color:on?C.g:C.t3}}>
+                      {on?"On":"Off"}
+                    </button>
+                  </div>);
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </X>
+    </S>
 
     {/* ═══ MFP SYNC ═══ */}
     <X style={{borderLeft:`3px solid ${C.v}`}}>
@@ -3409,7 +3457,67 @@ window.App = function App(){
       applied.forEach(msg=>addToast(msg,"success"));
       setSbLoaded(true);
     })();
+    // Register service worker for notifications
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
   },[]);
+
+  useEffect(()=>{
+    if(!data.settings?.notifications?.enabled)return;
+    const checkNotifications=()=>{
+      if(Notification.permission!=="granted")return;
+      const now=new Date();const hour=now.getHours();
+      const ns=data.settings.notifications;
+      const t=td();
+
+      // Morning habit reminder (8-9 AM, if habits not logged today)
+      if(ns.habits&&hour>=8&&hour<9&&!data.habits?.[t]){
+        const lastNotif=localStorage.getItem("dhub6_notif_habits");
+        if(lastNotif!==t){
+          new Notification("Health Hub",{body:"Time to log your habits and metrics for today",tag:"habits",icon:"/icon-192.png"});
+          localStorage.setItem("dhub6_notif_habits",t);
+        }
+      }
+
+      // Water reminder (every 3 hours, 10AM-8PM, if under 50% of target)
+      if(ns.water&&hour>=10&&hour<=20&&hour%3===1){
+        const waterNow=data.water?.[t]||0;
+        const waterGoal=data.settings?.water||128;
+        if(waterNow<waterGoal*0.5){
+          const lastNotif=localStorage.getItem("dhub6_notif_water_hr");
+          if(lastNotif!==""+hour){
+            new Notification("Health Hub",{body:`${waterNow}/${waterGoal}oz water — keep hydrating!`,tag:"water",icon:"/icon-192.png"});
+            localStorage.setItem("dhub6_notif_water_hr",""+hour);
+          }
+        }
+      }
+
+      // Evening stretch reminder (8-9 PM, if stretch not done today)
+      if(ns.stretch&&hour>=20&&hour<21&&!(data.mob?.[t]?.done||data.mob?.[t]===true)){
+        const lastNotif=localStorage.getItem("dhub6_notif_stretch");
+        if(lastNotif!==t){
+          new Notification("Health Hub",{body:"Time for your evening stretch routine",tag:"stretch",icon:"/icon-192.png"});
+          localStorage.setItem("dhub6_notif_stretch",t);
+        }
+      }
+
+      // Training day reminder (7-8 AM on training days)
+      if(ns.workout&&hour>=7&&hour<8){
+        const dayName=dw(t);
+        const sess=data.program?.[dayName];
+        if(sess&&!data.wk?.[t]){
+          const lastNotif=localStorage.getItem("dhub6_notif_workout");
+          if(lastNotif!==t){
+            new Notification("Health Hub",{body:`${sess.name} today`,tag:"workout",icon:"/icon-192.png"});
+            localStorage.setItem("dhub6_notif_workout",t);
+          }
+        }
+      }
+    };
+
+    checkNotifications();
+    const iv=setInterval(checkNotifications,30*60*1000);
+    return()=>clearInterval(iv);
+  },[data.settings?.notifications?.enabled]);
 
   useEffect(()=>{
     sv(data);
