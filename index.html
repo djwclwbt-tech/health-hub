@@ -1934,20 +1934,88 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </div>
 
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):"~10 min — hip & spine recovery"}</div></div>
+      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min — hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
           <B small outline onClick={undoMob}>Undo</B></div>
         :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
         :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View</B>}<B small onClick={startMob}>Start</B></div>}
     </X>
-    {(()=>{const dayMob=PROG.mobility[dw(t)]||PROG.mobility.monday;return (showMob||mobRunning)&&!mobDone?(<X style={{background:C.bg,padding:10}}>
-      {dayMob.map((m,i)=>(<div key={i} style={{padding:"6px 0",borderBottom:i<dayMob.length-1?`1px solid ${C.bl}`:"none"}}>
-        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600,color:C.t}}>{m.name}</span><span style={{fontSize:12,color:C.t3}}>{m.dur}</span></div>
-        <div style={{fontSize:12,color:C.p,marginTop:1}}>{m.cue}</div>
-      </div>))}
-      {!mobRunning&&<B full small outline style={{marginTop:8}} onClick={()=>setShowMob(false)}>Hide</B>}
-    </X>):null;})()}
+    {showMob&&(<div style={{marginTop:8}}>
+      {!mobRunning&&!mobDone?(
+        <B full onClick={startMob} color={C.v}>Start Stretch Session</B>
+      ):mobRunning?(
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>
+              {stretchDone.length}/{totalStretchSets} sets complete
+            </span>
+            <span style={{fontSize:12,color:C.t3}}>{fmtElapsed(mobTimer)}</span>
+          </div>
+          <Br v={stretchDone.length} max={totalStretchSets} color={C.v} h={4}/>
+          {mobExercises.map((ex,ei)=>{
+            const isCurrent=ei===stretchExIdx;
+            const exDoneSets=ex.sides.filter((_,si)=>stretchDone.includes(`${ei}-${si}`)).length;
+            const exComplete=exDoneSets===ex.sets;
+            return(<X key={ex.id} style={{padding:isCurrent?12:8,
+              borderLeft:`3px solid ${exComplete?C.g:isCurrent?C.v:C.bd}`,
+              opacity:exComplete?0.5:1}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:isCurrent?15:13,fontWeight:700,color:exComplete?C.g:C.t}}>{ex.name}</div>
+                  {isCurrent&&<div style={{fontSize:11,color:C.t2,marginTop:2}}>{ex.cue}</div>}
+                  {isCurrent&&ex.notes&&<div style={{fontSize:10,color:C.a,marginTop:2}}>{ex.notes}</div>}
+                </div>
+                {exComplete&&<span style={{fontSize:16,color:C.g}}>✓</span>}
+              </div>
+              {isCurrent&&(
+                <div style={{marginTop:8}}>
+                  <div style={{textAlign:"center",marginBottom:6}}>
+                    <span style={{fontSize:13,fontWeight:700,color:C.v}}>
+                      {ex.sides[stretchSetIdx]} Side — Set {stretchSetIdx+1}/{ex.sets}
+                    </span>
+                  </div>
+                  {stretchRunning?(
+                    <div style={{textAlign:"center",padding:12,background:stretchTimeLeft<=0?C.gl:C.vl,borderRadius:8}}>
+                      <div style={{fontSize:42,fontWeight:800,color:stretchTimeLeft<=0?C.g:C.v,fontVariantNumeric:"tabular-nums"}}>
+                        {stretchTimeLeft<=0?"Done!":
+                         `${Math.floor(stretchTimeLeft/60)}:${String(stretchTimeLeft%60).padStart(2,"0")}`}
+                      </div>
+                      <button onClick={skipStretchTimer} style={{marginTop:6,background:"none",border:`1px solid ${C.bd}`,
+                        borderRadius:4,padding:"4px 16px",fontSize:11,fontWeight:600,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
+                        {stretchTimeLeft<=0?"Next":"Skip"}
+                      </button>
+                    </div>
+                  ):(
+                    <B full onClick={()=>startStretchTimer(ex.dur)} color={C.v}>
+                      Start ({ex.dur}s)
+                    </B>
+                  )}
+                  <div style={{display:"flex",justifyContent:"center",gap:4,marginTop:6}}>
+                    {ex.sides.map((side,si)=>(
+                      <div key={si} style={{width:24,height:24,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:10,fontWeight:700,
+                        background:stretchDone.includes(`${ei}-${si}`)?C.g:si===stretchSetIdx?C.v:"transparent",
+                        color:stretchDone.includes(`${ei}-${si}`)?"#fff":si===stretchSetIdx?"#fff":C.t3,
+                        border:`1px solid ${stretchDone.includes(`${ei}-${si}`)?C.g:si===stretchSetIdx?C.v:C.bd}`}}>
+                        {side[0]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </X>);
+          })}
+          <B full onClick={finishMob} color={stretchDone.length>=totalStretchSets?C.g:C.t3}>
+            {stretchDone.length>=totalStretchSets?"Finish Stretch ✓":"End Early"}
+          </B>
+        </div>
+      ):(
+        <div style={{textAlign:"center",padding:8}}>
+          <span style={{fontSize:13,fontWeight:600,color:C.g}}>Stretch Complete ✓</span>
+        </div>
+      )}
+    </div>)}
 
     {/* ═══ DELOAD BANNER ═══ */}
     {isDeload&&(<X style={{padding:10,background:C.al,border:`1px solid ${C.a}`}}>
@@ -2070,6 +2138,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           const dk=calKey(d);
           const isToday=dk===t;
           const hasWorkout=!!data.wk[dk];
+          const hasMob=!!(data.mob?.[dk]?.done||data.mob?.[dk]===true);
           const dayName=dw(dk);
           const isRestDay=["saturday","sunday"].includes(dayName);
           return(
@@ -2080,6 +2149,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                 position:"relative",minHeight:28,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
               <span style={{fontSize:12,fontWeight:isToday?700:400,color:isRestDay?C.t3:C.t}}>{d}</span>
               {hasWorkout&&<div style={{width:5,height:5,borderRadius:3,background:C.g,marginTop:1}}/>}
+              {hasMob&&<div style={{width:5,height:5,borderRadius:3,background:C.v,marginTop:1}}/>}
             </div>
           );
         })}
