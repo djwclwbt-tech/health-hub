@@ -30,47 +30,22 @@ const { useState, useEffect, useRef, useCallback } = React;
 const PROG = {
   name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
   mobility:{
-    monday:[
-      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-    ],
-    tuesday:[
-      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
-      {name:"Cross-Body Shoulder Stretch",dur:"30s/side",cue:"Pull arm across chest with opposite hand. Keep shoulder down, don't shrug"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-    ],
-    wednesday:[
-      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
-      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-    ],
-    thursday:[
-      {name:"Doorway Pec Stretch",dur:"30s/side",cue:"Forearm on doorframe at 90°, step through. Feel stretch across chest, not in shoulder joint"},
-      {name:"Overhead Tricep Stretch",dur:"30s/side",cue:"Reach hand behind head, gently pull elbow with opposite hand. Feel stretch along tricep and lat"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
-    ],
-    friday:[
-      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-      {name:"Supine Pigeon (Figure-4)",dur:"45s/side",cue:"Cross ankle over opposite knee, pull bottom leg to chest. Keep head on floor. Breathe into stretch"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-    ],
-    saturday:[
-      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-      {name:"Supine Spinal Twist",dur:"30s/side",cue:"Pull one knee across body toward floor. Keep both shoulders flat. Let gravity do the work"},
-      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
-      {name:"Cat-Cow",dur:"10 reps",cue:"Alternate arching and rounding spine. Sync with breath — inhale arch, exhale round"},
-    ],
-    sunday:[
-      {name:"Hip 90/90 Stretch",dur:"30s/side x2",cue:"Sit on floor, both legs bent 90°. Lean forward over front shin. Go slow — no bouncing"},
-      {name:"Kneeling Hip Flexor Stretch",dur:"30s/side x2",cue:"Half-kneeling, squeeze back-leg glute, shift forward. Feel front of hip, not lower back. Tuck pelvis"},
-      {name:"Child's Pose + Lateral Reach",dur:"30s/side",cue:"Walk both hands to one side for lat/oblique stretch. Breathe deeply into ribcage"},
-      {name:"Prone Press-Up (Cobra)",dur:"5 reps x5s",cue:"Lie face down, press chest up, hips stay on floor. Spinal extension reset. Exhale at top"},
+    _default:[
+      {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:3,sides:["Left","Right","Left"],
+       notes:"Most important. Left gets second round. Squeeze glute on down knee hard.",
+       cue:"Half-kneeling, squeeze back-leg glute, shift forward"},
+      {id:"hip-90-90",name:"Hip 90/90",dur:60,sets:2,sides:["Left","Right"],
+       notes:"Internal and external rotation — feeds hack squat depth",
+       cue:"Sit on floor, both legs bent 90°. Lean forward over front shin"},
+      {id:"pigeon",name:"Pigeon Stretch",dur:60,sets:2,sides:["Left","Right"],
+       notes:"Figure-4 supine if pigeon bothers back. Opens deep external rotators.",
+       cue:"Feel deep stretch in glute. Breathe into it"},
+      {id:"psoas-release",name:"Supine Psoas Release",dur:90,sets:2,sides:["Left","Right"],
+       notes:"Left side priority. 90s minimum.",
+       cue:"Lie on back, let leg hang off edge. Full relaxation"},
+      {id:"spinal-twist",name:"Supine Spinal Twist",dur:60,sets:2,sides:["Left","Right"],
+       notes:"Decompresses. Thoracolumbar rotation.",
+       cue:"Pull knee across body toward floor. Both shoulders flat"},
     ],
   },
   days:{
@@ -1553,6 +1528,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [mobTimer,setMobTimer]=useState(0);
   const mobStartRef=useRef(null);
   const mobIvRef=useRef(null);
+  const [stretchExIdx,setStretchExIdx]=useState(0);
+  const [stretchSetIdx,setStretchSetIdx]=useState(0);
+  const [stretchTimeLeft,setStretchTimeLeft]=useState(0);
+  const [stretchRunning,setStretchRunning]=useState(false);
+  const stretchEndRef=useRef(0);
+  const stretchIvRef=useRef(null);
+  const [stretchDone,setStretchDone]=useState([]);
   useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem("dhub6_mob_active"));
     if(saved?.running&&saved.startedAt&&!mobDone){mobStartRef.current=saved.startedAt;setMobRunning(true);setShowMob(true);
       setMobTimer(Math.floor((Date.now()-saved.startedAt)/1000));
@@ -1622,17 +1604,23 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   useEffect(()=>{
     const onVis=()=>{
-      if(document.visibilityState==="visible"&&restEndRef.current>0){
-        const left=Math.round((restEndRef.current-Date.now())/1000);
-        if(left<=0){if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-          if(navigator.vibrate)navigator.vibrate([200,100,200]);
-        }else{setRl(left);}
+      if(document.visibilityState==="visible"){
+        if(restEndRef.current>0){
+          const left=Math.round((restEndRef.current-Date.now())/1000);
+          if(left<=0){if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+            if(navigator.vibrate)navigator.vibrate([200,100,200]);
+          }else{setRl(left);}
+        }
+        if(stretchEndRef.current>0){
+          const left=Math.round((stretchEndRef.current-Date.now())/1000);
+          if(left<=0){setStretchTimeLeft(0);}else{setStretchTimeLeft(left);}
+        }
       }
     };
     document.addEventListener("visibilitychange",onVis);
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[]);
-  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);},[]);
+  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);},[]);
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
@@ -1663,17 +1651,52 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
+  const mobExercises=PROG.mobility._default||[];
+  const totalStretchSets=mobExercises.reduce((t,ex)=>t+ex.sets,0);
+  const stretchMins=Math.round(mobExercises.reduce((t,ex)=>t+ex.dur*ex.sets,0)/60);
+
   const startMob=()=>{const st=Date.now();mobStartRef.current=st;setMobRunning(true);setMobTimer(0);setShowMob(true);
     try{localStorage.setItem("dhub6_mob_active",JSON.stringify({running:true,startedAt:st}));}catch{}
     mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);};
-  const finishMob=()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);
-    try{localStorage.removeItem("dhub6_mob_active");}catch{}
+
+  const startStretchTimer=(dur)=>{
+    if(stretchIvRef.current)clearInterval(stretchIvRef.current);
+    const endTime=Date.now()+dur*1000;
+    stretchEndRef.current=endTime;
+    setStretchTimeLeft(dur);setStretchRunning(true);
+    stretchIvRef.current=setInterval(()=>{
+      const left=Math.round((stretchEndRef.current-Date.now())/1000);
+      if(left<=0){
+        clearInterval(stretchIvRef.current);
+        setStretchTimeLeft(0);setStretchRunning(false);
+        if(navigator.vibrate)navigator.vibrate([200,100,200]);
+        const key=`${stretchExIdx}-${stretchSetIdx}`;
+        setStretchDone(p=>[...p,key]);
+        const curEx=mobExercises[stretchExIdx];
+        if(stretchSetIdx<curEx.sets-1){setStretchSetIdx(stretchSetIdx+1);
+        }else if(stretchExIdx<mobExercises.length-1){setStretchExIdx(stretchExIdx+1);setStretchSetIdx(0);}
+      }else{setStretchTimeLeft(left);}
+    },500);
+  };
+
+  const skipStretchTimer=()=>{
+    if(stretchIvRef.current)clearInterval(stretchIvRef.current);
+    setStretchTimeLeft(0);setStretchRunning(false);stretchEndRef.current=0;
+  };
+
+  const finishMob=()=>{if(stretchIvRef.current)clearInterval(stretchIvRef.current);
+    if(mobIvRef.current)clearInterval(mobIvRef.current);
     const dur=Math.floor((Date.now()-mobStartRef.current)/1000);
-    const nd={...data,mob:{...data.mob,[t]:{done:true,dur}}};setData(nd);sv(nd);
-    setMobDone(true);setMobRunning(false);setShowMob(false);svSB.mobility(t,dur);};
+    const nd={...data,mob:{...data.mob,[t]:{done:true,dur,exercises:stretchDone.length}}};
+    setData(nd);sv(nd);svSB.mobility(t,dur);
+    setMobDone(true);setMobRunning(false);setShowMob(false);
+    localStorage.removeItem("dhub6_mob_active");
+    setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);
+  };
   const undoMob=()=>{const nd={...data,mob:{...data.mob}};delete nd.mob[t];setData(nd);sv(nd);svSB.delMobility(t);
     try{localStorage.removeItem("dhub6_mob_active");}catch{}
-    setMobDone(false);setMobRunning(false);setShowMob(false);};
+    setMobDone(false);setMobRunning(false);setShowMob(false);
+    setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);};
   const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
 
   const applyCoachActions=(actions)=>{
