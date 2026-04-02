@@ -74,28 +74,28 @@ const PROG = {
     ],
   },
   days:{
-    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",stepper:30,
-      warmup:{cardio:"5 min stepper",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
+    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",
+      warmup:{cardio:"5 min bike",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
       exercises:[
         {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
         {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
         {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
       ]},
-    tuesday:{name:"Chest Heavy Upper A",focus:"Strength",reps:"5-8",stepper:20,
-      warmup:{cardio:"5 min stepper or bike",moves:[
+    tuesday:{name:"Chest Heavy Upper A",focus:"Strength",reps:"5-8",
+      warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"cable-fly",name:"Cable Fly",sets:3,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2. Cap 25 lbs/side",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+        {id:"cable-fly",name:"Cable Fly",sets:3,rr:[12,15],rest:60,sw:10,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2. Cap 25 lbs/side",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
         {id:"smith-flat-bench",name:"Smith Flat Bench (Wide Grip)",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
         {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
         {id:"smith-ohp",name:"Smith OHP",sets:3,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Adjust wk 2",cue:"Brace core tight, press straight overhead not forward"},
         {id:"lat-pulldown",name:"Lat Pulldown",sets:3,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
         {id:"converging-chest-press",name:"Converging Chest Press",sets:2,rr:[8,10],rest:90,sw:140,inc:5,unit:"lbs",notes:"Last set to failure",cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
       ]},
-    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",stepper:20,
-      warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",
+      warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
@@ -104,11 +104,11 @@ const PROG = {
         {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
         {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
         {id:"hack-squat-a",name:"Hack Squat",sets:3,rr:[5,8],rest:120,sw:180,inc:10,unit:"lbs",notes:"Full depth",cue:"Knees track over toes, stay upright through core"},
-        {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
+        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:3,rr:[5,8],rest:90,sw:120,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
         {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
-    thursday:{name:"Chest Heavy Upper B",focus:"Hypertrophy",reps:"10-12",stepper:20,
-      warmup:{cardio:"5 min stepper or bike",moves:[
+    thursday:{name:"Chest Heavy Upper B",focus:"Hypertrophy",reps:"10-12",
+      warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
@@ -120,8 +120,8 @@ const PROG = {
         {id:"reverse-fly",name:"Reverse Fly",sets:3,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
         {id:"incline-db-curl",name:"Incline DB Curl",sets:3,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
       ]},
-    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",stepper:20,
-      warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",
+      warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
@@ -137,8 +137,8 @@ const PROG = {
   },
   variants:{
     wednesday:{
-      "back-protected":{name:"Lower A (Back-Protected)",focus:"Strength",reps:"5-8",stepper:20,
-        warmup:{cardio:"5 min stepper or bike (easy pace)",moves:[
+      "back-protected":{name:"Lower A (Back-Protected)",focus:"Strength",reps:"5-8",
+        warmup:{cardio:"5 min bike (easy pace)",moves:[
           {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
           {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
           {name:"QL Side Stretch",rx:"20s per side"},
@@ -146,7 +146,7 @@ const PROG = {
         exercises:[
           {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
           {id:"leg-extension-bp",name:"Leg Extension",sets:3,rr:[5,8],rest:90,sw:150,inc:5,unit:"lbs",notes:"Full squeeze at top",cue:"Lock out at top, squeeze quad hard for 1 second"},
-          {id:"seated-leg-curl",name:"Seated Leg Curl",sets:3,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Curl heels under, squeeze hamstrings at peak"},
+          {id:"lying-leg-curl",name:"Lying Leg Curl",sets:3,rr:[5,8],rest:90,sw:120,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
           {id:"cable-pull-through",name:"Cable Pull-Through",sets:3,rr:[10,12],rest:90,sw:70,inc:5,unit:"lbs",notes:"Hinge pattern, no spinal load",cue:"Push hips back, squeeze glutes at top, arms are just hooks"},
           {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
         ]},
@@ -464,7 +464,7 @@ const getConsecutiveRedDays=(rec)=>{
 const e1rm=(w,r)=>r<=0||w<=0?0:r===1?w:Math.round(w*(1+r/30));
 const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.done).reduce((s,set)=>s+(set.weight||0)*set.reps,0),0);
 
-const backfillData=(d)=>{Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});const allDays={...PROG.days,...(d.program||{})};Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{if(!w.exercises||!w.day)return;const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;w.exercises.forEach((ex,i)=>{const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;const cs=ex.sets.filter(s=>s.done&&s.weight>0&&s.reps>0);if(!cs.length)return;const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;if(!d.prog[pe.id])d.prog[pe.id]={currentWeight:bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};if(!d.prog[pe.id].e1rmHistory)d.prog[pe.id].e1rmHistory=[];d.prog[pe.id].e1rmHistory.push({date,e1rm:newE1rm});d.prog[pe.id].e1rmHistory=d.prog[pe.id].e1rmHistory.slice(-12);if(!d.prog[pe.id].pr||newE1rm>d.prog[pe.id].pr.e1rm){d.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}});});return d;};
+const backfillData=(d)=>{if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});const allDays={...PROG.days,...(d.program||{})};Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{if(!w.exercises||!w.day)return;const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;w.exercises.forEach((ex,i)=>{const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;const cs=ex.sets.filter(s=>s.done&&s.weight>0&&s.reps>0);if(!cs.length)return;const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;if(!d.prog[pe.id])d.prog[pe.id]={currentWeight:bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};if(!d.prog[pe.id].e1rmHistory)d.prog[pe.id].e1rmHistory=[];d.prog[pe.id].e1rmHistory.push({date,e1rm:newE1rm});d.prog[pe.id].e1rmHistory=d.prog[pe.id].e1rmHistory.slice(-12);if(!d.prog[pe.id].pr||newE1rm>d.prog[pe.id].pr.e1rm){d.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}});});return d;};
 
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
@@ -1554,7 +1554,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       mobIvRef.current=setInterval(()=>{setMobTimer(Math.floor((Date.now()-mobStartRef.current)/1000));},1000);
     }else{localStorage.removeItem("dhub6_mob_active");}
   }catch{}},[]); // restore in-progress mobility on mount
-  const [stpDone,setStpDone]=useState(!!data.stp?.[t]);
+
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
   const [aiQ,setAiQ]=useState("");
@@ -1655,8 +1655,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setShowCancelConfirm(false);
   };
 
-  const logStp=()=>{const nd={...data,stp:{...data.stp,[t]:true}};setData(nd);sv(nd);svSB.stepper(t);setStpDone(true);};
-  const undoStp=()=>{const nd={...data,stp:{...data.stp}};delete nd.stp[t];setData(nd);sv(nd);svSB.delStepper(t);setStpDone(false);};
+
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
   const startMob=()=>{const st=Date.now();mobStartRef.current=st;setMobRunning(true);setMobTimer(0);setShowMob(true);
@@ -1826,10 +1825,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>);
       })}
 
-      {s.stepper&&(<X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>{workout.day==="monday"?"Stairmaster":"Stairstepper"}</div><div style={{fontSize:12,color:C.t3}}>{s.stepper} min — Zone 2</div></div>
-        {stpDone?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:600,color:C.g}}>Done</span><B small outline onClick={undoStp}>Undo</B></div>:<B small onClick={logStp}>Complete</B>}
-      </X>)}
 
       <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
