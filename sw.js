@@ -1,4 +1,4 @@
-// Health Hub Service Worker — Push Notifications
+// Health Hub Service Worker — Push Notifications + Network-First HTML
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || 'Health Hub';
@@ -19,18 +19,25 @@ self.addEventListener('notificationclick', (event) => {
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Focus existing window if open
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
-      // Otherwise open new window
       return clients.openWindow(url);
     })
   );
 });
 
-// Basic install/activate — no cache strategy (app is CDN-loaded)
+// Network-first for HTML navigation — always fetch fresh index.html
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+});
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
