@@ -2197,6 +2197,19 @@ const Nutrition=({data,setData})=>{
   const [selM,setSelM]=useState(null);
   const [mf,setMf]=useState({d:"",pro:"",carb:"",fat:"",fib:""});
   const [mealType,setMealType]=useState("Lunch");
+  const [inputMode,setInputMode]=useState("ai");
+  const [aiInput,setAiInput]=useState("");
+  const [aiLoading,setAiLoading]=useState(false);
+  const [aiResult,setAiResult]=useState(null);
+  const [aiError,setAiError]=useState("");
+  const [photo,setPhoto]=useState(null);
+  const [photoPreview,setPhotoPreview]=useState(null);
+  const fileRef=useRef(null);
+  const [searchQuery,setSearchQuery]=useState("");
+  const [searchResults,setSearchResults]=useState([]);
+  const [searchLoading,setSearchLoading]=useState(false);
+  const [searchServings,setSearchServings]=useState(1);
+  const [selectedProduct,setSelectedProduct]=useState(null);
 
   const [showWaterHist,setShowWaterHist]=useState(false);
   const [viewDate,setViewDate]=useState(t);
@@ -2347,6 +2360,17 @@ const Nutrition=({data,setData})=>{
       </div>)}
     </X>
 
+    {tl.totalCal>0&&(
+      <div style={{display:"flex",justifyContent:"space-around",padding:"6px 0",marginBottom:4}}>
+        <span style={{fontSize:11,fontWeight:600,color:proT-tl.totalProtein>0?C.r:C.g}}>
+          {Math.max(0,proT-tl.totalProtein)}g protein left
+        </span>
+        <span style={{fontSize:11,fontWeight:600,color:calT-tl.totalCal>0?C.t2:C.a}}>
+          {Math.max(0,calT-tl.totalCal)} cal left
+        </span>
+      </div>
+    )}
+
     {/* ═══ TDEE SMART BANNER ═══ */}
     {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
       <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
@@ -2454,6 +2478,39 @@ const Nutrition=({data,setData})=>{
       })()}
     </X>
 
+    {(()=>{
+      const freqMap={};
+      Object.values(data.nut||{}).forEach(n=>{
+        (n.meals||[]).forEach(m=>{
+          if(!m.description||(m.cal||0)<50)return;
+          const k=m.description.toLowerCase().trim();
+          if(!freqMap[k])freqMap[k]={desc:m.description,cals:[],pros:[],carbs:[],fats:[],fibs:[],n:0};
+          freqMap[k].cals.push(m.cal||0);freqMap[k].pros.push(m.protein||0);
+          freqMap[k].carbs.push(m.carbs||0);freqMap[k].fats.push(m.fat||0);
+          freqMap[k].fibs.push(m.fiber||0);freqMap[k].n++;
+        });
+      });
+      const avg=a=>Math.round(a.reduce((s,v)=>s+v,0)/a.length);
+      const freq=Object.values(freqMap).filter(m=>m.n>=2)
+        .map(m=>({desc:m.desc,cal:avg(m.cals),pro:avg(m.pros),carb:avg(m.carbs),fat:avg(m.fats),fib:avg(m.fibs),n:m.n}))
+        .sort((a,b)=>b.n-a.n).slice(0,5);
+      if(!freq.length)return null;
+      return(
+        <div style={{marginBottom:6}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Quick Re-Log</div>
+          <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:4}}>
+            {freq.map((m,i)=>(
+              <button key={i} onClick={()=>add({description:m.desc,cal:m.cal,protein:m.pro,carbs:m.carb,fat:m.fat,fiber:m.fib,source:"quick"})}
+                style={{flexShrink:0,padding:"6px 10px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+                  border:`1px solid ${C.bd}`,background:C.cd,color:C.t,whiteSpace:"nowrap",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis"}}>
+                {m.desc} <span style={{color:C.g}}>{m.pro}gP</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    })()}
+
     <div style={{display:"flex",gap:2}}>
       {MEAL_TYPES.map(mt=>(
         <button key={mt} onClick={()=>setMealType(mt)} style={{
@@ -2462,6 +2519,206 @@ const Nutrition=({data,setData})=>{
         }}>{mt}</button>
       ))}
     </div>
+
+    <div style={{display:"flex",gap:2,marginBottom:6}}>
+      {[{id:"ai",l:"AI"},{id:"scan",l:"Scan"},{id:"search",l:"Search"},{id:"manual",l:"Manual"}].map(m=>(
+        <button key={m.id} onClick={()=>setInputMode(m.id)} style={{
+          flex:1,padding:"8px 4px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+          border:`1px solid ${inputMode===m.id?C.p:C.bd}`,background:inputMode===m.id?C.pl:"transparent",
+          color:inputMode===m.id?C.p:C.t3
+        }}>{m.l}</button>
+      ))}
+    </div>
+
+    {inputMode==="ai"&&(
+      <X style={{padding:10}}>
+        <T value={aiInput} onChange={setAiInput} placeholder="What did you eat? e.g. 'grilled chicken with rice and broccoli'" style={{marginBottom:6}}/>
+        <div style={{display:"flex",gap:6,marginBottom:6}}>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+            onChange={(e)=>{
+              const file=e.target.files?.[0];if(!file)return;
+              setPhotoPreview(URL.createObjectURL(file));
+              const reader=new FileReader();
+              reader.onload=()=>{setPhoto({data:reader.result.split(",")[1],mediaType:file.type});};
+              reader.readAsDataURL(file);
+            }} style={{display:"none"}}/>
+          <B small outline onClick={()=>fileRef.current?.click()}>{photo?"📷 Change":"📷 Photo"}</B>
+          {photo&&<B small outline onClick={()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";}}>✕ Remove</B>}
+        </div>
+        {photoPreview&&<img src={photoPreview} style={{width:"100%",maxHeight:150,objectFit:"cover",borderRadius:6,marginBottom:6}}/>}
+        <B full onClick={async()=>{
+          if(!aiInput&&!photo)return;
+          setAiLoading(true);setAiError("");setAiResult(null);
+          try{
+            const corrections=[];const recentMeals=[];
+            Object.values(data.nut||{}).slice(-30).forEach(n=>{
+              (n.meals||[]).forEach(m=>{
+                if(m.source==="ai"&&m.aiOriginal){
+                  const changed=["cal","protein","carbs","fat"].some(k=>(m[k]||0)!==(m.aiOriginal[k]||0));
+                  if(changed)corrections.push({description:m.description,aiEstimate:m.aiOriginal,
+                    userCorrection:{cal:m.cal,protein:m.protein,carbs:m.carbs,fat:m.fat}});
+                }
+                if(m.description)recentMeals.push({description:m.description,cal:m.cal,protein:m.protein,source:m.source});
+              });
+            });
+            const r=await fetch("/api/estimate",{method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({input:aiInput,image:photo||undefined,
+                context:{calories:calT,protein:proT,corrections:corrections.slice(-10),recentMeals:recentMeals.slice(-10)}})});
+            const d=await r.json();
+            if(!r.ok)throw new Error(d.error||"Estimation failed");
+            setAiResult(d);
+          }catch(e){setAiError(e.message);}
+          setAiLoading(false);
+        }} disabled={aiLoading||(!aiInput&&!photo)}>
+          {aiLoading?"Estimating...":"Estimate"}
+        </B>
+        {aiError&&<div style={{color:C.r,fontSize:12,marginTop:6}}>{aiError}</div>}
+        {aiResult&&(
+          <div style={{marginTop:8,padding:10,background:C.bg,borderRadius:6}}>
+            <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>{aiResult.description}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:6}}>
+              <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.p}}>{aiResult.cal}</div><div style={{fontSize:9,color:C.t3}}>cal</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.g}}>{aiResult.protein}g</div><div style={{fontSize:9,color:C.t3}}>protein</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.a}}>{aiResult.carbs}g</div><div style={{fontSize:9,color:C.t3}}>carbs</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{aiResult.fat}g</div><div style={{fontSize:9,color:C.t3}}>fat</div></div>
+            </div>
+            {aiResult.components&&aiResult.components.length>1&&(
+              <div style={{borderTop:`1px solid ${C.bl}`,paddingTop:4,marginBottom:6}}>
+                {aiResult.components.map((c,i)=>(
+                  <div key={i} style={{fontSize:11,color:C.t2,padding:"2px 0"}}>{c.item} — {c.cal}cal, {c.protein}gP</div>
+                ))}
+              </div>
+            )}
+            {aiResult.confidence&&<div style={{fontSize:10,color:aiResult.confidence==="high"?C.g:aiResult.confidence==="medium"?C.a:C.r,marginBottom:6}}>
+              Confidence: {aiResult.confidence}{aiResult.notes?` — ${aiResult.notes}`:""}
+            </div>}
+            <B full onClick={()=>{
+              add({description:aiResult.description,cal:aiResult.cal,protein:aiResult.protein,carbs:aiResult.carbs,
+                fat:aiResult.fat,fiber:aiResult.fiber||0,source:"ai",
+                aiOriginal:{cal:aiResult.cal,protein:aiResult.protein,carbs:aiResult.carbs,fat:aiResult.fat,fiber:aiResult.fiber||0}});
+              setAiResult(null);setAiInput("");setPhoto(null);setPhotoPreview(null);
+              if(fileRef.current)fileRef.current.value="";
+            }} color={C.g}>Add Meal</B>
+          </div>
+        )}
+      </X>
+    )}
+
+    {inputMode==="scan"&&(
+      <X style={{padding:10}}>
+        <div style={{fontSize:13,color:C.t2,marginBottom:6}}>Scan a barcode or enter UPC manually</div>
+        <div style={{display:"flex",gap:6}}>
+          <T value={searchQuery} onChange={setSearchQuery} placeholder="Enter barcode/UPC..." style={{flex:1}}/>
+          <B small onClick={async()=>{
+            if(!searchQuery.trim())return;
+            setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
+            try{
+              const r=await fetch("/api/food-search",{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({barcode:searchQuery})});
+              const d=await r.json();
+              if(r.ok&&d.results?.length)setSelectedProduct(d.results[0]);
+              else setSearchResults([]);
+            }catch{}
+            setSearchLoading(false);
+          }} disabled={searchLoading}>{searchLoading?"...":"Look Up"}</B>
+        </div>
+        {selectedProduct&&(
+          <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{selectedProduct.name}</div>
+            {selectedProduct.brand&&<div style={{fontSize:11,color:C.t3}}>{selectedProduct.brand}</div>}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+              <L>Servings:</L>
+              <N value={searchServings} onChange={v=>setSearchServings(Math.max(0.25,+v||1))} style={{width:60}}/>
+              {selectedProduct.servingSize&&<span style={{fontSize:10,color:C.t3}}>({selectedProduct.servingSize})</span>}
+            </div>
+            {(()=>{
+              const s=selectedProduct.perServing||selectedProduct.per100g;
+              const mult=searchServings;
+              const cal=Math.round(s.cal*mult);const pro=Math.round(s.protein*mult);
+              const carb=Math.round(s.carbs*mult);const fat=Math.round(s.fat*mult);const fib=Math.round((s.fiber||0)*mult);
+              return(<>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:6}}>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.p}}>{cal}</div><div style={{fontSize:9,color:C.t3}}>cal</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.g}}>{pro}g</div><div style={{fontSize:9,color:C.t3}}>protein</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.a}}>{carb}g</div><div style={{fontSize:9,color:C.t3}}>carbs</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{fat}g</div><div style={{fontSize:9,color:C.t3}}>fat</div></div>
+                </div>
+                <B full style={{marginTop:6}} onClick={()=>{
+                  add({description:selectedProduct.name+(selectedProduct.brand?` (${selectedProduct.brand})`:""),
+                    cal,protein:pro,carbs:carb,fat,fiber:fib,source:"scan"});
+                  setSelectedProduct(null);setSearchQuery("");
+                }} color={C.g}>Add</B>
+              </>);
+            })()}
+          </div>
+        )}
+      </X>
+    )}
+
+    {inputMode==="search"&&(
+      <X style={{padding:10}}>
+        <div style={{display:"flex",gap:6}}>
+          <T value={searchQuery} onChange={setSearchQuery} placeholder="Search food database..." style={{flex:1}}/>
+          <B small onClick={async()=>{
+            if(!searchQuery.trim())return;
+            setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
+            try{
+              const r=await fetch("/api/food-search",{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({query:searchQuery})});
+              const d=await r.json();
+              if(r.ok)setSearchResults(d.results||[]);
+            }catch{}
+            setSearchLoading(false);
+          }} disabled={searchLoading}>{searchLoading?"...":"Go"}</B>
+        </div>
+        {searchResults.length>0&&!selectedProduct&&(
+          <div style={{marginTop:6,maxHeight:200,overflowY:"auto"}}>
+            {searchResults.map((p,i)=>(
+              <div key={i} onClick={()=>{setSelectedProduct(p);setSearchServings(1);}} style={{
+                padding:"8px 6px",borderBottom:`1px solid ${C.bl}`,cursor:"pointer",fontSize:12}}>
+                <div style={{fontWeight:600,color:C.t}}>{p.name}</div>
+                {p.brand&&<div style={{fontSize:10,color:C.t3}}>{p.brand}</div>}
+                <div style={{fontSize:10,color:C.t2}}>{p.per100g.cal}cal · {p.per100g.protein}gP per 100g</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {selectedProduct&&(
+          <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{selectedProduct.name}</div>
+            {selectedProduct.brand&&<div style={{fontSize:11,color:C.t3}}>{selectedProduct.brand}</div>}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+              <L>Servings:</L>
+              <N value={searchServings} onChange={v=>setSearchServings(Math.max(0.25,+v||1))} style={{width:60}}/>
+              {selectedProduct.servingSize&&<span style={{fontSize:10,color:C.t3}}>({selectedProduct.servingSize})</span>}
+            </div>
+            {(()=>{
+              const s=selectedProduct.perServing||selectedProduct.per100g;
+              const mult=selectedProduct.perServing?searchServings:searchServings;
+              const cal=Math.round(s.cal*mult);const pro=Math.round(s.protein*mult);
+              const carb=Math.round(s.carbs*mult);const fat=Math.round(s.fat*mult);
+              const fib=Math.round((s.fiber||0)*mult);
+              return(<>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:6}}>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.p}}>{cal}</div><div style={{fontSize:9,color:C.t3}}>cal</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.g}}>{pro}g</div><div style={{fontSize:9,color:C.t3}}>protein</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.a}}>{carb}g</div><div style={{fontSize:9,color:C.t3}}>carbs</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{fat}g</div><div style={{fontSize:9,color:C.t3}}>fat</div></div>
+                </div>
+                <B full style={{marginTop:6}} onClick={()=>{
+                  add({description:selectedProduct.name+(selectedProduct.brand?` (${selectedProduct.brand})`:""),
+                    cal,protein:pro,carbs:carb,fat,fiber:fib,source:"search"});
+                  setSelectedProduct(null);setSearchQuery("");setSearchResults([]);
+                }} color={C.g}>Add</B>
+              </>);
+            })()}
+            <button onClick={()=>setSelectedProduct(null)} style={{background:"none",border:"none",color:C.t3,fontSize:11,cursor:"pointer",marginTop:4,fontFamily:"inherit",width:"100%",textAlign:"center"}}>Back to results</button>
+          </div>
+        )}
+      </X>
+    )}
+
+    {inputMode==="manual"&&(
     <X style={{padding:10}}>
       <T value={mf.d} onChange={v=>setMf({...mf,d:v})} placeholder="What did you eat?" style={{marginBottom:6}}/>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:3}}>
@@ -2473,6 +2730,7 @@ const Nutrition=({data,setData})=>{
       <B full style={{marginTop:6}} onClick={()=>{const cal=(+mf.pro*4)+(+mf.carb*4)+(+mf.fat*9);add({description:mf.d,cal,protein:+mf.pro,carbs:+mf.carb,fat:+mf.fat,fiber:+mf.fib,source:"manual"});
         setMf({d:"",pro:"",carb:"",fat:"",fib:""});}}>Add</B>
     </X>
+    )}
 
     {MEAL_TYPES.map(mt=>{
       const meals=grouped[mt];
