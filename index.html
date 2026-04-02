@@ -2205,11 +2205,6 @@ const Nutrition=({data,setData})=>{
   const [photo,setPhoto]=useState(null);
   const [photoPreview,setPhotoPreview]=useState(null);
   const fileRef=useRef(null);
-  const [searchQuery,setSearchQuery]=useState("");
-  const [searchResults,setSearchResults]=useState([]);
-  const [searchLoading,setSearchLoading]=useState(false);
-  const [searchServings,setSearchServings]=useState(1);
-  const [selectedProduct,setSelectedProduct]=useState(null);
 
   const [showWaterHist,setShowWaterHist]=useState(false);
   const [viewDate,setViewDate]=useState(t);
@@ -2521,7 +2516,7 @@ const Nutrition=({data,setData})=>{
     </div>
 
     <div style={{display:"flex",gap:2,marginBottom:6}}>
-      {[{id:"ai",l:"AI"},{id:"scan",l:"Scan"},{id:"search",l:"Search"},{id:"manual",l:"Manual"}].map(m=>(
+      {[{id:"ai",l:"AI"},{id:"manual",l:"Manual"}].map(m=>(
         <button key={m.id} onClick={()=>setInputMode(m.id)} style={{
           flex:1,padding:"8px 4px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${inputMode===m.id?C.p:C.bd}`,background:inputMode===m.id?C.pl:"transparent",
@@ -2532,7 +2527,7 @@ const Nutrition=({data,setData})=>{
 
     {inputMode==="ai"&&(
       <X style={{padding:10}}>
-        <T value={aiInput} onChange={setAiInput} placeholder="What did you eat? e.g. 'grilled chicken with rice and broccoli'" style={{marginBottom:6}}/>
+        <T value={aiInput} onChange={setAiInput} placeholder="What did you eat? Or describe the label photo" style={{marginBottom:6}}/>
         <div style={{display:"flex",gap:6,marginBottom:6}}>
           <input ref={fileRef} type="file" accept="image/*" capture="environment"
             onChange={(e)=>{
@@ -2542,7 +2537,7 @@ const Nutrition=({data,setData})=>{
               reader.onload=()=>{setPhoto({data:reader.result.split(",")[1],mediaType:file.type});};
               reader.readAsDataURL(file);
             }} style={{display:"none"}}/>
-          <B small outline onClick={()=>fileRef.current?.click()}>{photo?"📷 Change":"📷 Photo"}</B>
+          <B small outline onClick={()=>fileRef.current?.click()}>{photo?"📷 Change":"📷 Meal or Label"}</B>
           {photo&&<B small outline onClick={()=>{setPhoto(null);setPhotoPreview(null);if(fileRef.current)fileRef.current.value="";}}>✕ Remove</B>}
         </div>
         {photoPreview&&<img src={photoPreview} style={{width:"100%",maxHeight:150,objectFit:"cover",borderRadius:6,marginBottom:6}}/>}
@@ -2604,119 +2599,6 @@ const Nutrition=({data,setData})=>{
       </X>
     )}
 
-    {inputMode==="scan"&&(
-      <X style={{padding:10}}>
-        <div style={{fontSize:13,color:C.t2,marginBottom:6}}>Scan a barcode or enter UPC manually</div>
-        <div style={{display:"flex",gap:6}}>
-          <T value={searchQuery} onChange={setSearchQuery} placeholder="Enter barcode/UPC..." style={{flex:1}}/>
-          <B small onClick={async()=>{
-            if(!searchQuery.trim())return;
-            setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
-            try{
-              const r=await fetch("/api/food-search",{method:"POST",headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({barcode:searchQuery})});
-              const d=await r.json();
-              if(r.ok&&d.results?.length)setSelectedProduct(d.results[0]);
-              else setSearchResults([]);
-            }catch{}
-            setSearchLoading(false);
-          }} disabled={searchLoading}>{searchLoading?"...":"Look Up"}</B>
-        </div>
-        {selectedProduct&&(
-          <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6}}>
-            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{selectedProduct.name}</div>
-            {selectedProduct.brand&&<div style={{fontSize:11,color:C.t3}}>{selectedProduct.brand}</div>}
-            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
-              <L>Servings:</L>
-              <N value={searchServings} onChange={v=>setSearchServings(Math.max(0.25,+v||1))} style={{width:60}}/>
-              {selectedProduct.servingSize&&<span style={{fontSize:10,color:C.t3}}>({selectedProduct.servingSize})</span>}
-            </div>
-            {(()=>{
-              const s=selectedProduct.perServing||selectedProduct.per100g;
-              const mult=searchServings;
-              const cal=Math.round(s.cal*mult);const pro=Math.round(s.protein*mult);
-              const carb=Math.round(s.carbs*mult);const fat=Math.round(s.fat*mult);const fib=Math.round((s.fiber||0)*mult);
-              return(<>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:6}}>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.p}}>{cal}</div><div style={{fontSize:9,color:C.t3}}>cal</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.g}}>{pro}g</div><div style={{fontSize:9,color:C.t3}}>protein</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.a}}>{carb}g</div><div style={{fontSize:9,color:C.t3}}>carbs</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{fat}g</div><div style={{fontSize:9,color:C.t3}}>fat</div></div>
-                </div>
-                <B full style={{marginTop:6}} onClick={()=>{
-                  add({description:selectedProduct.name+(selectedProduct.brand?` (${selectedProduct.brand})`:""),
-                    cal,protein:pro,carbs:carb,fat,fiber:fib,source:"scan"});
-                  setSelectedProduct(null);setSearchQuery("");
-                }} color={C.g}>Add</B>
-              </>);
-            })()}
-          </div>
-        )}
-      </X>
-    )}
-
-    {inputMode==="search"&&(
-      <X style={{padding:10}}>
-        <div style={{display:"flex",gap:6}}>
-          <T value={searchQuery} onChange={setSearchQuery} placeholder="Search food database..." style={{flex:1}}/>
-          <B small onClick={async()=>{
-            if(!searchQuery.trim())return;
-            setSearchLoading(true);setSearchResults([]);setSelectedProduct(null);
-            try{
-              const r=await fetch("/api/food-search",{method:"POST",headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({query:searchQuery})});
-              const d=await r.json();
-              if(r.ok)setSearchResults(d.results||[]);
-            }catch{}
-            setSearchLoading(false);
-          }} disabled={searchLoading}>{searchLoading?"...":"Go"}</B>
-        </div>
-        {searchResults.length>0&&!selectedProduct&&(
-          <div style={{marginTop:6,maxHeight:200,overflowY:"auto"}}>
-            {searchResults.map((p,i)=>(
-              <div key={i} onClick={()=>{setSelectedProduct(p);setSearchServings(1);}} style={{
-                padding:"8px 6px",borderBottom:`1px solid ${C.bl}`,cursor:"pointer",fontSize:12}}>
-                <div style={{fontWeight:600,color:C.t}}>{p.name}</div>
-                {p.brand&&<div style={{fontSize:10,color:C.t3}}>{p.brand}</div>}
-                <div style={{fontSize:10,color:C.t2}}>{p.per100g.cal}cal · {p.per100g.protein}gP per 100g</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {selectedProduct&&(
-          <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6}}>
-            <div style={{fontSize:13,fontWeight:700,color:C.t}}>{selectedProduct.name}</div>
-            {selectedProduct.brand&&<div style={{fontSize:11,color:C.t3}}>{selectedProduct.brand}</div>}
-            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
-              <L>Servings:</L>
-              <N value={searchServings} onChange={v=>setSearchServings(Math.max(0.25,+v||1))} style={{width:60}}/>
-              {selectedProduct.servingSize&&<span style={{fontSize:10,color:C.t3}}>({selectedProduct.servingSize})</span>}
-            </div>
-            {(()=>{
-              const s=selectedProduct.perServing||selectedProduct.per100g;
-              const mult=selectedProduct.perServing?searchServings:searchServings;
-              const cal=Math.round(s.cal*mult);const pro=Math.round(s.protein*mult);
-              const carb=Math.round(s.carbs*mult);const fat=Math.round(s.fat*mult);
-              const fib=Math.round((s.fiber||0)*mult);
-              return(<>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:6}}>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.p}}>{cal}</div><div style={{fontSize:9,color:C.t3}}>cal</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.g}}>{pro}g</div><div style={{fontSize:9,color:C.t3}}>protein</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.a}}>{carb}g</div><div style={{fontSize:9,color:C.t3}}>carbs</div></div>
-                  <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:700,color:C.t2}}>{fat}g</div><div style={{fontSize:9,color:C.t3}}>fat</div></div>
-                </div>
-                <B full style={{marginTop:6}} onClick={()=>{
-                  add({description:selectedProduct.name+(selectedProduct.brand?` (${selectedProduct.brand})`:""),
-                    cal,protein:pro,carbs:carb,fat,fiber:fib,source:"search"});
-                  setSelectedProduct(null);setSearchQuery("");setSearchResults([]);
-                }} color={C.g}>Add</B>
-              </>);
-            })()}
-            <button onClick={()=>setSelectedProduct(null)} style={{background:"none",border:"none",color:C.t3,fontSize:11,cursor:"pointer",marginTop:4,fontFamily:"inherit",width:"100%",textAlign:"center"}}>Back to results</button>
-          </div>
-        )}
-      </X>
-    )}
 
     {inputMode==="manual"&&(
     <X style={{padding:10}}>

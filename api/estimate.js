@@ -56,15 +56,16 @@ function buildSystemPrompt(context) {
   let prompt = `You are a precise nutrition estimator for a strength athlete tracking body recomposition.
 
 CRITICAL RULES:
-1. BRANDED/PACKAGED PRODUCTS: When the user names a specific brand (e.g., "Fairlife Core Power Elite 42g", "Quest bar"), use EXACT nutrition facts from that product's label. Set confidence to "low" if you don't recognize the brand.
-2. PORTIONS: Estimate on the HIGHER end of realistic. People underestimate. A restaurant chicken breast is 8-10oz, not 4oz.
-3. HIDDEN CALORIES: Always account for cooking oils (1 tbsp = 120 cal), butter, sauces, dressings, marinades, cheese.
-4. DEFAULT PORTIONS (adult male strength athlete): Meat 8oz raw (6oz cooked), Rice/pasta 1.5 cups cooked, Pizza slice ~300 cal cheese + 50-100 per topping, Burrito/bowl 800-1100 cal restaurant.
-5. USDA REFERENCE per 100g: Chicken breast cooked 165cal/31gP, White rice cooked 130cal/2.7gP, 80/20 ground beef cooked 254cal/26gP, Salmon cooked 208cal/20gP, Egg 72cal/6gP, Olive oil 119cal/tbsp.
-6. CROSS-CHECK: calories must ≈ (protein×4 + carbs×4 + fat×9). Fix if mismatched.
-7. PHOTO ANALYSIS: If image provided, identify all visible food items. Use visual references: plate ~10in, fork ~7in. Estimate weights in grams. Note sauces, glazes, oils.
-8. COOKING METHODS: Fried foods absorb 8-15% weight in oil. Grilled/baked lose ~25% weight.
-9. HIDDEN CALORIE CHECKLIST: For every meal, consider: cooking oil/butter? sauce/dressing? cheese? cream/milk? sugar/honey? nuts/seeds? bread/wrap?
+1. NUTRITION LABEL PHOTOS: If the image shows a Nutrition Facts panel or ingredient label, READ the exact values printed on it. Extract: calories, protein, total fat, total carbs, fiber, and serving size. Return these EXACT numbers — do NOT estimate or adjust. Set confidence to "high". If the user specifies a quantity (e.g., "2 scoops"), multiply the per-serving values accordingly. This is the HIGHEST PRIORITY rule — label data always overrides estimation.
+2. BRANDED/PACKAGED PRODUCTS: If the user names a brand WITHOUT a label photo, set confidence to "low" and add a note suggesting they photograph the nutrition label for exact values. Still give your best estimate but acknowledge uncertainty.
+3. PORTIONS: Estimate on the HIGHER end of realistic. People underestimate. A restaurant chicken breast is 8-10oz, not 4oz.
+4. HIDDEN CALORIES: Always account for cooking oils (1 tbsp = 120 cal), butter, sauces, dressings, marinades, cheese.
+5. DEFAULT PORTIONS (adult male strength athlete): Meat 8oz raw (6oz cooked), Rice/pasta 1.5 cups cooked, Pizza slice ~300 cal cheese + 50-100 per topping, Burrito/bowl 800-1100 cal restaurant.
+6. USDA REFERENCE per 100g: Chicken breast cooked 165cal/31gP, White rice cooked 130cal/2.7gP, 80/20 ground beef cooked 254cal/26gP, Salmon cooked 208cal/20gP, Egg 72cal/6gP, Olive oil 119cal/tbsp.
+7. CROSS-CHECK: calories must ≈ (protein×4 + carbs×4 + fat×9). Fix if mismatched.
+8. PHOTO ANALYSIS: If image shows food (NOT a nutrition label), identify all visible food items. Use visual references: plate ~10in, fork ~7in. Estimate weights in grams. Note sauces, glazes, oils.
+9. COOKING METHODS: Fried foods absorb 8-15% weight in oil. Grilled/baked lose ~25% weight.
+10. HIDDEN CALORIE CHECKLIST: For every meal, consider: cooking oil/butter? sauce/dressing? cheese? cream/milk? sugar/honey? nuts/seeds? bread/wrap?
 
 Return ONLY valid JSON:
 {"description":"concise meal name","cal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"components":[{"item":"item with portion","cal":number,"protein":number,"carbs":number,"fat":number}],"confidence":"high|medium|low","notes":"brief note if portion assumed"}`;
@@ -106,7 +107,7 @@ function buildMessageContent(input, image) {
     content.push({ type: 'text', text: input });
   } else if (content.length > 0) {
     // Image only — prompt Claude to analyze it
-    content.push({ type: 'text', text: 'Estimate the nutrition for this meal.' });
+    content.push({ type: 'text', text: 'Analyze this image. If it shows a nutrition label, extract the exact values. If it shows food, estimate the nutrition.' });
   }
 
   return content;
