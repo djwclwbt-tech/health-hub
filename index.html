@@ -392,8 +392,13 @@ const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return lds(d)};
 const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
 const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
-const estTime=(sess)=>{if(!sess)return"";const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
-  const work=sess.exercises.reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);return Math.round(wu+work);};
+const estTime=(sess)=>{if(!sess)return"";
+  const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
+  const wuSets=sess.exercises.reduce((t,ex)=>t+(WU(ex.sw).length||0)*0.75,0);
+  const work=sess.exercises.reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);
+  const stretch=(PROG.mobility?._default||PROG.mobility?.[Object.keys(PROG.mobility)[0]]||[]).reduce((t,s)=>t+((s.dur||60)*(s.sets||2))/60,0);
+  return Math.round(wu+wuSets+work+stretch);
+};
 
 const fmtTime=(v)=>{
   const digits=v.replace(/\D/g,"");
@@ -2082,6 +2087,18 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 // ═══ NUTRITION ═══
 const MEAL_TYPES=["Breakfast","Lunch","Dinner","Snack"];
 
+const getWeekDates = (dateStr) => {
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay(); // 0=Sun
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - ((dow + 6) % 7)); // back to Monday
+  return Array.from({length:7}, (_,i) => {
+    const dd = new Date(mon);
+    dd.setDate(mon.getDate() + i);
+    return lds(dd);
+  });
+};
+
 const Nutrition=({data,setData})=>{
   const t=td(),dn=dw(t);
   const [selM,setSelM]=useState(null);
@@ -2095,6 +2112,11 @@ const Nutrition=({data,setData})=>{
   const isViewingToday=viewDate===t;
   const st=data.settings||DEFAULTS;
   const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
+  const weekDates=getWeekDates(viewDate);
+  const weekCals=weekDates.reduce((s,d)=>s+(data.nut[d]?.totalCal||0),0);
+  const weekTarget=weekDates.reduce((s,d)=>s+getDayCalTarget(d,st,data.travelDays),0);
+  const weekRemaining=weekTarget-weekCals;
+  const weekDayLabels=["M","T","W","T","F","S","S"];
   const viewDayType=getDayType(viewDate,data.travelDays);
   const viewFatPct=tl.totalCal>0?Math.round(((tl.totalFat||0)*9/tl.totalCal)*100):0;
   const waterToday=data.water?.[viewDate]||0;
@@ -2172,6 +2194,33 @@ const Nutrition=({data,setData})=>{
         <button onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:"none",color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
       </div>
     </div>
+
+    <X style={{padding:10,marginBottom:4}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+        <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Week Total</span>
+        <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.a}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
+      </div>
+      <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.a:C.p} h={4}/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
+        {weekDates.map((d,i)=>{
+          const dc=data.nut[d]?.totalCal||0;
+          const dt=getDayCalTarget(d,st,data.travelDays);
+          const isView=d===viewDate;
+          const isFuture=d>td();
+          const logged=dc>0;
+          return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:3,
+            background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
+            <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
+            <div style={{fontSize:10,fontWeight:700,color:logged?(dc>dt?C.a:C.g):isFuture?C.t3:C.r}}>
+              {logged?Math.round(dc/100)*100:isFuture?"—":"0"}
+            </div>
+          </div>);
+        })}
+      </div>
+      <div style={{fontSize:11,fontWeight:600,color:weekRemaining>=0?C.g:C.a,marginTop:4,textAlign:"center"}}>
+        {weekRemaining>=0?`${weekRemaining.toLocaleString()} cal remaining`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}
+      </div>
+    </X>
 
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
