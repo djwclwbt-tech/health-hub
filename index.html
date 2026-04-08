@@ -1514,6 +1514,38 @@ const Dashboard=({data,setData})=>{
   );
 };
 
+// ═══ SWAP MAP ═══
+const SWAP_MAP={
+  "cable-crunch":[{id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW"},{id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
+  "hanging-leg-raise":[{id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs"},{id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
+  "pallof-press":[{id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs"},{id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
+  "cable-fly":[{id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side"},{id:"db-fly",name:"DB Flat Fly",sw:20,unit:"lbs/hand"},{id:"pec-deck",name:"Pec Deck",sw:80,unit:"lbs"}],
+  "smith-flat-bench":[{id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs"},{id:"db-flat-bench",name:"DB Flat Bench Press",sw:50,unit:"lbs/hand"},{id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs"}],
+  "seated-row":[{id:"overhand-cable-row",name:"Overhand Cable Row",sw:110,unit:"lbs"},{id:"db-row",name:"DB Row",sw:50,unit:"lbs/hand"},{id:"cable-row-close",name:"Close-Grip Cable Row",sw:120,unit:"lbs"}],
+  "smith-ohp":[{id:"db-ohp",name:"DB Shoulder Press",sw:35,unit:"lbs/hand"},{id:"machine-ohp",name:"Machine Shoulder Press",sw:90,unit:"lbs"}],
+  "lat-pulldown":[{id:"close-grip-pulldown",name:"Close-Grip Pulldown",sw:130,unit:"lbs"},{id:"pull-ups",name:"Pull-Ups",sw:0,unit:"BW"},{id:"straight-arm-pulldown",name:"Straight-Arm Pulldown",sw:50,unit:"lbs"}],
+  "converging-chest-press":[{id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs"},{id:"db-flat-bench",name:"DB Flat Bench Press",sw:50,unit:"lbs/hand"}],
+  "leg-press":[{id:"hack-squat-a",name:"Hack Squat",sw:180,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
+  "rdl":[{id:"sldl",name:"Stiff-Leg Deadlift",sw:95,unit:"lbs"},{id:"db-rdl",name:"DB Romanian Deadlift",sw:40,unit:"lbs/hand"}],
+  "hack-squat-a":[{id:"leg-press",name:"Leg Press",sw:360,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
+  "lying-leg-curl":[{id:"seated-leg-curl",name:"Seated Leg Curl",sw:100,unit:"lbs"},{id:"cable-leg-curl",name:"Cable Leg Curl",sw:25,unit:"lbs"}],
+  "standing-calf":[{id:"seated-calf",name:"Seated Calf Raise",sw:90,unit:"lbs"},{id:"leg-press-calf",name:"Leg Press Calf Raise",sw:200,unit:"lbs"}],
+  "low-high-cable-fly":[{id:"cable-fly",name:"Cable Fly",sw:10,unit:"lbs/side"},{id:"db-incline-fly",name:"DB Incline Fly",sw:15,unit:"lbs/hand"},{id:"pec-deck",name:"Pec Deck",sw:80,unit:"lbs"}],
+  "smith-incline":[{id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs"},{id:"db-incline",name:"DB Incline Press",sw:45,unit:"lbs/hand"},{id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs"}],
+  "overhand-cable-row":[{id:"seated-row",name:"Seated Row Machine",sw:160,unit:"lbs"},{id:"db-row",name:"DB Row",sw:50,unit:"lbs/hand"},{id:"cable-row-close",name:"Close-Grip Cable Row",sw:120,unit:"lbs"}],
+  "lateral-raise":[{id:"db-lateral-raise",name:"DB Lateral Raise",sw:15,unit:"lbs/hand"},{id:"machine-lateral-raise",name:"Machine Lateral Raise",sw:40,unit:"lbs"}],
+  "reverse-fly":[{id:"face-pull",name:"Face Pull",sw:30,unit:"lbs"},{id:"rear-delt-machine",name:"Rear Delt Fly Machine",sw:30,unit:"lbs"}],
+  "incline-db-curl":[{id:"cable-curl",name:"Cable Curl",sw:30,unit:"lbs"},{id:"barbell-curl",name:"Barbell Curl",sw:50,unit:"lbs"},{id:"hammer-curl",name:"Hammer Curl",sw:20,unit:"lbs/hand"}],
+  "hack-squat-b":[{id:"leg-press",name:"Leg Press",sw:300,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
+  "walking-lunges":[{id:"split-squat",name:"Bulgarian Split Squat",sw:20,unit:"lbs/hand"},{id:"step-ups",name:"DB Step-Ups",sw:25,unit:"lbs/hand"}],
+  "sldl":[{id:"rdl",name:"Romanian Deadlift",sw:125,unit:"lbs"},{id:"db-rdl",name:"DB Romanian Deadlift",sw:40,unit:"lbs/hand"}],
+  "leg-extension":[{id:"sissy-squat",name:"Sissy Squat",sw:0,unit:"BW"},{id:"leg-extension-bp",name:"Leg Extension (Light)",sw:120,unit:"lbs"}],
+  "hip-thrust":[{id:"cable-pull-through",name:"Cable Pull-Through",sw:70,unit:"lbs"},{id:"glute-bridge",name:"Glute Bridge BB",sw:135,unit:"lbs"}],
+  "seated-calf":[{id:"standing-calf",name:"Standing Calf Raise",sw:290,unit:"lbs"},{id:"leg-press-calf",name:"Leg Press Calf Raise",sw:200,unit:"lbs"}],
+  "leg-extension-bp":[{id:"leg-extension",name:"Leg Extension",sw:120,unit:"lbs"},{id:"sissy-squat",name:"Sissy Squat",sw:0,unit:"BW"}],
+  "cable-pull-through":[{id:"hip-thrust",name:"Hip Thrust BB",sw:160,unit:"lbs"},{id:"glute-bridge",name:"Glute Bridge BB",sw:135,unit:"lbs"}],
+};
+
 // ═══ TRAINING ═══
 const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const t=td(),dn=dw(t);
@@ -1554,6 +1586,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [aiExIdx,setAiExIdx]=useState(null);
   const [showAi,setShowAi]=useState(false);
   const [wuDone,setWuDone]=useState(false);
+  const [swapModal,setSwapModal]=useState(null);
+  const [swaps,setSwaps]=useState({});
   const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
   const setVariant=(day,variant)=>{const nv=variant?{...activeVariant,[day]:variant}:{...activeVariant};if(!variant)delete nv[day];setActiveVariant(nv);try{localStorage.setItem("dhub6_variant",JSON.stringify(nv));}catch{}};
   const tr=useRef(null);
@@ -1572,6 +1606,31 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     return def;
   };
 
+  const getLastLift=(exId)=>{
+    const dates=Object.keys(data.wk).sort().reverse();
+    for(const d of dates){
+      const wex=data.wk[d].exercises?.find(e=>e.id===exId);
+      if(wex){const ds=wex.sets?.filter(s=>s.done&&s.reps>0);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds[0].reps};}
+    }
+    return null;
+  };
+
+  const performSwap=(ei,newEx)=>{
+    const s=getSess(workout.day,workout.variant);
+    const origEx=s.exercises[ei];
+    const histWeight=gw(newEx.id,newEx.sw);
+    const wt=workout.isDeload?Math.round(histWeight*0.5/5)*5:histWeight;
+    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));
+      n.exercises[ei].id=newEx.id;
+      n.exercises[ei].name=newEx.name;
+      n.exercises[ei].swappedFrom={id:origEx.id,name:origEx.name};
+      n.exercises[ei].wu=WU(wt).map(w=>({...w,done:false}));
+      n.exercises[ei].sets=Array.from({length:origEx.sets},()=>({weight:wt,reps:0,rir:"",done:false}));
+      return n;});
+    setSwaps(p=>({...p,[ei]:{id:newEx.id,name:newEx.name,sw:newEx.sw,unit:newEx.unit,originalId:origEx.id,originalName:origEx.name}}));
+    setSwapModal(null);
+  };
+
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
     setWorkout({day:sel,variant:activeVariant[sel]||null,exercises:sess.exercises.map(ex=>{
@@ -1579,7 +1638,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       return{id:ex.id,
       wu:WU(wt).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
-    };}),start:Date.now(),isDeload});setWuDone(false);};
+    };}),start:Date.now(),isDeload});setWuDone(false);setSwaps({});};
 
   const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
   const dWU=(ei,wi,rest)=>{
@@ -1630,25 +1689,28 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
     const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
+      const isSwapped=ex.swappedFrom!=null;
+      const progId=isSwapped?ex.id:pe.id;
+      const progName=isSwapped?(swaps[i]?.name||ex.id):pe.name;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
-      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(pe.id,pe.sw);
-      const prevPr=(nd.prog[pe.id]||{}).pr;const prevHistory=(nd.prog[pe.id]||{}).e1rmHistory||[];
-      nd.prog={...nd.prog,[pe.id]:{currentWeight:pe.inc===0?cw:(hit?cw+pe.inc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&pe.inc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
+      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(progId,pe.sw);
+      const prevPr=(nd.prog[progId]||{}).pr;const prevHistory=(nd.prog[progId]||{}).e1rmHistory||[];
+      nd.prog={...nd.prog,[progId]:{currentWeight:isSwapped?cw:(pe.inc===0?cw:(hit?cw+pe.inc:cw)),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:!isSwapped&&hit&&pe.inc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
       const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
       if(newE1rm>0){
-        nd.prog[pe.id].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
-        if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
+        nd.prog[progId].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
+        if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[progId].pr={name:progName,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
       }
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
-    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(pe&&nd.prog[pe.id])svSB.progression(pe.id,nd.prog[pe.id]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowFinishConfirm(false);
+    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];const progId=ex.swappedFrom?ex.id:pe.id;if(pe&&nd.prog[progId])svSB.progression(progId,nd.prog[progId]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setShowFinishConfirm(false);setSwaps({});
   };
 
   const cancelWorkout=()=>{
     setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowCancelConfirm(false);
+    setShowCancelConfirm(false);setSwaps({});
   };
 
 
@@ -1775,6 +1837,31 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
 
+      {swapModal!=null&&(()=>{const origEx=s.exercises[swapModal];const alts=SWAP_MAP[origEx?.id]||[];
+        return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:340,border:`1px solid ${C.bd}`}}>
+            <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:4}}>Swap {origEx.name}</div>
+            <div style={{fontSize:12,color:C.t3,marginBottom:12}}>Same sets & rep range — session only</div>
+            {alts.map(alt=>{const altLast=getLastLift(alt.id);
+              return(<button key={alt.id} onClick={()=>performSwap(swapModal,alt)}
+                style={{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:6,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>
+                <div style={{fontSize:14,fontWeight:600,color:C.t}}>{alt.name}</div>
+                <div style={{fontSize:11,color:C.t3}}>{alt.sw>0?`${alt.sw} ${alt.unit}`:"Bodyweight"}{altLast?` · Last: ${altLast.weight}×${altLast.reps} ${fmt(altLast.date)}`:""}</div>
+              </button>);})}
+            {swaps[swapModal]&&<button onClick={()=>{
+              const origId=swaps[swapModal].originalId;const origSw=origEx.sw;
+              const histWeight=gw(origId,origSw);const wt=workout.isDeload?Math.round(histWeight*0.5/5)*5:histWeight;
+              setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[swapModal].id=origId;delete n.exercises[swapModal].swappedFrom;delete n.exercises[swapModal].name;
+                n.exercises[swapModal].wu=WU(wt).map(w=>({...w,done:false}));n.exercises[swapModal].sets=Array.from({length:origEx.sets},()=>({weight:wt,reps:0,rir:"",done:false}));return n;});
+              setSwaps(p=>{const n={...p};delete n[swapModal];return n;});setSwapModal(null);}}
+              style={{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:6,background:C.gl,border:`1px solid ${C.g}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>
+              <div style={{fontSize:14,fontWeight:600,color:C.g}}>Revert to {origEx.name}</div>
+            </button>}
+            <B full outline onClick={()=>setSwapModal(null)} style={{marginTop:4}}>Cancel</B>
+          </div>
+        </div>);
+      })()}
+
       <WorkoutTimerBar workout={workout} compact/>
 
       {workout.isDeload&&(<div style={{background:C.al,padding:"8px 12px",borderRadius:6,marginBottom:4}}>
@@ -1820,13 +1907,23 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
       {s.exercises.map((ex,ei)=>{
         const wuSets=workout.exercises[ei].wu;
+        const sw=swaps[ei];
+        const displayName=sw?sw.name:ex.name;
+        const displayId=sw?sw.id:ex.id;
+        const lastLift=getLastLift(displayId);
         return(<X key={ex.id} style={{padding:10}}>
           <div style={{marginBottom:6}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:C.t}}>{ex.name}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{fontSize:15,fontWeight:700,color:C.t}}>{displayName}</div>
+                  {SWAP_MAP[ex.id]&&<button onClick={()=>setSwapModal(ei)}
+                    style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:10,padding:"1px 6px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit",lineHeight:"18px"}}>↔</button>}
+                </div>
+                {sw&&<div style={{fontSize:10,color:C.a,fontStyle:"italic",marginTop:1}}>swapped from {sw.originalName}</div>}
                 <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
                 <div style={{fontSize:12,color:C.p,marginTop:2}}>{ex.cue}</div>
+                {lastLift&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>Last: {lastLift.weight}{lastLift.weight>0?" lbs":""} × {lastLift.reps} · {fmt(lastLift.date)}</div>}
                 {workout.isDeload&&<div style={{fontSize:11,color:C.a,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
               </div>
               <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
@@ -1911,7 +2008,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {vData.exercises?.map((ex,ei)=>{
         const pe=vSess?.exercises[ei];
         return(<X key={ei} style={{padding:10}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}}>{pe?.name||ex.id}</div>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:ex.swappedFrom?2:4}}>{ex.name||pe?.name||ex.id}</div>
+          {ex.swappedFrom&&<div style={{fontSize:10,color:C.a,fontStyle:"italic",marginBottom:4}}>swapped from {ex.swappedFrom.name}</div>}
           {ex.sets?.map((s,si)=>(
             <div key={si} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:si>0?`1px solid ${C.bl}`:"none",fontSize:14}}>
               <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
