@@ -1516,35 +1516,123 @@ const Dashboard=({data,setData})=>{
 
 // ═══ SWAP MAP ═══
 const SWAP_MAP={
-  "cable-crunch":[{id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW"},{id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
-  "hanging-leg-raise":[{id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs"},{id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
-  "pallof-press":[{id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs"},{id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW"},{id:"ab-wheel",name:"Ab Wheel Rollout",sw:0,unit:"BW"}],
-  "cable-fly":[{id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side"},{id:"db-fly",name:"DB Flat Fly",sw:20,unit:"lbs/hand"},{id:"pec-deck",name:"Pec Deck",sw:80,unit:"lbs"}],
-  "smith-flat-bench":[{id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs"},{id:"db-flat-bench",name:"DB Flat Bench Press",sw:50,unit:"lbs/hand"},{id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs"}],
-  "seated-row":[{id:"overhand-cable-row",name:"Overhand Cable Row",sw:110,unit:"lbs"},{id:"db-row",name:"DB Row",sw:50,unit:"lbs/hand"},{id:"cable-row-close",name:"Close-Grip Cable Row",sw:120,unit:"lbs"}],
-  "smith-ohp":[{id:"db-ohp",name:"DB Shoulder Press",sw:35,unit:"lbs/hand"},{id:"machine-ohp",name:"Machine Shoulder Press",sw:90,unit:"lbs"}],
-  "lat-pulldown":[{id:"close-grip-pulldown",name:"Close-Grip Pulldown",sw:130,unit:"lbs"},{id:"pull-ups",name:"Pull-Ups",sw:0,unit:"BW"},{id:"straight-arm-pulldown",name:"Straight-Arm Pulldown",sw:50,unit:"lbs"}],
-  "converging-chest-press":[{id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs"},{id:"db-flat-bench",name:"DB Flat Bench Press",sw:50,unit:"lbs/hand"}],
-  "leg-press":[{id:"hack-squat-a",name:"Hack Squat",sw:180,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
-  "rdl":[{id:"sldl",name:"Stiff-Leg Deadlift",sw:95,unit:"lbs"},{id:"db-rdl",name:"DB Romanian Deadlift",sw:40,unit:"lbs/hand"}],
-  "hack-squat-a":[{id:"leg-press",name:"Leg Press",sw:360,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
-  "lying-leg-curl":[{id:"seated-leg-curl",name:"Seated Leg Curl",sw:100,unit:"lbs"},{id:"cable-leg-curl",name:"Cable Leg Curl",sw:25,unit:"lbs"}],
-  "standing-calf":[{id:"seated-calf",name:"Seated Calf Raise",sw:90,unit:"lbs"},{id:"leg-press-calf",name:"Leg Press Calf Raise",sw:200,unit:"lbs"}],
-  "low-high-cable-fly":[{id:"cable-fly",name:"Cable Fly",sw:10,unit:"lbs/side"},{id:"db-incline-fly",name:"DB Incline Fly",sw:15,unit:"lbs/hand"},{id:"pec-deck",name:"Pec Deck",sw:80,unit:"lbs"}],
-  "smith-incline":[{id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs"},{id:"db-incline",name:"DB Incline Press",sw:45,unit:"lbs/hand"},{id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs"}],
-  "overhand-cable-row":[{id:"seated-row",name:"Seated Row Machine",sw:160,unit:"lbs"},{id:"db-row",name:"DB Row",sw:50,unit:"lbs/hand"},{id:"cable-row-close",name:"Close-Grip Cable Row",sw:120,unit:"lbs"}],
-  "lateral-raise":[{id:"db-lateral-raise",name:"DB Lateral Raise",sw:15,unit:"lbs/hand"},{id:"machine-lateral-raise",name:"Machine Lateral Raise",sw:40,unit:"lbs"}],
-  "reverse-fly":[{id:"face-pull",name:"Face Pull",sw:30,unit:"lbs"},{id:"rear-delt-machine",name:"Rear Delt Fly Machine",sw:30,unit:"lbs"}],
-  "incline-db-curl":[{id:"cable-curl",name:"Cable Curl",sw:30,unit:"lbs"},{id:"barbell-curl",name:"Barbell Curl",sw:50,unit:"lbs"},{id:"hammer-curl",name:"Hammer Curl",sw:20,unit:"lbs/hand"}],
-  "hack-squat-b":[{id:"leg-press",name:"Leg Press",sw:300,unit:"lbs"},{id:"smith-squat",name:"Smith Squat",sw:135,unit:"lbs"}],
-  "walking-lunges":[{id:"split-squat",name:"Bulgarian Split Squat",sw:20,unit:"lbs/hand"},{id:"step-ups",name:"DB Step-Ups",sw:25,unit:"lbs/hand"}],
-  "sldl":[{id:"rdl",name:"Romanian Deadlift",sw:125,unit:"lbs"},{id:"db-rdl",name:"DB Romanian Deadlift",sw:40,unit:"lbs/hand"}],
-  "leg-extension":[{id:"sissy-squat",name:"Sissy Squat",sw:0,unit:"BW"},{id:"leg-extension-bp",name:"Leg Extension (Light)",sw:120,unit:"lbs"}],
-  "hip-thrust":[{id:"cable-pull-through",name:"Cable Pull-Through",sw:70,unit:"lbs"},{id:"glute-bridge",name:"Glute Bridge BB",sw:135,unit:"lbs"}],
-  "seated-calf":[{id:"standing-calf",name:"Standing Calf Raise",sw:290,unit:"lbs"},{id:"leg-press-calf",name:"Leg Press Calf Raise",sw:200,unit:"lbs"}],
-  "leg-extension-bp":[{id:"leg-extension",name:"Leg Extension",sw:120,unit:"lbs"},{id:"sissy-squat",name:"Sissy Squat",sw:0,unit:"BW"}],
-  "cable-pull-through":[{id:"hip-thrust",name:"Hip Thrust BB",sw:160,unit:"lbs"},{id:"glute-bridge",name:"Glute Bridge BB",sw:135,unit:"lbs"}],
+  "smith-flat-bench":[
+    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
+    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+    {id:"cable-fly",name:"Cable Fly (flat)",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+  ],
+  "smith-incline":[
+    {id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
+    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+    {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
+  ],
+  "cable-fly":[
+    {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
+    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+  ],
+  "low-high-cable-fly":[
+    {id:"cable-fly",name:"Cable Fly (flat)",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
+  ],
+  "converging-chest-press":[
+    {id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
+    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
+    {id:"cable-fly",name:"Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+  ],
+  "seated-row":[
+    {id:"overhand-cable-row",name:"Overhand Cable Row",sw:110,unit:"lbs",inc:5,cue:"Overhand grip hits upper back, pause and squeeze"},
+    {id:"dumbbell-row",name:"DB Row",sw:60,unit:"lbs",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
+    {id:"lat-pulldown",name:"Lat Pulldown",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
+  ],
+  "overhand-cable-row":[
+    {id:"seated-row",name:"Seated Row Machine",sw:160,unit:"lbs",inc:5,cue:"Pull elbows past torso, squeeze mid-back hard"},
+    {id:"dumbbell-row",name:"DB Row",sw:60,unit:"lbs",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
+    {id:"lat-pulldown",name:"Lat Pulldown",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
+  ],
+  "hack-squat-a":[
+    {id:"leg-press",name:"Leg Press",sw:360,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
+    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
+  ],
+  "hack-squat-b":[
+    {id:"leg-press",name:"Leg Press",sw:300,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
+    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
+  ],
+  "leg-press":[
+    {id:"hack-squat-a",name:"Hack Squat",sw:180,unit:"lbs",inc:10,cue:"Knees track over toes, stay upright through core"},
+    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
+  ],
+  "incline-db-curl":[
+    {id:"preacher-curl",name:"Preacher Curl",sw:50,unit:"lbs",inc:5,cue:"Full stretch at bottom, squeeze hard at top"},
+    {id:"cable-curl",name:"Cable Curl",sw:50,unit:"lbs",inc:5,cue:"Keep elbows forward, squeeze at top"},
+  ],
+  "lying-leg-curl":[
+    {id:"seated-leg-curl",name:"Seated Leg Curl",sw:100,unit:"lbs",inc:5,cue:"Drive heels toward glutes, squeeze hamstrings at peak"},
+  ],
+  "standing-calf":[
+    {id:"seated-calf",name:"Seated Calf Raise",sw:90,unit:"lbs",inc:5,cue:"Targets soleus, full stretch at bottom, slow 2s up"},
+  ],
+  "seated-calf":[
+    {id:"standing-calf",name:"Standing Calf Raise",sw:290,unit:"lbs",inc:10,cue:"Full stretch at bottom, drive up on big toe"},
+  ],
+  "rdl":[
+    {id:"sldl",name:"Stiff-Leg Deadlift",sw:95,unit:"lbs",inc:10,cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
+    {id:"cable-pull-through",name:"Cable Pull-Through",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are just hooks"},
+  ],
+  "sldl":[
+    {id:"rdl",name:"Romanian Deadlift",sw:125,unit:"lbs",inc:10,cue:"Push hips back like closing a car door, bar stays on legs"},
+    {id:"cable-pull-through",name:"Cable Pull-Through",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are just hooks"},
+  ],
+  "smith-ohp":[
+    {id:"db-shoulder-press",name:"DB Shoulder Press",sw:40,unit:"lbs/hand",inc:2.5,cue:"Press straight overhead, slight forward lean at top"},
+    {id:"arnold-press",name:"Arnold Press",sw:30,unit:"lbs/hand",inc:2.5,cue:"Rotate palms out as you press, slow and controlled"},
+  ],
+  "lateral-raise":[
+    {id:"db-lateral-raise",name:"DB Lateral Raise",sw:15,unit:"lbs",inc:2.5,cue:"Lead with elbows, slight forward lean"},
+  ],
+  "cable-crunch":[
+    {id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW",inc:0,cue:"Posterior pelvic tilt at top, curl pelvis up"},
+    {id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs",inc:5,cue:"Lock hips square, resist rotation through obliques"},
+  ],
+  "hanging-leg-raise":[
+    {id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs",inc:5,cue:"Crunch ribs toward hips, don't pull with arms"},
+    {id:"pallof-press",name:"Pallof Press",sw:25,unit:"lbs",inc:5,cue:"Lock hips square, resist rotation through obliques"},
+  ],
+  "pallof-press":[
+    {id:"cable-crunch",name:"Cable Crunch",sw:70,unit:"lbs",inc:5,cue:"Crunch ribs toward hips, don't pull with arms"},
+    {id:"hanging-leg-raise",name:"Hanging Leg Raise",sw:0,unit:"BW",inc:0,cue:"Posterior pelvic tilt at top, curl pelvis up"},
+  ],
+  "lat-pulldown":[
+    {id:"pull-ups",name:"Pull-ups",sw:0,unit:"BW",inc:0,cue:"Full hang, drive elbows down, chest to bar"},
+    {id:"close-grip-pulldown",name:"Close-Grip Pulldown",sw:130,unit:"lbs",inc:5,cue:"Squeeze lats hard at bottom, full stretch at top"},
+    {id:"seated-row",name:"Seated Row Machine",sw:160,unit:"lbs",inc:5,cue:"Pull elbows past torso, squeeze mid-back hard"},
+  ],
 };
+
+// ═══ SWAP MODAL ═══
+const SwapModal=({exName,options,onSelect,onClose,getWeight})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 16px 16px"}}>
+    <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:480,border:`1px solid ${C.bd}`,maxHeight:"72vh",overflowY:"auto"}}>
+      <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:2}}>Swap Exercise</div>
+      <div style={{fontSize:13,color:C.t3,marginBottom:14}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
+      {options.length===0&&<div style={{fontSize:13,color:C.t3,textAlign:"center",padding:"12px 0"}}>No alternatives mapped for this exercise.</div>}
+      {options.map(opt=>{
+        const lw=getWeight(opt.id,opt.sw);
+        const hasHistory=lw!==opt.sw;
+        return(<button key={opt.id} onClick={()=>onSelect(opt)} style={{
+          display:"block",width:"100%",textAlign:"left",background:"transparent",
+          border:`1px solid ${C.bd}`,borderRadius:8,padding:"12px 14px",marginBottom:8,
+          cursor:"pointer",fontFamily:"inherit"}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
+          <div style={{fontSize:12,color:hasHistory?C.p:C.t3,marginTop:2}}>
+            {hasHistory?`Last used: ${lw} lbs`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"}
+          </div>
+          <div style={{fontSize:11,color:C.t2,marginTop:3,fontStyle:"italic"}}>{opt.cue}</div>
+        </button>);
+      })}
+      <B full outline onClick={onClose} style={{marginTop:4}}>Cancel</B>
+    </div>
+  </div>
+);
 
 // ═══ TRAINING ═══
 const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
@@ -1585,9 +1673,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [aiCooldown,setAiCooldown]=useState(false);
   const [aiExIdx,setAiExIdx]=useState(null);
   const [showAi,setShowAi]=useState(false);
-  const [wuDone,setWuDone]=useState(false);
   const [swapModal,setSwapModal]=useState(null);
-  const [swaps,setSwaps]=useState({});
+  const [wuDone,setWuDone]=useState(false);
   const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
   const setVariant=(day,variant)=>{const nv=variant?{...activeVariant,[day]:variant}:{...activeVariant};if(!variant)delete nv[day];setActiveVariant(nv);try{localStorage.setItem("dhub6_variant",JSON.stringify(nv));}catch{}};
   const tr=useRef(null);
@@ -1606,31 +1693,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     return def;
   };
 
-  const getLastLift=(exId)=>{
-    const dates=Object.keys(data.wk).sort().reverse();
-    for(const d of dates){
-      const wex=data.wk[d].exercises?.find(e=>e.id===exId);
-      if(wex){const ds=wex.sets?.filter(s=>s.done&&s.reps>0);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds[0].reps};}
-    }
-    return null;
-  };
-
-  const performSwap=(ei,newEx)=>{
-    const s=getSess(workout.day,workout.variant);
-    const origEx=s.exercises[ei];
-    const histWeight=gw(newEx.id,newEx.sw);
-    const wt=workout.isDeload?Math.round(histWeight*0.5/5)*5:histWeight;
-    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));
-      n.exercises[ei].id=newEx.id;
-      n.exercises[ei].name=newEx.name;
-      n.exercises[ei].swappedFrom={id:origEx.id,name:origEx.name};
-      n.exercises[ei].wu=WU(wt).map(w=>({...w,done:false}));
-      n.exercises[ei].sets=Array.from({length:origEx.sets},()=>({weight:wt,reps:0,rir:"",done:false}));
-      return n;});
-    setSwaps(p=>({...p,[ei]:{id:newEx.id,name:newEx.name,sw:newEx.sw,unit:newEx.unit,originalId:origEx.id,originalName:origEx.name}}));
-    setSwapModal(null);
-  };
-
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
     setWorkout({day:sel,variant:activeVariant[sel]||null,exercises:sess.exercises.map(ex=>{
@@ -1638,7 +1700,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       return{id:ex.id,
       wu:WU(wt).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
-    };}),start:Date.now(),isDeload});setWuDone(false);setSwaps({});};
+    };}),start:Date.now(),isDeload});setWuDone(false);};
 
   const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
   const dWU=(ei,wi,rest)=>{
@@ -1689,28 +1751,29 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
     const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
-      const isSwapped=ex.swappedFrom!=null;
-      const progId=isSwapped?ex.id:pe.id;
-      const progName=isSwapped?(swaps[i]?.name||ex.id):pe.name;
+      const aid=ex.swappedTo?ex.swappedTo.id:pe.id;
+      const ainc=ex.swappedTo?ex.swappedTo.inc:pe.inc;
+      const aname=ex.swappedTo?ex.swappedTo.name:pe.name;
+      const asw=ex.swappedTo?ex.swappedTo.sw:pe.sw;
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
-      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(progId,pe.sw);
-      const prevPr=(nd.prog[progId]||{}).pr;const prevHistory=(nd.prog[progId]||{}).e1rmHistory||[];
-      nd.prog={...nd.prog,[progId]:{currentWeight:isSwapped?cw:(pe.inc===0?cw:(hit?cw+pe.inc:cw)),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:!isSwapped&&hit&&pe.inc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
+      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(aid,asw);
+      const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
+      nd.prog={...nd.prog,[aid]:{currentWeight:ainc===0?cw:(hit?cw+ainc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&ainc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
       const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
       if(newE1rm>0){
-        nd.prog[progId].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
-        if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[progId].pr={name:progName,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
+        nd.prog[aid].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
+        if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[aid].pr={name:aname,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
       }
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
-    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];const progId=ex.swappedFrom?ex.id:pe.id;if(pe&&nd.prog[progId])svSB.progression(progId,nd.prog[progId]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowFinishConfirm(false);setSwaps({});
+    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];const aid=ex.swappedTo?ex.swappedTo.id:pe?.id;if(pe&&aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setShowFinishConfirm(false);
   };
 
   const cancelWorkout=()=>{
     setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowCancelConfirm(false);setSwaps({});
+    setShowCancelConfirm(false);
   };
 
 
@@ -1833,34 +1896,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   if(workout){
     const s=getSess(workout.day,workout.variant);
+    const swapExercise=(ei,newEx)=>{const oldEx=s.exercises[ei];const newW=gw(newEx.id,newEx.sw);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name};wkEx.id=newEx.id;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc};wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
-
-      {swapModal!=null&&(()=>{const origEx=s.exercises[swapModal];const alts=SWAP_MAP[origEx?.id]||[];
-        return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:340,border:`1px solid ${C.bd}`}}>
-            <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:4}}>Swap {origEx.name}</div>
-            <div style={{fontSize:12,color:C.t3,marginBottom:12}}>Same sets & rep range — session only</div>
-            {alts.map(alt=>{const altLast=getLastLift(alt.id);
-              return(<button key={alt.id} onClick={()=>performSwap(swapModal,alt)}
-                style={{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:6,background:C.bg,border:`1px solid ${C.bd}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>
-                <div style={{fontSize:14,fontWeight:600,color:C.t}}>{alt.name}</div>
-                <div style={{fontSize:11,color:C.t3}}>{alt.sw>0?`${alt.sw} ${alt.unit}`:"Bodyweight"}{altLast?` · Last: ${altLast.weight}×${altLast.reps} ${fmt(altLast.date)}`:""}</div>
-              </button>);})}
-            {swaps[swapModal]&&<button onClick={()=>{
-              const origId=swaps[swapModal].originalId;const origSw=origEx.sw;
-              const histWeight=gw(origId,origSw);const wt=workout.isDeload?Math.round(histWeight*0.5/5)*5:histWeight;
-              setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[swapModal].id=origId;delete n.exercises[swapModal].swappedFrom;delete n.exercises[swapModal].name;
-                n.exercises[swapModal].wu=WU(wt).map(w=>({...w,done:false}));n.exercises[swapModal].sets=Array.from({length:origEx.sets},()=>({weight:wt,reps:0,rir:"",done:false}));return n;});
-              setSwaps(p=>{const n={...p};delete n[swapModal];return n;});setSwapModal(null);}}
-              style={{display:"block",width:"100%",textAlign:"left",padding:"10px 12px",marginBottom:6,background:C.gl,border:`1px solid ${C.g}`,borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>
-              <div style={{fontSize:14,fontWeight:600,color:C.g}}>Revert to {origEx.name}</div>
-            </button>}
-            <B full outline onClick={()=>setSwapModal(null)} style={{marginTop:4}}>Cancel</B>
-          </div>
-        </div>);
-      })()}
+      {swapModal&&<SwapModal exName={swapModal.exName} options={SWAP_MAP[workout.exercises[swapModal.ei]?.id]||[]} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
 
       <WorkoutTimerBar workout={workout} compact/>
 
@@ -1906,28 +1946,34 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </X>)}
 
       {s.exercises.map((ex,ei)=>{
-        const wuSets=workout.exercises[ei].wu;
-        const sw=swaps[ei];
-        const displayName=sw?sw.name:ex.name;
-        const displayId=sw?sw.id:ex.id;
-        const lastLift=getLastLift(displayId);
+        const wkEx=workout.exercises[ei];
+        const wuSets=wkEx.wu;
+        const swapped=wkEx.swappedTo;
+        const dispName=swapped?swapped.name:ex.name;
+        const dispCue=swapped?swapped.cue:ex.cue;
+        const swapOpts=SWAP_MAP[wkEx.id]||[];
+        const anySetsLogged=wkEx.sets.some(s=>s.done);
+        const prevLift=(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(s=>s.done&&(s.weight>0||s.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
         return(<X key={ex.id} style={{padding:10}}>
           <div style={{marginBottom:6}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{fontSize:15,fontWeight:700,color:C.t}}>{displayName}</div>
-                  {SWAP_MAP[ex.id]&&<button onClick={()=>setSwapModal(ei)}
-                    style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:10,padding:"1px 6px",fontSize:11,color:C.t3,cursor:"pointer",fontFamily:"inherit",lineHeight:"18px"}}>↔</button>}
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <div style={{fontSize:15,fontWeight:700,color:C.t}}>{dispName}</div>
+                  {swapped&&<div style={{fontSize:10,background:C.al,color:C.a,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>SWAPPED</div>}
                 </div>
-                {sw&&<div style={{fontSize:10,color:C.a,fontStyle:"italic",marginTop:1}}>swapped from {sw.originalName}</div>}
-                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
-                <div style={{fontSize:12,color:C.p,marginTop:2}}>{ex.cue}</div>
-                {lastLift&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>Last: {lastLift.weight}{lastLift.weight>0?" lbs":""} × {lastLift.reps} · {fmt(lastLift.date)}</div>}
+                {swapped&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>from: {wkEx.swappedFrom.name}</div>}
+                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
+                <div style={{fontSize:12,color:C.p,marginTop:2}}>{dispCue}</div>
+                {prevLift&&<div style={{fontSize:11,color:C.t2,marginTop:3}}>Last: <span style={{fontWeight:600}}>{prevLift.weight>0?`${prevLift.weight} lbs × ${prevLift.reps.join("/")} reps`:`BW × ${prevLift.reps.join("/")} reps`}</span> <span style={{color:C.t3}}>{fmt(prevLift.date)}</span></div>}
                 {workout.isDeload&&<div style={{fontSize:11,color:C.a,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
               </div>
-              <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
-                style={{background:C.vl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:10,fontWeight:600,color:C.v,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",marginLeft:6}}>AI</button>
+              <div style={{display:"flex",gap:4,marginLeft:6}}>
+                {swapOpts.length>0&&!anySetsLogged&&<button onClick={()=>setSwapModal({ei,exName:dispName})}
+                  style={{background:C.bl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:12,fontWeight:700,color:C.t2,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⇄</button>}
+                <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
+                  style={{background:C.vl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:10,fontWeight:600,color:C.v,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>AI</button>
+              </div>
             </div>
           </div>
           {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
@@ -1941,7 +1987,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",fontSize:10,color:C.t3,fontWeight:600}}>
             <span style={{width:18}}>#</span><span style={{width:68,textAlign:"center"}}>LBS</span><span style={{width:13}}></span><span style={{width:56,textAlign:"center"}}>REPS</span><span style={{width:42,textAlign:"center"}}>RIR</span><span style={{width:44}}></span>
           </div>
-          {workout.exercises[ei].sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
+          {wkEx.sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
             borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
             <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
             <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:68,fontSize:16}}/>
@@ -2008,7 +2054,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {vData.exercises?.map((ex,ei)=>{
         const pe=vSess?.exercises[ei];
         return(<X key={ei} style={{padding:10}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:ex.swappedFrom?2:4}}>{ex.name||pe?.name||ex.id}</div>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:ex.swappedFrom?2:4}}>{ex.swappedTo?.name||pe?.name||ex.id}</div>
           {ex.swappedFrom&&<div style={{fontSize:10,color:C.a,fontStyle:"italic",marginBottom:4}}>swapped from {ex.swappedFrom.name}</div>}
           {ex.sets?.map((s,si)=>(
             <div key={si} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:si>0?`1px solid ${C.bl}`:"none",fontSize:14}}>
