@@ -71,7 +71,7 @@ export default async function handler(req, res) {
   // 1. If there's no `code` param this is the initial redirect request
   // ------------------------------------------------------------------
   if (!code) {
-    const scopes = ['offline', 'read:recovery', 'read:sleep', 'read:profile'];
+    const scopes = ['offline', 'read:recovery', 'read:sleep', 'read:profile', 'read:cycles'];
     // Generate a random state token to guard against CSRF
     const csrfState = crypto.randomUUID();
     const url = getAuthUrl(
