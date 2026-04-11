@@ -2542,7 +2542,6 @@ const Nutrition=({data,setData})=>{
               {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
               <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
           </div>
-          <button onClick={()=>setEditing("macros")} style={{background:"none",border:`1px dashed ${C.bd}`,borderRadius:4,padding:"4px 10px",color:C.t2,fontSize:11,cursor:"pointer",fontWeight:600,fontFamily:"inherit",width:"100%"}}>Edit Macros</button>
         </div>)}
         <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginTop:6,marginBottom:2}}>
           <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.a}}/><div style={{width:`${fp}%`,background:C.r}}/>
@@ -2550,6 +2549,7 @@ const Nutrition=({data,setData})=>{
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
       <div style={{display:"flex",gap:6}}>
+        <B full outline onClick={()=>setEditing(editing==="macros"?null:"macros")}>Edit Macros</B>
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
     </div>);
