@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     }
 
     const SB_URL = "https://wszumxewqxkggtevfubb.supabase.co";
-    const SB_KEY = "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
+    const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
     const headers = {
       "Content-Type": "application/json",
       "apikey": SB_KEY,
