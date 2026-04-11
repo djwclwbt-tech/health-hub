@@ -104,6 +104,7 @@ async function ensureValidToken(tokenRow) {
     tokenRow.refresh_token,
     process.env.WHOOP_CLIENT_ID,
     process.env.WHOOP_CLIENT_SECRET,
+    process.env.WHOOP_REDIRECT_URI,
   );
   await updateTokens(tokenRow.id, fresh.access_token, fresh.refresh_token, fresh.expires_in);
   return fresh.access_token;
