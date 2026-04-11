@@ -28,7 +28,7 @@ import { verifyWebhookSignature, refreshAccessToken, getRecovery, getSleep } fro
 // ---------------------------------------------------------------------------
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
 // Event types we care about
 const SYNC_EVENTS = new Set([

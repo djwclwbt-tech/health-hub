@@ -24,7 +24,7 @@ import { refreshAccessToken, getRecovery, getSleep } from '../lib/whoop.js';
 // ---------------------------------------------------------------------------
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
 // ---------------------------------------------------------------------------
 // Supabase helpers (native fetch)
