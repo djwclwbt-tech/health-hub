@@ -609,7 +609,7 @@ const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
   const today=td();
   let d=new Date(planStart+"T12:00:00");
   while(lds(d)<=today){allDates.push(lds(d));d.setDate(d.getDate()+1);}
-  const paired=allDates.filter(dt=>wt[dt]!=null&&nut[dt]?.totalCal>0&&!tdeeExclude[dt]);
+  const paired=allDates.filter(dt=>wt[dt]!=null&&(nut[dt]?.totalCal||0)>=1200&&!tdeeExclude[dt]);
   if(paired.length<3)return{daysUsed:paired.length,daysNeeded:7,phase:"collecting"};
   const weights=paired.map(dt=>wt[dt]);
   const calories=paired.map(dt=>nut[dt].totalCal);
