@@ -94,7 +94,7 @@ export default async function handler(req, res) {
         total_fiber:   data.totalFiber,
         meals:         data.meals,
       });
-      results.push({ date, cal: data.totalCal, protein: data.totalProtein, meals: data.meals.length });
+      results.push({ date, cal: data.totalCal, protein: data.totalProtein, carbs: data.totalCarbs, fat: data.totalFat, meals: data.meals.length });
     }
 
     return res.status(200).json({ ok: true, synced: results, range: { start: startDate, end: endDate } });
