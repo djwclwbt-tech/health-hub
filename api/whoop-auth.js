@@ -22,7 +22,7 @@ import { getAuthUrl, exchangeCode } from '../lib/whoop.js';
 // ---------------------------------------------------------------------------
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
 /**
  * Upsert Whoop OAuth tokens into the `whoop_tokens` table.
