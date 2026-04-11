@@ -17,7 +17,7 @@
  *   WHOOP_SYNC_SECRET (optional — protect the endpoint from public access)
  */
 
-import { refreshAccessToken, getRecovery, getSleep, getCycles } from '../lib/whoop.js';
+import { getRecovery, getSleep, getCycles, ensureValidToken, msToHours, upsertRecoveryRow } from '../lib/whoop.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -45,27 +45,6 @@ async function getTokenRows(userId) {
   return res.json();
 }
 
-/** Update tokens after a refresh. */
-async function updateTokens(userId, accessToken, refreshToken, expiresIn) {
-  const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
-
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/whoop_tokens?id=eq.${userId}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to update tokens: ${await res.text()}`);
-}
-
 /**
  * Upsert a steps row into the Health Hub `steps` table.
  * Schema: date (PK), steps (integer), source
@@ -87,66 +66,9 @@ async function upsertStepsRow(row) {
   }
 }
 
-/**
- * Upsert a recovery row into the Health Hub `recovery` table.
- * Schema: date (PK), recoveryScore, hrv, rhr, sleepHours,
- *         sleepLight, sleepDeep, sleepRem, source
- */
-async function upsertRecoveryRow(row) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/recovery?on_conflict=date`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
-    },
-    body: JSON.stringify(row),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Supabase recovery upsert failed (${res.status}): ${text}`);
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Core sync logic
 // ---------------------------------------------------------------------------
-
-/**
- * Ensure we have a valid access token. Refreshes proactively if within
- * 5 minutes of expiry.
- */
-async function ensureValidToken(tokenRow) {
-  // Postgres returns timestamps like "2026-04-11 18:59:29+00" — normalize to ISO 8601
-  const normalized = tokenRow.expires_at.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
-  const expiresAt = new Date(normalized).getTime();
-  const buffer = 5 * 60 * 1000; // 5 minutes
-
-  if (Date.now() + buffer < expiresAt) {
-    // Token is still fresh
-    return tokenRow.access_token;
-  }
-
-  // Refresh the token
-  console.log(`Refreshing token for user ${tokenRow.id}`);
-  const fresh = await refreshAccessToken(
-    tokenRow.refresh_token,
-    process.env.WHOOP_CLIENT_ID,
-    process.env.WHOOP_CLIENT_SECRET,
-    process.env.WHOOP_REDIRECT_URI,
-  );
-
-  await updateTokens(tokenRow.id, fresh.access_token, fresh.refresh_token, fresh.expires_in);
-  return fresh.access_token;
-}
-
-/**
- * Convert millis to hours rounded to two decimals.
- */
-function msToHours(ms) {
-  return Math.round((ms / 3_600_000) * 100) / 100;
-}
 
 /**
  * Sync one user's data for a date range.

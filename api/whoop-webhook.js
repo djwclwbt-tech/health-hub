@@ -21,7 +21,7 @@
  *   WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, SUPABASE_KEY
  */
 
-import { verifyWebhookSignature, refreshAccessToken, getRecovery, getSleep, getCycles } from '../lib/whoop.js';
+import { verifyWebhookSignature, getRecovery, getSleep, getCycles, ensureValidToken, msToHours, upsertRecoveryRow } from '../lib/whoop.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -55,63 +55,6 @@ async function getTokenForUser(userId) {
   if (!res.ok) throw new Error(`Failed to read token: ${await res.text()}`);
   const rows = await res.json();
   return rows[0] ?? null;
-}
-
-async function updateTokens(userId, accessToken, refreshToken, expiresIn) {
-  const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/whoop_tokens?id=eq.${userId}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to update tokens: ${await res.text()}`);
-}
-
-async function upsertRecoveryRow(row) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/recovery?on_conflict=date`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
-    },
-    body: JSON.stringify(row),
-  });
-  if (!res.ok) throw new Error(`Recovery upsert failed: ${await res.text()}`);
-}
-
-// ---------------------------------------------------------------------------
-// Token + sync helpers
-// ---------------------------------------------------------------------------
-
-async function ensureValidToken(tokenRow) {
-  // Postgres returns timestamps like "2026-04-11 18:59:29+00" — normalize to ISO 8601
-  const normalized = tokenRow.expires_at.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
-  const expiresAt = new Date(normalized).getTime();
-  if (Date.now() + 5 * 60_000 < expiresAt) return tokenRow.access_token;
-
-  const fresh = await refreshAccessToken(
-    tokenRow.refresh_token,
-    process.env.WHOOP_CLIENT_ID,
-    process.env.WHOOP_CLIENT_SECRET,
-    process.env.WHOOP_REDIRECT_URI,
-  );
-  await updateTokens(tokenRow.id, fresh.access_token, fresh.refresh_token, fresh.expires_in);
-  return fresh.access_token;
-}
-
-function msToHours(ms) {
-  return Math.round((ms / 3_600_000) * 100) / 100;
 }
 
 /**
