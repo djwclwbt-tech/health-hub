@@ -6,8 +6,9 @@
     }
   },
   "crons": [
-    { "path": "/api/whoop-sync", "schedule": "0 14 * * *" },
-    { "path": "/api/whoop-sync", "schedule": "0 4 * * *" }
+    { "path": "/api/whoop-sync",       "schedule": "0 14 * * *" },
+    { "path": "/api/whoop-sync",       "schedule": "0 4 * * *"  },
+    { "path": "/api/cronometer-sync",  "schedule": "0 * * * *"  }
   ],
   "headers": [
     {
