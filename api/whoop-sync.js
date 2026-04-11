@@ -67,6 +67,27 @@ async function updateTokens(userId, accessToken, refreshToken, expiresIn) {
 }
 
 /**
+ * Upsert a steps row into the Health Hub `steps` table.
+ * Schema: date (PK), steps (integer), source
+ */
+async function upsertStepsRow(row) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/steps?on_conflict=date`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates',
+    },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase steps upsert failed (${res.status}): ${text}`);
+  }
+}
+
+/**
  * Upsert a recovery row into the Health Hub `recovery` table.
  * Schema: date (PK), recoveryScore, hrv, rhr, sleepHours,
  *         sleepLight, sleepDeep, sleepRem, source
@@ -140,11 +161,19 @@ async function syncUser(tokenRow, startDate, endDate) {
     getCycles(accessToken, startDate, endDate),
   ]);
 
-  // Build date → strain map from scored cycles
+  // Build date → strain and date → steps maps from scored cycles
   const strainByDate = new Map();
+  const stepsByDate = new Map();
   for (const cycle of cycleRecords) {
-    if (cycle.score_state === 'SCORED' && cycle.score?.strain != null) {
-      strainByDate.set(cycle.start.slice(0, 10), cycle.score.strain);
+    if (cycle.score_state === 'SCORED') {
+      const dateKey = cycle.start.slice(0, 10);
+      if (cycle.score?.strain != null) {
+        strainByDate.set(dateKey, cycle.score.strain);
+      }
+      // Whoop API v2 cycle score includes step_count for Whoop 4.0+
+      if (cycle.score?.step_count != null && cycle.score.step_count > 0) {
+        stepsByDate.set(dateKey, cycle.score.step_count);
+      }
     }
   }
 
@@ -189,7 +218,15 @@ async function syncUser(tokenRow, startDate, endDate) {
     results.push(row);
   }
 
-  return results;
+  // Upsert steps data for any scored cycle dates that have step counts
+  const stepsResults = [];
+  for (const [dateKey, stepCount] of stepsByDate) {
+    const stepsRow = { date: dateKey, steps: stepCount, source: 'whoop' };
+    await upsertStepsRow(stepsRow);
+    stepsResults.push(stepsRow);
+  }
+
+  return { recovery: results, steps: stepsResults };
 }
 
 // ---------------------------------------------------------------------------
@@ -233,7 +270,7 @@ export default async function handler(req, res) {
     const allResults = [];
     for (const row of tokenRows) {
       const synced = await syncUser(row, startDate, endDate);
-      allResults.push({ userId: row.id, records: synced });
+      allResults.push({ userId: row.id, recovery: synced.recovery, steps: synced.steps });
     }
 
     return res.status(200).json({

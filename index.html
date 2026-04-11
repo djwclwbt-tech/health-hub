@@ -1010,8 +1010,10 @@ const AnalysisSection=({data})=>{
 };
 
 // ═══ DASHBOARD ═══
-const Dashboard=({data,setData})=>{
+const Dashboard=({data,setData,setTab})=>{
   const [showImport,setShowImport]=useState(false);
+  const [showMeasForm,setShowMeasForm]=useState(false);
+  const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
   const [importText,setImportText]=useState("");
   const [importStatus,setImportStatus]=useState("");
 
@@ -1108,6 +1110,14 @@ const Dashboard=({data,setData})=>{
         </div>
       </X>
 
+      {/* ═══ HABIT NUDGE ═══ */}
+      {hour<22&&(()=>{const th=data.habits[t];const logged=th&&Object.values(th).some(v=>v!==null&&v!==undefined);return !logged&&setTab?(
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.bl,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          <span style={{fontSize:13,color:C.t2,fontWeight:600}}>Habits not logged today</span>
+          <button onClick={()=>setTab("habits")} style={{background:"none",border:"none",color:C.p,fontSize:13,fontWeight:700,cursor:"pointer",padding:"4px 8px",fontFamily:"inherit"}}>Log Now →</button>
+        </div>
+      ):null;})()}
+
       {/* ═══ MORNING GAME PLAN ═══ */}
       {mealSlots>0&&proRemaining>0&&(
         <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
@@ -1166,16 +1176,6 @@ const Dashboard=({data,setData})=>{
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.advice}</div>
       </X>)}
 
-      {/* ═══ STALL WARNINGS ═══ */}
-      {stalls.length>0&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Stalled Lifts</div>
-        {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:2}}>
-          <span style={{fontWeight:600,color:C.t}}>{s.name}</span> @ {s.currentWeight} lbs — {weeklyRecAvg>=65?
-            "Recovery is green. Swap for a variation and reset progression.":
-            "Recovery is low. Focus on recovery first."}
-        </div>))}
-      </X>)}
-
       {/* ═══ DAY TYPE INDICATOR ═══ */}
       <X style={{padding:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{dayType==="monday"?"Monday (Light)":dayType==="training"?"Training Day":"Weekend"}</div>
@@ -1196,8 +1196,8 @@ const Dashboard=({data,setData})=>{
             <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{td.daysUsed}/7 days</div>
           </X>
         );
-        const deficitLabel=td.deficit>0?"surplus":td.deficit<0?"deficit":"on target";
-        const deficitColor=td.deficit>0?C.a:td.deficit<0?C.g:C.t2;
+        const deficitLabel=td.deficit>0?"deficit":td.deficit<0?"surplus":"on target";
+        const deficitColor=td.deficit>0?C.g:td.deficit<0?C.a:C.t2;
         const paceLabel=td.weeklyChange<0?`~${Math.abs(td.weeklyChange).toFixed(1)} lbs/wk loss`
           :td.weeklyChange>0?`~${td.weeklyChange.toFixed(1)} lbs/wk gain`:"weight stable";
         return(
@@ -1228,7 +1228,7 @@ const Dashboard=({data,setData})=>{
                 </div>
               </div>
               <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:4,fontSize:11,color:C.g}}>
-                Eating {Math.abs(td.deficit)} cal {td.deficit<0?"below":"above"} TDEE — {paceLabel}
+                Eating {Math.abs(td.deficit)} cal {td.deficit>0?"below":"above"} TDEE — {paceLabel}
               </div>
             </>)}
           </X>
@@ -1367,6 +1367,59 @@ const Dashboard=({data,setData})=>{
         </X>
       )}
 
+      {/* ═══ BODY MEASUREMENTS ═══ */}
+      {(()=>{
+        const measEntries=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>b[0].localeCompare(a[0]));
+        const latest=measEntries[0],prev=measEntries[1];
+        const measFields=[{k:"chest",l:"Chest",up:true},{k:"waist",l:"Waist",up:false},{k:"armL",l:"L Arm",up:true},{k:"armR",l:"R Arm",up:true},{k:"thighL",l:"L Thigh",up:true},{k:"thighR",l:"R Thigh",up:true}];
+        const saveDashMeas=()=>{
+          const vals={};measFields.forEach(f=>{if(measF[f.k])vals[f.k]=parseFloat(measF[f.k]);});
+          if(!Object.keys(vals).length)return;
+          const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),...vals}}};
+          setData(nd);sv(nd);syncToSB(nd);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
+        };
+        return(
+          <X style={{padding:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Body Measurements</div>
+              <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
+            </div>
+            {showMeasForm&&(
+              <div style={{marginBottom:8,padding:8,background:C.bg,borderRadius:6,border:`1px solid ${C.bd}`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
+                  {measFields.map(f=>(
+                    <div key={f.k}>
+                      <L>{f.l} (in)</L>
+                      <N value={measF[f.k]} onChange={v=>setMeasF(p=>({...p,[f.k]:v}))} placeholder="0.0"/>
+                    </div>
+                  ))}
+                </div>
+                <B full small onClick={saveDashMeas} disabled={!measFields.some(f=>measF[f.k])}>Save Measurements</B>
+              </div>
+            )}
+            {latest?(
+              <div>
+                <div style={{fontSize:11,color:C.t3,marginBottom:4}}>{fmt(latest[0])}{prev?` vs ${fmt(prev[0])}`:""}  </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+                  {measFields.filter(f=>latest[1][f.k]).map(f=>{
+                    const d=prev&&prev[1][f.k]?parseFloat((latest[1][f.k]-prev[1][f.k]).toFixed(1)):null;
+                    return(<div key={f.k} style={{textAlign:"center",padding:"4px 2px",background:C.bg,borderRadius:4}}>
+                      <div style={{fontSize:13,fontWeight:700,color:C.t}}>{latest[1][f.k]}"</div>
+                      <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{f.l}</div>
+                      {d!==null&&d!==0&&<div style={{fontSize:10,fontWeight:600,color:f.up?(d>0?C.g:C.r):(d<0?C.g:C.r)}}>{d>0?"↑":"↓"}{Math.abs(d)}</div>}
+                    </div>);
+                  })}
+                </div>
+              </div>
+            ):(
+              <div onClick={()=>setShowMeasForm(true)} style={{fontSize:13,color:C.t3,textAlign:"center",padding:"8px 0",cursor:"pointer"}}>
+                Log your first measurements → tap to enter
+              </div>
+            )}
+          </X>
+        );
+      })()}
+
       {/* ═══ DATA INSIGHTS ═══ */}
       {dataInsights.length>0&&(
         <X style={{padding:10}}>
@@ -1403,8 +1456,9 @@ const Dashboard=({data,setData})=>{
       )}
 
       {(()=>{
-        const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
-        const volData=last7.map(d=>({v:(data.wk[d]&&data.wk[d].volume)||0,d:d.slice(5)})).filter(x=>x.v>0);
+        const last14=Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
+        const last7=last14.slice(-7);
+        const volData=last14.map(d=>({v:(data.wk[d]&&data.wk[d].volume)||0,d:d.slice(5)})).filter(x=>x.v>0);
         const thisWk=last7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
         const prev7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-7-i);return lds(d);});
         const lastWk=prev7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
@@ -1893,6 +1947,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const [viewW,setViewW]=useState(null);
+  const [spOpen,setSpOpen]=useState(false);
+  const allProgExs=(()=>{const seen={};Object.values(PROG.days).forEach(day=>day.exercises.forEach(ex=>{if(!seen[ex.id])seen[ex.id]=ex.name;}));return Object.entries(seen).map(([id,name])=>({id,name}));})();
+  const [spSel,setSpSel]=useState(()=>{let best=null,bestN=0;allProgExs.forEach(({id})=>{const h=(data.prog[id]?.e1rmHistory||[]).length;if(h>bestN){bestN=h;best=id;}});return best||(allProgExs[0]?.id||null);});
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
   const now=new Date();
   const [calMonth,setCalMonth]=useState(now.getMonth());
@@ -2325,6 +2382,73 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         );
       })}
     </S>
+
+    {/* ═══ STRENGTH PROGRESS ═══ */}
+    {(()=>{
+      const spHistory=spSel?(data.prog[spSel]?.e1rmHistory||[]):[];
+      const spPr=spSel?data.prog[spSel]?.pr:null;
+      const spExName=allProgExs.find(e=>e.id===spSel)?.name||spSel||"";
+      const spGain=spHistory.length>=2?+(spHistory[spHistory.length-1].e1rm-spHistory[0].e1rm).toFixed(1):null;
+      const W=320,H=180,padL=32,padR=10,padT=12,padB=28;
+      const plotW=W-padL-padR,plotH=H-padT-padB;
+      const mnV=spHistory.length?Math.min(...spHistory.map(h=>h.e1rm)):0;
+      const mxV=spHistory.length?Math.max(...spHistory.map(h=>h.e1rm)):100;
+      const rng=mxV-mnV||1;
+      const xOf=(i)=>padL+i*(plotW/(Math.max(spHistory.length-1,1)));
+      const yOf=(v)=>padT+plotH-(((v-mnV)/rng)*plotH);
+      const pts=spHistory.map((h,i)=>[xOf(i),yOf(h.e1rm)]);
+      const linePts=pts.map(p=>p.join(",")).join(" ");
+      const prIdx=spPr?spHistory.findIndex(h=>h.e1rm===spPr.e1rm&&h.date===spPr.date):-1;
+      const abbr=(ds)=>{const d=new Date(ds+"T12:00:00");return`${d.getMonth()+1}/${d.getDate()}`;};
+      const yTicks=[mnV,mnV+rng*0.5,mxV].map(v=>Math.round(v));
+      return(
+        <div style={{marginTop:6}}>
+          <div onClick={()=>setSpOpen(!spOpen)} style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>Strength Progress</span><span style={{fontSize:10}}>{spOpen?"▾":"▸"}</span>
+          </div>
+          {spOpen&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+            <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2}}>
+              {allProgExs.map(ex=>{const hasData=(data.prog[ex.id]?.e1rmHistory||[]).length>0;return(
+                <button key={ex.id} onClick={()=>setSpSel(ex.id)} style={{flexShrink:0,padding:"5px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+                  border:`1px solid ${spSel===ex.id?C.p:C.bd}`,background:spSel===ex.id?C.pl:"transparent",
+                  color:spSel===ex.id?C.p:hasData?C.t2:C.t3,opacity:hasData?1:0.5}}>{ex.name}</button>
+              );})}
+            </div>
+            {spHistory.length<2?(
+              <X style={{padding:14,textAlign:"center"}}><span style={{fontSize:13,color:C.t3}}>No e1RM data yet — log a workout to start tracking</span></X>
+            ):(
+              <X style={{padding:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div><span style={{fontSize:13,fontWeight:700,color:C.t}}>{spExName}</span>{spPr&&<span style={{fontSize:11,color:C.t3,marginLeft:6}}>PR: {spPr.e1rm} lbs e1RM</span>}</div>
+                  {spGain!==null&&<span style={{fontSize:13,fontWeight:700,color:spGain>=0?C.g:C.r}}>{spGain>=0?"+":""}{spGain} lbs since start</span>}
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H}} preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <linearGradient id="spGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.p} stopOpacity="0.12"/>
+                      <stop offset="100%" stopColor={C.p} stopOpacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  {yTicks.map((v,i)=>{const y=yOf(v);return(<g key={i}>
+                    <line x1={padL} y1={y} x2={W-padR} y2={y} stroke={C.bl} strokeWidth="1"/>
+                    <text x={padL-4} y={y+4} fontSize="9" fill={C.t3} textAnchor="end">{v}</text>
+                  </g>);})}
+                  <polygon points={`${padL},${padT+plotH} ${linePts} ${W-padR},${padT+plotH}`} fill="url(#spGrad)"/>
+                  <polyline points={linePts} fill="none" stroke={C.p} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  {pts.map((p,i)=>{const isPr=i===prIdx;return(<circle key={i} cx={p[0]} cy={p[1]} r={isPr?5:3}
+                    fill={isPr?C.g:C.cd} stroke={isPr?C.g:C.p} strokeWidth={isPr?2:1.5}/>);})}
+                  {spHistory.length>0&&(<>
+                    <text x={padL} y={H-6} fontSize="9" fill={C.t3} textAnchor="start">{abbr(spHistory[0].date)}</text>
+                    <text x={W-padR} y={H-6} fontSize="9" fill={C.t3} textAnchor="end">{abbr(spHistory[spHistory.length-1].date)}</text>
+                  </>)}
+                  {prIdx>=0&&(<text x={pts[prIdx][0]} y={pts[prIdx][1]-8} fontSize="9" fill={C.g} textAnchor="middle" fontWeight="700">PR</text>)}
+                </svg>
+              </X>
+            )}
+          </div>)}
+        </div>
+      );
+    })()}
   </div>);
 };
 
@@ -2526,7 +2650,7 @@ const Nutrition=({data,setData})=>{
     {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
       <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
         <div style={{fontSize:11,color:C.t2}}>
-          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit<0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit<0?"deficit":"surplus"}</span>
+          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
         </div>
         <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
       </div>
@@ -2880,7 +3004,7 @@ const Habits=({data,setData})=>{
   const customHabits=data.settings.customHabits||[];
   const [showMgmt,setShowMgmt]=useState(false);
   const [newHabit,setNewHabit]=useState("");
-  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",
+  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain!=null?(+tr.strain).toFixed(1):"",
     steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
   const hasSaved=!!(tr.recoveryScore||tr.hrv||tr.rhr);
   const [editing,setEditing]=useState(!hasSaved);
@@ -2980,11 +3104,21 @@ const Habits=({data,setData})=>{
     </div>);
   };
 
+  const habitsHour=new Date().getHours();
+  const todayHabitsLogged=!!(data.habits[t]&&Object.values(data.habits[t]).some(v=>v!==null&&v!==undefined));
+
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
       <div style={{fontSize:18,fontWeight:700,color:C.t}}>Habits</div>
       <div style={{fontSize:13,color:C.t3}}>{fmt(t)}</div>
     </div>
+
+    {/* Evening reminder */}
+    {habitsHour>=20&&!todayHabitsLogged&&(
+      <div style={{padding:"8px 12px",background:C.al,borderRadius:6,border:`1px solid #e6c84a`,fontSize:13,color:C.a,fontWeight:600}}>
+        Tonight's habits — don't forget to log before bed
+      </div>
+    )}
 
     {/* Health Metrics */}
     <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
@@ -3569,7 +3703,7 @@ window.App = function App(){
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
       <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
+        {tab==="dashboard"&&<Dashboard data={data} setData={setData} setTab={setTab}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
