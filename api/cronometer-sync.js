@@ -72,6 +72,10 @@ export default async function handler(req, res) {
     // Auth + fetch
     const { authToken, cookieHeader } = await login(username, password);
     const csv = await fetchServings(authToken, cookieHeader, startDate, endDate);
+    if (req.query.debug === '1') {
+      const headers = csv.split('\n')[0];
+      return res.status(200).json({ headers });
+    }
     const dayData = parseServings(csv);
 
     if (!Object.keys(dayData).length) {
