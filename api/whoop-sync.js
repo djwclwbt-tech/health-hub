@@ -17,7 +17,7 @@
  *   WHOOP_SYNC_SECRET (optional — protect the endpoint from public access)
  */
 
-import { refreshAccessToken, getRecovery, getSleep } from '../lib/whoop.js';
+import { refreshAccessToken, getRecovery, getSleep, getCycles } from '../lib/whoop.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -133,11 +133,20 @@ function msToHours(ms) {
 async function syncUser(tokenRow, startDate, endDate) {
   const accessToken = await ensureValidToken(tokenRow);
 
-  // Fetch recovery and sleep data in parallel
-  const [recoveryRecords, sleepRecords] = await Promise.all([
+  // Fetch recovery, sleep, and cycle (strain) data in parallel
+  const [recoveryRecords, sleepRecords, cycleRecords] = await Promise.all([
     getRecovery(accessToken, startDate, endDate),
     getSleep(accessToken, startDate, endDate),
+    getCycles(accessToken, startDate, endDate),
   ]);
+
+  // Build date → strain map from scored cycles
+  const strainByDate = new Map();
+  for (const cycle of cycleRecords) {
+    if (cycle.score_state === 'SCORED' && cycle.score?.strain != null) {
+      strainByDate.set(cycle.start.slice(0, 10), cycle.score.strain);
+    }
+  }
 
   // Index sleep records by sleep_id for easy lookup
   const sleepById = new Map();
@@ -173,6 +182,7 @@ async function syncUser(tokenRow, startDate, endDate) {
       sleepdeep: msToHours(stages.total_slow_wave_sleep_time_milli ?? 0),
       sleeprem: msToHours(stages.total_rem_sleep_time_milli ?? 0),
       source: 'whoop',
+      ...(strainByDate.has(dateKey) && { strain: strainByDate.get(dateKey) }),
     };
 
     await upsertRecoveryRow(row);
