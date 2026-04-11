@@ -2385,10 +2385,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     {/* ═══ STRENGTH PROGRESS ═══ */}
     {(()=>{
-      const spHistory=spSel?(data.prog[spSel]?.e1rmHistory||[]):[];
+      const rawSpHistory=spSel?(data.prog[spSel]?.e1rmHistory||[]):[];
+      const spDateMap={};rawSpHistory.forEach(h=>{if(!spDateMap[h.date]||h.e1rm>spDateMap[h.date])spDateMap[h.date]=h.e1rm;});
+      const spHistory=Object.entries(spDateMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,e1rm])=>({date,e1rm}));
       const spPr=spSel?data.prog[spSel]?.pr:null;
       const spExName=allProgExs.find(e=>e.id===spSel)?.name||spSel||"";
-      const spGain=spHistory.length>=2?+(spHistory[spHistory.length-1].e1rm-spHistory[0].e1rm).toFixed(1):null;
+      const spBest=spHistory.length?Math.max(...spHistory.map(h=>h.e1rm)):null;
+      const spGain=spHistory.length>=2&&spBest!=null?+(spBest-spHistory[0].e1rm).toFixed(1):null;
       const W=320,H=180,padL=32,padR=10,padT=12,padB=28;
       const plotW=W-padL-padR,plotH=H-padT-padB;
       const mnV=spHistory.length?Math.min(...spHistory.map(h=>h.e1rm)):0;
