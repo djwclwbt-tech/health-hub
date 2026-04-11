@@ -95,7 +95,9 @@ async function upsertRecoveryRow(row) {
 // ---------------------------------------------------------------------------
 
 async function ensureValidToken(tokenRow) {
-  const expiresAt = new Date(tokenRow.expires_at).getTime();
+  // Postgres returns timestamps like "2026-04-11 18:59:29+00" — normalize to ISO 8601
+  const normalized = tokenRow.expires_at.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+  const expiresAt = new Date(normalized).getTime();
   if (Date.now() + 5 * 60_000 < expiresAt) return tokenRow.access_token;
 
   const fresh = await refreshAccessToken(
