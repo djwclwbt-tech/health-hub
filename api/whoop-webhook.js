@@ -77,7 +77,7 @@ async function updateTokens(userId, accessToken, refreshToken, expiresIn) {
 }
 
 async function upsertRecoveryRow(row) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/recovery`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/recovery?on_conflict=date`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_KEY,
