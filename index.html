@@ -140,7 +140,7 @@ const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -211,6 +211,7 @@ const syncToSB=async(d)=>{
       for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
         await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
       for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
+      for(const[date,v]of Object.entries(d.tdeeExclude||{})){if(v)await sb.upsert("tdee_exclude",{date,active:true});}
       if(d.settings)await sb.upsert("settings",{id:"user",...d.settings},"id");
       if(d.program)await sb.upsert("program",{id:"user",data:d.program},"id");
       console.log("[SB] Full sync complete");
@@ -238,6 +239,7 @@ const svSB={
   cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true}),
   bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
   travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
+  tdeeExclude:(date,active)=>active?sb.upsert("tdee_exclude",{date,active:true}):sb.deleteRow("tdee_exclude","date",date),
   settings:(s)=>sb.upsert("settings",{id:"user",...s},"id"),
   program:(p)=>sb.upsert("program",{id:"user",data:p},"id"),
   delWeight:(date)=>sb.deleteRow("weight","date",date),
@@ -250,12 +252,13 @@ const svSB={
 
 const loadFromSB=async()=>{
   try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,mob,stp,debrief,cardio,bodyComp,travel,settingsRows,programRows]=await Promise.all([
+    const [wt,steps,water,rec,habits,wk,nut,prog,mob,stp,debrief,cardio,bodyComp,travel,tdeeExcludeRows,settingsRows,programRows]=await Promise.all([
       sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
       sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
       sb.select("progression","exercise_id","asc"),
       sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
       sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
+      sb.select("tdee_exclude"),
       sb.select("settings","id","asc",1),sb.select("program","id","asc",1),
     ]);
     const d=bl();
@@ -278,6 +281,7 @@ const loadFromSB=async()=>{
     cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
+    tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
     if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,mondayCal:s.mondayCal||s.monday_cal,trainingCal:s.trainingCal||s.training_cal,weekendCal:s.weekendCal||s.weekend_cal};}
     if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
@@ -599,13 +603,13 @@ const linReg=(ys)=>{
   return{slope:den?num/den:0};
 };
 
-const calcAdaptiveTDEE=(wt,nut,settings,travelDays)=>{
+const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
   const planStart=PROG.start;
   const allDates=[];
   const today=td();
   let d=new Date(planStart+"T12:00:00");
   while(lds(d)<=today){allDates.push(lds(d));d.setDate(d.getDate()+1);}
-  const paired=allDates.filter(dt=>wt[dt]!=null&&nut[dt]?.totalCal>0);
+  const paired=allDates.filter(dt=>wt[dt]!=null&&nut[dt]?.totalCal>0&&!tdeeExclude[dt]);
   if(paired.length<3)return{daysUsed:paired.length,daysNeeded:7,phase:"collecting"};
   const weights=paired.map(dt=>wt[dt]);
   const calories=paired.map(dt=>nut[dt].totalCal);
@@ -1046,7 +1050,7 @@ const Dashboard=({data,setData})=>{
   const calT=getDayCalTarget(t,st,data.travelDays),proT=getDayProTarget(t,st,data.travelDays);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
   const dayType=getDayType(t,data.travelDays);
-  const tdeeData=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
+  const tdeeData=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
   const redDays=getConsecutiveRedDays(data.rec);
@@ -2380,7 +2384,7 @@ const Nutrition=({data,setData})=>{
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
-  const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
+  const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
 
   const [editing,setEditing]=useState(null);
   const updateMeal=(idx,updates)=>{
@@ -2433,6 +2437,9 @@ const Nutrition=({data,setData})=>{
   MEAL_TYPES.forEach(mt=>{grouped[mt]=[];});
   tl.meals.forEach((m,i)=>{const mt=m.mealType||"Snack";if(!grouped[mt])grouped[mt]=[];grouped[mt].push({...m,_idx:i});});
 
+  const isExcluded=!!(data.tdeeExclude||{})[viewDate];
+  const toggleExclude=()=>{const newVal=!isExcluded;const nd={...data,tdeeExclude:{...data.tdeeExclude,[viewDate]:newVal||undefined}};if(!newVal)delete nd.tdeeExclude[viewDate];setData(nd);sv(nd);svSB.tdeeExclude(viewDate,newVal);};
+
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
@@ -2440,8 +2447,10 @@ const Nutrition=({data,setData})=>{
         <button onClick={()=>navDate(-1)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>‹</button>
         <span style={{fontSize:13,fontWeight:600,color:isViewingToday?C.p:C.t2,minWidth:80,textAlign:"center"}}>{isViewingToday?"Today":fmt(viewDate)}</span>
         <button onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:"none",color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
+        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE — click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.r:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
       </div>
     </div>
+    {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4,letterSpacing:"0.04em"}}>Excluded from TDEE</div>}
 
     <X style={{padding:10,marginBottom:4}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
@@ -2792,7 +2801,7 @@ const Weight=({data,setData})=>{
   const tc=latest&&oldest?(latest-oldest).toFixed(1):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getWeightTrend(data.wt);
-  const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays);
+  const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -3450,7 +3459,7 @@ window.App = function App(){
           // Smart merge: Supabase wins for date-keyed data (external syncs like Whoop/Cronometer
           // write directly to Supabase, so it is always authoritative). Local-only dates
           // (offline entries not yet in Supabase) are preserved because sbData won't have that key.
-          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays"]);
+          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays","tdeeExclude"]);
           Object.keys(sbData).forEach(k=>{
             if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               // For date-keyed data: start with local, then overlay Supabase (Supabase wins)
