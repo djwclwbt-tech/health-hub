@@ -3447,13 +3447,14 @@ window.App = function App(){
         if(local){
           const merged=migrate(local);
           const final={...merged};
-          // Smart merge: local wins for date-keyed data (user's most recent actions),
-          // Supabase fills in anything missing locally
+          // Smart merge: Supabase wins for date-keyed data (external syncs like Whoop/Cronometer
+          // write directly to Supabase, so it is always authoritative). Local-only dates
+          // (offline entries not yet in Supabase) are preserved because sbData won't have that key.
           const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays"]);
           Object.keys(sbData).forEach(k=>{
             if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
-              // For date-keyed data: start with Supabase, then overlay local (local wins)
-              final[k]={...sbData[k],...merged[k]};
+              // For date-keyed data: start with local, then overlay Supabase (Supabase wins)
+              final[k]={...merged[k],...sbData[k]};
             }else if(k==="prog"&&typeof sbData[k]==="object"&&sbData[k]!==null){
               // Progression: local wins (most recent workout actions)
               final[k]={...sbData[k],...merged[k]};
