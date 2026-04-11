@@ -1010,8 +1010,10 @@ const AnalysisSection=({data})=>{
 };
 
 // ═══ DASHBOARD ═══
-const Dashboard=({data,setData})=>{
+const Dashboard=({data,setData,setTab})=>{
   const [showImport,setShowImport]=useState(false);
+  const [showMeasForm,setShowMeasForm]=useState(false);
+  const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
   const [importText,setImportText]=useState("");
   const [importStatus,setImportStatus]=useState("");
 
@@ -1107,6 +1109,14 @@ const Dashboard=({data,setData})=>{
            :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
         </div>
       </X>
+
+      {/* ═══ HABIT NUDGE ═══ */}
+      {hour<22&&(()=>{const th=data.habits[t];const logged=th&&Object.values(th).some(v=>v!==null&&v!==undefined);return !logged&&setTab?(
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.bl,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          <span style={{fontSize:13,color:C.t2,fontWeight:600}}>Habits not logged today</span>
+          <button onClick={()=>setTab("habits")} style={{background:"none",border:"none",color:C.p,fontSize:13,fontWeight:700,cursor:"pointer",padding:"4px 8px",fontFamily:"inherit"}}>Log Now →</button>
+        </div>
+      ):null;})()}
 
       {/* ═══ MORNING GAME PLAN ═══ */}
       {mealSlots>0&&proRemaining>0&&(
@@ -1366,6 +1376,59 @@ const Dashboard=({data,setData})=>{
           </div>
         </X>
       )}
+
+      {/* ═══ BODY MEASUREMENTS ═══ */}
+      {(()=>{
+        const measEntries=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>b[0].localeCompare(a[0]));
+        const latest=measEntries[0],prev=measEntries[1];
+        const measFields=[{k:"chest",l:"Chest",up:true},{k:"waist",l:"Waist",up:false},{k:"armL",l:"L Arm",up:true},{k:"armR",l:"R Arm",up:true},{k:"thighL",l:"L Thigh",up:true},{k:"thighR",l:"R Thigh",up:true}];
+        const saveDashMeas=()=>{
+          const vals={};measFields.forEach(f=>{if(measF[f.k])vals[f.k]=parseFloat(measF[f.k]);});
+          if(!Object.keys(vals).length)return;
+          const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),...vals}}};
+          setData(nd);sv(nd);syncToSB(nd);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
+        };
+        return(
+          <X style={{padding:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Body Measurements</div>
+              <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
+            </div>
+            {showMeasForm&&(
+              <div style={{marginBottom:8,padding:8,background:C.bg,borderRadius:6,border:`1px solid ${C.bd}`}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
+                  {measFields.map(f=>(
+                    <div key={f.k}>
+                      <L>{f.l} (in)</L>
+                      <N value={measF[f.k]} onChange={v=>setMeasF(p=>({...p,[f.k]:v}))} placeholder="0.0"/>
+                    </div>
+                  ))}
+                </div>
+                <B full small onClick={saveDashMeas} disabled={!measFields.some(f=>measF[f.k])}>Save Measurements</B>
+              </div>
+            )}
+            {latest?(
+              <div>
+                <div style={{fontSize:11,color:C.t3,marginBottom:4}}>{fmt(latest[0])}{prev?` vs ${fmt(prev[0])}`:""}  </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+                  {measFields.filter(f=>latest[1][f.k]).map(f=>{
+                    const d=prev&&prev[1][f.k]?parseFloat((latest[1][f.k]-prev[1][f.k]).toFixed(1)):null;
+                    return(<div key={f.k} style={{textAlign:"center",padding:"4px 2px",background:C.bg,borderRadius:4}}>
+                      <div style={{fontSize:13,fontWeight:700,color:C.t}}>{latest[1][f.k]}"</div>
+                      <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{f.l}</div>
+                      {d!==null&&d!==0&&<div style={{fontSize:10,fontWeight:600,color:f.up?(d>0?C.g:C.r):(d<0?C.g:C.r)}}>{d>0?"↑":"↓"}{Math.abs(d)}</div>}
+                    </div>);
+                  })}
+                </div>
+              </div>
+            ):(
+              <div onClick={()=>setShowMeasForm(true)} style={{fontSize:13,color:C.t3,textAlign:"center",padding:"8px 0",cursor:"pointer"}}>
+                Log your first measurements → tap to enter
+              </div>
+            )}
+          </X>
+        );
+      })()}
 
       {/* ═══ DATA INSIGHTS ═══ */}
       {dataInsights.length>0&&(
@@ -2980,11 +3043,21 @@ const Habits=({data,setData})=>{
     </div>);
   };
 
+  const habitsHour=new Date().getHours();
+  const todayHabitsLogged=!!(data.habits[t]&&Object.values(data.habits[t]).some(v=>v!==null&&v!==undefined));
+
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
       <div style={{fontSize:18,fontWeight:700,color:C.t}}>Habits</div>
       <div style={{fontSize:13,color:C.t3}}>{fmt(t)}</div>
     </div>
+
+    {/* Evening reminder */}
+    {habitsHour>=20&&!todayHabitsLogged&&(
+      <div style={{padding:"8px 12px",background:C.al,borderRadius:6,border:`1px solid #e6c84a`,fontSize:13,color:C.a,fontWeight:600}}>
+        Tonight's habits — don't forget to log before bed
+      </div>
+    )}
 
     {/* Health Metrics */}
     <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
@@ -3569,7 +3642,7 @@ window.App = function App(){
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
       <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard data={data} setData={setData}/>}
+        {tab==="dashboard"&&<Dashboard data={data} setData={setData} setTab={setTab}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
