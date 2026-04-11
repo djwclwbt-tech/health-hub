@@ -21,7 +21,7 @@
  *   WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, SUPABASE_KEY
  */
 
-import { verifyWebhookSignature, refreshAccessToken, getRecovery, getSleep } from '../lib/whoop.js';
+import { verifyWebhookSignature, refreshAccessToken, getRecovery, getSleep, getCycles } from '../lib/whoop.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -131,10 +131,19 @@ async function syncLatestForUser(userId) {
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  const [recoveryRecords, sleepRecords] = await Promise.all([
+  const [recoveryRecords, sleepRecords, cycleRecords] = await Promise.all([
     getRecovery(accessToken, yesterday.toISOString(), now.toISOString()),
     getSleep(accessToken, yesterday.toISOString(), now.toISOString()),
+    getCycles(accessToken, yesterday.toISOString(), now.toISOString()),
   ]);
+
+  // Build date → strain map from scored cycles
+  const strainByDate = new Map();
+  for (const cycle of cycleRecords) {
+    if (cycle.score_state === 'SCORED' && cycle.score?.strain != null) {
+      strainByDate.set(cycle.start.slice(0, 10), cycle.score.strain);
+    }
+  }
 
   // Index sleep by id
   const sleepById = new Map();
@@ -163,6 +172,7 @@ async function syncLatestForUser(userId) {
       sleepdeep: msToHours(stages.total_slow_wave_sleep_time_milli ?? 0),
       sleeprem: msToHours(stages.total_rem_sleep_time_milli ?? 0),
       source: 'whoop',
+      ...(strainByDate.has(dateKey) && { strain: strainByDate.get(dateKey) }),
     };
 
     await upsertRecoveryRow(row);
