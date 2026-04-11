@@ -1166,16 +1166,6 @@ const Dashboard=({data,setData})=>{
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.advice}</div>
       </X>)}
 
-      {/* ═══ STALL WARNINGS ═══ */}
-      {stalls.length>0&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Stalled Lifts</div>
-        {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:2}}>
-          <span style={{fontWeight:600,color:C.t}}>{s.name}</span> @ {s.currentWeight} lbs — {weeklyRecAvg>=65?
-            "Recovery is green. Swap for a variation and reset progression.":
-            "Recovery is low. Focus on recovery first."}
-        </div>))}
-      </X>)}
-
       {/* ═══ DAY TYPE INDICATOR ═══ */}
       <X style={{padding:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{dayType==="monday"?"Monday (Light)":dayType==="training"?"Training Day":"Weekend"}</div>
@@ -1196,8 +1186,8 @@ const Dashboard=({data,setData})=>{
             <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{td.daysUsed}/7 days</div>
           </X>
         );
-        const deficitLabel=td.deficit>0?"surplus":td.deficit<0?"deficit":"on target";
-        const deficitColor=td.deficit>0?C.a:td.deficit<0?C.g:C.t2;
+        const deficitLabel=td.deficit>0?"deficit":td.deficit<0?"surplus":"on target";
+        const deficitColor=td.deficit>0?C.g:td.deficit<0?C.a:C.t2;
         const paceLabel=td.weeklyChange<0?`~${Math.abs(td.weeklyChange).toFixed(1)} lbs/wk loss`
           :td.weeklyChange>0?`~${td.weeklyChange.toFixed(1)} lbs/wk gain`:"weight stable";
         return(
@@ -1228,7 +1218,7 @@ const Dashboard=({data,setData})=>{
                 </div>
               </div>
               <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:4,fontSize:11,color:C.g}}>
-                Eating {Math.abs(td.deficit)} cal {td.deficit<0?"below":"above"} TDEE — {paceLabel}
+                Eating {Math.abs(td.deficit)} cal {td.deficit>0?"below":"above"} TDEE — {paceLabel}
               </div>
             </>)}
           </X>
@@ -1403,8 +1393,9 @@ const Dashboard=({data,setData})=>{
       )}
 
       {(()=>{
-        const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
-        const volData=last7.map(d=>({v:(data.wk[d]&&data.wk[d].volume)||0,d:d.slice(5)})).filter(x=>x.v>0);
+        const last14=Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
+        const last7=last14.slice(-7);
+        const volData=last14.map(d=>({v:(data.wk[d]&&data.wk[d].volume)||0,d:d.slice(5)})).filter(x=>x.v>0);
         const thisWk=last7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
         const prev7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-7-i);return lds(d);});
         const lastWk=prev7.reduce((s,d)=>s+((data.wk[d]&&data.wk[d].volume)||0),0);
@@ -2526,7 +2517,7 @@ const Nutrition=({data,setData})=>{
     {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
       <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
         <div style={{fontSize:11,color:C.t2}}>
-          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit<0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit<0?"deficit":"surplus"}</span>
+          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
         </div>
         <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
       </div>
@@ -2880,7 +2871,7 @@ const Habits=({data,setData})=>{
   const customHabits=data.settings.customHabits||[];
   const [showMgmt,setShowMgmt]=useState(false);
   const [newHabit,setNewHabit]=useState("");
-  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain||"",
+  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain!=null?(+tr.strain).toFixed(1):"",
     steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
   const hasSaved=!!(tr.recoveryScore||tr.hrv||tr.rhr);
   const [editing,setEditing]=useState(!hasSaved);
