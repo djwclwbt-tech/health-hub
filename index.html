@@ -453,6 +453,8 @@ const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.don
 
 const backfillData=(d)=>{if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});const allDays={...PROG.days,...(d.program||{})};Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{if(!w.exercises||!w.day)return;const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;w.exercises.forEach((ex,i)=>{const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;const cs=ex.sets.filter(s=>s.done&&s.weight>0&&s.reps>0);if(!cs.length)return;const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;if(!d.prog[pe.id])d.prog[pe.id]={currentWeight:bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};if(!d.prog[pe.id].e1rmHistory)d.prog[pe.id].e1rmHistory=[];d.prog[pe.id].e1rmHistory.push({date,e1rm:newE1rm});d.prog[pe.id].e1rmHistory=d.prog[pe.id].e1rmHistory.slice(-12);if(!d.prog[pe.id].pr||newE1rm>d.prog[pe.id].pr.e1rm){d.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}});});return d;};
 
+const repairDeloadProgression=(d)=>{const allDays={...PROG.days,...(d.program||{})};const allEx=Object.values(allDays).flatMap(day=>day.exercises||[]);for(const pe of allEx){const dates=Object.entries(d.wk||{}).filter(([date])=>wkn(date)!==PROG.deload).sort((a,b)=>b[0].localeCompare(a[0]));for(const[date,w]of dates){const wex=w.exercises?.find(e=>e.id===pe.id);if(!wex)continue;const cs=wex.sets?.filter(s=>s.done&&s.weight>0);if(!cs?.length)continue;const cw=cs[0].weight;const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);const correctWeight=pe.inc===0?cw:(hit?cw+pe.inc:cw);if(d.prog[pe.id]?.currentWeight&&d.prog[pe.id].currentWeight<correctWeight*0.75){d.prog[pe.id].currentWeight=correctWeight;}else if(!d.prog[pe.id]){d.prog[pe.id]={currentWeight:correctWeight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};}break;}}return d;};
+
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
   const days=programDays||PROG.days;
@@ -1816,12 +1818,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
       const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(aid,asw);
       const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
-      nd.prog={...nd.prog,[aid]:{currentWeight:ainc===0?cw:(hit?cw+ainc:cw),lastReps:cs.map(s=>s.reps),lastDate:t,progressed:hit&&ainc>0,pr:prevPr||null,e1rmHistory:prevHistory}};
+      const prevWeight=nd.prog[aid]?.currentWeight||gw(aid,asw);
+      const newWeight=workout.isDeload?prevWeight:(ainc===0?cw:(hit?cw+ainc:cw));
+      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:workout.isDeload?false:(hit&&ainc>0),pr:prevPr||null,e1rmHistory:prevHistory}};
+      if(!workout.isDeload){
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
       const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
       if(newE1rm>0){
         nd.prog[aid].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
         if(!prevPr||newE1rm>prevPr.e1rm)nd.prog[aid].pr={name:aname,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};
+      }
       }
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
@@ -3629,7 +3635,8 @@ window.App = function App(){
       }
       // Apply pending program updates from Supabase queue
       const{data:updated,applied}=await applyProgramUpdates(finalData);
-      backfillData(updated);setData(updated);sv(updated);
+      backfillData(updated);repairDeloadProgression(updated);setData(updated);sv(updated);
+      Object.entries(updated.prog).forEach(([exId,p])=>{if(p.currentWeight)svSB.progression(exId,p);});
       applied.forEach(msg=>addToast(msg,"success"));
       setSbLoaded(true);
     })();
