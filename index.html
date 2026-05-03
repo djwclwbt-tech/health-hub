@@ -3490,7 +3490,7 @@ window.App = function App(){
         if(local){
           const merged=migrate(local);
           const final={...merged};
-          // Smart merge: Supabase wins for date-keyed data (external syncs like Whoop/Cronometer
+          // Smart merge: Supabase wins for date-keyed data (external syncs like Oura/Cronometer
           // write directly to Supabase, so it is always authoritative). Local-only dates
           // (offline entries not yet in Supabase) are preserved because sbData won't have that key.
           const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays","tdeeExclude"]);
