@@ -125,7 +125,7 @@ const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:1800,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -389,16 +389,35 @@ const getDayType=(dateStr,travelDays)=>{
   if(["monday","tuesday","thursday","friday"].includes(day))return"training";
   return"weekend";
 };
-const getDayCalTarget=(dateStr,settings,travelDays)=>{
+// ═══ SOCIAL WEEKEND ═══
+const getWeekMonday=(dateStr)=>{
+  const d=new Date(dateStr+"T12:00:00");const dow=d.getDay();
+  const diff=dow===0?-6:1-dow;d.setDate(d.getDate()+diff);return lds(d);
+};
+const isSocialWeekendActive=(dateStr,socialWeekend)=>{
+  if(!socialWeekend?.active)return false;
+  return getWeekMonday(dateStr)===socialWeekend.weekOf;
+};
+const SOCIAL_CAL={monday:1500,tuesday:1500,wednesday:800,thursday:1500};
+
+const getDayCalTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   const dt=getDayType(dateStr,travelDays);
   if(dt==="travel")return settings?.trainingCal||1800;
+  const sw=isSocialWeekendActive(dateStr,socialWeekend);
+  if(sw){
+    const day=dw(dateStr);
+    if(["friday","saturday","sunday"].includes(day))return null;
+    return SOCIAL_CAL[day]||1500;
+  }
   if(dt==="wednesday")return settings?.wednesdayCal||900;
   if(dt==="training")return settings?.trainingCal||1800;
   return settings?.weekendCal||1700;
 };
-const getDayProTarget=(dateStr,settings,travelDays)=>{
+const getDayProTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   const dt=getDayType(dateStr,travelDays);
   if(dt==="travel")return settings?.protein||200;
+  const sw=isSocialWeekendActive(dateStr,socialWeekend);
+  if(sw&&["friday","saturday","sunday"].includes(dw(dateStr)))return 150;
   if(dt==="wednesday")return 120;
   if(dt==="training")return settings?.protein||200;
   return 150;
@@ -504,7 +523,7 @@ const getInsights=(data)=>{
   const dates=Object.keys(data.nut||{}).sort().reverse().slice(0,30);
   let pH=0,pD=0;
   for(const d of dates){
-    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
     const p=data.nut[d]?.totalProtein||0;
     if(p>0){pD++;if(p>=pt)pH++;}
   }
@@ -523,7 +542,8 @@ const getInsights=(data)=>{
   }
   let cH=0,cD=0;
   for(const d of dates){
-    const ct=getDayCalTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const ct=getDayCalTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
+    if(!ct)continue;
     const c=data.nut[d]?.totalCal||0;
     if(c>0){cD++;if(Math.abs(c-ct)<=ct*0.1)cH++;}
   }
@@ -564,7 +584,7 @@ const getRecompScore=(data)=>{
   const nutDates=Object.keys(data.nut||{}).filter(d=>d>=planStart).sort();
   let pH=0,pDays=0;
   for(const d of nutDates){
-    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays);
+    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
     const p=data.nut[d]?.totalProtein||0;
     if(p>0){pDays++;if(p>=pt)pH++;}
   }
@@ -606,7 +626,7 @@ const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
   const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
   const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
   const confidence=Math.min(95,Math.round(paired.length*4.5));
-  const calT=getDayCalTarget(today,settings,travelDays);
+  const calT=getDayCalTarget(today,settings,travelDays,null);
   const deficit=tdee-calT;
   const trendWeight=+trendW[trendW.length-1].toFixed(1);
   return{tdee,confidence,avgCalories:avgCal,weeklyChange:+weeklyChange.toFixed(2),
@@ -1036,7 +1056,7 @@ const Dashboard=({data,setData,setTab})=>{
     if(data.wk[ds]||data.nut[ds]){streak++;sd.setDate(sd.getDate()-1);}else break;}
 
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(t,st,data.travelDays),proT=getDayProTarget(t,st,data.travelDays);
+  const calT=getDayCalTarget(t,st,data.travelDays,data.socialWeekend),proT=getDayProTarget(t,st,data.travelDays,data.socialWeekend);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
   const dayType=getDayType(t,data.travelDays);
   const tdeeData=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
@@ -1067,7 +1087,7 @@ const Dashboard=({data,setData,setTab})=>{
   const hour=new Date().getHours();
   const mealsLogged=(nut?.meals||[]).length;
   const proRemaining=Math.max(0,proT-tPro);
-  const calRemaining=Math.max(0,calT-tCal);
+  const calRemaining=calT!==null?Math.max(0,calT-tCal):0;
   const mealSlots=hour<10?4:hour<14?3:hour<17?2:hour<20?1:0;
   const dinnerPro=Math.min(35,proRemaining);
   const preDinnerSlots=Math.max(0,mealSlots-1);
@@ -1165,9 +1185,26 @@ const Dashboard=({data,setData,setTab})=>{
 
       {/* ═══ DAY TYPE INDICATOR ═══ */}
       <X style={{padding:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{dayType==="monday"?"Monday (Light)":dayType==="training"?"Training Day":"Weekend"}</div>
-        <div style={{fontSize:12,color:C.t2}}>{calT} cal · {proT}g protein target</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{isSocialWeekendActive(t,data.socialWeekend)&&calT===null?"Social Weekend":dayType==="wednesday"?"Wednesday (Fast)":dayType==="training"?"Training Day":"Weekend"}</div>
+        <div style={{fontSize:12,color:C.t2}}>{calT!==null?`${calT} cal · ${proT}g protein target`:`${proT}g protein floor`}</div>
       </X>
+
+      {/* ═══ SOCIAL WEEKEND TOGGLE ═══ */}
+      {(()=>{
+        const swActive=isSocialWeekendActive(t,data.socialWeekend);
+        const toggleSW=()=>{
+          const monday=getWeekMonday(t);
+          const nd={...data,socialWeekend:swActive?{active:false,weekOf:null}:{active:true,weekOf:monday}};
+          setData(nd);sv(nd);
+        };
+        return(<X style={{padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:swActive?C.a:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Social Weekend</div>
+            {swActive&&<div style={{fontSize:10,color:C.t2}}>Mon-Thu targets lowered · ~1.5 lbs this week</div>}
+          </div>
+          <button onClick={toggleSW} style={{background:swActive?C.a:C.bl,color:swActive?"#fff":C.t2,border:`1px solid ${swActive?C.a:C.bd}`,borderRadius:12,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
+        </X>);
+      })()}
 
       {/* ═══ ADAPTIVE TDEE ═══ */}
       {(()=>{
@@ -1264,11 +1301,20 @@ const Dashboard=({data,setData,setTab})=>{
           <span style={{fontSize:13,fontWeight:700,color:C.t}}>Nutrition</span>
           <span style={{fontSize:12,color:C.t3}}>{fmt(t)}</span>
         </div>
+        {calT!==null?(<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
           <div style={{fontSize:28,fontWeight:700,color:tCal>calT?C.a:C.p}}>{tCal}</div>
           <div style={{fontSize:14,color:C.t3}}>/ {calT} cal</div>
         </div>
         <Br v={tCal} max={calT} color={tCal>calT?C.a:C.p} h={8}/>
+        </>):(<>
+        <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend — log your food, protein first</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+          <div style={{fontSize:28,fontWeight:700,color:tPro>=proT?C.g:C.p}}>{tPro}g</div>
+          <div style={{fontSize:14,color:C.t3}}>/ {proT}g protein floor</div>
+        </div>
+        <Br v={tPro} max={proT} color={tPro>=proT?C.g:C.p} h={8}/>
+        </>)}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:10}}>
           {[{l:"Protein",v:tPro,x:proT,u:"g",c:tPro>=proT?C.g:C.r},
             {l:"Carbs",v:nut?.totalCarbs||0,x:null,u:"g",c:C.a},
@@ -2471,10 +2517,10 @@ const Nutrition=({data,setData})=>{
   const tl=viewNut;
   const isViewingToday=viewDate===t;
   const st=data.settings||DEFAULTS;
-  const calT=getDayCalTarget(viewDate,st,data.travelDays),proT=getDayProTarget(viewDate,st,data.travelDays);
+  const calT=getDayCalTarget(viewDate,st,data.travelDays,data.socialWeekend),proT=getDayProTarget(viewDate,st,data.travelDays,data.socialWeekend);
   const weekDates=getWeekDates(viewDate);
   const weekCals=weekDates.reduce((s,d)=>s+(data.nut[d]?.totalCal||0),0);
-  const weekTarget=weekDates.reduce((s,d)=>s+getDayCalTarget(d,st,data.travelDays),0);
+  const weekTarget=weekDates.reduce((s,d)=>s+(getDayCalTarget(d,st,data.travelDays,data.socialWeekend)||0),0);
   const weekRemaining=weekTarget-weekCals;
   const weekDayLabels=["M","T","W","T","F","S","S"];
   const viewDayType=getDayType(viewDate,data.travelDays);
@@ -2568,14 +2614,14 @@ const Nutrition=({data,setData})=>{
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
         {weekDates.map((d,i)=>{
           const dc=data.nut[d]?.totalCal||0;
-          const dt=getDayCalTarget(d,st,data.travelDays);
+          const dt=getDayCalTarget(d,st,data.travelDays,data.socialWeekend);
           const isView=d===viewDate;
           const isFuture=d>td();
           const logged=dc>0;
           return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:3,
             background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
             <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
-            <div style={{fontSize:10,fontWeight:700,color:logged?(dc>dt?C.a:C.g):isFuture?C.t3:C.r}}>
+            <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.a:C.g):isFuture?C.t3:C.r}}>
               {logged?Math.round(dc/100)*100:isFuture?"—":"0"}
             </div>
           </div>);
@@ -2584,14 +2630,26 @@ const Nutrition=({data,setData})=>{
       <div style={{fontSize:11,fontWeight:600,color:weekRemaining>=0?C.g:C.a,marginTop:4,textAlign:"center"}}>
         {weekRemaining>=0?`${weekRemaining.toLocaleString()} cal remaining`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}
       </div>
+      {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
+        <div style={{fontSize:10,fontWeight:600,color:C.a,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active — ~1.5 lbs expected this week</div>
+      )}
     </X>
 
     <X style={{padding:12}}>
+      {calT!==null?(<>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
         <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.a:C.p}}>{tl.totalCal}</div>
         <div style={{fontSize:13,color:C.t3}}>/ {calT} cal</div>
       </div>
       <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.a:C.p} h={7}/>
+      </>):(<>
+      <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend — log your food, protein first</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+        <div style={{fontSize:26,fontWeight:700,color:tl.totalProtein>=proT?C.g:C.p}}>{tl.totalProtein}g</div>
+        <div style={{fontSize:13,color:C.t3}}>/ {proT}g protein floor</div>
+      </div>
+      <Br v={tl.totalProtein} max={proT} color={tl.totalProtein>=proT?C.g:C.p} h={7}/>
+      </>)}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:10}}>
         {[{l:"Protein",v:tl.totalProtein,x:proT,u:"g",c:tl.totalProtein>=proT?C.g:C.r},
           {l:"Carbs",v:tl.totalCarbs,x:null,u:"g",c:C.a},
@@ -2605,7 +2663,7 @@ const Nutrition=({data,setData})=>{
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
-        <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:C.t2}}>{viewDayType==="travel"?"Travel Day":viewDayType==="monday"?"Monday (Light)":viewDayType==="training"?"Training Day":"Weekend"}</span>
+        <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:calT===null?C.a:C.t2}}>{calT===null?"Social Weekend":viewDayType==="travel"?"Travel Day":viewDayType==="wednesday"?"Wednesday (Fast)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {tl.meals?.length>0&&tl.meals.every(m=>!m.source||m.source==="mfp"||m.source==="cronometer")&&(
             <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,background:C.gl,color:C.g,textTransform:"uppercase"}}>Cronometer</span>
