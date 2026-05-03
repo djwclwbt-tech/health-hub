@@ -43,7 +43,7 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 
 ## Settings (User-Customizable)
 Stored in `data.settings`:
-- `calories` — Daily calorie target (default: 2430)
+- `calories` — Daily calorie target (default: 1800)
 - `protein` — Daily protein target in grams (default: 180)
 - `water` — Daily water target in oz (default: 128)
 - `steps` — Daily step target (default: 10000)
@@ -68,7 +68,7 @@ Or use the helper script:
 ```
 
 **Payload format**: See `api/schema.md` for the full schema. Supported change types:
-- `{"type":"settings","field":"<name>","value":<number>}` — Update a setting (calories, protein, water, steps, sleep, fiber, mondayCal, trainingCal, weekendCal)
+- `{"type":"settings","field":"<name>","value":<number>}` — Update a setting (calories, protein, water, steps, sleep, fiber, trainingCal, wednesdayCal, weekendCal)
 - `{"type":"exercise","action":"update","exerciseId":"<id>","fields":{...}}` — Modify an existing exercise
 - `{"type":"exercise","action":"swap","oldExerciseId":"<id>","newExercise":{...}}` — Replace an exercise
 - `{"type":"exercise","action":"add","day":"<day>","exercise":{...}}` — Add exercise to a day

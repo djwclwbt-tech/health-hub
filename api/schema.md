@@ -31,12 +31,12 @@ Set `UPDATE_TOKEN` as a Vercel environment variable.
 ### Change Types
 
 #### Settings Update
-Modify a user target (calories, protein, water, steps, sleep, fiber, mondayCal, trainingCal, weekendCal).
+Modify a user target (calories, protein, water, steps, sleep, fiber, trainingCal, wednesdayCal, weekendCal).
 ```json
 {
   "type": "settings",
   "field": "trainingCal",
-  "value": 2800
+  "value": 1800
 }
 ```
 
@@ -132,25 +132,25 @@ Remove an exercise from a specific day.
 | `steps` | 10000 | Daily step target |
 | `sleep` | 7.5 | Sleep target (hrs) |
 | `fiber` | 30 | Daily fiber (g) |
-| `mondayCal` | 1300 | Monday calorie target |
-| `trainingCal` | 2600 | Tue-Fri calorie target |
-| `weekendCal` | 2500 | Sat-Sun calorie target |
+| `trainingCal` | 1800 | Mon/Tue/Thu/Fri calorie target |
+| `wednesdayCal` | 900 | Wednesday (fast day) calorie target |
+| `weekendCal` | 1700 | Sat-Sun calorie target |
 
 ## Current Exercise IDs
-### Monday (Abs + Mobility)
-`cable-crunch`, `hanging-leg-raise`, `pallof-press`
+### Monday (Upper A — Strength)
+`cable-fly`, `converging-chest-press`, `seated-row`, `smith-ohp`, `lat-pulldown`
 
-### Tuesday (Upper A — Strength)
-`smith-flat-bench`, `seated-row`, `smith-ohp`, `lat-pulldown`, `preacher-curl`, `tricep-dips`
+### Tuesday (Lower A — Strength)
+`front-squat`, `rdl`, `leg-press`, `lying-leg-curl`, `standing-calf`
 
-### Wednesday (Lower A — Strength)
-`leg-press`, `rdl`, `hack-squat-a`, `seated-leg-curl`, `standing-calf`
+### Wednesday (Mobility + Arms)
+`incline-db-curl`, `oh-tricep-ext`, `cable-hammer-curl`, `tricep-pushdown`, `reverse-curl`, `wrist-curl`
 
 ### Thursday (Upper B — Hypertrophy)
-`smith-incline`, `overhand-cable-row`, `lateral-raise`, `reverse-fly`, `incline-db-curl`, `oh-tricep-ext`
+`low-high-cable-fly`, `db-incline-press`, `overhand-cable-row`, `lateral-raise`, `reverse-fly`
 
 ### Friday (Lower B — Hypertrophy)
-`hack-squat-b`, `walking-lunges`, `sldl`, `leg-extension`, `hip-thrust`, `seated-calf`
+`leg-press`, `bulgarian-split-squat`, `rdl`, `lying-leg-curl`, `leg-extension`, `seated-calf`
 
 ## Claude.ai Project Instructions
 Paste the following into a Claude.ai Project's custom instructions to enable the "push to app" workflow:

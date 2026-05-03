@@ -31,14 +31,14 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ PROGRAM ═══
 const PROG = {
-  name:"Upper/Lower v2",weeks:8,deload:5,start:"2026-03-09",
+  name:"Summer Cut",weeks:7,deload:4,start:"2026-05-04",
   mobility:{
     _default:[
       {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:3,sides:["Left","Right","Left"],
        notes:"Most important. Left gets second round. Squeeze glute on down knee hard.",
        cue:"Half-kneeling, squeeze back-leg glute, shift forward"},
       {id:"hip-90-90",name:"Hip 90/90",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Internal and external rotation — feeds hack squat depth",
+       notes:"Internal and external rotation — feeds squat depth",
        cue:"Sit on floor, both legs bent 90°. Lean forward over front shin"},
       {id:"pigeon",name:"Pigeon Stretch",dur:60,sets:2,sides:["Left","Right"],
        notes:"Figure-4 supine if pigeon bothers back. Opens deep external rotators.",
@@ -52,84 +52,69 @@ const PROG = {
     ],
   },
   days:{
-    monday:{name:"Abs + Mobility",focus:"Core",reps:"10-15",
-      warmup:{cardio:"5 min bike",note:"The session itself is your warm-up. Stepper to start, then straight into programmed work.",moves:[]},
-      exercises:[
-        {id:"cable-crunch",name:"Cable Crunch",sets:3,rr:[10,15],rest:60,sw:70,inc:5,unit:"lbs",notes:"Push for 75 at 3×15",cue:"Crunch ribs toward hips, don't pull with arms"},
-        {id:"hanging-leg-raise",name:"Hanging Leg Raise",sets:3,rr:[10,15],rest:60,sw:0,inc:0,unit:"BW",notes:"Control negative",cue:"Posterior pelvic tilt at top, curl pelvis up"},
-        {id:"pallof-press",name:"Pallof Press",sets:2,rr:[10,10],rest:60,sw:25,inc:5,unit:"lbs",notes:"Per side",cue:"Lock hips square, resist rotation through obliques"},
-      ]},
-    tuesday:{name:"Chest Heavy Upper A",focus:"Strength",reps:"5-8",
+    monday:{name:"Upper A — Strength",focus:"Strength",reps:"5-8",
       warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"cable-fly",name:"Cable Fly",sets:3,rr:[12,15],rest:60,sw:10,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2. Cap 25 lbs/side",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
-        {id:"smith-flat-bench",name:"Smith Flat Bench (Wide Grip)",sets:3,rr:[5,8],rest:150,sw:135,inc:5,unit:"lbs",notes:"Primary press",cue:"Retract scapula, drive through chest not shoulders"},
-        {id:"seated-row",name:"Seated Row Machine",sets:3,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
-        {id:"smith-ohp",name:"Smith OHP",sets:3,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Adjust wk 2",cue:"Brace core tight, press straight overhead not forward"},
-        {id:"lat-pulldown",name:"Lat Pulldown",sets:3,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
-        {id:"converging-chest-press",name:"Converging Chest Press",sets:2,rr:[8,10],rest:90,sw:140,inc:5,unit:"lbs",notes:"Last set to failure",cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+        {id:"converging-chest-press",name:"Converging Chest Press",sets:2,rr:[5,8],rest:150,sw:140,inc:5,unit:"lbs",notes:"Primary press",cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
+        {id:"smith-ohp",name:"Smith OHP",sets:2,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Brace hard",cue:"Brace core tight, press straight overhead not forward"},
+        {id:"lat-pulldown",name:"Lat Pulldown",sets:2,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
       ]},
-    wednesday:{name:"Lower A",focus:"Strength",reps:"5-8",
+    tuesday:{name:"Lower A — Strength",focus:"Strength",reps:"5-8",
       warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
-        {id:"rdl",name:"Romanian Deadlift",sets:3,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
-        {id:"hack-squat-a",name:"Hack Squat",sets:3,rr:[5,8],rest:120,sw:180,inc:10,unit:"lbs",notes:"Full depth",cue:"Knees track over toes, stay upright through core"},
-        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:3,rr:[5,8],rest:90,sw:120,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
-        {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
+        {id:"front-squat",name:"Front Squat (BB)",sets:2,rr:[5,8],rest:180,sw:135,inc:5,unit:"lbs",notes:"Keep elbows high",cue:"Elbows up, sit between legs, drive out of hole"},
+        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
+        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"Full depth, drive through whole foot not just toes"},
+        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
+        {id:"standing-calf",name:"Standing Calf Raise",sets:2,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
-    thursday:{name:"Chest Heavy Upper B",focus:"Hypertrophy",reps:"10-12",
+    wednesday:{name:"Mobility + Arms",focus:"Core",reps:"10-15",
+      warmup:{cardio:"5 min bike",note:"Mobility block first, then arms.",moves:[]},
+      exercises:[
+        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
+        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Full stretch at bottom",cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
+        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:60,sw:30,inc:5,unit:"lbs",notes:"Squeeze brachialis",cue:"Neutral grip, keep elbows pinned, squeeze at top"},
+        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Lock out fully",cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
+        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:60,sw:40,inc:5,unit:"lbs",notes:"Forearm focus",cue:"Overhand grip, slow controlled curl, feel forearms burn"},
+        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:60,sw:20,inc:5,unit:"lbs",notes:"Full ROM",cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
+      ]},
+    thursday:{name:"Upper B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
       warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:3,rr:[12,15],rest:60,sw:10,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2. Cap 25 lbs/side",cue:"Drive from low to high, feel upper chest, squeeze at top"},
-        {id:"smith-incline",name:"Smith Incline Press (Wide Grip)",sets:3,rr:[10,12],rest:90,sw:105,inc:5,unit:"lbs",notes:"30-45°",cue:"Feel upper chest stretch at bottom, squeeze at top"},
-        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:3,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
-        {id:"lateral-raise",name:"Cable Lateral Raise",sets:3,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Elbows above wrists, pour water out of a pitcher"},
-        {id:"reverse-fly",name:"Reverse Fly",sets:3,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
-        {id:"incline-db-curl",name:"Incline DB Curl",sets:3,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
+        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2",cue:"Drive from low to high, feel upper chest, squeeze at top"},
+        {id:"db-incline-press",name:"DB Incline Press",sets:2,rr:[10,12],rest:90,sw:40,inc:5,unit:"lbs/hand",notes:"30-45° bench",cue:"Feel upper chest stretch at bottom, drive up and squeeze"},
+        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:2,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
+        {id:"lateral-raise",name:"Cable Lateral Raise",sets:2,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Elbows above wrists, pour water out of a pitcher"},
+        {id:"reverse-fly",name:"Reverse Fly",sets:2,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
       ]},
-    friday:{name:"Lower B",focus:"Hypertrophy",reps:"10-12",
+    friday:{name:"Lower B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
       warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"hack-squat-b",name:"Hack Squat",sets:3,rr:[10,12],rest:120,sw:140,inc:10,unit:"lbs",notes:"Or LP 300-320",cue:"Slow descent, drive through heels on the way up"},
-        {id:"walking-lunges",name:"Walking Lunges DB",sets:3,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Long stride, back knee kisses floor, front knee stacks"},
-        {id:"sldl",name:"Stiff-Leg Deadlift",sets:3,rr:[10,12],rest:90,sw:95,inc:10,unit:"lbs",notes:"Start at 95",cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
-        {id:"leg-extension",name:"Leg Extension",sets:3,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Lock out at top, squeeze quad hard for 1 second"},
-        {id:"hip-thrust",name:"Hip Thrust BB",sets:3,rr:[10,12],rest:90,sw:160,inc:10,unit:"lbs",notes:"1s hold top",cue:"Drive through heels, squeeze glutes at lockout, chin tucked"},
-        {id:"seated-calf",name:"Seated Calf Raise",sets:3,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
+        {id:"leg-press",name:"Leg Press",sets:2,rr:[10,12],rest:120,sw:300,inc:10,unit:"lbs",notes:"High reps",cue:"Full depth, drive through whole foot not just toes"},
+        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Rear foot elevated, drop back knee straight down, drive up through front heel"},
+        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[10,12],rest:120,sw:125,inc:10,unit:"lbs",notes:"Higher reps",cue:"Push hips back like closing a car door, bar stays on legs"},
+        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[10,12],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
+        {id:"leg-extension",name:"Leg Extension",sets:2,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Lock out at top, squeeze quad hard for 1 second"},
+        {id:"seated-calf",name:"Seated Calf Raise",sets:2,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
       ]},
   },
-  variants:{
-    wednesday:{
-      "back-protected":{name:"Lower A (Back-Protected)",focus:"Strength",reps:"5-8",
-        warmup:{cardio:"5 min bike (easy pace)",moves:[
-          {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
-          {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
-          {name:"QL Side Stretch",rx:"20s per side"},
-        ],ramp:"1-2 ramp-up sets on your first exercise"},
-        exercises:[
-          {id:"leg-press",name:"Leg Press",sets:3,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Then 370-380",cue:"Full depth, drive through whole foot not just toes"},
-          {id:"leg-extension-bp",name:"Leg Extension",sets:3,rr:[5,8],rest:90,sw:150,inc:5,unit:"lbs",notes:"Full squeeze at top",cue:"Lock out at top, squeeze quad hard for 1 second"},
-          {id:"lying-leg-curl",name:"Lying Leg Curl",sets:3,rr:[5,8],rest:90,sw:120,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
-          {id:"cable-pull-through",name:"Cable Pull-Through",sets:3,rr:[10,12],rest:90,sw:70,inc:5,unit:"lbs",notes:"Hinge pattern, no spinal load",cue:"Push hips back, squeeze glutes at top, arms are just hooks"},
-          {id:"standing-calf",name:"Standing Calf Raise",sets:3,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
-        ]},
-    },
-  },
+  variants:{},
 };
 const WU=w=>{if(!w||w<=0)return[];const s=[];
   if(w>=95)s.push({w:Math.round(w*.5/5)*5,r:10,l:"50%"});
@@ -139,7 +124,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:2430,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
+const DEFAULTS={calories:1800,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -282,7 +267,7 @@ const loadFromSB=async()=>{
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
-    if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,mondayCal:s.mondayCal||s.monday_cal,trainingCal:s.trainingCal||s.training_cal,weekendCal:s.weekendCal||s.weekend_cal};}
+    if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700};}
     if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
@@ -400,21 +385,21 @@ const fmtElapsed=(secs)=>{
 const getDayType=(dateStr,travelDays)=>{
   if(travelDays?.[dateStr])return"travel";
   const day=dw(dateStr);
-  if(day==="monday")return"monday";
-  if(["tuesday","wednesday","thursday","friday"].includes(day))return"training";
+  if(day==="wednesday")return"wednesday";
+  if(["monday","tuesday","thursday","friday"].includes(day))return"training";
   return"weekend";
 };
 const getDayCalTarget=(dateStr,settings,travelDays)=>{
   const dt=getDayType(dateStr,travelDays);
-  if(dt==="travel")return settings?.trainingCal||2600;
-  if(dt==="monday")return settings?.mondayCal||1300;
-  if(dt==="training")return settings?.trainingCal||2600;
-  return settings?.weekendCal||2500;
+  if(dt==="travel")return settings?.trainingCal||1800;
+  if(dt==="wednesday")return settings?.wednesdayCal||900;
+  if(dt==="training")return settings?.trainingCal||1800;
+  return settings?.weekendCal||1700;
 };
 const getDayProTarget=(dateStr,settings,travelDays)=>{
   const dt=getDayType(dateStr,travelDays);
   if(dt==="travel")return settings?.protein||200;
-  if(dt==="monday")return 120;
+  if(dt==="wednesday")return 120;
   if(dt==="training")return settings?.protein||200;
   return 150;
 };
@@ -1896,7 +1881,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const nd=JSON.parse(JSON.stringify(data));
     actions.forEach(c=>{
       try{
-        if(c.type==="settings"&&c.field&&['calories','protein','water','steps','sleep','fiber','trainingCal','mondayCal','weekendCal','trainingPro','mondayPro','weekendPro'].includes(c.field)){
+        if(c.type==="settings"&&c.field&&['calories','protein','water','steps','sleep','fiber','trainingCal','wednesdayCal','weekendCal','trainingPro','mondayPro','weekendPro'].includes(c.field)){
           nd.settings={...nd.settings,[c.field]:c.value};
           if(addToast)addToast(`${c.field}: updated to ${c.value}`,"success");
         }else if(c.type==="exercise"&&c.action==="update"&&c.exerciseId){
@@ -2686,9 +2671,9 @@ const Nutrition=({data,setData})=>{
           const ratio=newCal/(st.calories||2430);
           const nd={...data,settings:{...st,
             calories:Math.round(newCal),
-            trainingCal:Math.round((st.trainingCal||2600)*ratio),
-            weekendCal:Math.round((st.weekendCal||2500)*ratio),
-            mondayCal:Math.round((st.mondayCal||1300)*ratio)
+            trainingCal:Math.round((st.trainingCal||1800)*ratio),
+            wednesdayCal:Math.round((st.wednesdayCal||900)*ratio),
+            weekendCal:Math.round((st.weekendCal||1700)*ratio)
           }};
           setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
         }} style={{marginTop:8}}>Apply to Settings</B>
@@ -3103,7 +3088,7 @@ const Settings=({data,setData})=>{
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+st.steps,sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    mondayCal:""+(st.mondayCal||1300),trainingCal:""+(st.trainingCal||2600),weekendCal:""+(st.weekendCal||2500),syncToken:st.syncToken||""});
+    trainingCal:""+(st.trainingCal||1800),wednesdayCal:""+(st.wednesdayCal||900),weekendCal:""+(st.weekendCal||1700),syncToken:st.syncToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const isTravel=!!(data.travelDays||{})[t];
@@ -3145,7 +3130,7 @@ const Settings=({data,setData})=>{
   const saveSettings=()=>{
     const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      mondayCal:+f.mondayCal||1300,trainingCal:+f.trainingCal||2600,weekendCal:+f.weekendCal||2500,syncToken:f.syncToken||"",
+      trainingCal:+f.trainingCal||1800,wednesdayCal:+f.wednesdayCal||900,weekendCal:+f.weekendCal||1700,syncToken:f.syncToken||"",
       notifications:data.settings?.notifications||DEFAULTS.notifications}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
@@ -3163,7 +3148,7 @@ const Settings=({data,setData})=>{
     <X style={{borderLeft:`3px solid ${C.p}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="2430"/></div>
+        <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1800"/></div>
         <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="200"/></div>
         <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
         <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="10000"/></div>
@@ -3172,9 +3157,9 @@ const Settings=({data,setData})=>{
       </div>
       <div style={{fontSize:12,fontWeight:700,color:C.t2,marginTop:10,marginBottom:4}}>Day-Type Calorie Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-        <div><L>Monday</L><N value={f.mondayCal} onChange={v=>setF({...f,mondayCal:v})} placeholder="1300"/></div>
-        <div><L>Training</L><N value={f.trainingCal} onChange={v=>setF({...f,trainingCal:v})} placeholder="2600"/></div>
-        <div><L>Weekend</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="2500"/></div>
+        <div><L>Training</L><N value={f.trainingCal} onChange={v=>setF({...f,trainingCal:v})} placeholder="1800"/></div>
+        <div><L>Wednesday</L><N value={f.wednesdayCal} onChange={v=>setF({...f,wednesdayCal:v})} placeholder="900"/></div>
+        <div><L>Weekend</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="1700"/></div>
       </div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
     </X>

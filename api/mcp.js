@@ -12,60 +12,61 @@ const sbHeaders = {
 };
 
 // ── Constants ──
-const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "mondayCal", "trainingCal", "weekendCal"];
+const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "trainingCal", "wednesdayCal", "weekendCal"];
 
 const PROGRAM_SNAPSHOT = {
-  settings: { calories: 2430, protein: 200, water: 128, steps: 10000, sleep: 7.5, fiber: 30 },
+  settings: { calories: 1800, protein: 200, water: 128, steps: 10000, sleep: 7.5, fiber: 30, trainingCal: 1800, wednesdayCal: 900, weekendCal: 1700 },
   days: {
     monday: {
-      name: "Abs + Mobility", focus: "Core",
+      name: "Upper A — Strength", focus: "Strength",
       exercises: [
-        { id: "cable-crunch", name: "Cable Crunch", sets: 3, rr: [10, 15], sw: 70, unit: "lbs" },
-        { id: "hanging-leg-raise", name: "Hanging Leg Raise", sets: 3, rr: [10, 15], sw: 0, unit: "BW" },
-        { id: "pallof-press", name: "Pallof Press", sets: 2, rr: [10, 10], sw: 25, unit: "lbs" },
+        { id: "cable-fly", name: "Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
+        { id: "converging-chest-press", name: "Converging Chest Press", sets: 2, rr: [5, 8], sw: 140, unit: "lbs" },
+        { id: "seated-row", name: "Seated Row Machine", sets: 2, rr: [5, 8], sw: 160, unit: "lbs" },
+        { id: "smith-ohp", name: "Smith OHP", sets: 2, rr: [5, 8], sw: 85, unit: "lbs" },
+        { id: "lat-pulldown", name: "Lat Pulldown", sets: 2, rr: [5, 8], sw: 145, unit: "lbs" },
       ]
     },
     tuesday: {
-      name: "Upper A — Strength", focus: "Strength",
+      name: "Lower A — Strength", focus: "Strength",
       exercises: [
-        { id: "smith-flat-bench", name: "Smith Flat Bench", sets: 3, rr: [5, 8], sw: 135, unit: "lbs" },
-        { id: "seated-row", name: "Seated Row Machine", sets: 3, rr: [5, 8], sw: 160, unit: "lbs" },
-        { id: "smith-ohp", name: "Smith OHP", sets: 3, rr: [5, 8], sw: 85, unit: "lbs" },
-        { id: "lat-pulldown", name: "Lat Pulldown", sets: 3, rr: [5, 8], sw: 145, unit: "lbs" },
-        { id: "preacher-curl", name: "Preacher Curl Machine", sets: 3, rr: [5, 8], sw: 70, unit: "lbs" },
-        { id: "tricep-dips", name: "Tricep Dips", sets: 3, rr: [5, 8], sw: 0, unit: "BW" },
+        { id: "front-squat", name: "Front Squat (BB)", sets: 2, rr: [5, 8], sw: 135, unit: "lbs" },
+        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [5, 8], sw: 125, unit: "lbs" },
+        { id: "leg-press", name: "Leg Press", sets: 2, rr: [5, 8], sw: 360, unit: "lbs" },
+        { id: "lying-leg-curl", name: "Lying Leg Curl", sets: 2, rr: [5, 8], sw: 130, unit: "lbs" },
+        { id: "standing-calf", name: "Standing Calf Raise", sets: 2, rr: [5, 8], sw: 290, unit: "lbs" },
       ]
     },
     wednesday: {
-      name: "Lower A — Strength", focus: "Strength",
+      name: "Mobility + Arms", focus: "Core",
       exercises: [
-        { id: "leg-press", name: "Leg Press", sets: 3, rr: [5, 8], sw: 360, unit: "lbs" },
-        { id: "rdl", name: "Romanian Deadlift", sets: 3, rr: [5, 8], sw: 125, unit: "lbs" },
-        { id: "hack-squat-a", name: "Hack Squat", sets: 3, rr: [5, 8], sw: 180, unit: "lbs" },
-        { id: "seated-leg-curl", name: "Seated Leg Curl", sets: 3, rr: [5, 8], sw: 130, unit: "lbs" },
-        { id: "standing-calf", name: "Standing Calf Raise", sets: 3, rr: [5, 8], sw: 290, unit: "lbs" },
+        { id: "incline-db-curl", name: "Incline DB Curl", sets: 2, rr: [10, 12], sw: 15, unit: "lbs" },
+        { id: "oh-tricep-ext", name: "Overhead Tricep Extension", sets: 2, rr: [10, 12], sw: 40, unit: "lbs" },
+        { id: "cable-hammer-curl", name: "Cable Hammer Curl (Rope)", sets: 2, rr: [10, 12], sw: 30, unit: "lbs" },
+        { id: "tricep-pushdown", name: "Tricep Pushdown", sets: 2, rr: [10, 12], sw: 50, unit: "lbs" },
+        { id: "reverse-curl", name: "Reverse Curl", sets: 2, rr: [12, 15], sw: 40, unit: "lbs" },
+        { id: "wrist-curl", name: "Wrist Curl", sets: 2, rr: [12, 15], sw: 20, unit: "lbs" },
       ]
     },
     thursday: {
       name: "Upper B — Hypertrophy", focus: "Hypertrophy",
       exercises: [
-        { id: "smith-incline", name: "Smith Incline Press", sets: 3, rr: [10, 12], sw: 105, unit: "lbs" },
-        { id: "overhand-cable-row", name: "Overhand Cable Row", sets: 3, rr: [10, 12], sw: 110, unit: "lbs" },
-        { id: "lateral-raise", name: "Cable Lateral Raise", sets: 3, rr: [10, 12], sw: 12.5, unit: "lbs" },
-        { id: "reverse-fly", name: "Reverse Fly", sets: 3, rr: [10, 12], sw: 25, unit: "lbs" },
-        { id: "incline-db-curl", name: "Incline DB Curl", sets: 3, rr: [10, 12], sw: 15, unit: "lbs" },
-        { id: "oh-tricep-ext", name: "OH Cable Rope Ext", sets: 3, rr: [10, 12], sw: 50, unit: "lbs" },
+        { id: "low-high-cable-fly", name: "Low-to-High Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
+        { id: "db-incline-press", name: "DB Incline Press", sets: 2, rr: [10, 12], sw: 40, unit: "lbs/hand" },
+        { id: "overhand-cable-row", name: "Overhand Cable Row", sets: 2, rr: [10, 12], sw: 110, unit: "lbs" },
+        { id: "lateral-raise", name: "Cable Lateral Raise", sets: 2, rr: [10, 12], sw: 12.5, unit: "lbs" },
+        { id: "reverse-fly", name: "Reverse Fly", sets: 2, rr: [10, 12], sw: 25, unit: "lbs" },
       ]
     },
     friday: {
       name: "Lower B — Hypertrophy", focus: "Hypertrophy",
       exercises: [
-        { id: "hack-squat-b", name: "Hack Squat", sets: 3, rr: [10, 12], sw: 140, unit: "lbs" },
-        { id: "walking-lunges", name: "Walking Lunges DB", sets: 3, rr: [10, 12], sw: 25, unit: "lbs/hand" },
-        { id: "sldl", name: "Stiff-Leg Deadlift", sets: 3, rr: [10, 12], sw: 95, unit: "lbs" },
-        { id: "leg-extension", name: "Leg Extension", sets: 3, rr: [10, 12], sw: 120, unit: "lbs" },
-        { id: "hip-thrust", name: "Hip Thrust BB", sets: 3, rr: [10, 12], sw: 160, unit: "lbs" },
-        { id: "seated-calf", name: "Seated Calf Raise", sets: 3, rr: [10, 12], sw: 90, unit: "lbs" },
+        { id: "leg-press", name: "Leg Press", sets: 2, rr: [10, 12], sw: 300, unit: "lbs" },
+        { id: "bulgarian-split-squat", name: "Bulgarian Split Squat (DB)", sets: 2, rr: [10, 12], sw: 25, unit: "lbs/hand" },
+        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [10, 12], sw: 125, unit: "lbs" },
+        { id: "lying-leg-curl", name: "Lying Leg Curl", sets: 2, rr: [10, 12], sw: 130, unit: "lbs" },
+        { id: "leg-extension", name: "Leg Extension", sets: 2, rr: [10, 12], sw: 120, unit: "lbs" },
+        { id: "seated-calf", name: "Seated Calf Raise", sets: 2, rr: [10, 12], sw: 90, unit: "lbs" },
       ]
     }
   }
@@ -123,7 +124,7 @@ const mcpHandler = createMcpHandler(
       "update_settings",
       {
         title: "Update Settings",
-        description: "Update a health/nutrition target. Valid fields: calories, protein (g), water (oz), steps, sleep (hrs), fiber (g), mondayCal, trainingCal, weekendCal. Changes apply on next app load.",
+        description: "Update a health/nutrition target. Valid fields: calories, protein (g), water (oz), steps, sleep (hrs), fiber (g), trainingCal (Mon-Fri except Wed), wednesdayCal (fast day), weekendCal. Changes apply on next app load.",
         inputSchema: z.object({
           field: z.enum(SETTINGS_FIELDS),
           value: z.number().describe("New target value"),
