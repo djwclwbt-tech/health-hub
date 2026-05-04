@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       "Prefer": "resolution=merge-duplicates",
     };
 
-    const r = await fetch(`${SB_URL}/rest/v1/steps`, {
+    const r = await fetch(`${SB_URL}/rest/v1/steps?on_conflict=date`, {
       method: "POST",
       headers,
       body: JSON.stringify({ date: resolvedDate, value: stepCount }),
