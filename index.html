@@ -332,7 +332,7 @@ const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
   settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
 
-// Historical MFP data seed for TDEE bootstrap
+// Historical data seed for TDEE bootstrap
 const SEED_DATA=[
   {date:"2026-03-09",cal:1986,protein:172,carbs:152,fat:55,weight:188.7},
   {date:"2026-03-10",cal:1844,protein:176,carbs:175,fat:49,weight:188.2},
@@ -2557,7 +2557,7 @@ const Nutrition=({data,setData})=>{
             {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,textTransform:"uppercase",
               color:meal.source==="mfp"?C.g:C.t3,
               background:meal.source==="mfp"?C.gl:"transparent",
-            }}>{meal.source==="mfp"?"MFP":meal.source}</span>}
+            }}>{meal.source==="mfp"?"Sync":meal.source}</span>}
             {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:10}}>{meal.mealType}</span>}
           </div>
         </div>
@@ -2803,7 +2803,7 @@ const Nutrition=({data,setData})=>{
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>{m.source==="mfp"?"MFP":"CRON"}</span>}
+                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
               </div>
                 <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
@@ -3269,10 +3269,10 @@ const Settings=({data,setData})=>{
       </X>
     </S>
 
-    {/* ═══ MFP SYNC ═══ */}
+    {/* ═══ NUTRITION SYNC ═══ */}
     <X style={{borderLeft:`3px solid ${C.v}`}}>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>MFP Sync (via Apple Health)</div>
-      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Auto-sync nutrition from MyFitnessPal via an Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Nutrition Sync (via Apple Health)</div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Auto-sync nutrition from Cronometer via Apple Health Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
       <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
         style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:"#fff",color:C.t,boxSizing:"border-box"}}/></div>
       <div style={{marginTop:8,padding:8,background:C.bl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6}}>

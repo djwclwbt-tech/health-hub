@@ -112,12 +112,33 @@ const mcpHandler = createMcpHandler(
       "get_program",
       {
         title: "Get Program",
-        description: "View the current workout program structure — all days, exercises, IDs, weights, and settings. Call this before making changes so you know what exists.",
+        description: "View the current workout program structure — all days, exercises, IDs, weights, settings, and live progression data (currentWeight, lastReps, lastDate, progressed, PR). Call this before making changes so you know what exists.",
         inputSchema: z.object({}),
       },
-      async () => ({
-        content: [{ type: "text", text: JSON.stringify(PROGRAM_SNAPSHOT, null, 2) }],
-      })
+      async () => {
+        // Fetch live progression data from Supabase
+        let progression = {};
+        try {
+          const res = await fetch(`${SB_URL}/rest/v1/progression?select=*`, {
+            headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+          });
+          if (res.ok) {
+            const rows = await res.json();
+            for (const r of rows) {
+              progression[r.exercise_id] = {
+                currentWeight: r.current_weight,
+                lastReps: r.last_reps,
+                lastDate: r.last_date,
+                progressed: r.progressed,
+                pr: r.pr,
+              };
+            }
+          }
+        } catch (e) { /* progression fetch failed, return snapshot without it */ }
+
+        const result = { ...PROGRAM_SNAPSHOT, progression };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
     );
 
     server.registerTool(
