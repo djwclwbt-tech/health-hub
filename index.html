@@ -461,25 +461,24 @@ const repairDeloadProgression=(d)=>{const allDays={...PROG.days,...(d.program||{
 
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
+  // Cut mode: flag when weight DROPS on same lift for 2 consecutive sessions
   const days=programDays||PROG.days;
   const stalls=[];
+  const programExIds=new Set(Object.values(days).flatMap(d=>d.exercises).map(e=>e.id));
   Object.entries(prog).forEach(([id,p])=>{
     if(!p.lastDate)return;
-    const dates=Object.entries(wk).filter(([_,w])=>w.exercises?.some(e=>e.id===id)).map(([d])=>d).sort().reverse();
-    if(dates.length<3)return;
-    const recentDates=dates.slice(0,3);
-    const allNotProgressed=recentDates.every(d=>{
-      const wkEntry=wk[d];
-      const ex=wkEntry?.exercises?.find(e=>e.id===id);
-      if(!ex)return false;
-      const pe=Object.values(days).flatMap(day=>day.exercises).find(e=>e.id===id);
-      if(!pe)return false;
-      const cs=ex.sets?.filter(s=>s.done)||[];
-      return!(cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]));
-    });
-    if(allNotProgressed){
+    if(!programExIds.has(id))return;
+    const sessions=Object.entries(wk)
+      .filter(([_,w])=>w.exercises?.some(e=>e.id===id))
+      .map(([d,w])=>{const ex=w.exercises.find(e=>e.id===id);const cs=ex?.sets?.filter(s=>s.done&&s.weight>0)||[];return cs.length?{date:d,weight:Math.max(...cs.map(s=>s.weight))}:null;})
+      .filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date));
+    if(sessions.length<3)return;
+    // Check if last 2 sessions both dropped weight vs the session before them
+    const baseline=sessions[2].weight;
+    if(sessions[0].weight<baseline&&sessions[1].weight<baseline){
       const exDef=Object.values(days).flatMap(d=>d.exercises).find(e=>e.id===id);
-      stalls.push({id,name:exDef?.name||id,weeks:recentDates.length,currentWeight:p.currentWeight});
+      const drop=baseline-sessions[0].weight;
+      stalls.push({id,name:exDef?.name||id,weeks:2,currentWeight:sessions[0].weight,drop});
     }
   });
   return stalls;
@@ -1756,6 +1755,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     }else{localStorage.removeItem("dhub6_mob_active");}
   }catch{}},[]); // restore in-progress mobility on mount
 
+  const [cardioTimerLeft,setCardioTimerLeft]=useState(0);
+  const [cardioTimerRunning,setCardioTimerRunning]=useState(false);
+  const [cardioTimerDone,setCardioTimerDone]=useState(false);
+  const cardioIvRef=useRef(null);
+  const cardioEndRef=useRef(0);
+  const getPostLiftCardio=(day)=>{if(day==="monday"||day==="thursday")return{type:"Stairstepper",duration:20};if(day==="tuesday"||day==="friday")return{type:"Incline Walk (10-15%)",duration:20};if(day==="wednesday")return{type:"Stairstepper (optional)",duration:20};return null;};
+  const startCardioTimer=(dur)=>{const end=Date.now()+dur*60*1000;cardioEndRef.current=end;setCardioTimerLeft(dur*60);setCardioTimerRunning(true);setCardioTimerDone(false);
+    cardioIvRef.current=setInterval(()=>{const left=Math.round((cardioEndRef.current-Date.now())/1000);if(left<=0){clearInterval(cardioIvRef.current);setCardioTimerLeft(0);setCardioTimerRunning(false);setCardioTimerDone(true);if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);}else{setCardioTimerLeft(left);}},500);};
+  const stopCardioTimer=()=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);setCardioTimerRunning(false);setCardioTimerLeft(0);cardioEndRef.current=0;};
+
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
   const [aiQ,setAiQ]=useState("");
@@ -1863,12 +1872,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
     setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];const aid=ex.swappedTo?ex.swappedTo.id:pe?.id;if(pe&&aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowFinishConfirm(false);
+    stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
   };
 
   const cancelWorkout=()=>{
     setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-    setShowCancelConfirm(false);
+    stopCardioTimer();setCardioTimerDone(false);setShowCancelConfirm(false);
   };
 
 
@@ -2052,7 +2061,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const swapOpts=SWAP_MAP[wkEx.id]||[];
         const anySetsLogged=wkEx.sets.some(s=>s.done);
         const prevLift=(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(s=>s.done&&(s.weight>0||s.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
-        return(<X key={ex.id} style={{padding:10}}>
+        return(<X key={ex.id+"-"+ei} style={{padding:10}}>
           <div style={{marginBottom:6}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
@@ -2097,6 +2106,25 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>);
       })}
 
+
+      {(()=>{const plc=getPostLiftCardio(workout.day);if(!plc)return null;
+        return(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.type}</div>
+              <div style={{fontSize:12,color:C.t3}}>{plc.duration} min · Zone 2 post-lift cardio</div>
+            </div>
+            {cardioTimerDone?<span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span>
+              :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
+              :<B small onClick={()=>startCardioTimer(plc.duration)} color={C.a}>Start</B>}
+          </div>
+          {cardioTimerRunning&&(<div style={{marginTop:10,textAlign:"center"}}>
+            <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:2}}>remaining</div>
+          </div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete!</div>)}
+        </X>);
+      })()}
 
       <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
@@ -2270,12 +2298,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     {/* ═══ STALL WARNINGS ═══ */}
     {(()=>{const stalls=getStalls(data.prog,data.wk,data.program);const weekAvg=getWeeklyRecoveryAvg(data.rec);
-      return stalls.length>0?(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Stalled Lifts (3+ sessions)</div>
+      return stalls.length>0?(<X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Strength Drop (2 sessions)</div>
         {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:3}}>
-          <span style={{fontWeight:600,color:C.t}}>{s.name}</span> @ {s.currentWeight} lbs — {weekAvg&&weekAvg>=65?
-            <span style={{color:C.g}}>Recovery green — swap for a variation</span>:
-            <span style={{color:C.a}}>Fix recovery first</span>}
+          <span style={{fontWeight:600,color:C.t}}>{s.name}</span> dropped {s.drop} lbs → {s.currentWeight} lbs — {weekAvg&&weekAvg>=65?
+            <span style={{color:C.a}}>Check sleep & food</span>:
+            <span style={{color:C.r}}>Recovery low — reduce cardio first</span>}
         </div>))}
       </X>):null;})()}
 
