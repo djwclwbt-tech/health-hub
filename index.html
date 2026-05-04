@@ -135,7 +135,8 @@ const sbh={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Be
 const sb={
   async upsert(table,data,conflict="date"){
     try{
-      const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
+      const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
+      const r=await fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
         body:JSON.stringify(data)});
       return r.ok;
     }catch{return false;}
