@@ -3500,7 +3500,7 @@ window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return seedHistorical(raw?migrate(raw):bl());});
   const [workout,setWorkoutRaw]=useState(()=>{try{const w=localStorage.getItem("dhub6_workout");return w?JSON.parse(w):null;}catch{return null;}});
-  const setWorkout=(v)=>{setWorkoutRaw(v);try{if(v)localStorage.setItem("dhub6_workout",JSON.stringify(v));else localStorage.removeItem("dhub6_workout");}catch{}};
+  const setWorkout=(v)=>{setWorkoutRaw(prev=>{const next=typeof v==="function"?v(prev):v;try{if(next)localStorage.setItem("dhub6_workout",JSON.stringify(next));else localStorage.removeItem("dhub6_workout");}catch{}return next;});};
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
   const [toasts,setToasts]=useState([]);
