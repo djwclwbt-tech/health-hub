@@ -121,6 +121,109 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
   if(w>=135)s.push({w:Math.round(w*.7/5)*5,r:5,l:"70%"});
   if(w>=155)s.push({w:Math.round(w*.85/5)*5,r:3,l:"85%"});return s;};
 
+// Progression is tracked by lift + rep range so strength and hypertrophy slots don't corrupt each other.
+const repTrack=rr=>(rr&&rr.length===2)?`${rr[0]}-${rr[1]}`:"default";
+const progKey=(ex,slot)=>ex?.progKey||`${ex?.id}__${repTrack((slot||ex)?.rr)}`;
+const legacyAmbiguousIds=new Set(["leg-press","rdl","lying-leg-curl"]);
+const saneSet=s=>s&&s.done&&Number(s.reps)>0&&(Number(s.weight)>0||s.weight===0);
+const sameRepTrack=(a,b)=>repTrack(a)===repTrack(b);
+
+const EXERCISE_LIBRARY=[
+  // Chest fly / pre-exhaust
+  {id:"cable-fly",name:"Cable Fly",pattern:"chest-fly",region:"chest",sw:15,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+  {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",pattern:"chest-fly",region:"upper chest",sw:15,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
+  {id:"pec-deck",name:"Pec Deck",pattern:"chest-fly",region:"chest",sw:60,unit:"lbs",inc:5,cue:"Soft elbows, bring pads together with chest, slow return"},
+  {id:"db-fly",name:"DB Fly",pattern:"chest-fly",region:"chest",sw:15,unit:"lbs/hand",inc:2.5,cue:"Small elbow bend, deep stretch, stop before shoulder strain"},
+  // Chest press
+  {id:"converging-chest-press",name:"Converging Chest Press",pattern:"chest-press",region:"chest",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+  {id:"smith-flat-bench",name:"Smith Flat Bench",pattern:"chest-press",region:"chest",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
+  {id:"smith-incline",name:"Smith Incline Press",pattern:"chest-press",region:"upper chest",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
+  {id:"db-incline-press",name:"DB Incline Press",pattern:"chest-press",region:"upper chest",sw:40,unit:"lbs/hand",inc:5,cue:"30-45° bench, stretch under control, drive up and in"},
+  {id:"machine-chest-press",name:"Machine Chest Press",pattern:"chest-press",region:"chest",sw:100,unit:"lbs",inc:5,cue:"Set handles mid-chest, pause lightly, press without shrugging"},
+  // Rows / pulldowns
+  {id:"seated-row",name:"Seated Row Machine",pattern:"horizontal-pull",region:"mid-back",sw:160,unit:"lbs",inc:5,cue:"Pull elbows past torso, squeeze mid-back hard"},
+  {id:"overhand-cable-row",name:"Overhand Cable Row",pattern:"horizontal-pull",region:"upper back",sw:110,unit:"lbs",inc:5,cue:"Overhand grip hits upper back, pause and squeeze"},
+  {id:"dumbbell-row",name:"DB Row",pattern:"horizontal-pull",region:"lats",sw:60,unit:"lbs/hand",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
+  {id:"chest-supported-row",name:"Chest-Supported Row",pattern:"horizontal-pull",region:"mid-back",sw:70,unit:"lbs",inc:5,cue:"Chest pinned, pull elbows back, no body English"},
+  {id:"lat-pulldown",name:"Lat Pulldown",pattern:"vertical-pull",region:"lats",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
+  {id:"close-grip-pulldown",name:"Close-Grip Pulldown",pattern:"vertical-pull",region:"lats",sw:130,unit:"lbs",inc:5,cue:"Squeeze lats hard at bottom, full stretch at top"},
+  {id:"pull-ups",name:"Pull-ups",pattern:"vertical-pull",region:"lats",sw:0,unit:"BW",inc:0,cue:"Full hang, drive elbows down, chest tall"},
+  // Shoulders
+  {id:"smith-ohp",name:"Smith OHP",pattern:"vertical-press",region:"shoulders",sw:85,unit:"lbs",inc:5,cue:"Brace core tight, press straight overhead not forward"},
+  {id:"db-shoulder-press",name:"DB Shoulder Press",pattern:"vertical-press",region:"shoulders",sw:35,unit:"lbs/hand",inc:2.5,cue:"Press straight overhead, ribs down, control the bottom"},
+  {id:"machine-shoulder-press",name:"Machine Shoulder Press",pattern:"vertical-press",region:"shoulders",sw:70,unit:"lbs",inc:5,cue:"Seat low enough to press from chin height, don't shrug"},
+  {id:"lateral-raise",name:"Cable Lateral Raise",pattern:"lateral-delt",region:"side delts",sw:12.5,unit:"lbs",inc:2.5,cue:"Elbows above wrists, pour water out of a pitcher"},
+  {id:"db-lateral-raise",name:"DB Lateral Raise",pattern:"lateral-delt",region:"side delts",sw:15,unit:"lbs/hand",inc:2.5,cue:"Lead with elbows, slight forward lean, stop at shoulder height"},
+  {id:"reverse-fly",name:"Reverse Fly",pattern:"rear-delt",region:"rear delts",sw:25,unit:"lbs",inc:5,cue:"Pinch shoulder blades, lead with elbows not hands"},
+  {id:"face-pull",name:"Face Pull",pattern:"rear-delt",region:"rear delts",sw:40,unit:"lbs",inc:5,cue:"Pull to forehead, elbows high, rotate thumbs back"},
+  // Quads / squat patterns
+  {id:"front-squat",name:"Front Squat (BB)",pattern:"squat",region:"quads",sw:135,unit:"lbs",inc:5,cue:"Elbows up, sit between legs, drive out of hole"},
+  {id:"hack-squat",name:"Hack Squat",pattern:"squat",region:"quads",sw:180,unit:"lbs",inc:10,cue:"Knees track over toes, stay upright through core"},
+  {id:"leg-press",name:"Leg Press",pattern:"squat",region:"quads",sw:300,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
+  {id:"goblet-squat",name:"Goblet Squat (DB)",pattern:"squat",region:"quads",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
+  {id:"leg-extension",name:"Leg Extension",pattern:"knee-extension",region:"quads",sw:70,unit:"lbs",inc:5,cue:"Lock out at top, squeeze quad hard, slow eccentric"},
+  // Hip hinge / hamstrings
+  {id:"rdl",name:"Romanian Deadlift",pattern:"hinge",region:"hamstrings",sw:125,unit:"lbs",inc:10,cue:"Push hips back like closing a car door, bar stays on legs"},
+  {id:"sldl",name:"Stiff-Leg Deadlift",pattern:"hinge",region:"hamstrings",sw:95,unit:"lbs",inc:10,cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
+  {id:"cable-pull-through",name:"Cable Pull-Through",pattern:"hinge",region:"glutes/hamstrings",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are hooks"},
+  {id:"lying-leg-curl",name:"Lying Leg Curl",pattern:"leg-curl",region:"hamstrings",sw:90,unit:"lbs",inc:5,cue:"Drive heels toward glutes, squeeze hamstrings at peak"},
+  {id:"seated-leg-curl",name:"Seated Leg Curl",pattern:"leg-curl",region:"hamstrings",sw:90,unit:"lbs",inc:5,cue:"Pin hips down, curl smoothly, slow negative"},
+  // Calves / arms
+  {id:"standing-calf",name:"Standing Calf Raise",pattern:"calf",region:"calves",sw:180,unit:"lbs",inc:10,cue:"Full stretch at bottom, drive up on big toe"},
+  {id:"seated-calf",name:"Seated Calf Raise",pattern:"calf",region:"calves",sw:90,unit:"lbs",inc:5,cue:"Targets soleus, full stretch at bottom, slow 2s up"},
+  {id:"incline-db-curl",name:"Incline DB Curl",pattern:"biceps",region:"biceps",sw:15,unit:"lbs/hand",inc:2.5,cue:"Let arms hang fully stretched, don't swing"},
+  {id:"cable-curl",name:"Cable Curl",pattern:"biceps",region:"biceps",sw:35,unit:"lbs",inc:5,cue:"Keep elbows forward, squeeze at top"},
+  {id:"preacher-curl",name:"Preacher Curl",pattern:"biceps",region:"biceps",sw:40,unit:"lbs",inc:5,cue:"Full stretch at bottom, squeeze hard at top"},
+  {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",pattern:"brachialis",region:"arms",sw:30,unit:"lbs",inc:5,cue:"Neutral grip, keep elbows pinned, squeeze at top"},
+  {id:"db-hammer-curl",name:"DB Hammer Curl",pattern:"brachialis",region:"arms",sw:20,unit:"lbs/hand",inc:2.5,cue:"Thumbs up, no swing, control the negative"},
+  {id:"oh-tricep-ext",name:"Overhead Tricep Extension",pattern:"triceps",region:"triceps",sw:40,unit:"lbs",inc:5,cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
+  {id:"tricep-pushdown",name:"Tricep Pushdown",pattern:"triceps",region:"triceps",sw:50,unit:"lbs",inc:5,cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
+  {id:"reverse-curl",name:"Reverse Curl",pattern:"forearms",region:"forearms",sw:40,unit:"lbs",inc:5,cue:"Overhand grip, slow controlled curl, feel forearms burn"},
+  {id:"wrist-curl",name:"Wrist Curl",pattern:"forearms",region:"forearms",sw:20,unit:"lbs",inc:5,cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
+];
+const exLibById=Object.fromEntries(EXERCISE_LIBRARY.map(e=>[e.id,e]));
+const weightCap=ex=>{
+  const p=(exLibById[ex?.id]?.pattern||ex?.pattern||"");
+  const unit=ex?.unit||exLibById[ex?.id]?.unit||"";
+  if(unit==="BW")return 0;
+  if(["chest-fly","lateral-delt","rear-delt"].includes(p))return unit.includes("side")||unit.includes("hand")?60:120;
+  if(["biceps","brachialis","triceps","forearms"].includes(p))return unit.includes("hand")?70:120;
+  if(["chest-press"].includes(p))return unit.includes("hand")?100:350;
+  if(["horizontal-pull","vertical-pull"].includes(p))return unit.includes("hand")?120:300;
+  if(["vertical-press"].includes(p))return unit.includes("hand")?100:200;
+  if(["leg-curl","knee-extension"].includes(p))return 220;
+  if(["calf"].includes(p))return 450;
+  if(["squat"].includes(p))return ex?.id==="leg-press"?700:405;
+  if(["hinge"].includes(p))return 405;
+  return 350;
+};
+const saneWeight=(ex,w)=>w==null||Number(w)<=weightCap(ex);
+const relatedPatterns={
+  "chest-press":["chest-press"],"chest-fly":["chest-fly","chest-press"],
+  "horizontal-pull":["horizontal-pull","vertical-pull"],"vertical-pull":["vertical-pull","horizontal-pull"],
+  "vertical-press":["vertical-press"],"lateral-delt":["lateral-delt","rear-delt"],"rear-delt":["rear-delt","horizontal-pull"],
+  "squat":["squat","knee-extension"],"knee-extension":["knee-extension","squat"],"hinge":["hinge","leg-curl"],"leg-curl":["leg-curl","hinge"],
+  "calf":["calf"],"biceps":["biceps","brachialis"],"brachialis":["brachialis","biceps"],"triceps":["triceps"],"forearms":["forearms","brachialis"]
+};
+
+const CARDIO_PRESETS=[
+  {type:"stairs",label:"Stairs",duration:20,intensity:"zone2"},
+  {type:"incline-walk",label:"Incline Walk",duration:20,intensity:"zone2"},
+  {type:"peloton",label:"Peloton",duration:35,intensity:"zone2"},
+  {type:"walk",label:"Walk",duration:30,intensity:"easy"},
+  {type:"bike",label:"Bike",duration:30,intensity:"zone2"},
+  {type:"rowing",label:"Row",duration:15,intensity:"hard"},
+];
+const CARDIO_TYPES=["peloton","bike","walk","incline-walk","stairs","rowing","other"];
+const cardioLabel=t=>(CARDIO_PRESETS.find(p=>p.type===t)?.label||String(t||"cardio").replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
+const intensityLabel=i=>({easy:"Easy",zone2:"Zone 2",tempo:"Tempo",hard:"Hard",hiit:"HIIT"}[i]||i||"Zone 2");
+const cardioSummary=c=>{
+  if(!c)return"";
+  const parts=[cardioLabel(c.type),c.duration?`${c.duration}m`:null,intensityLabel(c.intensity)].filter(Boolean);
+  const metrics=[c.distance?`${c.distance} mi`:null,c.calories?`${c.calories} cal`:null].filter(Boolean);
+  return `${parts.join(" · ")}${metrics.length?` — ${metrics.join(" · ")}`:""}`;
+};
+
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
@@ -1700,22 +1803,26 @@ const SWAP_MAP={
 };
 
 // ═══ SWAP MODAL ═══
-const SwapModal=({exName,options,onSelect,onClose,getWeight})=>(
+const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
   <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 16px 16px"}}>
-    <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:480,border:`1px solid ${C.bd}`,maxHeight:"72vh",overflowY:"auto"}}>
+    <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:520,border:`1px solid ${C.bd}`,maxHeight:"78vh",overflowY:"auto"}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:2}}>Swap Exercise</div>
-      <div style={{fontSize:13,color:C.t3,marginBottom:14}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
-      {options.length===0&&<div style={{fontSize:13,color:C.t3,textAlign:"center",padding:"12px 0"}}>No alternatives mapped for this exercise.</div>}
-      {options.map(opt=>{
-        const lw=getWeight(opt.id,opt.sw);
+      <div style={{fontSize:13,color:C.t3,marginBottom:6}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
+      {slot&&<div style={{fontSize:12,color:C.v,background:C.vl,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{slot.rr.join("-")} · rest {slot.rest}s. Progression is tracked separately for this rep range.</div>}
+      {options.length===0&&<div style={{fontSize:13,color:C.t3,textAlign:"center",padding:"12px 0"}}>No plan-safe alternatives found for this lift.</div>}
+      {options.map((opt,idx)=>{
+        const lw=getWeight(opt,opt.sw,slot);
         const hasHistory=lw!==opt.sw;
         return(<button key={opt.id} onClick={()=>onSelect(opt)} style={{
-          display:"block",width:"100%",textAlign:"left",background:"transparent",
-          border:`1px solid ${C.bd}`,borderRadius:8,padding:"12px 14px",marginBottom:8,
+          display:"block",width:"100%",textAlign:"left",background:idx===0?C.pl:"transparent",
+          border:`1px solid ${idx===0?C.p:C.bd}`,borderRadius:8,padding:"12px 14px",marginBottom:8,
           cursor:"pointer",fontFamily:"inherit"}}>
-          <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
+            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:"#fff",borderRadius:10,padding:"2px 6px"}}>BEST FIT</span>}
+          </div>
           <div style={{fontSize:12,color:hasHistory?C.p:C.t3,marginTop:2}}>
-            {hasHistory?`Last used: ${lw} lbs`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"}
+            {hasHistory?`This slot: ${lw} ${opt.unit}`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"} · {opt.region}
           </div>
           <div style={{fontSize:11,color:C.t2,marginTop:3,fontStyle:"italic"}}>{opt.cue}</div>
         </button>);
@@ -1736,6 +1843,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [showCardio,setShowCardio]=useState(false);
   const [cardioType,setCardioType]=useState("peloton");
   const [cardioDur,setCardioDur]=useState("35");
+  const [cardioIntensity,setCardioIntensity]=useState("zone2");
+  const [cardioDistance,setCardioDistance]=useState("");
+  const [cardioCals,setCardioCals]=useState("");
+  const [cardioNotes,setCardioNotes]=useState("");
   const mobEntry=data.mob?.[t];
   const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
   const [mobRunning,setMobRunning]=useState(false);
@@ -1761,7 +1872,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [cardioTimerDone,setCardioTimerDone]=useState(false);
   const cardioIvRef=useRef(null);
   const cardioEndRef=useRef(0);
-  const getPostLiftCardio=(day)=>{if(day==="monday"||day==="thursday")return{type:"Stairstepper",duration:20};if(day==="tuesday"||day==="friday")return{type:"Incline Walk (10-15%)",duration:20};if(day==="wednesday")return{type:"Stairstepper (optional)",duration:20};return null;};
+  const getPostLiftCardio=(day)=>{if(day==="monday"||day==="thursday")return{type:"stairs",label:"Stairstepper",duration:20,intensity:"zone2"};if(day==="tuesday"||day==="friday")return{type:"incline-walk",label:"Incline Walk (10-15%)",duration:20,intensity:"zone2"};if(day==="wednesday")return{type:"stairs",label:"Stairstepper (optional)",duration:20,intensity:"zone2"};return null;};
   const startCardioTimer=(dur)=>{const end=Date.now()+dur*60*1000;cardioEndRef.current=end;setCardioTimerLeft(dur*60);setCardioTimerRunning(true);setCardioTimerDone(false);
     cardioIvRef.current=setInterval(()=>{const left=Math.round((cardioEndRef.current-Date.now())/1000);if(left<=0){clearInterval(cardioIvRef.current);setCardioTimerLeft(0);setCardioTimerRunning(false);setCardioTimerDone(true);if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);}else{setCardioTimerLeft(left);}},500);};
   const stopCardioTimer=()=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);setCardioTimerRunning(false);setCardioTimerLeft(0);cardioEndRef.current=0;};
@@ -1783,22 +1894,44 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
   const sess=getSess(sel,activeVariant[sel]);
 
-  const gw=(id,def)=>{
-    const p=data.prog[id]?.currentWeight;
-    if(p!=null)return p;
+  const gw=(exOrId,def,slot=null)=>{
+    const ex=typeof exOrId==="string"?{id:exOrId,sw:def,rr:slot?.rr}:exOrId;
+    const key=progKey(ex,slot||ex);
+    const p=data.prog[key]?.currentWeight;
+    if(p!=null&&saneWeight(ex,p))return p;
+    if(!legacyAmbiguousIds.has(ex.id)&&sameRepTrack(ex.rr,slot?.rr||ex.rr)){
+      const legacy=data.prog[ex.id]?.currentWeight;
+      if(legacy!=null&&saneWeight(ex,legacy))return legacy;
+    }
     const dates=Object.keys(data.wk).sort().reverse();
     for(const d of dates){
-      const wex=data.wk[d].exercises?.find(e=>e.id===id);
-      if(wex){const ds=wex.sets?.filter(s=>s.done&&s.weight>0);if(ds?.length)return ds[0].weight;}
+      const w=data.wk[d];
+      const wex=w.exercises?.find(e=>e.progKey===key||(!legacyAmbiguousIds.has(ex.id)&&e.id===ex.id));
+      if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length&&saneWeight(ex,ds[0].weight))return ds[0].weight;}
     }
     return def;
+  };
+
+  const getSwapOptions=(slotEx,currentEx)=>{
+    const base=exLibById[currentEx.id]||exLibById[slotEx.id]||slotEx;
+    const pats=relatedPatterns[base.pattern]||[base.pattern].filter(Boolean);
+    const used=new Set((workout?.exercises||[]).map(e=>e.id));
+    return EXERCISE_LIBRARY
+      .filter(opt=>opt.id!==currentEx.id&&pats.includes(opt.pattern))
+      .map(opt=>{
+        const key=progKey(opt,slotEx);
+        const hasHistory=data.prog[key]?.currentWeight!=null||data.prog[opt.id]?.currentWeight!=null||Object.values(data.wk||{}).some(w=>w.exercises?.some(e=>e.progKey===key||e.id===opt.id));
+        const score=(opt.pattern===base.pattern?40:20)+(opt.region===base.region?10:0)+(hasHistory?8:0)-(used.has(opt.id)?6:0);
+        return {...opt,sets:slotEx.sets,rr:slotEx.rr,rest:slotEx.rest,notes:slotEx.notes,progKey:key,recommended:score>=48,score};
+      })
+      .sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
   };
 
   const isDeload=wkn(t)===PROG.deload;
   const startW=()=>{if(!sess)return;
     setWorkout({day:sel,variant:activeVariant[sel]||null,exercises:sess.exercises.map(ex=>{
-      const cw=gw(ex.id,ex.sw);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
-      return{id:ex.id,
+      const key=progKey(ex,ex);const cw=gw(ex,ex.sw,ex);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
+      return{id:ex.id,progKey:key,
       wu:WU(wt).map(w=>({...w,done:false})),
       sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
     };}),start:Date.now(),isDeload});setWuDone(false);};
@@ -1809,6 +1942,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(rest&&rest>0){startRestTimer(Math.min(rest,60));}
   };
   const dS=(ei,si,rest)=>{
+    const cur=workout?.exercises?.[ei]?.sets?.[si];
+    if(!cur||Number(cur.reps)<=0){if(addToast)addToast("Enter reps before logging the set","error");return;}
     setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;return n;});
     if(rest>0)startRestTimer(rest);
   };
@@ -1852,16 +1987,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
     const s=getSess(workout.day,workout.variant);
     workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
-      const aid=ex.swappedTo?ex.swappedTo.id:pe.id;
-      const ainc=ex.swappedTo?ex.swappedTo.inc:pe.inc;
-      const aname=ex.swappedTo?ex.swappedTo.name:pe.name;
-      const asw=ex.swappedTo?ex.swappedTo.sw:pe.sw;
-      const cs=ex.sets.filter(s=>s.done);const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);
-      const cw=cs.length>0&&cs[0].weight>0?cs[0].weight:gw(aid,asw);
+      const active=ex.swappedTo?{...ex.swappedTo,sets:pe.sets,rr:pe.rr,rest:pe.rest}:pe;
+      const aid=ex.progKey||progKey(active,pe);
+      const ainc=active.inc??pe.inc;
+      const aname=active.name||pe.name;
+      const asw=active.sw??pe.sw;
+      const cs=ex.sets.filter(saneSet);
+      if(!cs.length)return;
+      const hit=cs.length===pe.sets&&cs.every(s=>Number(s.reps)>=pe.rr[1]);
+      const cw=cs[0].weight>0?cs[0].weight:gw(active,asw,pe);
       const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
-      const prevWeight=nd.prog[aid]?.currentWeight||gw(aid,asw);
+      const prevWeight=nd.prog[aid]?.currentWeight||gw(active,asw,pe);
       const newWeight=workout.isDeload?prevWeight:(ainc===0?cw:(hit?cw+ainc:cw));
-      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:workout.isDeload?false:(hit&&ainc>0),pr:prevPr||null,e1rmHistory:prevHistory}};
+      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:workout.isDeload?false:(hit&&ainc>0),pr:prevPr||null,e1rmHistory:prevHistory,exerciseId:active.id,repRange:pe.rr,name:aname}};
       if(!workout.isDeload){
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
       const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
@@ -1872,7 +2010,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       }
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
-    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];const aid=ex.swappedTo?ex.swappedTo.id:pe?.id;if(pe&&aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach(ex=>{const aid=ex.progKey;if(aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
     stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
   };
 
@@ -1883,6 +2021,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
 
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
+  const applyCardioPreset=p=>{setCardioType(p.type);setCardioDur(String(p.duration));setCardioIntensity(p.intensity||"zone2");};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
   const mobExercises=PROG.mobility._default||[];
   const totalStretchSets=mobExercises.reduce((t,ex)=>t+ex.sets,0);
@@ -1930,7 +2069,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     try{localStorage.removeItem("dhub6_mob_active");}catch{}
     setMobDone(false);setMobRunning(false);setShowMob(false);
     setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);};
-  const logCardio=(type,dur)=>{const c={type,duration:dur,done:true};const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);};
+  const logCardio=(overrides={})=>{
+    const c={type:overrides.type||cardioType,duration:+(overrides.duration??cardioDur)||20,intensity:overrides.intensity||cardioIntensity,
+      distance:cardioDistance?+cardioDistance:null,calories:cardioCals?+cardioCals:null,notes:cardioNotes.trim()||"",done:true};
+    const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);setShowCardio(false);
+    setCardioDistance("");setCardioCals("");setCardioNotes("");
+  };
 
   const applyCoachActions=(actions)=>{
     if(!actions||!actions.length)return;
@@ -1961,7 +2105,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setAiLoading(true);setAiA("");
     const wSess=getSess(workout.day,workout.variant);
     const ex=workout&&exIdx!=null?wSess?.exercises[exIdx]:null;
-    const cw=ex?gw(ex.id,ex.sw):null;
+    const cw=ex?gw(ex,ex.sw,ex):null;
     try{
       const history=ex?Object.entries(data.wk||{})
         .filter(([d,w])=>w.exercises&&w.exercises.some(e=>e.id===ex.id&&e.sets))
@@ -1970,7 +2114,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         .map(([d,w])=>{
           const logged=w.exercises.find(e=>e.id===ex.id);
           if(!logged||!logged.sets)return null;
-          const done=logged.sets.filter(s=>s.done);
+          const done=logged.sets.filter(saneSet);
           if(!done.length)return null;
           return{date:d,weight:done[0].weight,reps:done.map(s=>s.reps),sets:done.length};
         }).filter(Boolean):[];
@@ -2004,11 +2148,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   if(workout){
     const s=getSess(workout.day,workout.variant);
-    const swapExercise=(ei,newEx)=>{const oldEx=s.exercises[ei];const newW=gw(newEx.id,newEx.sw);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name};wkEx.id=newEx.id;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc};wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false}));return n;});setSwapModal(null);};
+    const swapExercise=(ei,newEx)=>{const oldEx=s.exercises[ei];const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false,reps:0,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
-      {swapModal&&<SwapModal exName={swapModal.exName} options={SWAP_MAP[workout.exercises[swapModal.ei]?.id]||[]} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
+      {swapModal&&<SwapModal exName={swapModal.exName} slot={s.exercises[swapModal.ei]} options={getSwapOptions(s.exercises[swapModal.ei],workout.exercises[swapModal.ei])} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
 
       <WorkoutTimerBar workout={workout} compact/>
 
@@ -2059,7 +2203,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const swapped=wkEx.swappedTo;
         const dispName=swapped?swapped.name:ex.name;
         const dispCue=swapped?swapped.cue:ex.cue;
-        const swapOpts=SWAP_MAP[wkEx.id]||[];
+        const swapOpts=getSwapOptions(ex,wkEx);
         const anySetsLogged=wkEx.sets.some(s=>s.done);
         const prevLift=(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(s=>s.done&&(s.weight>0||s.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
         return(<X key={ex.id+"-"+ei} style={{padding:10}}>
@@ -2077,7 +2221,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                 {workout.isDeload&&<div style={{fontSize:11,color:C.a,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
               </div>
               <div style={{display:"flex",gap:4,marginLeft:6}}>
-                {swapOpts.length>0&&!anySetsLogged&&<button onClick={()=>setSwapModal({ei,exName:dispName})}
+                {swapOpts.length>0&&!anySetsLogged&&<button title="Swap exercise" onClick={()=>setSwapModal({ei,exName:dispName})}
                   style={{background:C.bl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:12,fontWeight:700,color:C.t2,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⇄</button>}
                 <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
                   style={{background:C.vl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:10,fontWeight:600,color:C.v,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>AI</button>
@@ -2112,10 +2256,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         return(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.type}</div>
-              <div style={{fontSize:12,color:C.t3}}>{plc.duration} min · Zone 2 post-lift cardio</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.label}</div>
+              <div style={{fontSize:12,color:C.t3}}>{plc.duration} min · {intensityLabel(plc.intensity)} post-lift cardio</div>
             </div>
-            {cardioTimerDone?<span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span>
+            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span><B small onClick={()=>logCardio(plc)} color={C.g}>Log</B></div>
               :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
               :<B small onClick={()=>startCardioTimer(plc.duration)} color={C.a}>Start</B>}
           </div>
@@ -2123,7 +2267,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
             <div style={{fontSize:11,color:C.t3,marginTop:2}}>remaining</div>
           </div>)}
-          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete!</div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete — tap Log to save it.</div>)}
         </X>);
       })()}
 
@@ -2309,32 +2453,41 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </X>):null;})()}
 
     {/* ═══ CARDIO ═══ */}
-    {(()=>{const dayName=dw(t);const isWeekend=["saturday","sunday"].includes(dayName);
-      const cardioToday=data.cardio?.[t];
-      if(!isWeekend)return null;
-      return(<>
-        <X style={{padding:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>Zone 2 steady state</div></div>
-            {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:13,fontWeight:600,color:C.g}}>{cardioToday.type} · {cardioToday.duration}m</span><B small outline onClick={undoCardio}>Undo</B></div>
-              :showCardio?null:<B small onClick={()=>setShowCardio(true)}>Log</B>}
+    {(()=>{const cardioToday=data.cardio?.[t];
+      return(<X style={{padding:10,borderLeft:`3px solid ${cardioToday?.done?C.g:C.a}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontSize:14,fontWeight:700,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>{cardioToday?.done?cardioSummary(cardioToday):"Log Zone 2, stairs, Peloton, walks, or conditioning"}</div></div>
+          {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:C.g}}>Done</span><B small outline onClick={undoCardio}>Undo</B></div>
+            :showCardio?null:<B small onClick={()=>setShowCardio(true)} color={C.a}>Log</B>}
+        </div>
+        {showCardio&&!cardioToday?.done&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
+            {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
+              padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              border:`1px solid ${cardioType===p.type?C.a:C.bd}`,background:cardioType===p.type?C.al:"#fff",color:cardioType===p.type?C.a:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
           </div>
-          {showCardio&&!cardioToday?.done&&(<div style={{marginTop:8}}>
-            <div style={{display:"flex",gap:3,marginBottom:6}}>
-              {["peloton","bike","walk","stairs","rowing"].map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
-                flex:1,padding:"6px 2px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize",
-                border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{ct}</button>))}
-            </div>
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <N value={cardioDur} onChange={setCardioDur} placeholder="35" style={{flex:1}}/>
-              <span style={{fontSize:12,color:C.t3}}>min</span>
-              <B small onClick={()=>{logCardio(cardioType,+cardioDur||35);setShowCardio(false);}}>Log</B>
-              <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
-            </div>
-          </div>)}
-        </X>
-      </>);
+          <div style={{display:"flex",gap:4,overflowX:"auto"}}>
+            {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
+              padding:"6px 9px",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+              border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{cardioLabel(ct)}</button>))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
+            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
+            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
+            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
+              <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
+                {["easy","zone2","tempo","hard","hiit"].map(i=><option key={i} value={i}>{intensityLabel(i)}</option>)}
+              </select>
+            </label>
+          </div>
+          <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <B small onClick={()=>logCardio()} color={C.a}>Log Cardio</B>
+            <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
+          </div>
+        </div>)}
+      </X>);
     })()}
 
     {sess?(<>
@@ -2367,10 +2520,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>
       </S>)}
       <S title="Exercises" collapsible>
-        {sess.exercises.map(ex=>{const prog=data.prog[ex.id],cw=gw(ex.id,ex.sw);
+        {sess.exercises.map(ex=>{const prog=data.prog[progKey(ex,ex)]||data.prog[ex.id],cw=gw(ex,ex.sw,ex);
           const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
             for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
-              if(wex){const ds=wex.sets?.filter(s=>s.done);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
+              if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
           const hit=lastWk&&lastWk.reps.length===ex.sets&&lastWk.reps.every(r=>r>=ex.rr[1]);
           return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
