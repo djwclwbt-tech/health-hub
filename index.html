@@ -15,9 +15,11 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f6f8; overflow-x: hidden; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(180deg,#eef4ff 0%,#f7f8fb 34%,#f3f5f8 100%); overflow-x: hidden; }
   #root { min-height: 100vh; }
   #root { min-height: 100dvh; }
+  button, input, select { -webkit-font-smoothing: antialiased; }
+  * { scrollbar-width: thin; scrollbar-color: #cfd7e3 transparent; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -737,10 +739,10 @@ const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
     deficit,trendWeight,trendWeights:paired.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
 };
 
-const C={bg:"#f5f6f8",cd:"#ffffff",bd:"#dfe3e8",bl:"#eef0f3",
-  p:"#1a73e8",pl:"#e8f0fe",g:"#0d7c3e",gl:"#e6f4ea",r:"#c5221f",rl:"#fce8e6",
-  a:"#b06d00",al:"#fef7e0",v:"#6a1b9a",vl:"#f3e8fd",
-  t:"#1a1a1a",t2:"#5f6368",t3:"#9aa0a6"};
+const C={bg:"#f6f8fc",cd:"rgba(255,255,255,.92)",bd:"#dbe3ee",bl:"#edf1f6",
+  p:"#2563eb",pl:"#eaf1ff",g:"#12824c",gl:"#e7f7ee",r:"#c2412f",rl:"#fdecea",
+  a:"#c77700",al:"#fff5d9",v:"#7c3aed",vl:"#f1e9ff",
+  t:"#172033",t2:"#5b667a",t3:"#8a96a8",sh:"0 10px 28px rgba(23,32,51,.07)",sh2:"0 4px 14px rgba(23,32,51,.06)"};
 
 // ═══ BASE COMPONENTS ═══
 const N=({value,onChange,placeholder,style={},min=0,max})=>{
@@ -755,8 +757,8 @@ const N=({value,onChange,placeholder,style={},min=0,max})=>{
   };
   return(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
-    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
+    placeholder={placeholder} style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>
 );};
 const TimeInput=({value,onChange,placeholder,style={}})=>{
   const handleChange=(e)=>{
@@ -764,25 +766,25 @@ const TimeInput=({value,onChange,placeholder,style={}})=>{
     if(raw.length<=4)onChange(fmtTime(raw));
   };
   return(<input type="text" inputMode="numeric" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
-    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>);
+    placeholder={placeholder} style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>);
 };
 const T=({value,onChange,placeholder,style={}})=>(
   <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",color:C.t,
-    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
+    style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",color:C.t,
+    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>
 );
 const B=({children,onClick,color=C.p,disabled,full,small,outline,style={}})=>(
   <button onClick={onClick} disabled={disabled} style={{
     background:outline?"transparent":color,color:outline?color:"#fff",
-    border:outline?`2px solid ${color}`:"none",borderRadius:6,
-    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,
-    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,
+    border:outline?`1.5px solid ${color}`:"none",borderRadius:10,
+    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:800,
+    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":"0 6px 14px rgba(37,99,235,.16)",
     width:full?"100%":"auto",fontFamily:"inherit",minHeight:44,...style,
   }}>{children}</button>
 );
 const X=({children,style={},...p})=>(
-  <div style={{background:C.cd,borderRadius:6,padding:14,border:`1px solid ${C.bd}`,...style}} {...p}>{children}</div>
+  <div style={{background:C.cd,borderRadius:14,padding:14,border:`1px solid ${C.bd}`,boxShadow:C.sh2,backdropFilter:"blur(10px)",...style}} {...p}>{children}</div>
 );
 const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
 const S=({title,children,collapsible,defaultOpen=true})=>{
@@ -802,16 +804,16 @@ const Br=({v,max,color=C.p,h=5})=>(
 
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
-  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:480,margin:"0 auto"}}>
+  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:"rgba(255,255,255,.88)",position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:"0 -10px 28px rgba(23,32,51,.08)",backdropFilter:"blur(14px)"}}>
     {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"habits",l:"Habits",icon:"✓"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
         flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
-        color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?700:600,fontFamily:"inherit",
-        borderTop:active===t.id?`3px solid ${C.p}`:"3px solid transparent",
+        color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?800:650,fontFamily:"inherit",
+        borderTop:"3px solid transparent",
         position:"relative",minHeight:62,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
       }}>
-        <span style={{fontSize:20}}>{t.icon}</span>
-        <span>{t.l}</span>
+        <span style={{fontSize:20,background:active===t.id?C.pl:"transparent",borderRadius:12,padding:active===t.id?"3px 9px":"3px 0",lineHeight:1}}>{t.icon}</span>
+        <span style={{fontSize:11,letterSpacing:"-.01em"}}>{t.l}</span>
         {t.id==="training"&&hasActiveWorkout&&active!=="training"&&(
           <div style={{position:"absolute",top:6,right:"50%",marginRight:-18,width:10,height:10,borderRadius:5,background:C.g,border:`2px solid ${C.cd}`}}/>
         )}
@@ -831,7 +833,7 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   if(!workout)return null;
   const sess=(programDays||PROG.days)[workout.day];
   return(
-    <div onClick={onTap} style={{background:C.p,padding:compact?"6px 14px":"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?6:0}}>
+    <div onClick={onTap} style={{background:`linear-gradient(135deg,${C.p},#4f46e5)`,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?12:0,boxShadow:C.sh}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:8,height:8,borderRadius:4,background:"#4ade80",animation:"pulse 2s infinite"}}/>
         <span style={{color:"#fff",fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
@@ -3784,11 +3786,11 @@ window.App = function App(){
   },[data,sbLoaded]);
 
   return(
-    <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
+    <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
-      <div style={{flex:1,padding:14,overflowY:"auto",paddingBottom:80}}>
+      <div style={{flex:1,padding:"18px 14px",overflowY:"auto",paddingBottom:88}}>
         {tab==="dashboard"&&<Dashboard data={data} setData={setData} setTab={setTab}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
