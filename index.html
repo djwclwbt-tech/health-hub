@@ -298,7 +298,7 @@ const syncToSB=async(d)=>{
       for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
       for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
-      for(const[date,c]of Object.entries(d.cardio||{})){await sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true});}
+      for(const[date,c]of Object.entries(d.cardio||{})){await svSB.cardio(date,c);}
       for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
         await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
       for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
@@ -327,7 +327,7 @@ const svSB={
   debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
   mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
   stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
-  cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,done:true}),
+  cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,intensity:c.intensity||"zone2",distance_mi:c.distance||null,calories:c.calories||null,notes:c.notes||null,done:true}),
   bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
   travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
   tdeeExclude:(date,active)=>active?sb.upsert("tdee_exclude",{date,active:true}):sb.deleteRow("tdee_exclude","date",date),
@@ -369,7 +369,7 @@ const loadFromSB=async()=>{
     mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
-    cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
+    cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,intensity:r.intensity||"zone2",distance:r.distance_mi||null,calories:r.calories||null,notes:r.notes||"",done:true};});
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
@@ -1277,14 +1277,14 @@ const Dashboard=({data,setData,setTab})=>{
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{autoreg.action}</div>
       </X>}
 
-      <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:12,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Show full dashboard</button>
+      <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:12,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Open review details</button>
     </div>
   );
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       <div>
-        <div style={{fontSize:18,fontWeight:700,color:C.t}}>Home</div>
+        <div style={{fontSize:18,fontWeight:700,color:C.t}}>Review Details</div><button onClick={()=>setShowFullDashboard(false)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:10,padding:"7px 10px",fontSize:12,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>← Cut Command</button>
         <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}{dayType==="travel"?" — TRAVEL DAY":""}</div>
       </div>
 
@@ -2150,10 +2150,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     try{localStorage.removeItem("dhub6_mob_active");}catch{}
     setMobDone(false);setMobRunning(false);setShowMob(false);
     setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);};
-  const logCardio=(overrides={})=>{
+  const logCardio=async(overrides={})=>{
     const c={type:overrides.type||cardioType,duration:+(overrides.duration??cardioDur)||20,intensity:overrides.intensity||cardioIntensity,
       distance:cardioDistance?+cardioDistance:null,calories:cardioCals?+cardioCals:null,notes:cardioNotes.trim()||"",done:true};
-    const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);setShowCardio(false);
+    const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);
+    const saved=await svSB.cardio(t,c);
+    if(!saved)addToast?.("Cardio saved locally only — Supabase cardio table/schema needs migration", "warning");
+    setShowCardio(false);
     setCardioDistance("");setCardioCals("");setCardioNotes("");
   };
   const renderCardioForm=()=>showCardio&&!data.cardio?.[t]?.done&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
