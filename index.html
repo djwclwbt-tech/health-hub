@@ -2022,6 +2022,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const applyCardioPreset=p=>{setCardioType(p.type);setCardioDur(String(p.duration));setCardioIntensity(p.intensity||"zone2");};
+  const openCardioLog=(preset=null)=>{if(preset)applyCardioPreset(preset);setShowCardio(true);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
   const mobExercises=PROG.mobility._default||[];
   const totalStretchSets=mobExercises.reduce((t,ex)=>t+ex.sets,0);
@@ -2075,6 +2076,33 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);svSB.cardio(t,c);setShowCardio(false);
     setCardioDistance("");setCardioCals("");setCardioNotes("");
   };
+  const renderCardioForm=()=>showCardio&&!data.cardio?.[t]?.done&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
+      {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
+        padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+        border:`1px solid ${cardioType===p.type?C.a:C.bd}`,background:cardioType===p.type?C.al:"#fff",color:cardioType===p.type?C.a:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
+    </div>
+    <div style={{display:"flex",gap:4,overflowX:"auto"}}>
+      {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
+        padding:"6px 9px",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+        border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{cardioLabel(ct)}</button>))}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
+      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
+      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
+      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
+        <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
+          {["easy","zone2","tempo","hard","hiit"].map(i=><option key={i} value={i}>{intensityLabel(i)}</option>)}
+        </select>
+      </label>
+    </div>
+    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      <B small onClick={()=>logCardio()} color={C.a}>Log Cardio</B>
+      <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
+    </div>
+  </div>);
 
   const applyCoachActions=(actions)=>{
     if(!actions||!actions.length)return;
@@ -2259,15 +2287,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.label}</div>
               <div style={{fontSize:12,color:C.t3}}>{plc.duration} min · {intensityLabel(plc.intensity)} post-lift cardio</div>
             </div>
-            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span><B small onClick={()=>logCardio(plc)} color={C.g}>Log</B></div>
+            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick Log</B></div>
               :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
-              :<B small onClick={()=>startCardioTimer(plc.duration)} color={C.a}>Start</B>}
+              :<div style={{display:"flex",gap:6}}><B small outline onClick={()=>openCardioLog(plc)}>Log</B><B small onClick={()=>startCardioTimer(plc.duration)} color={C.a}>Start</B></div>}
           </div>
           {cardioTimerRunning&&(<div style={{marginTop:10,textAlign:"center"}}>
             <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
             <div style={{fontSize:11,color:C.t3,marginTop:2}}>remaining</div>
           </div>)}
-          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete — tap Log to save it.</div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete — use Details for distance/calories/intensity or Quick Log for just time.</div>)}
+          {renderCardioForm()}
         </X>);
       })()}
 
@@ -2458,35 +2487,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:14,fontWeight:700,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>{cardioToday?.done?cardioSummary(cardioToday):"Log Zone 2, stairs, Peloton, walks, or conditioning"}</div></div>
           {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:C.g}}>Done</span><B small outline onClick={undoCardio}>Undo</B></div>
-            :showCardio?null:<B small onClick={()=>setShowCardio(true)} color={C.a}>Log</B>}
+            :showCardio?null:<B small onClick={()=>openCardioLog()} color={C.a}>Log</B>}
         </div>
-        {showCardio&&!cardioToday?.done&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
-            {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
-              padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:`1px solid ${cardioType===p.type?C.a:C.bd}`,background:cardioType===p.type?C.al:"#fff",color:cardioType===p.type?C.a:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
-          </div>
-          <div style={{display:"flex",gap:4,overflowX:"auto"}}>
-            {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
-              padding:"6px 9px",borderRadius:14,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
-              border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{cardioLabel(ct)}</button>))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
-            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
-            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
-            <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
-              <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
-                {["easy","zone2","tempo","hard","hiit"].map(i=><option key={i} value={i}>{intensityLabel(i)}</option>)}
-              </select>
-            </label>
-          </div>
-          <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <B small onClick={()=>logCardio()} color={C.a}>Log Cardio</B>
-            <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
-          </div>
-        </div>)}
+        {renderCardioForm()}
       </X>);
     })()}
 
