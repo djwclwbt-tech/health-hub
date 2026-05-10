@@ -2764,7 +2764,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div></div>
           {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
-            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={startW}>Start</B>}
+            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={()=>startW(sel)}>Start</B>}
         </div>
       </X>
       {hasVariants&&!workout&&(<X style={{padding:8,display:"flex",gap:4,flexWrap:"wrap"}}>
