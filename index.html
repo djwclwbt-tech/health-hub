@@ -2393,18 +2393,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         clearInterval(stretchIvRef.current);
         setStretchTimeLeft(0);setStretchRunning(false);
         if(navigator.vibrate)navigator.vibrate([200,100,200]);
-        const key=`${stretchExIdx}-${stretchSetIdx}`;
-        setStretchDone(p=>[...p,key]);
-        const curEx=mobExercises[stretchExIdx];
-        if(stretchSetIdx<curEx.sets-1){setStretchSetIdx(stretchSetIdx+1);
-        }else if(stretchExIdx<mobExercises.length-1){setStretchExIdx(stretchExIdx+1);setStretchSetIdx(0);}
+        advanceStretch(true);
       }else{setStretchTimeLeft(left);}
     },500);
   };
 
-  const skipStretchTimer=()=>{
+  const advanceStretch=(markDone)=>{
     if(stretchIvRef.current)clearInterval(stretchIvRef.current);
     setStretchTimeLeft(0);setStretchRunning(false);stretchEndRef.current=0;
+    const key=`${stretchExIdx}-${stretchSetIdx}`;
+    if(markDone)setStretchDone(p=>p.includes(key)?p:[...p,key]);
+    const curEx=mobExercises[stretchExIdx];
+    if(stretchSetIdx<(curEx?.sets||1)-1){setStretchSetIdx(stretchSetIdx+1);return;}
+    if(stretchExIdx<mobExercises.length-1){setStretchExIdx(stretchExIdx+1);setStretchSetIdx(0);}
+  };
+
+  const skipStretchTimer=()=>advanceStretch(false);
+  const skipMob=()=>{if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(mobIvRef.current)clearInterval(mobIvRef.current);
+    const nd={...data,mob:{...data.mob,[t]:{done:true,skipped:true,dur:0,exercises:0}}};
+    setData(nd);sv(nd);svSB.mobility(t,0);
+    setMobDone(true);setMobRunning(false);setShowMob(false);localStorage.removeItem("dhub6_mob_active");
+    setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);
   };
 
   const finishMob=()=>{if(stretchIvRef.current)clearInterval(stretchIvRef.current);
@@ -2780,14 +2789,29 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min — hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
+          <span style={{fontSize:13,fontWeight:600,color:data.mob?.[t]?.skipped?C.a:C.g}}>{data.mob?.[t]?.skipped?"Skipped":"Done"}{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
           <B small outline onClick={undoMob}>Undo</B></div>
         :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
         :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View stretch</B>}<B small onClick={startMob}>Start stretch</B></div>}
     </X>
     {showMob&&(<div style={{marginTop:8}}>
       {!mobRunning&&!mobDone?(
-        <B full onClick={startMob} color={C.v}>Start stretch</B>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
+            <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Tonight's sequence — start when ready, or skip today to stop the reminder.</div>
+            {mobExercises.map(ex=>(
+              <div key={ex.id} style={{padding:"7px 0",borderBottom:`1px solid ${C.bl}`}}>
+                <div style={{fontSize:13,fontWeight:750,color:C.t}}>{ex.name}</div>
+                <div style={{fontSize:11,color:C.t3}}>{ex.sets}×{ex.dur}s · {ex.sides.join(" / ")}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:2}}>{ex.cue}</div>
+              </div>
+            ))}
+          </X>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            <B full onClick={startMob} color={C.v}>Start stretch</B>
+            <B full outline onClick={skipMob} color={C.a}>Skip today</B>
+          </div>
+        </div>
       ):mobRunning?(
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
