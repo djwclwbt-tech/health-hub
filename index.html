@@ -1501,7 +1501,7 @@ const Dashboard=({data,setData,setTab})=>{
           <button onClick={()=>setTab("training")} style={{border:`1px solid ${C.p}`,background:C.pl,color:C.p,borderRadius:10,padding:"8px 12px",fontSize:12,fontWeight:800,fontFamily:"inherit"}}>{workoutDone?"Done":"Open"}</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
-          {[{l:"Wt",ok:weightLogged},{l:"Food",ok:nutritionLogged},{l:"Lift",ok:!sess||workoutDone},{l:"Cardio",ok:cardioDone},{l:"Habits",ok:habitsLogged}].map(x=>(
+          {[{l:"Scale",ok:weightLogged},{l:"Food",ok:nutritionLogged},{l:"Lift",ok:!sess||workoutDone},{l:"Cardio",ok:cardioDone},{l:"Habits",ok:habitsLogged}].map(x=>(
             <div key={x.l} style={{textAlign:"center",padding:"7px 2px",borderRadius:9,background:x.ok?C.gl:C.bg,border:`1px solid ${x.ok?C.g:C.bd}`}}>
               <div style={{fontSize:14,fontWeight:800,color:x.ok?C.g:C.t3}}>{x.ok?"✓":"○"}</div>
               <div style={{fontSize:9,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
