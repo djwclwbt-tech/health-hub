@@ -200,6 +200,17 @@ const weightCap=ex=>{
   return 350;
 };
 const saneWeight=(ex,w)=>w==null||Number(w)<=weightCap(ex);
+const CUT_HOLD_PROGRESSION=true;
+const matchingProgKeys=(ex)=>{
+  if(!ex?.id)return[];
+  const keys=[ex.id];
+  if(ex.progKey)keys.unshift(ex.progKey);
+  if(ex.rr)keys.unshift(progKey(ex,ex));
+  return [...new Set(keys)];
+};
+const getProgEntry=(prog,ex)=>matchingProgKeys(ex).map(k=>prog?.[k]).find(Boolean)||null;
+const getProgHistory=(prog,ex)=>matchingProgKeys(ex).flatMap(k=>prog?.[k]?.e1rmHistory||[]);
+const getProgPr=(prog,ex)=>matchingProgKeys(ex).map(k=>prog?.[k]?.pr).filter(Boolean).sort((a,b)=>(b.e1rm||0)-(a.e1rm||0))[0]||null;
 const relatedPatterns={
   "chest-press":["chest-press"],"chest-fly":["chest-fly","chest-press"],
   "horizontal-pull":["horizontal-pull","vertical-pull"],"vertical-pull":["vertical-pull","horizontal-pull"],
@@ -293,7 +304,7 @@ const syncToSB=async(d)=>{
       }
       for(const[exId,p]of Object.entries(d.prog||{})){
         await sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
-          last_date:p.lastDate||null,progressed:p.progressed||false},"exercise_id");
+          last_date:p.lastDate||null,progressed:p.progressed||false,pr:p.pr||null,e1rm_history:p.e1rmHistory||null},"exercise_id");
       }
       for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
       for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
@@ -365,7 +376,7 @@ const loadFromSB=async()=>{
     nut.forEach(r=>{d.nut[r.date]={meals:r.meals,totalCal:r.total_cal,totalProtein:r.total_protein,
       totalCarbs:r.total_carbs,totalFat:r.total_fat,totalFiber:r.total_fiber};});
     prog.forEach(r=>{d.prog[r.exercise_id]={currentWeight:Number(r.current_weight),lastReps:r.last_reps,
-      lastDate:r.last_date,progressed:r.progressed};});
+      lastDate:r.last_date,progressed:r.progressed,pr:r.pr||null,e1rmHistory:r.e1rm_history||[],exerciseId:r.exercise_id?.split("__")[0]||r.exercise_id};});
     mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
@@ -523,9 +534,10 @@ const getDayProTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   const dt=getDayType(dateStr,travelDays);
   if(dt==="travel")return settings?.protein||200;
   const sw=isSocialWeekendActive(dateStr,socialWeekend);
-  if(sw&&["friday","saturday","sunday"].includes(dw(dateStr)))return 150;
+  if(sw&&["friday","saturday","sunday"].includes(dw(dateStr)))return 180;
   if(dt==="wednesday")return 150;
   if(dt==="training")return settings?.protein||200;
+  if(["saturday","sunday"].includes(dw(dateStr)))return 180;
   return 150;
 };
 const PROTEIN_CHECKPOINTS=[
@@ -573,18 +585,19 @@ const getStalls=(prog,wk,programDays)=>{
   const programExIds=new Set(Object.values(days).flatMap(d=>d.exercises).map(e=>e.id));
   Object.entries(prog).forEach(([id,p])=>{
     if(!p.lastDate)return;
-    if(!programExIds.has(id))return;
+    const baseId=p.exerciseId||id.split("__")[0];
+    if(!programExIds.has(baseId))return;
     const sessions=Object.entries(wk)
-      .filter(([_,w])=>w.exercises?.some(e=>e.id===id))
-      .map(([d,w])=>{const ex=w.exercises.find(e=>e.id===id);const cs=ex?.sets?.filter(s=>s.done&&s.weight>0)||[];return cs.length?{date:d,weight:Math.max(...cs.map(s=>s.weight))}:null;})
+      .filter(([_,w])=>w.exercises?.some(e=>e.id===baseId||e.progKey===id))
+      .map(([d,w])=>{const ex=w.exercises.find(e=>e.id===baseId||e.progKey===id);const cs=ex?.sets?.filter(s=>s.done&&s.weight>0)||[];return cs.length?{date:d,weight:Math.max(...cs.map(s=>s.weight))}:null;})
       .filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date));
     if(sessions.length<3)return;
     // Check if last 2 sessions both dropped weight vs the session before them
     const baseline=sessions[2].weight;
     if(sessions[0].weight<baseline&&sessions[1].weight<baseline){
-      const exDef=Object.values(days).flatMap(d=>d.exercises).find(e=>e.id===id);
+      const exDef=Object.values(days).flatMap(d=>d.exercises).find(e=>e.id===baseId);
       const drop=baseline-sessions[0].weight;
-      stalls.push({id,name:exDef?.name||id,weeks:2,currentWeight:sessions[0].weight,drop});
+      stalls.push({id,name:exDef?.name||p.name||baseId,weeks:2,currentWeight:sessions[0].weight,drop});
     }
   });
   return stalls;
@@ -683,9 +696,10 @@ const getCutRetentionScore=(data)=>{
   const weeks=Math.max(1,(new Date(wEntries[wEntries.length-1][0])-new Date(wEntries[0][0]))/6048e5);
   const wkChange=Math.abs(rAvg-oAvg)/weeks;
   const wScore=wkChange<=0.5?100:wkChange<=1?85:wkChange<=1.5?65:wkChange<=2?45:20;
-  const totalL=Object.keys(data.prog||{}).length;
-  const progL=Object.values(data.prog||{}).filter(p=>p.progressed).length;
-  const lScore=totalL>0?Math.round(progL/totalL*100):50;
+  const progEntries=Object.values(data.prog||{});
+  const totalL=progEntries.length;
+  const heldL=progEntries.filter(p=>p.lastDate).length;
+  const lScore=totalL>0?Math.round(heldL/totalL*100):50;
   const nutDates=Object.keys(data.nut||{}).filter(d=>d>=planStart).sort();
   let pH=0,pDays=0;
   for(const d of nutDates){
@@ -696,7 +710,7 @@ const getCutRetentionScore=(data)=>{
   const pScore=pDays>0?Math.round(pH/pDays*100):50;
   const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
   return{score:total,weight:{score:wScore,change:+((rAvg-oAvg)/weeks).toFixed(1)},
-    lifts:{score:lScore,progressed:progL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
+    lifts:{score:lScore,held:heldL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
 };
 
 const calcEWMA=(values,alpha=0.1)=>{
@@ -1260,7 +1274,7 @@ const Dashboard=({data,setData,setTab})=>{
   const rhrCh=Object.entries(data.rec).filter(([_,v])=>v.rhr).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.rhr,d:d.slice(5)}));
   const stCh=Object.entries(data.steps||{}).filter(([_,v])=>v>0).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v,d:d.slice(5)}));
   const slCh=Object.entries(data.rec).filter(([_,v])=>v.sleepHours).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.sleepHours,d:d.slice(5)}));
-  const lifts=Object.values(data.prog).filter(p=>p.progressed).length;
+  const liftsHeld=Object.values(data.prog).filter(p=>p.lastDate).length;
   const totalL=Object.keys(data.prog).length;
 
   const habitDays=Object.entries(data.habits||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
@@ -1662,8 +1676,8 @@ const Dashboard=({data,setData,setTab})=>{
               <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:retention.lifts.score>=50?C.g:C.a}}>{retention.lifts.progressed}/{retention.lifts.total}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Up</div>
+              <div style={{fontSize:14,fontWeight:700,color:retention.lifts.score>=50?C.g:C.a}}>{retention.lifts.held}/{retention.lifts.total}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Held</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.protein.score>=70?C.g:C.a}}>{retention.protein.hit}/{retention.protein.days}</div>
@@ -1754,10 +1768,10 @@ const Dashboard=({data,setData,setTab})=>{
       {totalL>0&&(
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
-            <span style={{color:C.t2,fontWeight:600}}>Lift Progressions</span>
-            <span style={{color:C.g,fontWeight:700}}>{lifts}/{totalL}</span>
+            <span style={{color:C.t2,fontWeight:600}}>Lift Retention Logs</span>
+            <span style={{color:C.g,fontWeight:700}}>{liftsHeld}/{totalL}</span>
           </div>
-          <Br v={lifts} max={totalL} color={C.g}/>
+          <Br v={liftsHeld} max={totalL} color={C.g}/>
         </X>
       )}
 
@@ -2147,8 +2161,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       const cw=cs[0].weight>0?cs[0].weight:gw(active,asw,pe);
       const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
       const prevWeight=nd.prog[aid]?.currentWeight||gw(active,asw,pe);
-      const newWeight=workout.isDeload?prevWeight:(ainc===0?cw:(hit?cw+ainc:cw));
-      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:workout.isDeload?false:(hit&&ainc>0),pr:prevPr||null,e1rmHistory:prevHistory,exerciseId:active.id,repRange:pe.rr,name:aname}};
+      const shouldProgress=!CUT_HOLD_PROGRESSION&&!workout.isDeload&&hit&&ainc>0;
+      const newWeight=workout.isDeload?prevWeight:(shouldProgress?cw+ainc:cw);
+      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:shouldProgress,pr:prevPr||null,e1rmHistory:prevHistory,exerciseId:active.id,repRange:pe.rr,name:aname}};
       if(!workout.isDeload){
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
       const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
@@ -2319,8 +2334,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const [viewW,setViewW]=useState(null);
   const [spOpen,setSpOpen]=useState(false);
-  const allProgExs=(()=>{const seen={};Object.values(PROG.days).forEach(day=>day.exercises.forEach(ex=>{if(!seen[ex.id])seen[ex.id]=ex.name;}));return Object.entries(seen).map(([id,name])=>({id,name}));})();
-  const [spSel,setSpSel]=useState(()=>{let best=null,bestN=0;allProgExs.forEach(({id})=>{const h=(data.prog[id]?.e1rmHistory||[]).length;if(h>bestN){bestN=h;best=id;}});return best||(allProgExs[0]?.id||null);});
+  const allProgExs=(()=>{const seen={};Object.values(PROG.days).forEach(day=>day.exercises.forEach(ex=>{const key=progKey(ex,ex);if(!seen[key])seen[key]={...ex,progKey:key};}));return Object.values(seen);})();
+  const [spSel,setSpSel]=useState(()=>{let best=null,bestN=0;allProgExs.forEach(ex=>{const h=getProgHistory(data.prog,ex).length;if(h>bestN){bestN=h;best=ex.progKey||ex.id;}});return best||(allProgExs[0]?.progKey||allProgExs[0]?.id||null);});
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
   const todayWorkout=data.wk?.[t];
   const todaySess=getSess(dn,activeVariant[dn]);
@@ -2719,7 +2734,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>
       </S>)}
       <S title="Exercises" collapsible defaultOpen={false}>
-        {sess.exercises.map(ex=>{const prog=data.prog[progKey(ex,ex)]||data.prog[ex.id],cw=gw(ex,ex.sw,ex);
+        {sess.exercises.map(ex=>{const prog=getProgEntry(data.prog,ex),cw=gw(ex,ex.sw,ex);
           const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
             for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
               if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
@@ -2805,11 +2820,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     {/* ═══ STRENGTH PROGRESS ═══ */}
     {(()=>{
-      const rawSpHistory=spSel?(data.prog[spSel]?.e1rmHistory||[]):[];
+      const selectedEx=allProgExs.find(e=>e.id===spSel);
+      const rawSpHistory=selectedEx?getProgHistory(data.prog,selectedEx):[];
       const spDateMap={};rawSpHistory.forEach(h=>{if(!spDateMap[h.date]||h.e1rm>spDateMap[h.date])spDateMap[h.date]=h.e1rm;});
       const spHistory=Object.entries(spDateMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,e1rm])=>({date,e1rm}));
-      const spPr=spSel?data.prog[spSel]?.pr:null;
-      const spExName=allProgExs.find(e=>e.id===spSel)?.name||spSel||"";
+      const spPr=selectedEx?getProgPr(data.prog,selectedEx):null;
+      const spExName=selectedEx?.name||spSel||"";
       const spBest=spHistory.length?Math.max(...spHistory.map(h=>h.e1rm)):null;
       const spGain=spHistory.length>=2&&spBest!=null?+(spBest-spHistory[0].e1rm).toFixed(1):null;
       const W=320,H=180,padL=32,padR=10,padT=12,padB=28;
@@ -2831,10 +2847,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           </div>
           {spOpen&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>
             <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2}}>
-              {allProgExs.map(ex=>{const hasData=(data.prog[ex.id]?.e1rmHistory||[]).length>0;return(
-                <button key={ex.id} onClick={()=>setSpSel(ex.id)} style={{flexShrink:0,padding:"5px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
-                  border:`1px solid ${spSel===ex.id?C.p:C.bd}`,background:spSel===ex.id?C.pl:"transparent",
-                  color:spSel===ex.id?C.p:hasData?C.t2:C.t3,opacity:hasData?1:0.5}}>{ex.name}</button>
+              {allProgExs.map(ex=>{const hasData=getProgHistory(data.prog,ex).length>0;return(
+                <button key={ex.progKey||ex.id} onClick={()=>setSpSel(ex.progKey||ex.id)} style={{flexShrink:0,padding:"5px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+                  border:`1px solid ${spSel===(ex.progKey||ex.id)?C.p:C.bd}`,background:spSel===(ex.progKey||ex.id)?C.pl:"transparent",
+                  color:spSel===(ex.progKey||ex.id)?C.p:hasData?C.t2:C.t3,opacity:hasData?1:0.5}}>{ex.name}</button>
               );})}
             </div>
             {spHistory.length<2?(
