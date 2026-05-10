@@ -968,6 +968,17 @@ const Br=({v,max,color=C.p,h=5})=>(
     <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:3,transition:"width 0.3s"}}/>
   </div>
 );
+const notifyDevice=async(title,options={})=>{
+  if(typeof Notification==="undefined"||Notification.permission!=="granted")return false;
+  const opts={icon:"/icon-192.png",badge:"/icon-192.png",vibrate:[200,100,200],...options};
+  try{
+    if("serviceWorker" in navigator){
+      const reg=await navigator.serviceWorker.ready;
+      if(reg?.showNotification){await reg.showNotification(title,opts);return true;}
+    }
+    new Notification(title,opts);return true;
+  }catch(e){try{new Notification(title,opts);return true;}catch{return false;}}
+};
 
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
@@ -2281,8 +2292,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const notifyRestDone=()=>{
     const ns=data.settings?.notifications||{};
     if(!ns.enabled||ns.restTimer===false)return;
-    if(typeof Notification==="undefined"||Notification.permission!=="granted")return;
-    try{new Notification("Rest complete",{body:"Next set is ready.",tag:"rest-timer",icon:"/icon-192.png"});}catch{}
+    notifyDevice("Rest complete",{body:"Next set is ready.",tag:"rest-timer",requireInteraction:true});
   };
 
   const startRestTimer=(rest)=>{
@@ -4144,7 +4154,7 @@ window.App = function App(){
       if(ns.habits&&hour>=8&&hour<9&&!data.habits?.[t]){
         const lastNotif=localStorage.getItem("dhub6_notif_habits");
         if(lastNotif!==t){
-          new Notification("Health Hub",{body:"Time to log your habits and metrics for today",tag:"habits",icon:"/icon-192.png"});
+          notifyDevice("Health Hub",{body:"Time to log your habits and metrics for today",tag:"habits"});
           localStorage.setItem("dhub6_notif_habits",t);
         }
       }
@@ -4156,7 +4166,7 @@ window.App = function App(){
         if(waterNow<waterGoal*0.5){
           const lastNotif=localStorage.getItem("dhub6_notif_water_hr");
           if(lastNotif!==""+hour){
-            new Notification("Health Hub",{body:`${waterNow}/${waterGoal}oz water — keep hydrating!`,tag:"water",icon:"/icon-192.png"});
+            notifyDevice("Health Hub",{body:`${waterNow}/${waterGoal}oz water — keep hydrating!`,tag:"water"});
             localStorage.setItem("dhub6_notif_water_hr",""+hour);
           }
         }
@@ -4166,7 +4176,7 @@ window.App = function App(){
       if(ns.stretch&&hour>=20&&hour<21&&!(data.mob?.[t]?.done||data.mob?.[t]===true)){
         const lastNotif=localStorage.getItem("dhub6_notif_stretch");
         if(lastNotif!==t){
-          new Notification("Health Hub",{body:"Time for your evening stretch routine",tag:"stretch",icon:"/icon-192.png"});
+          notifyDevice("Health Hub",{body:"Time for your evening stretch routine",tag:"stretch"});
           localStorage.setItem("dhub6_notif_stretch",t);
         }
       }
@@ -4178,7 +4188,7 @@ window.App = function App(){
         if(sess&&!data.wk?.[t]){
           const lastNotif=localStorage.getItem("dhub6_notif_workout");
           if(lastNotif!==t){
-            new Notification("Health Hub",{body:`${sess.name} today`,tag:"workout",icon:"/icon-192.png"});
+            notifyDevice("Health Hub",{body:`${sess.name} today`,tag:"workout"});
             localStorage.setItem("dhub6_notif_workout",t);
           }
         }
