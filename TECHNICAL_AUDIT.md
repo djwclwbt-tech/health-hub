@@ -1,6 +1,6 @@
 # Health Hub — Technical Audit for Third-Party Review
 
-This document describes the complete system for Health Hub, a single-page PWA used daily by one person to track strength training workouts, nutrition, recovery, and habits during body recomposition. It is not a generic health dashboard. It is a daily-use workout tracker — the user opens it at the gym, logs weights and reps set by set, finishes the workout, and the app automatically decides whether to increase weight next session.
+This document describes the complete system for Health Hub, a single-page PWA used daily by one person to execute a fat-loss cut while tracking strength training workouts, nutrition, recovery, and habits. It is not a generic health dashboard. It is a daily-use workout tracker — the user opens it at the gym, logs weights and reps set by set, finishes the workout, and the app automatically decides whether to increase weight next session.
 
 ---
 
@@ -16,12 +16,12 @@ api/coach.js            — Mid-workout AI coaching (POST)
 api/estimate.js         — AI meal nutrition estimation with vision (POST)
 api/update.js           — External program update endpoint (POST, Bearer auth)
 api/mcp.js              — Remote MCP server for Claude.ai integration (GET/POST)
-api/whoop-sync.js       — Whoop recovery data sync (GET, cron)
-api/whoop-auth.js       — Whoop OAuth2 flow (GET)
-api/whoop-webhook.js    — Whoop real-time webhook (POST, HMAC-SHA256)
+api/oura-sync.js       — Oura recovery data sync (GET, cron)
+api/oura-auth.js       — Oura OAuth2 flow (GET)
+api/oura-webhook.js    — Oura real-time webhook (POST, HMAC-SHA256)
 api/cronometer-sync.js  — Cronometer nutrition sync (GET, cron)
 api/sync-nutrition.js   — Apple Shortcut MFP nutrition sync (GET/POST)
-lib/whoop.js            — Whoop API utilities (pure functions, native fetch)
+lib/oura.js            — Oura API utilities (pure functions, native fetch)
 lib/cronometer.js       — Cronometer GWT-RPC auth + CSV parsing
 sw.js                   — Service worker (network-first navigation, push notifications)
 vercel.json             — Serverless config, cron schedules, cache headers
@@ -45,7 +45,7 @@ This is intentional. No build step means: push `index.html` to `main`, Vercel au
 
 - Vercel auto-deploys from `main` branch
 - Auto-merge GitHub Action (`.github/workflows/auto-merge-claude.yml`) creates and merges PRs from any `claude/**` branch
-- Env vars on Vercel: `ANTHROPIC_API_KEY`, `UPDATE_TOKEN`, `SUPABASE_URL`, `SUPABASE_KEY`, `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, `WHOOP_REDIRECT_URI`, `CRONOMETER_USERNAME`, `CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET`
+- Env vars on Vercel: `ANTHROPIC_API_KEY`, `UPDATE_TOKEN`, `SUPABASE_URL`, `SUPABASE_KEY`, `CRONOMETER_USERNAME`, `CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET`
 
 ---
 
@@ -87,14 +87,14 @@ All client-side data lives in `localStorage` under key `dhub6` (`index.html:138`
 
   wt: { "2026-04-22": 184.6 },   // Weight in lbs, keyed by date
 
-  rec: {                          // Recovery from Whoop, keyed by date
+  rec: {                          // Recovery from Oura, keyed by date
     "2026-04-22": {
       recoveryScore: 72,           // 0-100 percentage
       hrv: 48,                     // ms
       rhr: 52,                     // bpm
       sleepHours: 7.2,
       sleepPerformance: 85,        // percentage
-      strain: 12.4,                // 0-21 Whoop scale
+      strain: 12.4,                // 0-21 Oura scale
       respiratoryRate: 15.2,
       wakeTime: "6:30",
       notes: null
@@ -142,15 +142,15 @@ All client-side data lives in `localStorage` under key `dhub6` (`index.html:138`
   },
 
   settings: {
-    calories: 2430,
+    calories: 1800,
     protein: 200,
     water: 128,                    // oz
-    steps: 10000,
+    steps: 15000,
     sleep: 7.5,                    // hours
     fiber: 30,                     // grams
-    mondayCal: 1300,               // caloric cycling: low on Monday (rest day)
-    trainingCal: 2600,             // training days Tue-Fri
-    weekendCal: 2500,
+    trainingCal: 1800,             // training days
+    wednesdayCal: 900,
+    weekendCal: 1700,
     customHabits: [],
     notifications: { enabled: false, habits: true, water: true, stretch: true, workout: true }
   },
@@ -351,14 +351,14 @@ Swapped exercises use their own `data.prog[swappedId]` entry. So if you swap Smi
 
 ### Architecture
 
-The app is offline-first. All writes go to `localStorage` immediately. Supabase is a cloud backup that also receives data from external integrations (Whoop, Cronometer).
+The app is offline-first. All writes go to `localStorage` immediately. Supabase is a cloud backup that also receives data from external integrations (Oura, Cronometer).
 
 ### On App Load (lines 3593-3642)
 
 1. Load all tables from Supabase in parallel via `loadFromSB()` (line 253)
 2. Load local data via `ld()` (line 139)
 3. Smart merge with clear priority rules:
-   - **Date-keyed data** (wk, nut, wt, rec, steps, water, habits, mob, cardio, etc.): `{...local, ...supabase}` — **Supabase wins**. This is because Whoop and Cronometer write directly to Supabase.
+   - **Date-keyed data** (wk, nut, wt, rec, steps, water, habits, mob, cardio, etc.): `{...local, ...supabase}` — **Supabase wins**. This is because Oura and Cronometer write directly to Supabase.
    - **Progression** (`prog`): `{...supabase, ...local}` — **Local wins**. The most recent workout action is always on the device.
    - Settings, program: Supabase overlay on local
 4. Apply pending program updates from `program_updates` table via `applyProgramUpdates()` (line 3536)
@@ -487,7 +487,7 @@ The client sends recent meal descriptions and any prior corrections so the AI ca
 
 ### 9b. Mid-Workout Coach — `api/coach.js`
 
-**Input**: Question, current exercise details, weight, reps, sets done, focus day, last 4 sessions of progression history, today's recovery from Whoop, stall status, program week.
+**Input**: Question, current exercise details, weight, reps, sets done, focus day, last 4 sessions of progression history, today's recovery from Oura, stall status, program week.
 **Output**: `{ answer, actions }` — text advice + optional program changes.
 
 The coach can return actions that modify the program live:
@@ -623,8 +623,8 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 
 | Schedule | Endpoint | Purpose |
 |----------|----------|---------|
-| `0 14 * * *` (2 PM UTC / 9 AM CDT) | `/api/whoop-sync` | Morning Whoop recovery pull |
-| `0 4 * * *` (4 AM UTC / 11 PM CDT) | `/api/whoop-sync` | Evening Whoop recovery pull |
+| `0 14 * * *` (2 PM UTC / 9 AM CDT) | `/api/oura-sync` | Morning Oura recovery pull |
+| `0 4 * * *` (4 AM UTC / 11 PM CDT) | `/api/oura-sync` | Evening Oura recovery pull |
 | `0 0 * * *` (midnight UTC) | `/api/cronometer-sync` | Daily nutrition sync |
 
 ### Key localStorage Keys
@@ -647,7 +647,7 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 | weight | date | Daily weigh-ins |
 | steps | date | Daily step counts |
 | water | date | Daily water intake (oz) |
-| recovery | date | Whoop: recovery%, HRV, RHR, sleep, strain |
+| recovery | date | Oura: recovery%, HRV, RHR, sleep, strain |
 | habits | date | Daily habit completion |
 | workouts | date | Workout logs (exercises, sets, duration) |
 | nutrition | date | Meals + daily macro totals |
@@ -661,7 +661,7 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 | settings | id (singleton) | User targets and preferences |
 | program | id (singleton) | Active workout program definition |
 | program_updates | id | Queue of pending program changes |
-| whoop_tokens | id | OAuth tokens for Whoop API |
+| oura_tokens | id | OAuth tokens for Oura API |
 
 ---
 
@@ -669,7 +669,7 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 
 These are specific areas where a third-party review would be most valuable:
 
-1. **Progression merge strategy**: Is there a better approach than "local wins for prog"? The app needs to handle: (a) user works out on phone with spotty connection, (b) Whoop/Cronometer write to Supabase while user is offline, (c) user reopens app later. How should per-exercise progression be merged when both sides have updates?
+1. **Progression merge strategy**: Is there a better approach than "local wins for prog"? The app needs to handle: (a) user works out on phone with spotty connection, (b) Oura/Cronometer write to Supabase while user is offline, (c) user reopens app later. How should per-exercise progression be merged when both sides have updates?
 
 2. **Is the deload repair function (`repairDeloadProgression`) still needed?** It runs on every load. It scans all exercises and compares `currentWeight` to the most recent non-deload workout. The original bug is fixed — should this be removed, kept as a safety net, or made smarter?
 

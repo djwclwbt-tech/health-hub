@@ -1,7 +1,7 @@
 # Health Hub - Development Guide
 
 ## Overview
-Health Hub is a single-page PWA for personal health and fitness tracking, built for strength athletes doing body recomposition. It runs as a monolithic `index.html` with React 18 via CDN (no build process).
+Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. It runs as a monolithic `index.html` with React 18 via CDN (no build process).
 
 ## Tech Stack
 - **Frontend**: React 18 (CDN, Babel in-browser transpilation)
@@ -46,7 +46,7 @@ Stored in `data.settings`:
 - `calories` — Daily calorie target (default: 1800)
 - `protein` — Daily protein target in grams (default: 180)
 - `water` — Daily water target in oz (default: 128)
-- `steps` — Daily step target (default: 10000)
+- `steps` — Daily step target (default: 15000)
 - `sleep` — Sleep target in hours (default: 7.5)
 - `fiber` — Daily fiber target in grams (default: 30)
 

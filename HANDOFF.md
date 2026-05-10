@@ -1,7 +1,7 @@
 # Health Hub — Full Project Handoff
 
 ## What This Is
-A single-page PWA for personal health/fitness tracking built for one user doing body recomposition (strength training + caloric cycling). Deployed on Vercel, data in Supabase, offline-first via localStorage.
+A single-page PWA for personal health/fitness tracking built for one user executing a fat-loss cut while preserving muscle and performance. Deployed on Vercel, data in Supabase, offline-first via localStorage.
 
 **Live URL:** https://health-hub-topaz-sigma.vercel.app
 **Repo:** https://github.com/djwclwbt-tech/health-hub
@@ -16,7 +16,7 @@ A single-page PWA for personal health/fitness tracking built for one user doing 
 - **Database:** Supabase PostgreSQL (cloud sync)
 - **Local Storage:** `localStorage` key `dhub6` — offline-first, syncs to Supabase on load
 - **AI:** Claude API (Sonnet 4) for meal estimation, workout coaching, weekly analysis, body comp
-- **External integrations:** Whoop (OAuth2 daily sync), Cronometer (nutrition sync via cron)
+- **External integrations:** Oura/recovery data where configured, Cronometer (nutrition sync via cron)
 
 ---
 
@@ -29,11 +29,7 @@ api/coach.js        — Mid-workout AI coaching
 api/estimate.js     — AI meal nutrition estimation (photo + text)
 api/update.js       — External program update endpoint (MCP, curl, scripts)
 api/mcp.js          — Remote MCP server for Claude.ai integration
-api/whoop-sync.js   — Whoop recovery data sync (cron)
-api/whoop-webhook.js— Whoop real-time webhook
-api/whoop-auth.js   — Whoop OAuth2 flow
 api/cronometer-sync.js — Cronometer nutrition sync (cron)
-lib/whoop.js        — Whoop API utility (pure functions, native fetch)
 lib/cronometer.js   — Cronometer GWT-RPC auth + CSV parsing
 sw.js               — Service worker (network-first for navigation, push notifications)
 ```
@@ -55,7 +51,7 @@ All data stored in localStorage under key `dhub6`, structured as:
   habits: { "2026-04-14": { alcohol: false, cannabis: false, screensOff: true, sunlight: true, bedBy1030: true, readBeforeBed: true, supplements: true, custom: {} } },
   prog: { "smith-flat-bench": { currentWeight: 150, lastReps: [8,8,8], lastDate: "2026-03-31", progressed: true, pr: {...}, e1rmHistory: [...] } },
   program: { tuesday: { name: "Upper A", exercises: [...] }, ... },
-  settings: { calories: 2430, protein: 200, water: 128, steps: 10000, sleep: 7.5, fiber: 30, mondayCal: 1300, trainingCal: 2600, weekendCal: 2500 },
+  settings: { calories: 1800, protein: 200, water: 128, steps: 15000, sleep: 7.5, fiber: 30, trainingCal: 1800, wednesdayCal: 900, weekendCal: 1700 },
   qm: [],           // Quick meal library
   mob: {},          // Mobility/stretching completion
   cardio: {},       // Cardio sessions
@@ -70,7 +66,7 @@ All data stored in localStorage under key `dhub6`, structured as:
 - **`prog`** (progression state): Keyed by exercise ID. Tracks currentWeight, lastReps, whether they progressed, estimated 1RM history, and personal records.
 - **`program`** (exercise definitions): The actual workout template. Days → exercises with sets, rep ranges, rest, starting weight, increment.
 - **`PROG`** (hardcoded constant): The master program definition at the top of index.html. On first load or when exercises change, this seeds `data.program`.
-- **Merge priority on load:** Supabase wins for date-keyed data (Whoop/Cronometer write directly). Local wins for `prog` (most recent workout actions).
+- **Merge priority on load:** Supabase wins for date-keyed data (Oura/Cronometer write directly). Local wins for `prog` (most recent workout actions).
 
 ---
 
@@ -106,7 +102,7 @@ PROG = {
 1. **Dashboard** — Daily summary, habit score, weight trend, volume card, PR board, body measurements, recovery correlation
 2. **Training** — Day's exercises with warmups, start workout flow, exercise swap mid-workout, coach chat
 3. **Food** — Nutrition tracking (AI photo estimation or manual macro entry), auto-calc calories from macros, weekly calorie total
-4. **Habits** — 7 system habits + custom habits, health metrics (recovery/HRV/RHR from Whoop), weight check-in, score & streaks
+4. **Habits** — 7 system habits + custom habits, health metrics (recovery/HRV/RHR from Oura), weight check-in, score & streaks
 5. **Settings** — Targets, body comp photos, measurement logging, data import/export, program display
 
 ---
@@ -147,8 +143,8 @@ Weekly health analysis. Receives 7 days of workout, nutrition, recovery, habit d
 ### GET/POST /api/mcp
 Remote MCP server for Claude.ai integration. Tools: `get_program`, `update_settings`, `update_exercise`.
 
-### GET /api/whoop-sync (cron: 9AM + 11PM CDT)
-Pulls recovery, sleep, strain from Whoop API. Upserts to Supabase `recovery` table.
+### GET /api/oura-sync (cron: 9AM + 11PM CDT)
+Pulls recovery, sleep, strain from Oura API. Upserts to Supabase `recovery` table.
 
 ### GET /api/cronometer-sync (cron: hourly)
 Pulls daily nutrition from Cronometer. Upserts to Supabase `nutrition` table.
@@ -160,12 +156,12 @@ Pulls daily nutrition from Cronometer. Upserts to Supabase `nutrition` table.
 1. **Deload progression fix** (just deployed) — finishWorkout now preserves pre-deload weights instead of overwriting with 50% values. Includes one-time repair function.
 2. **e1RM chart fix** — Group by session (max per date), fix since-start calculation
 3. **Body measurements dashboard card** — Chest, waist, arms, thighs with delta tracking
-4. **5 bug fixes** — Deficit label, volume chart, strain rounding, stalled lifts dedup, whoop steps
+4. **5 bug fixes** — Deficit label, volume chart, strain rounding, stalled lifts dedup, oura steps
 5. **e1RM strength progress chart** — Training tab sparkline per exercise
 6. **TDEE exclude toggle** — Skip days with <1200 cal from TDEE calculation
 7. **Merge priority fix** — Supabase wins for date-keyed data (external syncs)
 8. **Cronometer sync** — Hourly cron pulls nutrition data
-9. **Whoop integration** — Full OAuth2 + daily sync + webhook + strain
+9. **Oura integration** — Full OAuth2 + daily sync + webhook + strain
 10. **Exercise swap mid-workout** — Bottom-sheet with anatomically-matched alternatives
 11. **PWA icon fix** — Added missing 192px and 512px icons
 12. **Anti-cache fixes** — Network-first HTML, no-cache headers, updateViaCache:none
@@ -174,7 +170,7 @@ Pulls daily nutrition from Cronometer. Upserts to Supabase `nutrition` table.
 15. **Timed stretching** — Per-exercise countdown, vibrate, auto-advance sides
 16. **Weekly calorie total** — Running total card on nutrition page
 17. **Auto-calc calories from macros** — Removed manual cal input, computes from P×4 + C×4 + F×9
-18. **Habits tab** — Replaced Recovery/Whoop tab + killed morning debrief popup
+18. **Habits tab** — Replaced Recovery/Oura tab + killed morning debrief popup
 19. **Coach JSON fix** — Regex extraction fallback for mixed text+JSON responses
 20. **Water tracker date navigation** — Respects viewDate instead of hardcoded today
 
@@ -207,7 +203,7 @@ Pulls daily nutrition from Cronometer. Upserts to Supabase `nutrition` table.
 - **Vercel** — auto-deploys from `main` branch
 - **Auto-merge workflow** — `.github/workflows/auto-merge-claude.yml` creates + merges PRs from `claude/**` branches
 - **Supabase** — URL: `wszumxewqxkggtevfubb.supabase.co`
-- **Env vars (Vercel):** `ANTHROPIC_API_KEY`, `UPDATE_TOKEN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, `WHOOP_REDIRECT_URI`, `CRONOMETER_USERNAME`, `CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET`
+- **Env vars (Vercel):** `ANTHROPIC_API_KEY`, `UPDATE_TOKEN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `CRONOMETER_USERNAME`, `CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET`
 
 ---
 
@@ -240,7 +236,7 @@ curl -X POST "https://health-hub-topaz-sigma.vercel.app/api/update" \
 | weight | date | Daily weigh-ins |
 | steps | date | Daily step counts |
 | water | date | Daily water intake (oz) |
-| recovery | date | Whoop data: recovery%, HRV, RHR, sleep, strain |
+| recovery | date | Oura data: recovery%, HRV, RHR, sleep, strain |
 | habits | date | Daily habit completion |
 | workouts | date | Workout logs with exercises/sets |
 | nutrition | date | Meals array + daily totals |
@@ -255,7 +251,7 @@ curl -X POST "https://health-hub-topaz-sigma.vercel.app/api/update" \
 | settings | id (singleton) | User targets and preferences |
 | program | id (singleton) | Workout program definition |
 | program_updates | id | Queue for pending program changes |
-| whoop_tokens | id | OAuth tokens for Whoop API |
+| oura_tokens | id | OAuth tokens for Oura API |
 
 ---
 

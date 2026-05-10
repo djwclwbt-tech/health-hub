@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No input provided' });
     }
 
-    const systemPrompt = `You are a precise nutrition estimator for a strength athlete tracking body recomposition. Your job is to estimate calories and macros as accurately as possible.
+    const systemPrompt = `You are a precise nutrition estimator for a strength athlete executing a fat-loss cut while preserving performance. Your job is to estimate calories and macros as accurately as possible.
 
 CRITICAL RULES:
 0. BRANDED/PACKAGED PRODUCTS OVERRIDE ALL OTHER RULES. When the user names a specific brand and product (e.g. "Fairlife Core Power Elite 42g", "Quest protein bar", "Chobani Greek yogurt"), use the EXACT nutrition facts from that product's label. Do NOT estimate or inflate — packaged foods have fixed, known nutrition. If you recognize the brand/product, return the label data. If you don't recognize it, set confidence to "low" and note that the user should verify against the label.
@@ -51,7 +51,7 @@ CRITICAL RULES:
 9. COOKING METHOD ADJUSTMENTS: Raw-to-cooked calorie density changes significantly. Fried foods absorb 8-15% of their weight in oil. Grilled/baked proteins lose ~25% weight but concentrate calories per gram. Always note the cooking method and adjust accordingly.
 10. HIDDEN CALORIE CHECKLIST — for every meal, explicitly consider and account for if likely present: cooking oil/butter used? sauce or dressing? cheese? cream or milk? sugar or honey? nuts or seeds as garnish? bread or tortilla wrap?
 
-${context ? `USER CONTEXT: Daily targets are ${context.calories || 2430} cal, ${context.protein || 180}g protein. Use this to sanity-check — a single meal for this person is typically 400-900 cal unless it's clearly a large meal.` : ''}
+${context ? `USER CONTEXT: Daily targets are ${context.calories || 1800} cal, ${context.protein || 200}g protein. Use this to sanity-check — a single meal for this person is typically 400-900 cal unless it's clearly a large meal.` : ''}
 
 ${context?.corrections?.length ? `USER CORRECTION HISTORY — This user has corrected your past estimates. Calibrate your estimates to match their specific portions, brands, and cooking style:
 ${context.corrections.slice(0,10).map(c =>
