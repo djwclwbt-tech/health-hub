@@ -3279,62 +3279,83 @@ const Weight=({data,setData})=>{
   const wTrend=getWeightTrend(data.wt);
   const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
+  const todayLogged=data.wt[t]!=null;
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Scale</div>
-    {wTrend&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-      <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>
-        {wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.abs(wTrend.rate)} lbs/week
-      </div>
-      <div style={{fontSize:12,color:C.t2,marginTop:2}}>{wTrend.advice}</div>
-    </X>)}
-    <X style={{borderLeft:`3px solid ${C.p}`}}><L>Log — {fmt(t)}</L>
-      <div style={{display:"flex",gap:6,marginTop:4}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:18}}/><B onClick={add}>Log</B></div>
-      {data.wt[t]&&<div style={{fontSize:13,color:C.g,marginTop:4,fontWeight:600}}>Today: {data.wt[t]} lbs</div>}
-    </X>
-    <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
-      {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
-      <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
+    <div>
+      <div style={{fontSize:18,fontWeight:800,color:C.t}}>Morning scale</div>
+      <div style={{fontSize:13,color:C.t3}}>One number. The trend/review stays tucked away.</div>
     </div>
-    {/* Weight chart with trend line overlay */}
-    {trendWeights&&trendWeights.length>=2?(()=>{
-      const rawPts=trendWeights.map(tw=>({v:tw.raw,d:tw.d.slice(5)}));
-      const trendPts=trendWeights.map(tw=>({v:tw.v,d:tw.d.slice(5)}));
-      const allVals=[...rawPts.map(p=>p.v),...trendPts.map(p=>p.v)];
-      const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1,pad=rng*0.12;
-      const w=rawPts.length*32,h=52;
-      const toY=v=>h-6-((v-(mn-pad))/(rng+pad*2))*(h-16);
-      const rawLine=rawPts.map((p,i)=>`${i*(w/(rawPts.length-1))},${toY(p.v)}`).join(" ");
-      const trendLine=trendPts.map((p,i)=>`${i*(w/(trendPts.length-1))},${toY(p.v)}`).join(" ");
-      return(
-        <X style={{padding:"10px 14px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight + Trend</span>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:10,color:C.t3}}>· raw</span>
-              <span style={{fontSize:10,color:C.g}}>— trend</span>
-              <span style={{fontSize:13,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight} lbs</span>
-            </div>
+
+    <X style={{borderLeft:`3px solid ${todayLogged?C.g:C.p}`}}>
+      <L>{todayLogged?"Logged today":"Fast log — "+fmt(t)}</L>
+      {todayLogged?(
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+            <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{data.wt[t].toFixed(1)}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
+            <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:10,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
           </div>
-          <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
-            <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1" strokeDasharray="3,3" strokeLinecap="round"/>
-            {rawPts.map((p,i)=><circle key={i} cx={i*(w/(rawPts.length-1))} cy={toY(p.v)} r="2.5" fill={C.cd} stroke={C.t3} strokeWidth="1"/>)}
-            <polyline points={trendLine} fill="none" stroke={C.g} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}>
-            <span>{rawPts[0]?.d}</span><span>{rawPts[rawPts.length-1]?.d}</span>
-          </div>
-          {wtTDEE.weeklyChange!==0&&(
-            <div style={{marginTop:6,fontSize:11,color:wtTDEE.weeklyChange<0?C.g:C.a,fontWeight:600}}>
-              Trend: {wtTDEE.weeklyChange>0?"+":""}{wtTDEE.weeklyChange.toFixed(1)} lbs/wk
+          {nw!==""&&<div style={{display:"flex",gap:6,marginTop:10}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:20,fontWeight:800}}/><B onClick={add}>Update</B></div>}
+        </div>
+      ):(
+        <div>
+          <div style={{fontSize:13,color:C.t2,marginBottom:8}}>Log before food/water if possible. This anchors the weekly cut call.</div>
+          <div style={{display:"flex",gap:6}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:22,fontWeight:800}}/><B onClick={add}>Log</B></div>
+        </div>
+      )}
+    </X>
+
+    {wTrend&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
+      <div style={{fontSize:11,fontWeight:800,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut pace</div>
+      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.abs(wTrend.rate)} lbs/week</div>
+      <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.advice}</div>
+    </X>)}
+
+    <S title="Scale review" collapsible defaultOpen={false}>
+      <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
+        {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
+      </div>
+      {trendWeights&&trendWeights.length>=2?(()=>{
+        const rawPts=trendWeights.map(tw=>({v:tw.raw,d:tw.d.slice(5)}));
+        const trendPts=trendWeights.map(tw=>({v:tw.v,d:tw.d.slice(5)}));
+        const allVals=[...rawPts.map(p=>p.v),...trendPts.map(p=>p.v)];
+        const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1,pad=rng*0.12;
+        const w=rawPts.length*32,h=52;
+        const toY=v=>h-6-((v-(mn-pad))/(rng+pad*2))*(h-16);
+        const rawLine=rawPts.map((p,i)=>`${i*(w/(rawPts.length-1))},${toY(p.v)}`).join(" ");
+        const trendLine=trendPts.map((p,i)=>`${i*(w/(trendPts.length-1))},${toY(p.v)}`).join(" ");
+        return(
+          <X style={{padding:"10px 14px",marginTop:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight + Trend</span>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:10,color:C.t3}}>· raw</span>
+                <span style={{fontSize:10,color:C.g}}>— trend</span>
+                <span style={{fontSize:13,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight} lbs</span>
+              </div>
             </div>
-          )}
-        </X>
-      );
-    })():<Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>}
-    <S title="History" collapsible>
+            <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
+              <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1" strokeDasharray="3,3" strokeLinecap="round"/>
+              {rawPts.map((p,i)=><circle key={i} cx={i*(w/(rawPts.length-1))} cy={toY(p.v)} r="2.5" fill={C.cd} stroke={C.t3} strokeWidth="1"/>)}
+              <polyline points={trendLine} fill="none" stroke={C.g} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}>
+              <span>{rawPts[0]?.d}</span><span>{rawPts[rawPts.length-1]?.d}</span>
+            </div>
+            {wtTDEE.weeklyChange!==0&&(
+              <div style={{marginTop:6,fontSize:11,color:wtTDEE.weeklyChange<0?C.g:C.a,fontWeight:600}}>
+                Trend: {wtTDEE.weeklyChange>0?"+":""}{wtTDEE.weeklyChange.toFixed(1)} lbs/wk
+              </div>
+            )}
+          </X>
+        );
+      })():<Ch data={ch} color={C.p} label="Trend" yUnit=" lbs" empty="Log weight to see trend"/>}
+    </S>
+
+    <S title="Weight history" collapsible defaultOpen={false}>
       {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
         const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);svSB.delWeight(d);}};
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
@@ -3458,6 +3479,14 @@ const Habits=({data,setData})=>{
 
   const habitsHour=new Date().getHours();
   const todayHabitsLogged=!!(data.habits[t]&&Object.values(data.habits[t]).some(v=>v!==null&&v!==undefined));
+  const closeoutItems=[
+    {label:"Sleep",done:!!f.sh},
+    {label:"Recovery",done:!!f.rs},
+    {label:"Steps",done:!!f.steps},
+    {label:"Habits",done:todayHabitsLogged},
+  ];
+  const closeoutDone=closeoutItems.filter(i=>i.done).length;
+  const recoveryTone=f.rs?sc(+f.rs):C.t3;
 
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
@@ -3472,7 +3501,22 @@ const Habits=({data,setData})=>{
       </div>
     )}
 
+    <X style={{borderLeft:`3px solid ${closeoutDone>=3?C.g:C.p}`}}>
+      <L>Daily closeout</L>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+        <div><span style={{fontSize:30,fontWeight:850,color:C.t}}>{closeoutDone}</span><span style={{fontSize:13,color:C.t3}}> / {closeoutItems.length} done</span></div>
+        <div style={{fontSize:13,fontWeight:800,color:todayPct>=70?C.g:todayPct>=40?C.a:C.r}}>Habits {todayPct}%</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5,marginTop:10}}>
+        {closeoutItems.map(i=><div key={i.label} style={{padding:"7px 4px",borderRadius:9,textAlign:"center",background:i.done?C.gl:C.bg,border:`1px solid ${i.done?C.g:C.bd}`,fontSize:11,fontWeight:800,color:i.done?C.g:C.t3}}>{i.done?"✓ ":""}{i.label}</div>)}
+      </div>
+      <div style={{marginTop:10,fontSize:12,color:C.t2,lineHeight:1.45}}>
+        {f.rs?<>Recovery is <span style={{fontWeight:800,color:recoveryTone}}>{f.rs}%</span>. {+f.rs<55?"Make tomorrow easier before cutting food.":"Use this with weight and adherence for tomorrow's call."}</>:"Add recovery/sleep if Oura data is available, then close habits before bed."}
+      </div>
+    </X>
+
     {/* Health Metrics */}
+    <S title="Recovery check-in" collapsible defaultOpen={!hasSaved}>
     <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <L>Health Metrics</L>
@@ -3509,8 +3553,10 @@ const Habits=({data,setData})=>{
         </div>
       )}
     </X>
+    </S>
 
     {/* Today's Habits */}
+    <S title="Habit closeout" collapsible defaultOpen={false}>
     <X>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
         <div style={{fontSize:14,fontWeight:700,color:C.t}}>Today's Habits</div>
@@ -3523,8 +3569,10 @@ const Habits=({data,setData})=>{
           onSet={(val)=>setHabit(ch.id,val,false)}/>))}
       </div>}
     </X>
+    </S>
 
     {/* Score Card */}
+    <S title="Weekly habit review" collapsible defaultOpen={false}>
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
         <span style={{fontSize:14,fontWeight:700,color:C.t}}>Today: {todayScore}/{tot} ({todayPct}%)</span>
@@ -3541,6 +3589,7 @@ const Habits=({data,setData})=>{
         </div>
       </div>
     </X>
+    </S>
 
     {/* Trends */}
     <S title="Trends" collapsible defaultOpen={false}>
