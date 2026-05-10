@@ -1555,8 +1555,8 @@ const Dashboard=({data,setData,setTab})=>{
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
           </div>
-          <Br v={steps} max={st.steps||10000} color={steps>=(st.steps||10000)?C.g:C.a} h={6}/>
-          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/(st.steps||10000)*100):0}% of {((st.steps||10000)/1000).toFixed(0)}k</div>
+          <Br v={steps} max={st.steps||DEFAULTS.steps} color={steps>=(st.steps||DEFAULTS.steps)?C.g:C.a} h={6}/>
+          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/(st.steps||DEFAULTS.steps)*100):0}% of {((st.steps||DEFAULTS.steps)/1000).toFixed(0)}k</div>
         </X>
       </div>
 
@@ -3154,7 +3154,7 @@ const Nutrition=({data,setData})=>{
         <B full color={C.p} onClick={()=>{
           const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0}[tdeeGoal]||0;
           const newCal=nutTDEE.tdee+opt;
-          const ratio=newCal/(st.calories||2430);
+          const ratio=newCal/(st.calories||DEFAULTS.calories);
           const nd={...data,settings:{...st,
             calories:Math.round(newCal),
             trainingCal:Math.round((st.trainingCal||1800)*ratio),
