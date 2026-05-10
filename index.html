@@ -2780,6 +2780,9 @@ const Nutrition=({data,setData})=>{
   const [selM,setSelM]=useState(null);
 
   const [showWaterHist,setShowWaterHist]=useState(false);
+  const [quickDesc,setQuickDesc]=useState("");
+  const [quickCal,setQuickCal]=useState("");
+  const [quickPro,setQuickPro]=useState("");
   const [viewDate,setViewDate]=useState(t);
   const viewNut=data.nut[viewDate]||{meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
   const tl=viewNut;
@@ -2806,6 +2809,29 @@ const Nutrition=({data,setData})=>{
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
   const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
+
+  const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
+  const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
+  const needText=proRemaining>0
+    ?`${proRemaining}g protein left${calRemaining!==null?` · ${calRemaining} cal flex`:""}`
+    :calRemaining!==null&&calRemaining>0
+      ?`Protein hit — ${calRemaining} cal flex left`
+      :calT!==null&&tl.totalCal>calT
+        ?`Protein hit — ${tl.totalCal-calT} cal over, keep next meal lean`
+        :"Protein covered — keep logging simple";
+  const quickMealType=(()=>{const h=new Date().getHours();return h<11?"Breakfast":h<15?"Lunch":h<20?"Dinner":"Snack";})();
+  const addQuickMeal=(preset)=>{
+    const cal=+(preset?.cal??quickCal)||0, protein=+(preset?.protein??quickPro)||0;
+    if(!cal&&!protein)return;
+    const meal={
+      description:(preset?.description||quickDesc.trim()||"Quick log"),
+      cal,protein,carbs:0,fat:0,fiber:0,mealType:quickMealType,source:"quick"
+    };
+    const nl=rc([...(tl.meals||[]),meal]);
+    const nd={...data,nut:{...data.nut,[viewDate]:nl}};
+    setData(nd);sv(nd);svSB.nutrition(viewDate,nl);
+    if(!preset){setQuickDesc("");setQuickCal("");setQuickPro("");}
+  };
 
   const [editing,setEditing]=useState(null);
   const updateMeal=(idx,updates)=>{
@@ -2873,35 +2899,53 @@ const Nutrition=({data,setData})=>{
     </div>
     {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4,letterSpacing:"0.04em"}}>Excluded from TDEE</div>}
 
-    <X style={{padding:10,marginBottom:4}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Week Total</span>
-        <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.a}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
+    <X style={{padding:12,borderLeft:`3px solid ${proRemaining>0?C.g:C.p}`}}>
+      <L>What do I need next?</L>
+      <div style={{fontSize:18,fontWeight:800,color:C.t,marginBottom:4}}>{needText}</div>
+      <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Rough logs are useful. Get calories + protein in, perfect macros can wait.</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:8}}>
+        {[{description:"Protein snack",cal:200,protein:30},{description:"Lean meal",cal:450,protein:50},{description:"Full meal",cal:650,protein:60}].map(p=>(
+          <button key={p.description} onClick={()=>addQuickMeal(p)} style={{padding:"9px 4px",borderRadius:10,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:11,fontWeight:800,fontFamily:"inherit",minHeight:44}}>
+            {p.description}<br/><span style={{color:C.t3,fontWeight:700}}>{p.cal} cal · {p.protein}g</span>
+          </button>
+        ))}
       </div>
-      <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.a:C.p} h={4}/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
-        {weekDates.map((d,i)=>{
-          const dc=data.nut[d]?.totalCal||0;
-          const dt=getDayCalTarget(d,st,data.travelDays,data.socialWeekend);
-          const isView=d===viewDate;
-          const isFuture=d>td();
-          const logged=dc>0;
-          return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:3,
-            background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
-            <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
-            <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.a:C.g):isFuture?C.t3:C.r}}>
-              {logged?Math.round(dc/100)*100:isFuture?"—":"0"}
-            </div>
-          </div>);
-        })}
+      <div style={{display:"grid",gridTemplateColumns:"1.5fr .8fr .8fr",gap:6}}>
+        <T value={quickDesc} onChange={setQuickDesc} placeholder="Quick meal"/>
+        <N value={quickCal} onChange={setQuickCal} placeholder="cal"/>
+        <N value={quickPro} onChange={setQuickPro} placeholder="pro"/>
       </div>
-      <div style={{fontSize:11,fontWeight:600,color:weekRemaining>=0?C.g:C.a,marginTop:4,textAlign:"center"}}>
-        {weekRemaining>=0?`${weekRemaining.toLocaleString()} cal remaining`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}
-      </div>
-      {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
-        <div style={{fontSize:10,fontWeight:600,color:C.a,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active — ~1.5 lbs expected this week</div>
-      )}
+      <B full small style={{marginTop:6}} disabled={!quickCal&&!quickPro} onClick={()=>addQuickMeal()}>Log rough meal</B>
     </X>
+
+    <S title={`Week view · ${weekRemaining>=0?`${weekRemaining.toLocaleString()} cal left`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}`} collapsible defaultOpen={false}>
+      <X style={{padding:10,marginBottom:4}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Week Total</span>
+          <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.a}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
+        </div>
+        <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.a:C.p} h={4}/>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
+          {weekDates.map((d,i)=>{
+            const dc=data.nut[d]?.totalCal||0;
+            const dt=getDayCalTarget(d,st,data.travelDays,data.socialWeekend);
+            const isView=d===viewDate;
+            const isFuture=d>td();
+            const logged=dc>0;
+            return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:3,
+              background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
+              <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
+              <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.a:C.g):isFuture?C.t3:C.r}}>
+                {logged?Math.round(dc/100)*100:isFuture?"—":"0"}
+              </div>
+            </div>);
+          })}
+        </div>
+        {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
+          <div style={{fontSize:10,fontWeight:600,color:C.a,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active — ~1.5 lbs expected this week</div>
+        )}
+      </X>
+    </S>
 
     <X style={{padding:12}}>
       {calT!==null?(<>
@@ -2957,12 +3001,14 @@ const Nutrition=({data,setData})=>{
 
     {/* ═══ TDEE SMART BANNER ═══ */}
     {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
-      <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
-        <div style={{fontSize:11,color:C.t2}}>
-          <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
+      <S title="Target logic" collapsible defaultOpen={false}>
+        <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
+          <div style={{fontSize:11,color:C.t2}}>
+            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
+          </div>
+          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
         </div>
-        <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
-      </div>
+      </S>
     )}
 
     {/* ═══ TDEE ADJUST MODAL ═══ */}
@@ -3025,6 +3071,7 @@ const Nutrition=({data,setData})=>{
       </div>)}
     </X>)}
 
+    <S title={`Water · ${waterToday}/${waterGoal} oz`} collapsible defaultOpen={false}>
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div>
@@ -3061,6 +3108,7 @@ const Nutrition=({data,setData})=>{
         </div>);
       })()}
     </X>
+    </S>
 
     {MEAL_TYPES.map(mt=>{
       const meals=grouped[mt];
