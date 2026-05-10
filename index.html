@@ -2008,8 +2008,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const isDeload=wkn(t)===PROG.deload;
-  const startW=()=>{if(!sess)return;
-    setWorkout({day:sel,variant:activeVariant[sel]||null,exercises:sess.exercises.map(ex=>{
+  const startW=(day=sel)=>{const startVariant=activeVariant[day]||null;const startSess=getSess(day,startVariant);if(!startSess)return;
+    setWorkout({day,variant:startVariant,exercises:startSess.exercises.map(ex=>{
       const key=progKey(ex,ex);const cw=gw(ex,ex.sw,ex);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
       return{id:ex.id,progKey:key,
       wu:WU(wt).map(w=>({...w,done:false})),
@@ -2253,6 +2253,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const allProgExs=(()=>{const seen={};Object.values(PROG.days).forEach(day=>day.exercises.forEach(ex=>{if(!seen[ex.id])seen[ex.id]=ex.name;}));return Object.entries(seen).map(([id,name])=>({id,name}));})();
   const [spSel,setSpSel]=useState(()=>{let best=null,bestN=0;allProgExs.forEach(({id})=>{const h=(data.prog[id]?.e1rmHistory||[]).length;if(h>bestN){bestN=h;best=id;}});return best||(allProgExs[0]?.id||null);});
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
+  const todayWorkout=data.wk?.[t];
+  const todaySess=getSess(dn,activeVariant[dn]);
+  const todayCardioPlan=getPostLiftCardio(dn);
+  const todayCardioDone=!!data.cardio?.[t]?.done;
+  const todayLiftDone=!!todayWorkout;
   const now=new Date();
   const [calMonth,setCalMonth]=useState(now.getMonth());
   const [calYear,setCalYear]=useState(now.getFullYear());
@@ -2334,8 +2339,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{display:"flex",gap:4,marginLeft:6}}>
                 {swapOpts.length>0&&!anySetsLogged&&<button title="Swap exercise" onClick={()=>setSwapModal({ei,exName:dispName})}
                   style={{background:C.bl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:12,fontWeight:700,color:C.t2,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⇄</button>}
-                <button onClick={()=>{setShowAi(true);setAiExIdx(ei);setAiQ("");setAiA("");}}
-                  style={{background:C.vl,border:"none",borderRadius:12,padding:"4px 8px",fontSize:10,fontWeight:600,color:C.v,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>AI</button>
+
               </div>
             </div>
           </div>
@@ -2455,14 +2459,53 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   }
 
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
-
-    <div style={{display:"flex",gap:3}}>
-      {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
-        border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-        fontSize:11,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
+      <div style={{fontSize:11,fontWeight:800,color:todayLiftDone?C.g:todaySess?C.p:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{todayLiftDone?"After lift":todaySess?"Before lift":"Recovery day"}</div>
     </div>
 
+    <X style={{padding:12,borderLeft:`3px solid ${todayLiftDone?C.g:todaySess?C.p:C.t3}`}}>
+      {todayLiftDone?(
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:800,color:C.t}}>Lift complete</div>
+            <div style={{fontSize:13,color:C.t2}}>{todaySess?.name||todayWorkout.day}{todayWorkout.dur?` · ${todayWorkout.dur} min`:""}</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:3}}>{todayCardioPlan&&!todayCardioDone?`Next: ${todayCardioPlan.duration} min ${todayCardioPlan.label} or mark recovery.`:"Next: recovery, food, water, and sleep."}</div>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+            <B small outline onClick={()=>setViewW([t,todayWorkout])}>Summary</B>
+            {todayCardioPlan&&!todayCardioDone?<B small onClick={()=>openCardioLog(todayCardioPlan)} color={C.a}>Log cardio</B>:null}
+          </div>
+        </div>
+      ):todaySess?(
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:800,color:C.t}}>{todaySess.name}</div>
+            <div style={{fontSize:13,color:C.t2}}>{todaySess.focus} · {todaySess.exercises.length} exercises · ~{estTime(todaySess)}m</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:3}}>{todayCardioPlan?`After: ${todayCardioPlan.duration} min ${todayCardioPlan.label}.`:"After: recovery and evening closeout."}</div>
+          </div>
+          <B onClick={()=>{setSel(dn);startW(dn);}}>Start</B>
+        </div>
+      ):(
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:800,color:C.t}}>No lift today</div>
+            <div style={{fontSize:13,color:C.t2}}>Keep cardio, mobility, protein, and sleep on track.</div>
+          </div>
+          {!todayCardioDone?<B small onClick={()=>openCardioLog()} color={C.a}>Log cardio</B>:<span style={{fontSize:13,fontWeight:700,color:C.g}}>Cardio done</span>}
+        </div>
+      )}
+    </X>
+
+    <S title="Other days / plan details" collapsible defaultOpen={false}>
+      <div style={{display:"flex",gap:3,marginBottom:6}}>
+        {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
+          border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
+          fontSize:11,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+      </div>
+    </S>
+
+    <S title="Recovery / cardio" collapsible defaultOpen={false}>
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min — hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2575,8 +2618,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         {renderCardioForm()}
       </X>);
     })()}
+    </S>
 
-    {sess?(<>
+    {(!todayLiftDone&&sel===dn)?null:sess?(<>
       <X style={{borderLeft:`3px solid ${C.p}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
@@ -2592,7 +2636,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         {Object.entries(hasVariants).map(([k,v])=>(<button key={k} onClick={()=>setVariant(sel,k)} style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${activeVariant[sel]===k?C.a:C.bd}`,background:activeVariant[sel]===k?"rgba(245,158,11,0.1)":"transparent",color:activeVariant[sel]===k?C.a:C.t3}}>{v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")}</button>))}
       </X>)}
-      {sess.warmup&&(<S title="Warm-Up" collapsible>
+      {sess.warmup&&(<S title="Warm-Up" collapsible defaultOpen={false}>
         <X style={{padding:10}}>
           <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:sess.warmup.moves.length?6:0}}>{sess.warmup.cardio}</div>
           {sess.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{sess.warmup.note}</div>}
@@ -2605,7 +2649,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           {sess.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{sess.warmup.ramp}</div>}
         </X>
       </S>)}
-      <S title="Exercises" collapsible>
+      <S title="Exercises" collapsible defaultOpen={false}>
         {sess.exercises.map(ex=>{const prog=data.prog[progKey(ex,ex)]||data.prog[ex.id],cw=gw(ex,ex.sw,ex);
           const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
             for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
@@ -2634,6 +2678,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </S>
     </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:14}}>Rest Day</div></X>}
 
+    <S title="Training calendar" collapsible defaultOpen={false}>
     <X style={{padding:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <button onClick={()=>{if(calMonth===0){setCalMonth(11);setCalYear(calYear-1);}else setCalMonth(calMonth-1);}}
@@ -2668,8 +2713,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         })}
       </div>
     </X>
+    </S>
 
-    <S title={`Workout History (${allWk.length})`} collapsible>
+    <S title={`Workout History (${allWk.length})`} collapsible defaultOpen={false}>
       {allWk.length===0?<div style={{color:C.t3,fontSize:13,padding:8,textAlign:"center"}}>No workouts logged yet</div>
       :allWk.slice(0,15).map(([d,w])=>{
         const wSess=data.program[w.day];
