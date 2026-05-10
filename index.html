@@ -3423,268 +3423,140 @@ const Habits=({data,setData})=>{
   const t=td();
   const tr=data.rec[t]||{};
   const h=data.habits[t]||{};
-  const customHabits=data.settings.customHabits||[];
+  const st=data.settings||DEFAULTS;
+  const customHabits=st.customHabits||[];
   const [showMgmt,setShowMgmt]=useState(false);
   const [newHabit,setNewHabit]=useState("");
-  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",rr:tr.respiratoryRate||"",sh:tr.sleepHours||"",sp:tr.sleepPerformance||"",str:tr.strain!=null?(+tr.strain).toFixed(1):"",
-    steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
-  const hasSaved=!!(tr.recoveryScore||tr.hrv||tr.rhr);
-  const [editing,setEditing]=useState(!hasSaved);
+  const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",sh:tr.sleepHours||"",steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
 
   const systemHabits=[
-    {field:"alcohol",label:"No Alcohol",good:false},
-    {field:"cannabis",label:"No Cannabis",good:false},
-    {field:"screensOff",label:"Screens Off by 10pm",good:true},
-    {field:"sunlight",label:"Morning Sunlight",good:true},
-    {field:"bedBy1030",label:"In Bed by 10:30",good:true},
-    {field:"readBeforeBed",label:"Read Before Bed",good:true},
-    {field:"supplements",label:"Supplement Stack",good:true},
+    {field:"alcohol",label:"Alcohol",target:false,goodLabel:"None",badLabel:"Had it"},
+    {field:"cannabis",label:"Cannabis",target:false,goodLabel:"None",badLabel:"Had it"},
+    {field:"screensOff",label:"Screens",target:true,goodLabel:"Off",badLabel:"Late"},
+    {field:"bedBy1030",label:"Bedtime",target:true,goodLabel:"On time",badLabel:"Late"},
+    {field:"supplements",label:"Supplements",target:true,goodLabel:"Done",badLabel:"Missed"},
+    {field:"sunlight",label:"Sunlight",target:true,goodLabel:"Done",badLabel:"Missed"},
+    {field:"readBeforeBed",label:"Read",target:true,goodLabel:"Done",badLabel:"Skipped"},
   ];
+  const calcScore=(hab)=>{if(!hab)return 0;let c=0;systemHabits.forEach(x=>{if(hab[x.field]===x.target)c++;});c+=Object.values(hab.custom||{}).filter(v=>v).length;return c;};
+  const tot=systemHabits.length+customHabits.length;
+  const todayScore=calcScore(h),todayPct=tot?Math.round(todayScore/tot*100):0;
+  const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);});
+  const avg7=(()=>{const vals=last7.map(d=>data.habits[d]?calcScore(data.habits[d])/tot*100:null).filter(v=>v!=null);return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;})();
+  const recScore=+f.rs||null;
+  const steps=+f.steps||data.steps?.[t]||0;
+  const stepsTarget=cutStepsTarget(st);
+  const sleep=+f.sh||null;
+  const protein=(data.nut?.[t]?.totalProtein)||0;
+  const proteinTarget=getDayProTarget(t,st,data.travelDays,data.socialWeekend);
+  const cardioDone=!!data.cardio?.[t]?.done;
+  const foodClosed=protein>=proteinTarget;
+  const closeoutGood=todayPct>=70&&foodClosed&&(steps>=stepsTarget||cardioDone)&&(!recScore||recScore>=55);
+  const tomorrow=(()=>{
+    if(recScore&&recScore<55)return{label:"Recovery-biased",why:"Reduce cardio/stress before cutting food.",color:C.r};
+    if(!foodClosed)return{label:"Protein-first",why:`Finish ${Math.max(0,proteinTarget-protein)}g protein or start tomorrow with protein.`,color:C.a};
+    if(steps<stepsTarget&&!cardioDone)return{label:"Movement-first",why:`Get steps/cardio back on plan before changing calories.`,color:C.a};
+    if(sleep&&sleep<6.5)return{label:"Sleep repair",why:"Protect recovery before adding more cut pressure.",color:C.a};
+    return{label:"Normal cut day",why:"Stay the course. No target changes needed.",color:C.g};
+  })();
 
   const saveMetrics=()=>{
-    const nd={...data,rec:{...data.rec,[t]:{recoveryScore:+f.rs||null,hrv:+f.hrv||null,rhr:+f.rhr||null,respiratoryRate:+f.rr||null,sleepHours:+f.sh||null,sleepPerformance:+f.sp||null,strain:+f.str||null}},
-      steps:{...data.steps,...(f.steps?{[t]:+f.steps}:{})},wt:{...data.wt,...(f.wt?{[t]:+f.wt}:{})}};
-    setData(nd);sv(nd);svSB.recovery(t,nd.rec[t]);if(nd.steps[t])svSB.steps(t,nd.steps[t]);if(nd.wt[t])svSB.weight(t,nd.wt[t]);setEditing(false);
+    const rec={...tr,recoveryScore:+f.rs||null,hrv:+f.hrv||null,rhr:+f.rhr||null,sleepHours:+f.sh||null};
+    const nd={...data,rec:{...data.rec,[t]:rec},steps:{...data.steps,...(f.steps?{[t]:+f.steps}:{})},wt:{...data.wt,...(f.wt?{[t]:+f.wt}:{})}};
+    setData(nd);sv(nd);svSB.recovery(t,rec);if(f.steps)svSB.steps(t,+f.steps);if(f.wt)svSB.weight(t,+f.wt);
   };
-
-  const setHabit=(field,val,isSystem)=>{
-    let nh;
-    if(isSystem){nh={...h,[field]:val};}
-    else{nh={...h,custom:{...(h.custom||{}),[field]:val}};}
+  const setHabit=(field,val,isCustom=false)=>{
+    const nh=isCustom?{...h,custom:{...(h.custom||{}),[field]:val}}:{...h,[field]:val};
     const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
   };
-
-  // Score calculation
-  const calcScore=(hab)=>{
-    if(!hab)return 0;let c=0;
-    if(hab.alcohol===false)c++;if(hab.cannabis===false)c++;if(hab.screensOff===true)c++;
-    if(hab.sunlight===true)c++;if(hab.bedBy1030===true)c++;if(hab.readBeforeBed===true)c++;if(hab.supplements===true)c++;
-    c+=Object.values(hab.custom||{}).filter(v=>v).length;
-    return c;
+  const markCleanDay=()=>{
+    const nh={...h};systemHabits.forEach(x=>nh[x.field]=x.target);customHabits.forEach(x=>{nh.custom={...(nh.custom||{}),[x.id]:true};});
+    const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
   };
-  const tot=7+customHabits.length;
-  const todayScore=calcScore(h);
-  const todayPct=tot>0?Math.round(todayScore/tot*100):0;
+  const addCustom=()=>{const name=newHabit.trim();if(!name)return;const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-+$/,"");if(customHabits.some(c=>c.id===id))return;const nd={...data,settings:{...st,customHabits:[...customHabits,{id,label:name}]}};setData(nd);sv(nd);svSB.settings(nd.settings);setNewHabit("");};
+  const removeCustom=(id)=>{const nd={...data,settings:{...st,customHabits:customHabits.filter(c=>c.id!==id)}};setData(nd);sv(nd);svSB.settings(nd.settings);};
+  const Pill=({children,onClick,active,color=C.p})=><button onClick={onClick} style={{border:`1.5px solid ${active?color:C.bd}`,background:active?(color===C.g?C.gl:color===C.r?C.rl:C.pl):"#fff",color:active?color:C.t3,borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:850,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>{children}</button>;
 
-  // 7-day avg
-  const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);});
-  const last7Scores=last7.map(d=>{const hb=data.habits[d];return hb?calcScore(hb)/tot*100:null;}).filter(v=>v!==null);
-  const avg7=last7Scores.length?Math.round(last7Scores.reduce((a,b)=>a+b,0)/last7Scores.length):0;
-
-  // Streak (consecutive days >= 70%)
-  let streak=0;
-  for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
-    const hb=data.habits[ds];if(!hb)break;
-    const pct=calcScore(hb)/tot*100;if(pct>=70)streak++;else break;}
-
-  // Habit management
-  const addCustom=()=>{
-    const name=newHabit.trim();if(!name)return;
-    const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-+$/,"");
-    if(customHabits.some(c=>c.id===id))return;
-    const nc=[...customHabits,{id,label:name}];
-    const nd={...data,settings:{...data.settings,customHabits:nc}};setData(nd);sv(nd);svSB.settings(nd.settings);setNewHabit("");
-  };
-  const removeCustom=(id)=>{
-    const nc=customHabits.filter(c=>c.id!==id);
-    const nd={...data,settings:{...data.settings,customHabits:nc}};setData(nd);sv(nd);svSB.settings(nd.settings);
-  };
-
-  // Trends data (last 30 days)
-  const last30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);}).reverse();
-  const compCh=last30.map(d=>{const hb=data.habits[d];return{v:hb?Math.round(calcScore(hb)/tot*100):0,d:d.slice(5)};}).filter(x=>x.v>0);
-  const recCh=last30.map(d=>data.rec[d]?.recoveryScore?{v:data.rec[d].recoveryScore,d:d.slice(5)}:null).filter(Boolean);
-  const hrvCh=last30.map(d=>data.rec[d]?.hrv?{v:data.rec[d].hrv,d:d.slice(5)}:null).filter(Boolean);
-
-  // Per-habit streaks
-  const habitStreaks=[...systemHabits.map(sh=>{
-    let s=0;for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
-      const hb=data.habits[ds];if(!hb)break;
-      const val=hb[sh.field];const good=sh.good?val===true:val===false;
-      if(good)s++;else break;}
-    return{label:sh.label,streak:s};
-  }),...customHabits.map(ch=>{
-    let s=0;for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-i);const ds=lds(d);
-      const hb=data.habits[ds];if(!hb)break;
-      if((hb.custom||{})[ch.id]===true)s++;else break;}
-    return{label:ch.label,streak:s};
-  })].sort((a,b)=>b.streak-a.streak);
-
-  const sc=s=>s>=67?C.g:s>=34?C.a:C.r;
-
-  const HabitToggle=({label,active,good,onSet})=>{
-    const isGood=good?active===true:active===false;
-    const isBad=good?active===false:active===true;
-    return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}>
-      <span style={{fontSize:14,color:C.t,fontWeight:500}}>{label}</span>
-      <div style={{display:"flex",gap:4}}>
-        <button onClick={()=>onSet(true)} style={{padding:"5px 12px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-          border:`1px solid ${active===true?(good?C.g:C.r):C.bd}`,background:active===true?(good?C.gl:C.rl):"transparent",color:active===true?(good?C.g:C.r):C.t3}}>Yes</button>
-        <button onClick={()=>onSet(false)} style={{padding:"5px 12px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-          border:`1px solid ${active===false?(!good?C.g:C.r):C.bd}`,background:active===false?(!good?C.gl:C.rl):"transparent",color:active===false?(!good?C.g:C.r):C.t3}}>No</button>
-      </div>
-    </div>);
-  };
-
-  const habitsHour=new Date().getHours();
-  const todayHabitsLogged=!!(data.habits[t]&&Object.values(data.habits[t]).some(v=>v!==null&&v!==undefined));
-  const closeoutItems=[
-    {label:"Sleep",done:!!f.sh},
-    {label:"Recovery",done:!!f.rs},
-    {label:"Steps",done:!!f.steps},
-    {label:"Habits",done:todayHabitsLogged},
-  ];
-  const closeoutDone=closeoutItems.filter(i=>i.done).length;
-  const recoveryTone=f.rs?sc(+f.rs):C.t3;
-
-  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
     <div>
-      <div style={{fontSize:18,fontWeight:700,color:C.t}}>Habits</div>
-      <div style={{fontSize:13,color:C.t3}}>{fmt(t)}</div>
+      <div style={{fontSize:18,fontWeight:850,color:C.t}}>Recovery Closeout</div>
+      <div style={{fontSize:13,color:C.t3}}>{fmt(t)} · decide tomorrow, then be done</div>
     </div>
 
-    {/* Evening reminder */}
-    {habitsHour>=20&&!todayHabitsLogged&&(
-      <div style={{padding:"8px 12px",background:C.al,borderRadius:6,border:`1px solid #e6c84a`,fontSize:13,color:C.a,fontWeight:600}}>
-        Tonight's habits — don't forget to log before bed
-      </div>
-    )}
-
-    <X style={{borderLeft:`3px solid ${closeoutDone>=3?C.g:C.p}`}}>
-      <L>Daily closeout</L>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-        <div><span style={{fontSize:30,fontWeight:850,color:C.t}}>{closeoutDone}</span><span style={{fontSize:13,color:C.t3}}> / {closeoutItems.length} done</span></div>
-        <div style={{fontSize:13,fontWeight:800,color:todayPct>=70?C.g:todayPct>=40?C.a:C.r}}>Habits {todayPct}%</div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5,marginTop:10}}>
-        {closeoutItems.map(i=><div key={i.label} style={{padding:"7px 4px",borderRadius:9,textAlign:"center",background:i.done?C.gl:C.bg,border:`1px solid ${i.done?C.g:C.bd}`,fontSize:11,fontWeight:800,color:i.done?C.g:C.t3}}>{i.done?"✓ ":""}{i.label}</div>)}
-      </div>
-      <div style={{marginTop:10,fontSize:12,color:C.t2,lineHeight:1.45}}>
-        {f.rs?<>Recovery is <span style={{fontWeight:800,color:recoveryTone}}>{f.rs}%</span>. {+f.rs<55?"Make tomorrow easier before cutting food.":"Use this with weight and adherence for tomorrow's call."}</>:"Add recovery/sleep if Oura data is available, then close habits before bed."}
+    <X style={{borderLeft:`4px solid ${tomorrow.color}`,padding:16}}>
+      <div style={{fontSize:11,fontWeight:850,color:tomorrow.color,textTransform:"uppercase",letterSpacing:"0.08em"}}>Tomorrow</div>
+      <div style={{fontSize:21,fontWeight:900,color:C.t,marginTop:2}}>{tomorrow.label}</div>
+      <div style={{fontSize:13,color:C.t2,marginTop:4,lineHeight:1.4}}>{tomorrow.why}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginTop:12}}>
+        {[{l:"Habits",v:`${todayScore}/${tot}`,ok:todayPct>=70},{l:"Protein",v:`${protein}/${proteinTarget}`,ok:foodClosed},{l:"Steps",v:`${Math.round(steps/1000)}k`,ok:steps>=stepsTarget},{l:"Cardio",v:cardioDone?"Done":"Open",ok:cardioDone}].map(x=>(
+          <div key={x.l} style={{padding:"8px 3px",borderRadius:10,textAlign:"center",background:x.ok?C.gl:C.bg,border:`1px solid ${x.ok?C.g:C.bd}`}}>
+            <div style={{fontSize:9,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
+            <div style={{fontSize:12,fontWeight:900,color:x.ok?C.g:C.t2,marginTop:2}}>{x.v}</div>
+          </div>
+        ))}
       </div>
     </X>
 
-    {/* Health Metrics */}
-    <S title="Recovery check-in" collapsible defaultOpen={!hasSaved}>
-    <X style={{borderLeft:`3px solid ${C.p}`,opacity:editing?1:0.6}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <L>Health Metrics</L>
-        {!editing&&hasSaved&&<button onClick={()=>setEditing(true)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>}
-      </div>
-      {!editing&&hasSaved?(
-        <div style={{marginTop:6}}>
-          {f.wt&&<div style={{textAlign:"center",marginBottom:6}}><span style={{fontSize:24,fontWeight:800,color:C.t}}>{f.wt}</span><span style={{fontSize:13,color:C.t3}}> lbs</span></div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-            {f.rs&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:sc(+f.rs)}}>{f.rs}%</div><div style={{fontSize:10,color:C.t3}}>Recovery</div></div>}
-            {f.hrv&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.v}}>{f.hrv}</div><div style={{fontSize:10,color:C.t3}}>HRV</div></div>}
-            {f.rhr&&<div style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:C.p}}>{f.rhr}</div><div style={{fontSize:10,color:C.t3}}>RHR</div></div>}
-          </div>
-          <div style={{fontSize:12,color:C.g,marginTop:6,fontWeight:600,textAlign:"center"}}>Saved for today</div>
-        </div>
-      ):(
-        <div>
-          <div style={{marginBottom:8}}><L>Weight (lbs)</L><N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185.0" style={{fontSize:20,fontWeight:700}}/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-            <div><L>Recovery %</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
-            <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
-            <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:6}}>
-            <div><L>Resp Rate</L><N value={f.rr} onChange={v=>setF({...f,rr:v})} placeholder="15.2"/></div>
-            <div><L>Sleep Hrs</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
-            <div><L>Sleep %</L><N value={f.sp} onChange={v=>setF({...f,sp:v})} placeholder="85" max={100}/></div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
-            <div><L>Strain</L><N value={f.str} onChange={v=>setF({...f,str:v})} placeholder="12.4"/></div>
-            <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="8500"/></div>
-          </div>
-          <B full style={{marginTop:8}} onClick={saveMetrics}>Save</B>
-        </div>
-      )}
-    </X>
-    </S>
-
-    {/* Today's Habits */}
-    <S title="Habit closeout" collapsible defaultOpen={false}>
-    <X>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-        <div style={{fontSize:14,fontWeight:700,color:C.t}}>Today's Habits</div>
-        <button onClick={()=>setShowMgmt(true)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:C.t3,padding:4}}>⚙</button>
-      </div>
-      {systemHabits.map(sh=>(<HabitToggle key={sh.field} label={sh.label} active={h[sh.field]} good={sh.good}
-        onSet={(val)=>setHabit(sh.field,val,true)}/>))}
-      {customHabits.length>0&&<div style={{borderTop:`2px solid ${C.bd}`,marginTop:6,paddingTop:6}}>
-        {customHabits.map(ch=>(<HabitToggle key={ch.id} label={ch.label} active={(h.custom||{})[ch.id]} good={true}
-          onSet={(val)=>setHabit(ch.id,val,false)}/>))}
-      </div>}
-    </X>
-    </S>
-
-    {/* Score Card */}
-    <S title="Weekly habit review" collapsible defaultOpen={false}>
     <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-        <span style={{fontSize:14,fontWeight:700,color:C.t}}>Today: {todayScore}/{tot} ({todayPct}%)</span>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Quick metrics</div><div style={{fontSize:12,color:C.t3}}>Only what changes tomorrow's call.</div></div>
+        <B small onClick={saveMetrics}>Save</B>
       </div>
-      <Br v={todayScore} max={tot} color={todayPct>=70?C.g:todayPct>=40?C.a:C.r} h={8}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
-        <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-          <div style={{fontSize:18,fontWeight:700,color:avg7>=70?C.g:avg7>=40?C.a:C.r}}>{avg7}%</div>
-          <div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>7-Day Avg</div>
-        </div>
-        <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-          <div style={{fontSize:18,fontWeight:700,color:streak>=5?C.g:streak>=2?C.a:C.r}}>{streak}<span style={{fontSize:12}}>d</span></div>
-          <div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Streak</div>
-        </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+        <div><L>Recovery</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
+        <div><L>Sleep</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
+        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:6}}>
+        <div><L>Weight</L><N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185"/></div>
+        <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
+        <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
       </div>
     </X>
-    </S>
 
-    {/* Trends */}
-    <S title="Trends" collapsible defaultOpen={false}>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <Ch data={compCh} color={C.p} label="Habit Compliance" yUnit="%" empty="Track habits to see trend"/>
-        <Ch data={recCh} color={C.g} label="Recovery" yUnit="%" empty="Log recovery to see trend"/>
-        <Ch data={hrvCh} color={C.v} label="HRV" yUnit=" ms" empty="Log HRV to see trend"/>
-        {habitStreaks.filter(s=>s.streak>0).length>0&&<X style={{padding:10}}>
-          <L>Habit Streaks</L>
-          {habitStreaks.filter(s=>s.streak>0).map((s,i)=>(<div key={i} style={{marginBottom:6}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
-              <span style={{color:C.t2}}>{s.label}</span><span style={{fontWeight:700,color:C.g}}>{s.streak}d</span>
-            </div>
-            <Br v={s.streak} max={Math.max(30,...habitStreaks.map(x=>x.streak))} color={C.g} h={4}/>
-          </div>))}
-        </X>}
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Closeout checks</div><div style={{fontSize:12,color:C.t3}}>Tap the truth. No charts.</div></div>
+        <button onClick={()=>setShowMgmt(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:10,padding:"8px 10px",fontSize:12,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Edit</button>
       </div>
-    </S>
+      <B full color={closeoutGood?C.g:C.p} onClick={markCleanDay}>{closeoutGood?"Closed for today":"Mark clean day"}</B>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:10}}>
+        {systemHabits.map(x=>{const good=h[x.field]===x.target;const bad=h[x.field]!==undefined&&h[x.field]!==x.target;return(
+          <div key={x.field} style={{padding:9,borderRadius:12,border:`1px solid ${good?C.g:bad?C.r:C.bd}`,background:good?C.gl:bad?C.rl:C.bg}}>
+            <div style={{fontSize:13,fontWeight:850,color:C.t,marginBottom:6}}>{x.label}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+              <Pill active={good} color={C.g} onClick={()=>setHabit(x.field,x.target)}>{x.goodLabel}</Pill>
+              <Pill active={bad} color={C.r} onClick={()=>setHabit(x.field,!x.target)}>{x.badLabel}</Pill>
+            </div>
+          </div>
+        );})}
+        {customHabits.map(x=>{const val=(h.custom||{})[x.id];return(
+          <div key={x.id} style={{padding:9,borderRadius:12,border:`1px solid ${val?C.g:C.bd}`,background:val?C.gl:C.bg}}>
+            <div style={{fontSize:13,fontWeight:850,color:C.t,marginBottom:6}}>{x.label}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+              <Pill active={val===true} color={C.g} onClick={()=>setHabit(x.id,true,true)}>Done</Pill>
+              <Pill active={val===false} color={C.r} onClick={()=>setHabit(x.id,false,true)}>Missed</Pill>
+            </div>
+          </div>
+        );})}
+      </div>
+    </X>
 
-    {/* Recent History */}
-    <S title="Recent History" collapsible defaultOpen={false}>
-      {last7.map(d=>{const hb=data.habits[d];const s=hb?calcScore(hb):0;const pct=tot>0?Math.round(s/tot*100):0;
-        return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.bl}`,fontSize:13}}>
-          <span style={{color:C.t2,fontWeight:600}}>{fmt(d)}</span>
-          <span style={{fontWeight:700,color:pct>=70?C.g:pct>=40?C.a:C.r}}>{s}/{tot} ({pct}%)</span>
-        </div>);
-      })}
-    </S>
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Last 7 days</div><div style={{fontSize:12,color:C.t3}}>Average {avg7}% · today {todayPct}%</div></div>
+        <div style={{fontSize:24,fontWeight:900,color:avg7>=70?C.g:avg7>=40?C.a:C.r}}>{avg7}%</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+        {last7.slice().reverse().map(d=>{const hb=data.habits[d];const pct=hb?Math.round(calcScore(hb)/tot*100):0;return <div key={d} style={{height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:850,color:pct>=70?C.g:pct>0?C.a:C.t3,background:pct>=70?C.gl:pct>0?C.al:C.bg,border:`1px solid ${pct>=70?C.g:pct>0?C.a:C.bd}`}}>{pct||"—"}</div>;})}
+      </div>
+    </X>
 
-    {/* Habit Management Modal */}
     {showMgmt&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.cd,borderRadius:8,padding:16,width:"100%",maxWidth:360,maxHeight:"80vh",overflowY:"auto",border:`1px solid ${C.bd}`}}>
-        <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:12}}>Manage Habits</div>
-        <L>System Habits</L>
-        {systemHabits.map(sh=>(<div key={sh.field} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
-          <span style={{fontSize:14}}>🔒</span><span style={{fontSize:13,color:C.t}}>{sh.label}</span>
-        </div>))}
-        <div style={{marginTop:12}}><L>Custom Habits</L></div>
-        {customHabits.map(ch=>(<div key={ch.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.bl}`}}>
-          <span style={{fontSize:13,color:C.t}}>{ch.label}</span>
-          <button onClick={()=>removeCustom(ch.id)} style={{background:"none",border:"none",fontSize:16,color:C.r,cursor:"pointer",padding:"2px 6px"}}>✕</button>
-        </div>))}
-        <div style={{display:"flex",gap:6,marginTop:8}}>
-          <T value={newHabit} onChange={setNewHabit} placeholder="New habit name" style={{flex:1}}/>
-          <B small onClick={addCustom} disabled={!newHabit.trim()}>Add</B>
-        </div>
+      <div style={{background:C.cd,borderRadius:14,padding:16,width:"100%",maxWidth:360,maxHeight:"80vh",overflowY:"auto",border:`1px solid ${C.bd}`}}>
+        <div style={{fontSize:16,fontWeight:850,color:C.t,marginBottom:10}}>Edit custom checks</div>
+        {customHabits.map(ch=>(<div key={ch.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}><span style={{fontSize:13,color:C.t,fontWeight:700}}>{ch.label}</span><button onClick={()=>removeCustom(ch.id)} style={{background:"none",border:"none",fontSize:16,color:C.r,cursor:"pointer",padding:"2px 6px"}}>✕</button></div>))}
+        <div style={{display:"flex",gap:6,marginTop:10}}><T value={newHabit} onChange={setNewHabit} placeholder="New custom check" style={{flex:1}}/><B small onClick={addCustom} disabled={!newHabit.trim()}>Add</B></div>
         <B full style={{marginTop:12}} onClick={()=>setShowMgmt(false)}>Done</B>
       </div>
     </div>)}
