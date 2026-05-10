@@ -915,12 +915,13 @@ const X=({children,style={},...p})=>(
 );
 const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
 const S=({title,children,collapsible,defaultOpen=true})=>{
-  const [open,setOpen]=useState(defaultOpen);
+  // No hidden dropdowns in daily use: either show the useful section or cut it.
+  if(collapsible&&defaultOpen===false)return null;
   return(<div style={{marginTop:6}}>
-    <div onClick={collapsible?()=>setOpen(!open):undefined} style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,cursor:collapsible?"pointer":"default",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span>{title}</span>{collapsible&&<span style={{fontSize:10}}>{open?"▾":"▸"}</span>}
+    <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span>{title}</span>
     </div>
-    {open&&children}
+    {children}
   </div>);
 };
 const Br=({v,max,color=C.p,h=5})=>(
@@ -2621,7 +2622,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:13,color:C.t2}}>{todaySess.focus} · {todaySess.exercises.length} exercises · ~{estTime(todaySess)}m</div>
             <div style={{fontSize:12,color:C.t3,marginTop:3}}>{todayCardioPlan?`After: ${todayCardioPlan.duration} min ${todayCardioPlan.label}.`:"After: recovery and evening closeout."}</div>
           </div>
-          <B onClick={()=>{setSel(dn);startW(dn);}}>Start</B>
+          <B onClick={()=>{setSel(dn);startW(dn);}}>Start workout</B>
         </div>
       ):(
         <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
@@ -2634,26 +2635,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       )}
     </X>
 
-    <S title="Other days / plan details" collapsible defaultOpen={false}>
-      <div style={{display:"flex",gap:3,marginBottom:6}}>
-        {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:4,
+    <X style={{padding:10}}>
+      <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Week plan</div>
+      <div style={{display:"flex",gap:3}}>
+        {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:8,
           border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-          fontSize:11,cursor:"pointer",fontWeight:700,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+          fontSize:11,cursor:"pointer",fontWeight:800,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
       </div>
-    </S>
+    </X>
 
-    <S title="Recovery / cardio" collapsible defaultOpen={false}>
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min — hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
           <B small outline onClick={undoMob}>Undo</B></div>
         :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
-        :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View</B>}<B small onClick={startMob}>Start</B></div>}
+        :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View stretch</B>}<B small onClick={startMob}>Start stretch</B></div>}
     </X>
     {showMob&&(<div style={{marginTop:8}}>
       {!mobRunning&&!mobDone?(
-        <B full onClick={startMob} color={C.v}>Start Stretch Session</B>
+        <B full onClick={startMob} color={C.v}>Start stretch</B>
       ):mobRunning?(
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -2755,7 +2757,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         {renderCardioForm()}
       </X>);
     })()}
-    </S>
+    </div>
 
     {(!todayLiftDone&&sel===dn)?null:sess?(<>
       <X style={{borderLeft:`3px solid ${C.p}`}}>
@@ -2764,7 +2766,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div></div>
           {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
-            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={()=>startW(sel)}>Start</B>}
+            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={()=>startW(sel)}>Start workout</B>}
         </div>
       </X>
       {hasVariants&&!workout&&(<X style={{padding:8,display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -2872,7 +2874,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </S>
 
     {/* ═══ STRENGTH PROGRESS ═══ */}
-    {(()=>{
+    {false&&(()=>{
       const selectedEx=allProgExs.find(e=>(e.progKey||e.id)===spSel||e.id===spSel);
       const rawSpHistory=selectedEx?getProgHistory(data.prog,selectedEx):[];
       const spDateMap={};rawSpHistory.forEach(h=>{if(!spDateMap[h.date]||h.e1rm>spDateMap[h.date])spDateMap[h.date]=h.e1rm;});
