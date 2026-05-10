@@ -2820,7 +2820,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     {/* ═══ STRENGTH PROGRESS ═══ */}
     {(()=>{
-      const selectedEx=allProgExs.find(e=>e.id===spSel);
+      const selectedEx=allProgExs.find(e=>(e.progKey||e.id)===spSel||e.id===spSel);
       const rawSpHistory=selectedEx?getProgHistory(data.prog,selectedEx):[];
       const spDateMap={};rawSpHistory.forEach(h=>{if(!spDateMap[h.date]||h.e1rm>spDateMap[h.date])spDateMap[h.date]=h.e1rm;});
       const spHistory=Object.entries(spDateMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,e1rm])=>({date,e1rm}));
