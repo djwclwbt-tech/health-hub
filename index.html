@@ -2258,11 +2258,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const pats=relatedPatterns[base.pattern]||[base.pattern].filter(Boolean);
     const used=new Set((workout?.exercises||[]).map(e=>e.id));
     return EXERCISE_LIBRARY
-      .filter(opt=>opt.id!==currentEx.id&&pats.includes(opt.pattern))
+      .filter(opt=>opt.id!==currentEx.id&&pats.includes(opt.pattern)&&!used.has(opt.id))
       .map(opt=>{
         const key=progKey(opt,slotEx);
         const hasHistory=data.prog[key]?.currentWeight!=null||data.prog[opt.id]?.currentWeight!=null||Object.values(data.wk||{}).some(w=>w.exercises?.some(e=>e.progKey===key||e.id===opt.id));
-        const score=(opt.pattern===base.pattern?40:20)+(opt.region===base.region?10:0)+(hasHistory?8:0)-(used.has(opt.id)?6:0);
+        const score=(opt.pattern===base.pattern?40:20)+(opt.region===base.region?10:0)+(hasHistory?8:0);
         return {...opt,sets:slotEx.sets,rr:slotEx.rr,rest:slotEx.rest,notes:slotEx.notes,progKey:key,recommended:score>=48,score};
       })
       .sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
