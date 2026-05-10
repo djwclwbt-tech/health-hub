@@ -801,6 +801,21 @@ const getWeeklyCutSummary=(data,today=td())=>{
     cardioDone,tdee,stalls:getStalls(data.prog||{},data.wk||{},data.program||PROG.days)};
 };
 
+const getWeightTrendSummary=(wt,today=td())=>{
+  const entries=Object.entries(wt||{}).filter(([,v])=>v!=null).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length<2)return null;
+  const recent=entries.slice(-14);
+  const first=recent[0],last=recent[recent.length-1];
+  const spanDays=Math.max(1,(new Date(last[0]+"T12:00:00")-new Date(first[0]+"T12:00:00"))/864e5);
+  const weeklyChange=Math.round(((last[1]-first[1])/spanDays)*7);
+  const points=recent.map(([d,v])=>({d:d.slice(5),v}));
+  const weighIns7=entries.filter(([d])=>{const x=new Date(today+"T12:00:00");x.setDate(x.getDate()-6);return d>=lds(x);}).length;
+  const direction=weeklyChange<0?"down":weeklyChange>0?"up":"flat";
+  const pace=Math.abs(weeklyChange)>=2?"fast":Math.abs(weeklyChange)>=1?"moving":"steady";
+  const message=direction==="down"?`Down ${Math.abs(weeklyChange)} lb/wk`:direction==="up"?`Up ${weeklyChange} lb/wk`:"Holding steady";
+  return{current:Math.round(last[1]),weeklyChange,points,weighIns7,direction,pace,message,days:recent.length};
+};
+
 const getWeeklyConsistency=(data,today=td())=>{
   const dates=[];for(let i=6;i>=0;i--){const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-i);dates.push(lds(d));}
   const cut=getWeeklyCutSummary(data,today);
@@ -1035,6 +1050,31 @@ const WeeklyConsistencyCard=({summary})=>{
           </div>;
         })}
       </div>
+    </X>
+  );
+};
+
+const WeightTrendCard=({trend,compact=false})=>{
+  if(!trend)return null;
+  const color=trend.direction==="down"?C.g:trend.direction==="up"?C.a:C.p;
+  const vals=trend.points.map(p=>p.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const w=Math.max(160,trend.points.length*26),h=compact?42:54;
+  const pts=trend.points.map((p,i)=>`${i*(w/(trend.points.length-1))},${h-6-((p.v-mn)/rng)*(h-14)}`).join(" ");
+  return(
+    <X style={{padding:12,borderLeft:`4px solid ${color}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:8}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>Weight trend</div>
+          <div style={{fontSize:18,fontWeight:900,color:C.t,marginTop:1}}>{trend.message}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{trend.weighIns7}/7 weigh-ins · current {trend.current} lbs</div>
+        </div>
+        <div style={{fontSize:22,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.weeklyChange>0?"+":""}{trend.weeklyChange}</div>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        {trend.points.map((p,i)=><circle key={i} cx={i*(w/(trend.points.length-1))} cy={h-6-((p.v-mn)/rng)*(h-14)} r="2.5" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
+      </svg>
+      {!compact&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}><span>{trend.points[0]?.d}</span><span>{trend.points[trend.points.length-1]?.d}</span></div>}
     </X>
   );
 };
@@ -1369,6 +1409,7 @@ const Dashboard=({data,setData,setTab})=>{
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
   const weightTrend=getWeightTrend(data.wt);
+  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
   const stalls=getStalls(data.prog,data.wk,data.program);
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
@@ -1468,6 +1509,8 @@ const Dashboard=({data,setData,setTab})=>{
           ))}
         </div>
       </X>
+
+      <WeightTrendCard trend={weightTrendSummary} compact/>
 
       <X style={{padding:12,borderLeft:`4px solid ${tonightCloseout.tone==="good"?C.g:tonightCloseout.tone==="bad"?C.r:C.a}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Tonight closeout</div>
@@ -3405,6 +3448,7 @@ const Weight=({data,setData})=>{
   const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getWeightTrend(data.wt);
+  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
   const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
@@ -3412,7 +3456,7 @@ const Weight=({data,setData})=>{
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
       <div style={{fontSize:18,fontWeight:800,color:C.t}}>Morning scale</div>
-      <div style={{fontSize:13,color:C.t3}}>One number. The trend/review stays tucked away.</div>
+      <div style={{fontSize:13,color:C.t3}}>Log the number, then watch the trend.</div>
     </div>
 
     <X style={{borderLeft:`3px solid ${todayLogged?C.g:C.p}`}}>
@@ -3432,6 +3476,8 @@ const Weight=({data,setData})=>{
         </div>
       )}
     </X>
+
+    <WeightTrendCard trend={weightTrendSummary}/>
 
     {wTrend&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
       <div style={{fontSize:11,fontWeight:800,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut pace</div>
