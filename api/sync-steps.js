@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -10,7 +10,8 @@ export default async function handler(req, res) {
 
   try {
     const params = req.method === 'GET' ? req.query : req.body;
-    const { steps, token } = params;
+    const authToken = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+    const token = params.token || authToken;
     const resolvedDate = params.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
     if (!token || token !== syncToken) {
@@ -20,7 +21,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }
 
-    const stepCount = Math.round(Number(steps) || 0);
+    const rawSteps = params.steps ?? params.value ?? params.count ?? params.stepCount ?? params.step_count;
+    const parseSteps = (raw) => {
+      if (Array.isArray(raw)) return raw.reduce((sum, v) => sum + parseSteps(v), 0);
+      if (raw && typeof raw === 'object') return parseSteps(raw.steps ?? raw.value ?? raw.count ?? raw.quantity ?? raw.total);
+      if (typeof raw === 'number') return raw;
+      const text = String(raw ?? '').replace(/,/g, '');
+      const nums = text.match(/\d+(?:\.\d+)?/g)?.map(Number).filter(n => Number.isFinite(n) && n > 0 && n < 200000) || [];
+      if (!nums.length) return 0;
+      return nums.length === 1 ? nums[0] : nums.reduce((sum, n) => sum + n, 0);
+    };
+    const stepCount = Math.round(parseSteps(rawSteps));
     if (stepCount <= 0) {
       return res.status(400).json({ error: 'steps must be a positive number' });
     }

@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -10,7 +10,8 @@ export default async function handler(req, res) {
 
   try {
     const params = req.method === 'GET' ? req.query : req.body;
-    const { token } = params;
+    const authToken = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+    const token = params.token || authToken;
     const resolvedDate = params.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
     if (!token || token !== syncToken) {
@@ -20,8 +21,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }
 
-    const rawWeight = params.weight ?? params.lbs ?? params.value;
-    const weight = Math.round((Number(rawWeight) || 0) * 10) / 10;
+    const rawWeight = params.weight ?? params.lbs ?? params.value ?? params.bodyMass ?? params.body_mass;
+    const parseWeight = (raw) => {
+      if (Array.isArray(raw)) return parseWeight(raw[raw.length - 1]);
+      if (raw && typeof raw === 'object') return parseWeight(raw.weight ?? raw.lbs ?? raw.value ?? raw.quantity ?? raw.bodyMass ?? raw.body_mass);
+      if (typeof raw === 'number') return raw;
+      const text = String(raw ?? '').replace(/,/g, '');
+      const n = Number(text.match(/\d+(?:\.\d+)?/)?.[0] || 0);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const weight = Math.round(parseWeight(rawWeight) * 10) / 10;
     if (weight <= 0 || weight > 1000) {
       return res.status(400).json({ error: 'weight must be a positive number in pounds' });
     }

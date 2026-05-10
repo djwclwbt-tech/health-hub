@@ -801,6 +801,30 @@ const getWeeklyCutSummary=(data,today=td())=>{
     cardioDone,tdee,stalls:getStalls(data.prog||{},data.wk||{},data.program||PROG.days)};
 };
 
+const getWeeklyConsistency=(data,today=td())=>{
+  const dates=[];for(let i=6;i>=0;i--){const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-i);dates.push(lds(d));}
+  const cut=getWeeklyCutSummary(data,today);
+  const days=dates.map(d=>{
+    const liftPlanned=!!data.program?.[dw(d)];
+    const liftDone=!!data.wk?.[d];
+    const cardio=data.cardio?.[d];
+    const cardioDone=!!cardio?.done;
+    const cardioMinutes=Math.round(Number(cardio?.duration||0));
+    const weightLogged=data.wt?.[d]!=null;
+    return{date:d,label:["S","M","T","W","T","F","S"][new Date(d+"T12:00:00").getDay()],weightLogged,liftPlanned,liftDone,cardioDone,cardioMinutes};
+  });
+  const liftsPlanned=days.filter(d=>d.liftPlanned).length;
+  const liftsDone=days.filter(d=>d.liftDone).length;
+  const cardioSessions=days.filter(d=>d.cardioDone).length;
+  const cardioMinutes=days.reduce((s,d)=>s+d.cardioMinutes,0);
+  const weightDays=days.filter(d=>d.weightLogged).length;
+  const winDays=days.filter(d=>d.weightLogged||d.liftDone||d.cardioDone).length;
+  const trend=cut.weightTrend.weeklyChange==null?"Need 4 weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${Math.round(cut.weightTrend.weeklyChange)} lb/wk`;
+  const tone=liftsPlanned&&liftsDone>=liftsPlanned&&cardioSessions>=2&&weightDays>=5?"great":winDays>=5?"good":winDays>=3?"building":"start";
+  const message=tone==="great"?"Week is on rails":tone==="good"?"Wins are stacking":tone==="building"?"Keep collecting wins":"One win starts the week";
+  return{days,liftsDone,liftsPlanned,cardioSessions,cardioMinutes,weightDays,winDays,trend,tone,message};
+};
+
 const getTonightCloseout=(data,date=td())=>{
   const settings=data.settings||DEFAULTS;
   const a=getDailyCutAdherence(data,date,settings);
@@ -849,7 +873,7 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
   }else if(lowRecovery&&s.weightTrend.status!=="flat"){
     rec={key:"stress",action:"Keep calories steady and make cardio easier this week.",why:`Weight is ${s.weightTrend.label.toLowerCase()} while recovery averages ${s.recoveryAvg}%, so the safer lever is stress/cardio, not less food.`,confidence:s.recoveryDays>=3&&s.weightTrend.days>=4?"High":"Medium"};
   }else if(s.weightTrend.status==="fast"){
-    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.abs(s.weightTrend.weeklyChange)} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
+    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.round(Math.abs(s.weightTrend.weeklyChange))} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
   }else if(s.weightTrend.status==="flat"||s.weightTrend.status==="up"){
     rec={key:"adjust",action:"Adjust one lever only: add 10–15 min Zone 2 twice this week or trim ~100 calories on rest days.",why:`Adherence is ${s.nutritionAdherence}% and weight is ${s.weightTrend.label.toLowerCase()}, so one small lever is enough. Targets stay unchanged until you choose it.`,confidence:s.weightTrend.days>=4&&s.tdee.phase!=="collecting"?"High":"Medium"};
   }else if(stalls>=2){
@@ -858,7 +882,7 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
     rec={key:"stay",action:"Stay the course this week.",why:`Weight trend, nutrition adherence (${s.nutritionAdherence}%), and recovery are good enough. Do not change multiple levers.`,confidence:s.weightTrend.days>=4&&s.loggedDays>=5?"High":"Medium"};
   }
   return{...rec,summary:s,signals:[
-    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${s.weightTrend.weeklyChange} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
+    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${Math.round(s.weightTrend.weeklyChange)} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
     {label:"Adherence",value:`${s.nutritionAdherence}%`,tone:s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
     {label:"Recovery",value:s.recoveryAvg==null?"Missing":`${s.recoveryAvg}%`,tone:s.recoveryAvg==null?"muted":s.recoveryAvg>=65?"good":s.recoveryAvg>=55?"warn":"bad"},
     {label:"Training",value:s.plannedTraining?`${s.trainingDone}/${s.plannedTraining}`:"Rest",tone:s.plannedTraining&&s.trainingDone<s.plannedTraining?"warn":"good"},
@@ -972,6 +996,49 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
 };
 
 // ═══ CHART ═══
+const WeeklyConsistencyCard=({summary})=>{
+  if(!summary)return null;
+  const toneColor=summary.tone==="great"?C.g:summary.tone==="good"?C.p:summary.tone==="building"?C.a:C.t3;
+  const toneBg=summary.tone==="great"?C.gl:summary.tone==="good"?C.pl:summary.tone==="building"?C.al:C.bg;
+  return(
+    <X style={{padding:12,borderLeft:`4px solid ${toneColor}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Weekly wins</div>
+          <div style={{fontSize:16,fontWeight:850,color:C.t,marginTop:2}}>{summary.message}</div>
+        </div>
+        <div style={{fontSize:11,fontWeight:850,color:toneColor,background:toneBg,border:`1px solid ${toneColor}`,borderRadius:999,padding:"5px 8px",whiteSpace:"nowrap"}}>Trend {summary.trend}</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:10}}>
+        {[
+          {l:"Lift",v:summary.liftsPlanned?`${summary.liftsDone}/${summary.liftsPlanned}`:`${summary.liftsDone}`,ok:summary.liftsPlanned?summary.liftsDone>=summary.liftsPlanned:summary.liftsDone>0},
+          {l:"Cardio",v:`${summary.cardioSessions} · ${summary.cardioMinutes}m`,ok:summary.cardioSessions>=2},
+          {l:"Scale",v:`${summary.weightDays}/7`,ok:summary.weightDays>=5}
+        ].map(x=>{
+          const col=x.ok?C.g:C.a,bg=x.ok?C.gl:C.al;
+          return <div key={x.l} style={{padding:"8px 6px",borderRadius:10,textAlign:"center",background:bg,border:`1px solid ${col}`}}>
+            <div style={{fontSize:9,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
+            <div style={{fontSize:13,fontWeight:900,color:col,marginTop:1}}>{x.v}</div>
+          </div>;
+        })}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5,marginTop:10}}>
+        {summary.days.map(d=>{
+          const wins=(d.weightLogged?1:0)+(d.liftDone?1:0)+(d.cardioDone?1:0);
+          const bg=wins>=2?C.gl:wins===1?C.pl:C.bg;
+          const bd=wins>=2?C.g:wins===1?C.p:C.bd;
+          return <div key={d.date} style={{border:`1px solid ${bd}`,background:bg,borderRadius:9,padding:"6px 2px",textAlign:"center",minHeight:48}}>
+            <div style={{fontSize:10,fontWeight:900,color:C.t2}}>{d.label}</div>
+            <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:4,flexWrap:"wrap"}}>
+              {[{k:"W",ok:d.weightLogged},{k:"L",ok:d.liftDone,hide:!d.liftPlanned},{k:"C",ok:d.cardioDone}].filter(x=>!x.hide).map(x=><span key={x.k} style={{fontSize:8,fontWeight:900,color:x.ok?C.g:C.t3,background:x.ok?C.gl:"transparent",borderRadius:4,padding:"1px 2px"}}>{x.ok?x.k:"·"}</span>)}
+            </div>
+          </div>;
+        })}
+      </div>
+    </X>
+  );
+};
+
 const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   if(!data||data.length<2){
     if(!empty)return null;
@@ -1280,7 +1347,7 @@ const Dashboard=({data,setData,setTab})=>{
   const lw=wts[0]?.[1];
   const w7ago=(()=>{const d=new Date();d.setDate(d.getDate()-7);const ds=lds(d);
     const near=wts.filter(([k])=>k<=ds);return near.length?near[0][1]:null;})();
-  const wc=lw&&w7ago?(lw-w7ago).toFixed(1):null;
+  const wc=lw&&w7ago?Math.round(lw-w7ago):null;
   const steps=data.steps?.[t]||0;
   const ws=rec?.recoveryScore;
 
@@ -1297,6 +1364,7 @@ const Dashboard=({data,setData,setTab})=>{
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
   const weeklyRecommendation=getWeeklyCutRecommendation(data,t);
+  const weeklyConsistency=getWeeklyConsistency(data,t);
   const tonightCloseout=getTonightCloseout(data,t);
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
@@ -1435,6 +1503,8 @@ const Dashboard=({data,setData,setTab})=>{
         </div>
       </X>
 
+      <WeeklyConsistencyCard summary={weeklyConsistency}/>
+
       <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:12,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Open review details</button>
     </div>
   );
@@ -1563,8 +1633,8 @@ const Dashboard=({data,setData,setTab})=>{
         );
         const deficitLabel=td.deficit>0?"deficit":td.deficit<0?"surplus":"on target";
         const deficitColor=td.deficit>0?C.g:td.deficit<0?C.a:C.t2;
-        const paceLabel=td.weeklyChange<0?`~${Math.abs(td.weeklyChange).toFixed(1)} lbs/wk loss`
-          :td.weeklyChange>0?`~${td.weeklyChange.toFixed(1)} lbs/wk gain`:"weight stable";
+        const paceLabel=td.weeklyChange<0?`~${Math.round(Math.abs(td.weeklyChange))} lbs/wk loss`
+          :td.weeklyChange>0?`~${Math.round(td.weeklyChange)} lbs/wk gain`:"weight stable";
         return(
           <X style={{padding:12,borderLeft:`3px solid ${borderColor}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -1580,7 +1650,7 @@ const Dashboard=({data,setData,setTab})=>{
             {td.phase==="confident"&&(<>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-                  <div style={{fontSize:14,fontWeight:700,color:td.weeklyChange<0?C.g:td.weeklyChange>0?C.a:C.t2}}>{td.weeklyChange>0?"+":""}{td.weeklyChange.toFixed(1)}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:td.weeklyChange<0?C.g:td.weeklyChange>0?C.a:C.t2}}>{td.weeklyChange>0?"+":""}{Math.round(td.weeklyChange)}</div>
                   <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
                 </div>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
@@ -1604,7 +1674,7 @@ const Dashboard=({data,setData,setTab})=>{
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Weight</span>
-            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?lw.toFixed(1):"—"}</span>
+            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?Math.round(lw):"—"}</span>
           </div>
           {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:wc>0?C.r:C.t3,marginBottom:4}}>{wc>0?"+":""}{wc} lbs 7d</div>}
           {wCh.length>=2?(
@@ -2165,6 +2235,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(rest>0)startRestTimer(rest);
   };
 
+  const notifyRestDone=()=>{
+    const ns=data.settings?.notifications||{};
+    if(!ns.enabled||ns.restTimer===false)return;
+    if(typeof Notification==="undefined"||Notification.permission!=="granted")return;
+    try{new Notification("Rest complete",{body:"Next set is ready.",tag:"rest-timer",icon:"/icon-192.png"});}catch{}
+  };
+
   const startRestTimer=(rest)=>{
     if(tr.current)clearInterval(tr.current);
     const endTime=Date.now()+rest*1000;
@@ -2172,8 +2249,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setRl(rest);setRt(rest);
     const tick=()=>{
       const left=Math.round((restEndRef.current-Date.now())/1000);
-      if(left<=0){clearInterval(tr.current);setRt(0);setRl(0);
+      if(left<=0){clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
         if(navigator.vibrate)navigator.vibrate([200,100,200]);
+        notifyRestDone();
       }else{setRl(Math.max(0,left));}
     };
     tr.current=setInterval(tick,500);
@@ -2186,6 +2264,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           const left=Math.round((restEndRef.current-Date.now())/1000);
           if(left<=0){if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
             if(navigator.vibrate)navigator.vibrate([200,100,200]);
+            notifyRestDone();
           }else{setRl(left);}
         }
         if(stretchEndRef.current>0){
@@ -3323,7 +3402,7 @@ const Weight=({data,setData})=>{
   const st=data.settings||DEFAULTS;
   const entries=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
   const latest=entries[0]?.[1],oldest=entries[entries.length-1]?.[1];
-  const tc=latest&&oldest?(latest-oldest).toFixed(1):null;
+  const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getWeightTrend(data.wt);
   const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
@@ -3341,7 +3420,7 @@ const Weight=({data,setData})=>{
       {todayLogged?(
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-            <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{data.wt[t].toFixed(1)}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
+            <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{Math.round(data.wt[t])}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
             <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:10,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
           </div>
           {nw!==""&&<div style={{display:"flex",gap:6,marginTop:10}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:20,fontWeight:800}}/><B onClick={add}>Update</B></div>}
@@ -3356,14 +3435,14 @@ const Weight=({data,setData})=>{
 
     {wTrend&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
       <div style={{fontSize:11,fontWeight:800,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut pace</div>
-      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.abs(wTrend.rate)} lbs/week</div>
+      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.round(Math.abs(wTrend.rate))} lbs/week</div>
       <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.advice}</div>
     </X>)}
 
     <S title="Scale review" collapsible defaultOpen={false}>
       <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?latest.toFixed(1):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
-        {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?Math.round(latest):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
+        {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
         <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
         <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
       </div>
@@ -3383,7 +3462,7 @@ const Weight=({data,setData})=>{
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:10,color:C.t3}}>· raw</span>
                 <span style={{fontSize:10,color:C.g}}>— trend</span>
-                <span style={{fontSize:13,fontWeight:700,color:C.g}}>{wtTDEE.trendWeight} lbs</span>
+                <span style={{fontSize:13,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)} lbs</span>
               </div>
             </div>
             <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
@@ -3396,7 +3475,7 @@ const Weight=({data,setData})=>{
             </div>
             {wtTDEE.weeklyChange!==0&&(
               <div style={{marginTop:6,fontSize:11,color:wtTDEE.weeklyChange<0?C.g:C.a,fontWeight:600}}>
-                Trend: {wtTDEE.weeklyChange>0?"+":""}{wtTDEE.weeklyChange.toFixed(1)} lbs/wk
+                Trend: {wtTDEE.weeklyChange>0?"+":""}{Math.round(wtTDEE.weeklyChange)} lbs/wk
               </div>
             )}
           </X>
@@ -3405,12 +3484,12 @@ const Weight=({data,setData})=>{
     </S>
 
     <S title="Weight history" collapsible defaultOpen={false}>
-      {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?(w-prev).toFixed(1):null;
-        const del=()=>{if(confirm(`Delete ${w.toFixed(1)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);svSB.delWeight(d);}};
+      {entries.slice(0,20).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev?Math.round(w-prev):null;
+        const del=()=>{if(confirm(`Delete ${Math.round(w)} lbs on ${fmt(d)}?`)){const nwt={...data.wt};delete nwt[d];const nd={...data,wt:nwt};setData(nd);sv(nd);svSB.delWeight(d);}};
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontWeight:600,color:C.t}}>{w.toFixed(1)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
+            <span style={{fontWeight:600,color:C.t}}>{Math.round(w)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
             <button onClick={del} style={{background:"none",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:"2px 4px",opacity:0.6}}>✕</button>
           </div>
         </div>);})}
@@ -3689,7 +3768,7 @@ const Settings=({data,setData})=>{
             </div>
             {(data.settings.notifications||{}).enabled&&(
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"}].map(n=>{
+                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"},{key:"restTimer",label:"Rest timer complete"}].map(n=>{
                   const ns=data.settings.notifications||{};
                   const on=ns[n.key]!==false;
                   return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
@@ -3726,6 +3805,17 @@ const Settings=({data,setData})=>{
           https://your-domain.vercel.app/api/sync-nutrition?token=YOUR_TOKEN&cal=&#123;Energy&#125;&protein=&#123;Protein&#125;&carbs=&#123;Carbs&#125;&fat=&#123;Fat&#125;&fiber=&#123;Fiber&#125;
         </span>
         4. Automation tab → Time of Day → 9 PM → Run Shortcut
+      </div>
+      <div style={{marginTop:8,padding:8,background:C.pl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.p}`}}>
+        <div style={{fontWeight:700,marginBottom:4,color:C.p}}>Steps + Weight Shortcuts:</div>
+        Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
+          https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
+        </span>
+        Weight: use latest Body Mass, convert to pounds, then call:<br/>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
+          https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
+        </span>
       </div>
     </X>
 
@@ -3828,7 +3918,7 @@ const Settings=({data,setData})=>{
                 <L>{f.l}</L>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <N value={cur[f.k]||""} onChange={v=>saveMeas(f.k,v)} style={{width:70}} placeholder="in"/>
-                  {prev&&prev[1][f.k]&&cur[f.k]?(()=>{const d=(cur[f.k]-prev[1][f.k]).toFixed(1);return d!=0?<span style={{fontSize:11,color:f.k==="waist"?(d<0?C.g:C.r):(d>0?C.g:C.r)}}>{d>0?"+":""}{d}"</span>:null;})():null}
+                  {prev&&prev[1][f.k]&&cur[f.k]?(()=>{const d=Math.round(cur[f.k]-prev[1][f.k]);return d!==0?<span style={{fontSize:11,color:f.k==="waist"?(d<0?C.g:C.r):(d>0?C.g:C.r)}}>{d>0?"+":""}{d}</span>:null;})():null}
                 </div>
               </div>
             ))}
