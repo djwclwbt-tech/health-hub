@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const lines = [];
     lines.push(`Program: ${program?.name || 'Upper/Lower v2'}, Week ${program?.week || '?'}/${program?.totalWeeks || 8}`);
     lines.push(`Analysis window: ${range} (${days} days)`);
-    lines.push(`Goals: recomp, ~${targets?.calories || 2430} cal/day, ${targets?.protein || 180}g+ protein, ${targets?.steps || 10000} steps/day, ${targets?.water || 128}oz water, ${targets?.sleep || 7.5}h sleep`);
+    lines.push(`Goals: cut execution, ~${targets?.calories || 1800} cal/day, ${targets?.protein || 200}g+ protein, ${targets?.steps || 15000} steps/day, ${targets?.water || 128}oz water, ${targets?.sleep || 7.5}h sleep`);
 
     if (workouts) {
       lines.push(`\nWORKOUTS: ${workouts.count} sessions logged, days: ${(workouts.days || []).join(', ') || 'none'}, progressions this period: ${workouts.progressions}`);
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       lines.push(`\nWEIGHT: No data in this period`);
     }
 
-    lines.push(`\nSTEPS: ${steps ? `avg ${steps.toLocaleString()}/day (target ${(targets?.steps || 10000).toLocaleString()})` : 'No data'}`);
+    lines.push(`\nSTEPS: ${steps ? `avg ${steps.toLocaleString()}/day (target ${(targets?.steps || 15000).toLocaleString()})` : 'No data'}`);
     lines.push(`WATER: ${water ? `avg ${water}oz/day (target ${targets?.water || 128}oz)` : 'No data'}`);
     lines.push(`HABITS (7-day score): ${habits != null ? `${habits}%` : 'No data'} — tracked: alcohol-free, cannabis-free, screens off by 10pm, morning sunlight, bed by 10:30, read before bed`);
 
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
     const dataStr = lines.join('\n');
 
-    const systemPrompt = `You are a health data analyst for a strength athlete doing body recomposition. Analyze the provided data and return ONLY a valid JSON object with this exact structure:
+    const systemPrompt = `You are a health data analyst for a strength athlete executing a fat-loss cut while preserving muscle and performance. Analyze the provided data and return ONLY a valid JSON object with this exact structure:
 {
   "scores": {
     "overall": <0-100>,
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
   "correlations": ["<correlation between metrics>"],
   "recommendations": ["<actionable rec 1>", "<actionable rec 2>", "<actionable rec 3>"],
   "nextWeekFocus": "<1-2 sentence priority focus for next 7 days>",
-  "bodyComposition": {"bfTrend":"direction or stable","recompSignal":"yes/no with reasoning","muscleQuality":"brief observation","photoReminder":"only if >14 days since last photo, else null"}
+  "bodyComposition": {"bfTrend":"direction or stable","recompSignal":"cut-retention signal with reasoning","muscleQuality":"brief observation","photoReminder":"only if >14 days since last photo, else null"}
 }
 Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs attention. Base scores strictly on data vs targets. Be direct — do not sugarcoat gaps. No markdown, no explanation, JSON only.`;
 

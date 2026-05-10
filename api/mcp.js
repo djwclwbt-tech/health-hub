@@ -15,7 +15,7 @@ const sbHeaders = {
 const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "trainingCal", "wednesdayCal", "weekendCal"];
 
 const PROGRAM_SNAPSHOT = {
-  settings: { calories: 1800, protein: 200, water: 128, steps: 10000, sleep: 7.5, fiber: 30, trainingCal: 1800, wednesdayCal: 900, weekendCal: 1700 },
+  settings: { calories: 1800, protein: 200, water: 128, steps: 15000, sleep: 7.5, fiber: 30, trainingCal: 1800, wednesdayCal: 900, weekendCal: 1700 },
   days: {
     monday: {
       name: "Upper A — Strength", focus: "Strength",

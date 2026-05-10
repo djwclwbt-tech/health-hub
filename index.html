@@ -229,7 +229,7 @@ const cardioSummary=c=>{
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:1800,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
+const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -524,7 +524,7 @@ const getDayProTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   if(dt==="travel")return settings?.protein||200;
   const sw=isSocialWeekendActive(dateStr,socialWeekend);
   if(sw&&["friday","saturday","sunday"].includes(dw(dateStr)))return 150;
-  if(dt==="wednesday")return 120;
+  if(dt==="wednesday")return 150;
   if(dt==="training")return settings?.protein||200;
   return 150;
 };
@@ -545,9 +545,9 @@ const getWeeklyRecoveryAvg=(rec)=>{
 };
 const getAutoregulation=(avgRec)=>{
   if(avgRec===null)return null;
-  if(avgRec>=70)return{level:"green",msg:"Full program. Push progression.",action:"All sessions + both Peloton + stairmaster."};
-  if(avgRec>=55)return{level:"yellow",msg:"Recovery dipping. Drop to 1 Peloton session (weekend only).",action:"Keep all lifting. Check sleep and food first."};
-  return{level:"red",msg:"Recovery low. Drop Peloton entirely. Reduce to 3 lifting sessions.",action:"Upper A, Lower A, Upper B only. Skip Lower B. Resume full when recovery > 65%."};
+  if(avgRec>=70)return{level:"green",msg:"Run full plan. Progress only if earned.",action:"All lifts as planned. Keep cardio steady; no extra stress chasing PRs."};
+  if(avgRec>=55)return{level:"yellow",msg:"Recovery dipping. Reduce cardio stress first.",action:"Keep lifting. Drop to 1 Peloton session and check sleep/food before changing calories."};
+  return{level:"red",msg:"Recovery low. Protect lifting and pull back cardio.",action:"Skip Peloton/stairmaster. Use minimum effective lifting only until recovery rebounds."};
 };
 const getConsecutiveRedDays=(rec)=>{
   let count=0;const now=new Date();
@@ -603,7 +603,7 @@ const getWeightTrend=(wt)=>{
   const olderLast=older[older.length-1][1];
   const weeklyRate=+(recentAvg-olderLast).toFixed(1);
   if(Math.abs(weeklyRate)>1)return{rate:weeklyRate,direction:weeklyRate>0?"gaining":"losing",
-    advice:weeklyRate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting, not recomping."};
+    advice:weeklyRate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."};
   return null;
 };
 
@@ -671,7 +671,7 @@ const getInsights=(data)=>{
   return ins.slice(0,4);
 };
 
-const getRecompScore=(data)=>{
+const getCutRetentionScore=(data)=>{
   const planStart=PROG.start;
   const wEntries=Object.entries(data.wt||{}).filter(([d])=>d>=planStart).sort((a,b)=>a[0].localeCompare(b[0]));
   if(wEntries.length<3)return null;
@@ -1191,7 +1191,7 @@ const AnalysisSection=({data})=>{
             <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
               <div style={{fontSize:11,fontWeight:700,color:C.v,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Body Composition</div>
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
-              {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Recomp Signal: {result.bodyComposition.recompSignal}</div>}
+              {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
               {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
               {result.bodyComposition.photoReminder&&<div style={{fontSize:13,color:C.a}}>{"📸"} {result.bodyComposition.photoReminder}</div>}
             </X>
@@ -1281,7 +1281,7 @@ const Dashboard=({data,setData,setTab})=>{
   const preDinnerSlots=Math.max(0,mealSlots-1);
   const perMealPro=preDinnerSlots>0?Math.ceil(Math.max(0,proRemaining-dinnerPro)/preDinnerSlots):0;
   const topProMeals=getTopProteinMeals(data);
-  const recomp=getRecompScore(data);
+  const retention=getCutRetentionScore(data);
   const dataInsights=getInsights(data);
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
@@ -1646,27 +1646,27 @@ const Dashboard=({data,setData,setTab})=>{
         </X>
       )}
 
-      {/* ═══ RECOMP SCORE ═══ */}
-      {recomp&&(
+      {/* ═══ CUT RETENTION SCORE ═══ */}
+      {retention&&(
         <X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Recomp Score</div>
-              <div style={{fontSize:10,color:C.t3}}>Weight stable + lifts up = recomp working</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut Retention Score</div>
+              <div style={{fontSize:10,color:C.t3}}>Cut pace + protein + lift retention</div>
             </div>
-            <div style={{fontSize:28,fontWeight:800,color:recomp.score>=70?C.g:recomp.score>=45?C.a:C.r}}>{recomp.score}</div>
+            <div style={{fontSize:28,fontWeight:800,color:retention.score>=70?C.g:retention.score>=45?C.a:C.r}}>{retention.score}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.weight.score>=70?C.g:C.a}}>{recomp.weight.change>0?"+":""}{recomp.weight.change}</div>
+              <div style={{fontSize:14,fontWeight:700,color:retention.weight.score>=70?C.g:C.a}}>{retention.weight.change>0?"+":""}{retention.weight.change}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.lifts.score>=50?C.g:C.a}}>{recomp.lifts.progressed}/{recomp.lifts.total}</div>
+              <div style={{fontSize:14,fontWeight:700,color:retention.lifts.score>=50?C.g:C.a}}>{retention.lifts.progressed}/{retention.lifts.total}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Up</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.protein.score>=70?C.g:C.a}}>{recomp.protein.hit}/{recomp.protein.days}</div>
+              <div style={{fontSize:14,fontWeight:700,color:retention.protein.score>=70?C.g:C.a}}>{retention.protein.hit}/{retention.protein.days}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Pro Days</div>
             </div>
           </div>
@@ -1852,28 +1852,7 @@ const Dashboard=({data,setData,setTab})=>{
       {/* ═══ AI ANALYSIS ═══ */}
       <AnalysisSection data={data}/>
 
-      <div style={{marginTop:4,borderTop:`1px solid ${C.bl}`,paddingTop:8}}>
-        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:600}}>
-          {showImport?"Hide Import":"Import Health Data"}
-        </button>
-        {showImport&&(
-          <div style={{marginTop:8}}>
-            <div style={{fontSize:12,color:C.t2,marginBottom:6}}>
-              Paste HealthKit export from Claude iOS (markdown table format). Existing data won't be overwritten.
-            </div>
-            <textarea value={importText} onChange={e=>setImportText(e.target.value)}
-              placeholder="Paste HealthKit data export here..."
-              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,
-                padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-            <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
-            {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
-            <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
-              style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:12,opacity:0.6}}>
-              Reset All Data
-            </button>
-          </div>
-        )}
-      </div>
+
     </div>
   );
 };
@@ -3158,8 +3137,7 @@ const Nutrition=({data,setData})=>{
         {[
           {id:"aggressive_cut",label:"Aggressive cut",offset:-500,desc:"~1 lb/wk loss"},
           {id:"moderate_cut",label:"Moderate cut",offset:-250,desc:"~0.5 lb/wk loss"},
-          {id:"maintenance",label:"Maintenance",offset:0,desc:"maintain weight"},
-          {id:"lean_bulk",label:"Lean bulk",offset:200,desc:"~0.4 lb/wk gain"}
+          {id:"maintenance",label:"Maintenance hold",offset:0,desc:"pause loss if recovery demands it"}
         ].map(opt=>(
           <div key={opt.id} onClick={()=>setTdeeGoal(opt.id)} style={{
             display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:4,
@@ -3174,7 +3152,7 @@ const Nutrition=({data,setData})=>{
           </div>
         ))}
         <B full color={C.p} onClick={()=>{
-          const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0,lean_bulk:200}[tdeeGoal]||0;
+          const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0}[tdeeGoal]||0;
           const newCal=nutTDEE.tdee+opt;
           const ratio=newCal/(st.calories||2430);
           const nd={...data,settings:{...st,
@@ -3650,6 +3628,9 @@ const Settings=({data,setData})=>{
     trainingCal:""+(st.trainingCal||1800),wednesdayCal:""+(st.wednesdayCal||900),weekendCal:""+(st.weekendCal||1700),syncToken:st.syncToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
+  const [showImport,setShowImport]=useState(false);
+  const [importText,setImportText]=useState("");
+  const [importStatus,setImportStatus]=useState("");
   const isTravel=!!(data.travelDays||{})[t];
 
   const toggleTravel=()=>{
@@ -3700,6 +3681,22 @@ const Settings=({data,setData})=>{
     const a=document.createElement("a");a.href=url;a.download=`health-hub-export-${td()}.json`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
+  const doImport=()=>{
+    try{
+      const parsed=parseHealthImport(importText);
+      const counts={wt:Object.keys(parsed.wt).length,steps:Object.keys(parsed.steps).length,
+        rhr:Object.values(parsed.rec).filter(r=>r.rhr).length,sleep:Object.values(parsed.rec).filter(r=>r.sleepHours).length,
+        cal:Object.keys(parsed.nut).length};
+      const nd={...data,
+        wt:{...parsed.wt,...data.wt},steps:{...parsed.steps,...data.steps},
+        rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
+        nut:{...parsed.nut,...data.nut},
+      };
+      setData(nd);sv(nd);setImportStatus(`Imported ${counts.wt} weights, ${counts.steps} step days, ${counts.rhr} RHR, ${counts.sleep} sleep, ${counts.cal} calorie days`);setImportText("");
+      Object.entries(parsed.wt).forEach(([d,v])=>svSB.weight(d,v));Object.entries(parsed.steps).forEach(([d,v])=>svSB.steps(d,v));
+      Object.entries(parsed.rec).forEach(([d,v])=>svSB.recovery(d,v));Object.entries(parsed.nut).forEach(([d,v])=>svSB.nutrition(d,v));
+    }catch(e){setImportStatus("Error: "+e.message);}
+  };
 
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
@@ -3710,7 +3707,7 @@ const Settings=({data,setData})=>{
         <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1800"/></div>
         <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="200"/></div>
         <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
-        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="10000"/></div>
+        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
         <div><L>Sleep (hrs)</L><N value={f.sleep} onChange={v=>setF({...f,sleep:v})} placeholder="7.5"/></div>
         <div><L>Fiber (g)</L><N value={f.fiber} onChange={v=>setF({...f,fiber:v})} placeholder="30"/></div>
       </div>
@@ -3904,6 +3901,26 @@ const Settings=({data,setData})=>{
         <B full outline onClick={exportData}>Export Data (JSON)</B>
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:6}}>Download all your health data as a JSON file for backup.</div>
+      <S title="Admin data tools" collapsible defaultOpen={false}>
+        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Import HealthKit exports or reset data. These controls stay here so daily cut review stays focused.</div>
+        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:700,padding:0,marginBottom:8}}>
+          {showImport?"Hide Import":"Import Health Data"}
+        </button>
+        {showImport&&(
+          <div style={{marginBottom:8}}>
+            <textarea value={importText} onChange={e=>setImportText(e.target.value)}
+              placeholder="Paste HealthKit data export here..."
+              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,
+                padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+            <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
+            {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
+          </div>
+        )}
+        <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
+          style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:4,opacity:0.7,padding:0}}>
+          Reset All Data
+        </button>
+      </S>
     </X>
 
     <X>
