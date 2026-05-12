@@ -4,6 +4,7 @@
  * Call via cron (vercel.json) or manually:
  *   GET /api/oura-sync
  *   GET /api/oura-sync?date=2026-05-03    (specific date)
+ *   GET /api/oura-sync?start=2026-05-01&end=2026-05-12
  *
  * Flow:
  *   1. Read OURA_PAT from environment
@@ -44,12 +45,25 @@ async function upsertRecoveryRow(row) {
 /**
  * Sync Oura data for a date range.
  */
+function addDays(day, n) {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function inRange(day, startDate, endDate) {
+  return day >= startDate && day <= endDate;
+}
+
 async function syncOura(token, startDate, endDate) {
-  // Fetch readiness and sleep sessions in parallel
-  const [readinessRecords, sleepRecords] = await Promise.all([
+  // Oura sleep sessions can land on the requested day while ending the next morning,
+  // so fetch sleep through end+1 and then filter back to the target day range.
+  const sleepEndDate = addDays(endDate, 1);
+  const [readinessRecords, sleepRecordsRaw] = await Promise.all([
     getDailyReadiness(token, startDate, endDate),
-    getSleepSessions(token, startDate, endDate),
+    getSleepSessions(token, startDate, sleepEndDate),
   ]);
+  const sleepRecords = sleepRecordsRaw.filter(s => inRange(s.day, startDate, endDate));
 
   // Index sleep sessions by day — use the longest "long_sleep" session per day
   const sleepByDay = new Map();
@@ -77,6 +91,11 @@ async function syncOura(token, startDate, endDate) {
       sleeplight: sleep?.light_sleep_duration ? secToHours(sleep.light_sleep_duration) : null,
       sleepdeep: sleep?.deep_sleep_duration ? secToHours(sleep.deep_sleep_duration) : null,
       sleeprem: sleep?.rem_sleep_duration ? secToHours(sleep.rem_sleep_duration) : null,
+      respiratory_rate: sleep?.average_breath ?? null,
+      sleep_performance: null,
+      strain: null,
+      wake_time: null,
+      notes: null,
       source: 'oura',
     };
 
@@ -97,6 +116,11 @@ async function syncOura(token, startDate, endDate) {
       sleeplight: sleep.light_sleep_duration ? secToHours(sleep.light_sleep_duration) : null,
       sleepdeep: sleep.deep_sleep_duration ? secToHours(sleep.deep_sleep_duration) : null,
       sleeprem: sleep.rem_sleep_duration ? secToHours(sleep.rem_sleep_duration) : null,
+      respiratory_rate: sleep.average_breath ?? null,
+      sleep_performance: null,
+      strain: null,
+      wake_time: null,
+      notes: null,
       source: 'oura',
     };
 
@@ -126,15 +150,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { date } = req.query;
+    const { date, start, end } = req.query;
 
     // Default: yesterday + today
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const startDate = date || yesterday.toISOString().slice(0, 10);
-    const endDate = date || now.toISOString().slice(0, 10);
+    const startDate = date || start || yesterday.toISOString().slice(0, 10);
+    const endDate = date || end || now.toISOString().slice(0, 10);
+    if (endDate < startDate) {
+      return res.status(400).json({ error: 'end must be on or after start' });
+    }
 
     const results = await syncOura(token, startDate, endDate);
 
