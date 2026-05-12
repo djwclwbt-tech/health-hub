@@ -1397,6 +1397,9 @@ const Dashboard=({data,setData,setTab})=>{
   const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
   const [importText,setImportText]=useState("");
   const [importStatus,setImportStatus]=useState("");
+  const [dailyCoach,setDailyCoach]=useState(null);
+  const [dailyCoachLoading,setDailyCoachLoading]=useState(false);
+  const [dailyCoachErr,setDailyCoachErr]=useState("");
 
   const doImport=()=>{
     try{
@@ -1497,6 +1500,38 @@ const Dashboard=({data,setData,setTab})=>{
     return{label:"Review details",tab:"dashboard",hint:"Core loops are done."};
   })();
 
+  const buildDailyCoachContext=()=>{
+    const lastDates=(obj,n=7)=>Object.entries(obj||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,n);
+    const avg=arr=>arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
+    const recentNut=lastDates(data.nut,7).filter(([_,v])=>v?.totalCal>0);
+    const recentSteps=lastDates(data.steps,7).map(([_,v])=>v).filter(v=>v>0);
+    const recentWorkouts=lastDates(data.wk,5).map(([date,w])=>({date,name:w.name||w.day||"Workout",exercises:(w.exercises||[]).slice(0,6).map(e=>({name:e.name||e.id,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}${s.rir?` @${s.rir}`:""}`)}))}));
+    const targetExercises=(sess?.exercises||[]).slice(0,6).map(ex=>{
+      const cur=gw(ex,ex.sw,ex);
+      const hist=Object.entries(data.wk||{}).filter(([_,w])=>(w.exercises||[]).some(e=>e.id===ex.id&&e.sets)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,w])=>{const e=w.exercises.find(x=>x.id===ex.id);return{date,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}`)}});
+      return{name:ex.name,focus:sess.focus,repRange:ex.rr?.join("-"),sets:ex.sets,currentWeight:cur,unit:ex.unit||"lbs",history:hist};
+    });
+    return{
+      date:t,phase:w===PROG.deload?"deload":"cut",program:{name:PROG.name,week:w,totalWeeks:PROG.weeks,day:dn,scheduledWorkout:sess?{name:sess.name,focus:sess.focus,estimatedMinutes:estTime(sess)}:null},
+      targets:{calories:calT,protein:proT,steps:st.steps,water:st.water,sleep:st.sleep},
+      today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
+      trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
+      targetExercises,recentWorkouts,
+      missing:[!weightLogged&&"today weight",!nutritionLogged&&"today nutrition",!rec&&"today recovery",!recentWorkouts.length&&"recent workouts"].filter(Boolean)
+    };
+  };
+
+  const askDailyCoach=async()=>{
+    setDailyCoachLoading(true);setDailyCoachErr("");
+    try{
+      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"daily",context:buildDailyCoachContext()})});
+      const d=await r.json();
+      if(!r.ok){setDailyCoachErr(d.error||"Coach unavailable");setDailyCoachLoading(false);return;}
+      setDailyCoach(d);
+    }catch(e){setDailyCoachErr("Coach error: "+e.message);}
+    setDailyCoachLoading(false);
+  };
+
   if(!showFullDashboard)return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <div>
@@ -1509,6 +1544,32 @@ const Dashboard=({data,setData,setTab})=>{
         <div style={{fontSize:15,fontWeight:700,color:C.t,lineHeight:1.35}}>{cutStatus.msg}</div>
         <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:12,background:`linear-gradient(135deg,${C.p},#4f46e5)`,color:"#fff",padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
         <div style={{fontSize:12,color:C.t3,marginTop:6,textAlign:"center"}}>{nextAction.hint}</div>
+      </X>
+
+      <X style={{padding:12,borderLeft:`4px solid ${C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Today Coach</div>
+            <div style={{fontSize:13,color:C.t2,marginTop:2}}>Data-aware plan from workout, nutrition, weight, steps, and recovery.</div>
+          </div>
+          <button onClick={askDailyCoach} disabled={dailyCoachLoading} style={{border:"none",borderRadius:10,background:C.p,color:"#fff",padding:"8px 11px",fontSize:12,fontWeight:800,fontFamily:"inherit",opacity:dailyCoachLoading?0.6:1}}>{dailyCoachLoading?"Checking":"Ask"}</button>
+        </div>
+        {dailyCoachErr&&<div style={{fontSize:12,color:C.r,marginTop:8}}>{dailyCoachErr}</div>}
+        {dailyCoach&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{fontSize:13,fontWeight:800,color:C.t}}>Today’s plan</div>
+          <div style={{fontSize:12,color:C.t2,lineHeight:1.45}}>
+            <div><b>Workout:</b> {dailyCoach.todayPlan?.workout}</div>
+            <div><b>Exercises:</b> {(dailyCoach.todayPlan?.targetExercises||[]).join(", ")}</div>
+            <div><b>Weights/reps:</b> {(dailyCoach.todayPlan?.suggestedWeightsReps||[]).join("; ")}</div>
+            <div><b>Cardio/steps:</b> {dailyCoach.todayPlan?.cardioSteps}</div>
+            <div><b>Mobility:</b> {dailyCoach.todayPlan?.mobility}</div>
+            <div><b>Nutrition:</b> {dailyCoach.todayPlan?.nutritionTarget}</div>
+          </div>
+          <div style={{padding:"8px 10px",background:C.bg,borderRadius:8,fontSize:12,color:C.t2,lineHeight:1.4}}><b>Key adjustment:</b> {dailyCoach.keyAdjustment}</div>
+          {!!dailyCoach.watchOuts?.length&&<div style={{fontSize:12,color:C.t2,lineHeight:1.4}}><b>Watch-outs:</b> {dailyCoach.watchOuts.join("; ")}</div>}
+          <div style={{fontSize:13,fontWeight:850,color:C.p,lineHeight:1.35}}>{dailyCoach.simpleInstruction}</div>
+          <div style={{fontSize:10,color:C.t3}}>Confidence: {dailyCoach.confidence}{dailyCoach.missingData?.length?` · Missing: ${dailyCoach.missingData.join(", ")}`:""}</div>
+        </div>)}
       </X>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
