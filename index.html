@@ -239,6 +239,7 @@ const cardioSummary=c=>{
 };
 
 const SK="dhub6";
+const REST_TIMER_KEY="dhub6_rest_timer";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
@@ -386,7 +387,7 @@ const loadFromSB=async()=>{
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
-    if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700};}
+    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700,notifications:prevSettings.notifications||DEFAULTS.notifications};}
     if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
@@ -575,9 +576,51 @@ const getConsecutiveRedDays=(rec)=>{
 const e1rm=(w,r)=>r<=0||w<=0?0:r===1?w:Math.round(w*(1+r/30));
 const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.done).reduce((s,set)=>s+(set.weight||0)*set.reps,0),0);
 
-const backfillData=(d)=>{if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});const allDays={...PROG.days,...(d.program||{})};Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{if(!w.exercises||!w.day)return;const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;w.exercises.forEach((ex,i)=>{const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;const cs=ex.sets.filter(s=>s.done&&s.weight>0&&s.reps>0);if(!cs.length)return;const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;if(!d.prog[pe.id])d.prog[pe.id]={currentWeight:bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};if(!d.prog[pe.id].e1rmHistory)d.prog[pe.id].e1rmHistory=[];d.prog[pe.id].e1rmHistory.push({date,e1rm:newE1rm});d.prog[pe.id].e1rmHistory=d.prog[pe.id].e1rmHistory.slice(-12);if(!d.prog[pe.id].pr||newE1rm>d.prog[pe.id].pr.e1rm){d.prog[pe.id].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}});});return d;};
+const completedSets=sets=>(sets||[]).filter(saneSet);
+const nextWeightFromSets=(sets,pe)=>{const cs=completedSets(sets);if(!cs.length)return null;const rr=pe?.rr;const matching=rr?cs.filter(s=>Number(s.reps)>=rr[0]&&Number(s.reps)<=rr[1]):cs;if(!matching.length)return null;const cw=Number(matching[0].weight);const hit=rr&&pe?.inc>0&&matching.length>=(pe.sets||1)&&matching.every(s=>Number(s.reps)>=rr[1]);return hit?cw+pe.inc:cw;};
 
-const repairDeloadProgression=(d)=>{const allDays={...PROG.days,...(d.program||{})};const allEx=Object.values(allDays).flatMap(day=>day.exercises||[]);for(const pe of allEx){const dates=Object.entries(d.wk||{}).filter(([date])=>wkn(date)!==PROG.deload).sort((a,b)=>b[0].localeCompare(a[0]));for(const[date,w]of dates){const wex=w.exercises?.find(e=>e.id===pe.id);if(!wex)continue;const cs=wex.sets?.filter(s=>s.done&&s.weight>0);if(!cs?.length)continue;const cw=cs[0].weight;const hit=cs.length===pe.sets&&cs.every(s=>s.reps>=pe.rr[1]);const correctWeight=pe.inc===0?cw:(hit?cw+pe.inc:cw);if(d.prog[pe.id]?.currentWeight&&d.prog[pe.id].currentWeight<correctWeight*0.75){d.prog[pe.id].currentWeight=correctWeight;}else if(!d.prog[pe.id]){d.prog[pe.id]={currentWeight:correctWeight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false};}break;}}return d;};
+const backfillData=(d)=>{
+  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
+  Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});
+  const allDays={...PROG.days,...(d.program||{})};
+  Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{
+    if(!w.exercises||!w.day)return;
+    const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;
+    w.exercises.forEach((ex,i)=>{
+      const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;
+      const key=ex.progKey||progKey(pe,pe);
+      const cs=completedSets(ex.sets);if(!cs.length)return;
+      const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);
+      const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;
+      const nextWeight=nextWeightFromSets(ex.sets,pe);
+      if(!d.prog[key])d.prog[key]={currentWeight:nextWeight??bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};
+      if(!d.prog[key].e1rmHistory)d.prog[key].e1rmHistory=[];
+      d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
+      d.prog[key].e1rmHistory=d.prog[key].e1rmHistory.slice(-12);
+      if(nextWeight!=null&&date>=(d.prog[key].lastDate||"")){d.prog[key].currentWeight=nextWeight;d.prog[key].lastReps=cs.map(s=>s.reps);d.prog[key].lastDate=date;d.prog[key].progressed=nextWeight>Number(cs[0].weight);}
+      if(!d.prog[key].pr||newE1rm>d.prog[key].pr.e1rm){d.prog[key].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}
+    });
+  });
+  return d;
+};
+
+const repairDeloadProgression=(d)=>{
+  const allDays={...PROG.days,...(d.program||{})};
+  const allEx=Object.values(allDays).flatMap(day=>day.exercises||[]);
+  for(const pe of allEx){
+    const key=progKey(pe,pe);
+    const dates=Object.entries(d.wk||{}).filter(([date])=>wkn(date)!==PROG.deload).sort((a,b)=>b[0].localeCompare(a[0]));
+    for(const[date,w]of dates){
+      const wex=w.exercises?.find(e=>e.progKey===key)||w.exercises?.find(e=>e.id===pe.id&&completedSets(e.sets).some(s=>Number(s.reps)>=pe.rr[0]&&Number(s.reps)<=pe.rr[1]));
+      if(!wex)continue;
+      const correctWeight=nextWeightFromSets(wex.sets,pe);if(correctWeight==null)continue;
+      if(d.prog[key]?.currentWeight&&d.prog[key].currentWeight<correctWeight*0.75){d.prog[key].currentWeight=correctWeight;}
+      else if(!d.prog[key]){d.prog[key]={currentWeight:correctWeight,lastReps:completedSets(wex.sets).map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};}
+      break;
+    }
+  }
+  return d;
+};
 
 // ═══ STALL DETECTION ═══
 const getStalls=(prog,wk,programDays)=>{
@@ -1508,15 +1551,23 @@ const Dashboard=({data,setData,setTab})=>{
       const key=progKey(ex,ex);
       const p=data.prog?.[key]?.currentWeight;
       if(p!=null&&saneWeight(ex,p))return p;
-      if(!legacyAmbiguousIds.has(ex.id)){
-        const legacy=data.prog?.[ex.id]?.currentWeight;
-        if(legacy!=null&&saneWeight(ex,legacy))return legacy;
-      }
       const dates=Object.keys(data.wk||{}).sort().reverse();
       for(const d of dates){
         const w=data.wk[d];
-        const wex=w.exercises?.find(e=>e.progKey===key||(!legacyAmbiguousIds.has(ex.id)&&e.id===ex.id));
-        if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length&&saneWeight(ex,ds[0].weight))return ds[0].weight;}
+        const wex=w.exercises?.find(e=>e.progKey===key);
+        if(wex){const next=nextWeightFromSets(wex.sets,ex);if(next!=null&&saneWeight(ex,next))return next;}
+      }
+      const targetRr=ex.rr;
+      for(const d of dates){
+        const w=data.wk[d];
+        const wex=w.exercises?.find(e=>e.id===ex.id);
+        if(wex){const ds=wex.sets?.filter(s=>saneSet(s)&&(!targetRr||Number(s.reps)>=targetRr[0]&&Number(s.reps)<=targetRr[1]));if(ds?.length&&saneWeight(ex,ds[0].weight)){const hitTop=targetRr&&ex.inc>0&&ds.length>=(ex.sets||1)&&ds.every(s=>Number(s.reps)>=targetRr[1]);return hitTop?Number(ds[0].weight)+ex.inc:ds[0].weight;}}
+      }
+      if(!legacyAmbiguousIds.has(ex.id)){
+        const lp=data.prog?.[ex.id];
+        const legacy=lp?.currentWeight;
+        const legacyHasReps=(lp?.lastReps||[]).some(r=>Number(r)>0);
+        if(legacyHasReps&&legacy!=null&&saneWeight(ex,legacy))return legacy;
       }
       return def;
     };
@@ -2345,15 +2396,23 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const key=progKey(ex,slot||ex);
     const p=data.prog[key]?.currentWeight;
     if(p!=null&&saneWeight(ex,p))return p;
-    if(!legacyAmbiguousIds.has(ex.id)&&sameRepTrack(ex.rr,slot?.rr||ex.rr)){
-      const legacy=data.prog[ex.id]?.currentWeight;
-      if(legacy!=null&&saneWeight(ex,legacy))return legacy;
-    }
     const dates=Object.keys(data.wk).sort().reverse();
     for(const d of dates){
       const w=data.wk[d];
-      const wex=w.exercises?.find(e=>e.progKey===key||(!legacyAmbiguousIds.has(ex.id)&&e.id===ex.id));
-      if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length&&saneWeight(ex,ds[0].weight))return ds[0].weight;}
+      const wex=w.exercises?.find(e=>e.progKey===key);
+      if(wex){const next=nextWeightFromSets(wex.sets,slot||ex);if(next!=null&&saneWeight(ex,next))return next;}
+    }
+    const targetRr=(slot?.rr||ex.rr);
+    for(const d of dates){
+      const w=data.wk[d];
+      const wex=w.exercises?.find(e=>e.id===ex.id);
+      if(wex){const ds=wex.sets?.filter(s=>saneSet(s)&&(!targetRr||Number(s.reps)>=targetRr[0]&&Number(s.reps)<=targetRr[1]));if(ds?.length&&saneWeight(ex,ds[0].weight)){const hitTop=targetRr&&(slot?.inc??ex.inc)>0&&ds.length>=((slot||ex).sets||1)&&ds.every(s=>Number(s.reps)>=targetRr[1]);return hitTop?Number(ds[0].weight)+(slot?.inc??ex.inc):ds[0].weight;}}
+    }
+    if(!legacyAmbiguousIds.has(ex.id)){
+      const lp=data.prog[ex.id];
+      const legacy=lp?.currentWeight;
+      const legacyHasReps=(lp?.lastReps||[]).some(r=>Number(r)>0);
+      if(legacyHasReps&&legacy!=null&&saneWeight(ex,legacy))return legacy;
     }
     return def;
   };
@@ -2407,6 +2466,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(tr.current)clearInterval(tr.current);
     if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
     tr.current=null;restTimeoutRef.current=null;restEndRef.current=0;restNotifiedRef.current=false;
+    try{localStorage.removeItem(REST_TIMER_KEY);}catch{}
     setRt(0);setRl(0);
   };
 
@@ -2414,29 +2474,50 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(tr.current)clearInterval(tr.current);
     if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
     tr.current=null;restTimeoutRef.current=null;
+    try{localStorage.removeItem(REST_TIMER_KEY);}catch{}
     setRt(0);setRl(0);
     notifyRestDone();
     restEndRef.current=0;
   };
 
-  const startRestTimer=(rest)=>{
-    clearRestTimer();
-    const endTime=Date.now()+rest*1000;
+  const armRestTimer=(endTime,total)=>{
     restEndRef.current=endTime;
     restNotifiedRef.current=false;
-    setRl(rest);setRt(rest);
+    setRt(total);
     const tick=()=>{
       const left=Math.ceil((restEndRef.current-Date.now())/1000);
       if(left<=0){completeRestTimer();}
       else{setRl(Math.max(0,left));}
     };
-    tr.current=setInterval(tick,500);
-    restTimeoutRef.current=setTimeout(completeRestTimer,Math.max(0,endTime-Date.now()));
+    tick();
+    if(restEndRef.current>0){
+      tr.current=setInterval(tick,500);
+      restTimeoutRef.current=setTimeout(completeRestTimer,Math.max(0,endTime-Date.now()));
+    }
+  };
+
+  const startRestTimer=(rest)=>{
+    clearRestTimer();
+    const endTime=Date.now()+rest*1000;
+    try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now()}));}catch{}
+    armRestTimer(endTime,rest);
   };
 
   useEffect(()=>{
+    const restoreRestTimer=()=>{
+      if(restEndRef.current>0)return;
+      try{
+        const saved=JSON.parse(localStorage.getItem(REST_TIMER_KEY));
+        if(saved?.endTime){
+          if(saved.endTime<=Date.now()){restEndRef.current=saved.endTime;completeRestTimer();}
+          else{armRestTimer(saved.endTime,saved.total||Math.ceil((saved.endTime-(saved.startedAt||Date.now()))/1000));}
+        }
+      }catch{try{localStorage.removeItem(REST_TIMER_KEY);}catch{}}
+    };
+    restoreRestTimer();
     const onVis=()=>{
       if(document.visibilityState==="visible"){
+        restoreRestTimer();
         if(restEndRef.current>0){
           const left=Math.round((restEndRef.current-Date.now())/1000);
           if(left<=0){completeRestTimer();}
@@ -2449,7 +2530,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       }
     };
     document.addEventListener("visibilitychange",onVis);
-    return()=>document.removeEventListener("visibilitychange",onVis);
+    window.addEventListener("focus",onVis);
+    return()=>{document.removeEventListener("visibilitychange",onVis);window.removeEventListener("focus",onVis);};
   },[]);
   useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
 
