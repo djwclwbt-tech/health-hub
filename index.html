@@ -1503,11 +1503,27 @@ const Dashboard=({data,setData,setTab})=>{
   const buildDailyCoachContext=()=>{
     const lastDates=(obj,n=7)=>Object.entries(obj||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,n);
     const avg=arr=>arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
+    const currentWeight=(ex,def)=>{
+      const key=progKey(ex,ex);
+      const p=data.prog?.[key]?.currentWeight;
+      if(p!=null&&saneWeight(ex,p))return p;
+      if(!legacyAmbiguousIds.has(ex.id)){
+        const legacy=data.prog?.[ex.id]?.currentWeight;
+        if(legacy!=null&&saneWeight(ex,legacy))return legacy;
+      }
+      const dates=Object.keys(data.wk||{}).sort().reverse();
+      for(const d of dates){
+        const w=data.wk[d];
+        const wex=w.exercises?.find(e=>e.progKey===key||(!legacyAmbiguousIds.has(ex.id)&&e.id===ex.id));
+        if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length&&saneWeight(ex,ds[0].weight))return ds[0].weight;}
+      }
+      return def;
+    };
     const recentNut=lastDates(data.nut,7).filter(([_,v])=>v?.totalCal>0);
     const recentSteps=lastDates(data.steps,7).map(([_,v])=>v).filter(v=>v>0);
     const recentWorkouts=lastDates(data.wk,5).map(([date,w])=>({date,name:w.name||w.day||"Workout",exercises:(w.exercises||[]).slice(0,6).map(e=>({name:e.name||e.id,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}${s.rir?` @${s.rir}`:""}`)}))}));
     const targetExercises=(sess?.exercises||[]).slice(0,6).map(ex=>{
-      const cur=gw(ex,ex.sw,ex);
+      const cur=currentWeight(ex,ex.sw);
       const hist=Object.entries(data.wk||{}).filter(([_,w])=>(w.exercises||[]).some(e=>e.id===ex.id&&e.sets)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,w])=>{const e=w.exercises.find(x=>x.id===ex.id);return{date,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}`)}});
       return{name:ex.name,focus:sess.focus,repRange:ex.rr?.join("-"),sets:ex.sets,currentWeight:cur,unit:ex.unit||"lbs",history:hist};
     });
