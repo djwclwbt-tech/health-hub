@@ -242,7 +242,7 @@ const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
+const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -1034,16 +1034,40 @@ const Br=({v,max,color=C.p,h=5})=>(
     <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:3,transition:"width 0.3s"}}/>
   </div>
 );
-const notifyDevice=async(title,options={})=>{
-  if(typeof Notification==="undefined"||Notification.permission!=="granted")return false;
-  const opts={icon:"/icon-192.png",badge:"/icon-192.png",vibrate:[200,100,200],...options};
+const ensureNotificationPermission=async()=>{
+  if(typeof Notification==="undefined")return false;
+  if(Notification.permission==="granted")return true;
+  if(Notification.permission==="denied")return false;
+  try{return (await Notification.requestPermission())==="granted";}catch{return false;}
+};
+const notifyViaServiceWorker=async(payload)=>{
+  if(!("serviceWorker" in navigator))return false;
   try{
-    if("serviceWorker" in navigator){
-      const reg=await navigator.serviceWorker.ready;
-      if(reg?.showNotification){await reg.showNotification(title,opts);return true;}
-    }
-    new Notification(title,opts);return true;
-  }catch(e){try{new Notification(title,opts);return true;}catch{return false;}}
+    const reg=await navigator.serviceWorker.ready;
+    if(reg?.active){reg.active.postMessage({type:"SHOW_NOTIFICATION",payload});return true;}
+    if(reg?.showNotification){await reg.showNotification(payload.title||"Health Hub",payload);return true;}
+  }catch{}
+  return false;
+};
+const notifyDevice=async(title,options={})=>{
+  if(!(await ensureNotificationPermission()))return false;
+  const opts={title,icon:"/icon-192.png",badge:"/icon-192.png",vibrate:[200,100,200,100,200],renotify:true,requireInteraction:true,...options};
+  if(await notifyViaServiceWorker(opts))return true;
+  try{new Notification(title,opts);return true;}catch{return false;}
+};
+const scheduleDeviceNotification=async(title,options={},fireAt)=>{
+  if(!(await ensureNotificationPermission()))return false;
+  const payload={title,icon:"/icon-192.png",badge:"/icon-192.png",vibrate:[200,100,200,100,200],renotify:true,requireInteraction:true,...options,fireAt};
+  if("serviceWorker" in navigator){
+    try{const reg=await navigator.serviceWorker.ready;if(reg?.active){reg.active.postMessage({type:"SCHEDULE_NOTIFICATION",payload,fireAt});return true;}}catch{}
+  }
+  const delay=Math.max(0,fireAt-Date.now());
+  setTimeout(()=>notifyDevice(title,options),delay);
+  return true;
+};
+const cancelDeviceNotification=async(tag)=>{
+  if(!tag||!("serviceWorker" in navigator))return;
+  try{const reg=await navigator.serviceWorker.ready;reg?.active?.postMessage({type:"CANCEL_NOTIFICATION",tag});}catch{}
 };
 
 // ═══ TAB BAR ═══
@@ -2458,7 +2482,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     restNotifiedRef.current=true;
     const ns=data.settings?.notifications||{};
     if(navigator.vibrate)navigator.vibrate([200,100,200]);
-    if(!ns.enabled||ns.restTimer===false)return;
+    if(ns.restTimer===false||ns.timers===false)return;
     notifyDevice("Rest complete",{body:"Next set is ready.",tag:`rest-timer-${restEndRef.current||Date.now()}`,renotify:true,requireInteraction:true});
   };
 
@@ -2466,7 +2490,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(tr.current)clearInterval(tr.current);
     if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
     tr.current=null;restTimeoutRef.current=null;restEndRef.current=0;restNotifiedRef.current=false;
-    try{localStorage.removeItem(REST_TIMER_KEY);}catch{}
+    try{const saved=JSON.parse(localStorage.getItem(REST_TIMER_KEY));if(saved?.tag)cancelDeviceNotification(saved.tag);localStorage.removeItem(REST_TIMER_KEY);}catch{}
     setRt(0);setRl(0);
   };
 
@@ -2499,7 +2523,14 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const startRestTimer=(rest)=>{
     clearRestTimer();
     const endTime=Date.now()+rest*1000;
-    try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now()}));}catch{}
+    const tag=`rest-timer-${endTime}`;
+    try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now(),tag}));}catch{}
+    const ns=data.settings?.notifications||DEFAULTS.notifications;
+    if(ns.restTimer!==false&&ns.timers!==false){
+      scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true},endTime).then(ok=>{
+        if(ok&&!ns.enabled){const nd={...data,settings:{...data.settings,notifications:{...ns,enabled:true}}};setData(nd);sv(nd);svSB.settings(nd.settings);}
+      });
+    }
     armRestTimer(endTime,rest);
   };
 
@@ -4040,8 +4071,9 @@ const Settings=({data,setData})=>{
               <button onClick={async()=>{
                 const ns=data.settings.notifications||{};
                 if(!ns.enabled){
-                  const perm=await Notification.requestPermission();
-                  if(perm!=="granted")return;
+                  const ok=await ensureNotificationPermission();
+                  if(!ok)return;
+                  notifyDevice("Health Hub notifications on",{body:"Timer alerts are enabled.",tag:"notification-test",requireInteraction:false});
                 }
                 const nd={...data,settings:{...data.settings,notifications:{...ns,enabled:!ns.enabled}}};
                 setData(nd);sv(nd);svSB.settings(nd.settings);
@@ -4054,7 +4086,7 @@ const Settings=({data,setData})=>{
             </div>
             {(data.settings.notifications||{}).enabled&&(
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"},{key:"restTimer",label:"Rest timer complete"}].map(n=>{
+                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"},{key:"restTimer",label:"Rest timer complete"},{key:"timers",label:"All workout timers"}].map(n=>{
                   const ns=data.settings.notifications||{};
                   const on=ns[n.key]!==false;
                   return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
@@ -4369,7 +4401,7 @@ window.App = function App(){
       setSbLoaded(true);
     })();
     // Register service worker for notifications
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{});}
   },[]);
 
   useEffect(()=>{
