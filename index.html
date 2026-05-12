@@ -732,26 +732,48 @@ const linReg=(ys)=>{
 
 const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
   const planStart=PROG.start;
-  const allDates=[];
   const today=td();
-  let d=new Date(planStart+"T12:00:00");
-  while(lds(d)<=today){allDates.push(lds(d));d.setDate(d.getDate()+1);}
-  const paired=allDates.filter(dt=>wt[dt]!=null&&(nut[dt]?.totalCal||0)>=1200&&!tdeeExclude[dt]);
-  if(paired.length<3)return{daysUsed:paired.length,daysNeeded:7,phase:"collecting"};
-  const weights=paired.map(dt=>wt[dt]);
-  const calories=paired.map(dt=>nut[dt].totalCal);
-  const trendW=calcEWMA(weights,0.1);
-  const avgCal=Math.round(calories.reduce((s,v)=>s+v,0)/calories.length);
-  const weeklyChange=linReg(weights).slope*7;
-  const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
-  const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
-  const confidence=Math.min(95,Math.round(paired.length*4.5));
+  const pairedAll=Object.keys(wt||{})
+    .filter(dt=>dt<=today&&wt[dt]!=null&&(nut[dt]?.totalCal||0)>=1200&&!tdeeExclude[dt])
+    .sort();
+  const current=pairedAll.filter(dt=>dt>=planStart);
+  const history=pairedAll.filter(dt=>dt<planStart);
+
+  const estimate=(dates)=>{
+    if(dates.length<3)return null;
+    const weights=dates.map(dt=>wt[dt]);
+    const calories=dates.map(dt=>nut[dt].totalCal);
+    const trendW=calcEWMA(weights,0.1);
+    const avgCal=Math.round(calories.reduce((s,v)=>s+v,0)/calories.length);
+    const weeklyChange=linReg(weights).slope*7;
+    const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
+    const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
+    return{tdee,avgCalories:avgCal,weeklyChange,trendWeight:+trendW[trendW.length-1].toFixed(1),
+      trendWeights:dates.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
+  };
+
+  const cur=estimate(current);
+  const hist=estimate(history);
+  if(!cur&&!hist)return{daysUsed:current.length,historyDays:history.length,daysNeeded:7,phase:"collecting"};
+
+  let source="current",base=cur,historyWeight=0;
+  if(hist&&current.length<7){
+    source="history";base=hist;historyWeight=1;
+  }else if(hist&&cur){
+    const currentWeight=Math.min(1,current.length/21);
+    historyWeight=1-currentWeight;
+    source=historyWeight>0.15?"blended":"current";
+    base={...cur,tdee:Math.round(hist.tdee*historyWeight+cur.tdee*currentWeight),
+      avgCalories:cur.avgCalories,weeklyChange:cur.weeklyChange};
+  }
+
+  const confidence=Math.min(95,Math.round((current.length*5)+(history.length?Math.min(35,history.length*1.5):0)));
   const calT=getDayCalTarget(today,settings,travelDays,null);
-  const deficit=tdee-calT;
-  const trendWeight=+trendW[trendW.length-1].toFixed(1);
-  return{tdee,confidence,avgCalories:avgCal,weeklyChange:+weeklyChange.toFixed(2),
-    daysUsed:paired.length,phase:paired.length<7?"collecting":confidence<60?"early":"confident",
-    deficit,trendWeight,trendWeights:paired.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
+  const deficit=base.tdee-calT;
+  return{tdee:base.tdee,confidence,avgCalories:base.avgCalories,weeklyChange:+base.weeklyChange.toFixed(2),
+    daysUsed:current.length,historyDays:history.length,historyTDEE:hist?.tdee,historyWeight:+historyWeight.toFixed(2),source,
+    phase:current.length<7?(hist?"seeded":"collecting"):confidence<60?"early":"confident",
+    deficit,trendWeight:base.trendWeight,trendWeights:(cur||hist).trendWeights};
 };
 
 const getDailyCutAdherence=(data,date,settings=data.settings||DEFAULTS)=>{
@@ -1675,7 +1697,7 @@ const Dashboard=({data,setData,setTab})=>{
       {(()=>{
         const td=tdeeData;
         if(!td)return null;
-        const borderColor=td.phase==="confident"?C.g:td.phase==="early"?C.a:C.p;
+        const borderColor=td.phase==="confident"?C.g:td.phase==="early"?C.a:td.phase==="seeded"?C.g:C.p;
         if(td.phase==="collecting")return(
           <X style={{padding:12,borderLeft:`3px solid ${C.p}`}}>
             <L>Adaptive TDEE</L>
@@ -1692,15 +1714,15 @@ const Dashboard=({data,setData,setTab})=>{
         return(
           <X style={{padding:12,borderLeft:`3px solid ${borderColor}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <L>Adaptive TDEE{td.phase==="early"?" — early estimate":""}</L>
-              <span style={{fontSize:10,color:C.t3}}>{td.daysUsed}d of data</span>
+              <L>Adaptive TDEE{td.phase==="early"?" — early estimate":td.phase==="seeded"?" — recomp seeded":""}</L>
+              <span style={{fontSize:10,color:C.t3}}>{td.daysUsed}d cut{td.historyDays?` + ${td.historyDays}d history`:""}</span>
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
               <span style={{fontSize:26,fontWeight:800,color:C.t}}>{td.phase==="early"?"~":""}{td.tdee.toLocaleString()}</span>
               <span style={{fontSize:13,color:C.t3}}>cal/day</span>
             </div>
             <Br v={td.confidence} max={100} color={borderColor} h={5}/>
-            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.phase==="early"?" — keep logging for accuracy":""}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.phase==="early"?" — keep logging for accuracy":td.phase==="seeded"?" — seeded from recomp data":""}</div>
             {td.phase==="confident"&&(<>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
