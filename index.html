@@ -1494,6 +1494,10 @@ const Dashboard=({data,setData,setTab})=>{
   const wc=lw&&w7ago?Math.round(lw-w7ago):null;
   const steps=data.steps?.[t]||0;
   const ws=rec?.recoveryScore;
+  const waterToday=data.water?.[t]||0;
+  const waterGoal=st?.water||DEFAULTS.water;
+  const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
+  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
 
   let streak=0;const sd=new Date();
   for(let i=0;i<60;i++){const ds=lds(sd);const d=dw(ds);
@@ -1676,6 +1680,20 @@ const Dashboard=({data,setData,setTab})=>{
           {calT?<Br v={tCal} max={calT} color={tCal>calT?C.a:C.p} h={7}/>:<div style={{fontSize:11,color:C.t3}}>protein floor only</div>}
         </X>
       </div>
+
+      <X style={{padding:12,borderLeft:`4px solid ${waterToday>=waterGoal?C.g:C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:8}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Water</div>
+            <div style={{fontSize:24,fontWeight:850,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}<span style={{fontSize:14,color:C.t3,fontWeight:650}}>/{waterGoal} oz</span></div>
+          </div>
+          {waterToday>0&&<button onClick={resetWater} style={{border:"none",background:"transparent",color:C.t3,fontSize:11,fontWeight:800,fontFamily:"inherit"}}>Reset</button>}
+        </div>
+        <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={7}/>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:9}}>
+          {[8,12,16,24].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:10,padding:"9px 4px",fontSize:12,fontWeight:850,fontFamily:"inherit"}}>+{oz}oz</button>)}
+        </div>
+      </X>
 
       <X style={{padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
