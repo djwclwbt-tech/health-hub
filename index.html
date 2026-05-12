@@ -2279,6 +2279,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
+  const restTimeoutRef=useRef(null);
+  const restNotifiedRef=useRef(false);
   const [showMob,setShowMob]=useState(false);
   const [showCardio,setShowCardio]=useState(false);
   const [cardioType,setCardioType]=useState("peloton");
@@ -2389,24 +2391,43 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const notifyRestDone=()=>{
+    if(restNotifiedRef.current)return;
+    restNotifiedRef.current=true;
     const ns=data.settings?.notifications||{};
+    if(navigator.vibrate)navigator.vibrate([200,100,200]);
     if(!ns.enabled||ns.restTimer===false)return;
-    notifyDevice("Rest complete",{body:"Next set is ready.",tag:"rest-timer",requireInteraction:true});
+    notifyDevice("Rest complete",{body:"Next set is ready.",tag:`rest-timer-${restEndRef.current||Date.now()}`,renotify:true,requireInteraction:true});
+  };
+
+  const clearRestTimer=()=>{
+    if(tr.current)clearInterval(tr.current);
+    if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
+    tr.current=null;restTimeoutRef.current=null;restEndRef.current=0;restNotifiedRef.current=false;
+    setRt(0);setRl(0);
+  };
+
+  const completeRestTimer=()=>{
+    if(tr.current)clearInterval(tr.current);
+    if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
+    tr.current=null;restTimeoutRef.current=null;
+    setRt(0);setRl(0);
+    notifyRestDone();
+    restEndRef.current=0;
   };
 
   const startRestTimer=(rest)=>{
-    if(tr.current)clearInterval(tr.current);
+    clearRestTimer();
     const endTime=Date.now()+rest*1000;
     restEndRef.current=endTime;
+    restNotifiedRef.current=false;
     setRl(rest);setRt(rest);
     const tick=()=>{
-      const left=Math.round((restEndRef.current-Date.now())/1000);
-      if(left<=0){clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-        if(navigator.vibrate)navigator.vibrate([200,100,200]);
-        notifyRestDone();
-      }else{setRl(Math.max(0,left));}
+      const left=Math.ceil((restEndRef.current-Date.now())/1000);
+      if(left<=0){completeRestTimer();}
+      else{setRl(Math.max(0,left));}
     };
     tr.current=setInterval(tick,500);
+    restTimeoutRef.current=setTimeout(completeRestTimer,Math.max(0,endTime-Date.now()));
   };
 
   useEffect(()=>{
@@ -2414,10 +2435,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       if(document.visibilityState==="visible"){
         if(restEndRef.current>0){
           const left=Math.round((restEndRef.current-Date.now())/1000);
-          if(left<=0){if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
-            if(navigator.vibrate)navigator.vibrate([200,100,200]);
-            notifyRestDone();
-          }else{setRl(left);}
+          if(left<=0){completeRestTimer();}
+          else{setRl(left);}
         }
         if(stretchEndRef.current>0){
           const left=Math.round((stretchEndRef.current-Date.now())/1000);
@@ -2428,7 +2447,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     document.addEventListener("visibilitychange",onVis);
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[]);
-  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);},[]);
+  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
@@ -2459,12 +2478,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       }
     });
     nd.wk[t].volume=calcVolume(workout.exercises);
-    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach(ex=>{const aid=ex.progKey;if(aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach(ex=>{const aid=ex.progKey;if(aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);clearRestTimer();
     stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
   };
 
   const cancelWorkout=()=>{
-    setWorkout(null);if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;
+    setWorkout(null);clearRestTimer();
     stopCardioTimer();setCardioTimerDone(false);setShowCancelConfirm(false);
   };
 
@@ -2657,7 +2676,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:rl<=0?C.g:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center",transition:"background 0.3s"}}>
         <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>{rl<=0?"Done! Go!":"Rest"}</div>
         <div style={{fontSize:36,fontWeight:700,color:"#fff",fontVariantNumeric:"tabular-nums"}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
-        <button onClick={()=>{if(tr.current)clearInterval(tr.current);setRt(0);setRl(0);restEndRef.current=0;}} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
+        <button onClick={clearRestTimer} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
       </div>)}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
