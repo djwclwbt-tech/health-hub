@@ -1531,7 +1531,7 @@ const Dashboard=({data,setData,setTab})=>{
       date:t,phase:w===PROG.deload?"deload":"cut",program:{name:PROG.name,week:w,totalWeeks:PROG.weeks,day:dn,scheduledWorkout:sess?{name:sess.name,focus:sess.focus,estimatedMinutes:estTime(sess)}:null},
       targets:{calories:calT,protein:proT,steps:st.steps,water:st.water,sleep:st.sleep},
       today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
-      trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
+      trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg:weeklyRecAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
       targetExercises,recentWorkouts,
       missing:[!weightLogged&&"today weight",!nutritionLogged&&"today nutrition",!rec&&"today recovery",!recentWorkouts.length&&"recent workouts"].filter(Boolean)
     };
