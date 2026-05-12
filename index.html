@@ -370,7 +370,8 @@ const loadFromSB=async()=>{
     water.forEach(r=>{d.water[r.date]=r.oz;});
     rec.forEach(r=>{d.rec[r.date]={recoveryScore:r.recovery_score,hrv:r.hrv,rhr:r.rhr,
       respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
-      strain:r.strain,wakeTime:r.wake_time,notes:r.notes};});
+      sleepLight:r.sleeplight,sleepDeep:r.sleepdeep,sleepRem:r.sleeprem,
+      strain:r.strain,wakeTime:r.wake_time,notes:r.notes,source:r.source};});
     habits.forEach(r=>{d.habits[r.date]={alcohol:r.alcohol,cannabis:r.cannabis,screensOff:r.screens_off,
       sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed,supplements:r.supplements,custom:r.custom||null};});
     wk.forEach(r=>{d.wk[r.date]={day:r.day_name,exercises:r.exercises,dur:r.duration_min};});
@@ -1530,7 +1531,7 @@ const Dashboard=({data,setData,setTab})=>{
     return{
       date:t,phase:w===PROG.deload?"deload":"cut",program:{name:PROG.name,week:w,totalWeeks:PROG.weeks,day:dn,scheduledWorkout:sess?{name:sess.name,focus:sess.focus,estimatedMinutes:estTime(sess)}:null},
       targets:{calories:calT,protein:proT,steps:st.steps,water:st.water,sleep:st.sleep},
-      today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
+      today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours,respiratoryRate:rec.respiratoryRate,sleepLight:rec.sleepLight,sleepDeep:rec.sleepDeep,sleepRem:rec.sleepRem,source:rec.source}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
       trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg:weeklyRecAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
       targetExercises,recentWorkouts,
       missing:[!weightLogged&&"today weight",!nutritionLogged&&"today nutrition",!rec&&"today recovery",!recentWorkouts.length&&"recent workouts"].filter(Boolean)
@@ -1919,7 +1920,10 @@ const Dashboard=({data,setData,setTab})=>{
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         <X style={{padding:8,textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:700,color:ws>=67?C.g:ws>=34?C.a:ws!=null?C.r:C.t3}}>{ws??"-"}{ws!=null?"%":""}</div>
-          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Recovery</div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Recovery{rec?.source?` · ${String(rec.source).toUpperCase()}`:""}</div>
+          {rec&&<div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.35}}>
+            {rec.sleepHours?`${rec.sleepHours}h sleep`:"Sleep —"} · {rec.hrv?`${rec.hrv} HRV`:"HRV —"} · {rec.rhr?`${rec.rhr} RHR`:"RHR —"}
+          </div>}
         </X>
         <X style={{padding:8,textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:700,color:streak>=5?C.g:C.a}}>{streak}<span style={{fontSize:12,fontWeight:600}}>d</span></div>
@@ -2628,7 +2632,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         }).filter(Boolean):[];
       const recovery=data.rec&&data.rec[t]?{
         score:data.rec[t].recoveryScore||null,hrv:data.rec[t].hrv||null,
-        rhr:data.rec[t].rhr||null,sleep:data.rec[t].sleepHours||null}:null;
+        rhr:data.rec[t].rhr||null,sleep:data.rec[t].sleepHours||null,
+        source:data.rec[t].source||null,sleepLight:data.rec[t].sleepLight||null,
+        sleepDeep:data.rec[t].sleepDeep||null,sleepRem:data.rec[t].sleepRem||null}:null;
       const stalled=ex?((getStalls(data.prog,data.wk,data.program)||[]).some(s=>s.id===ex.id)):false;
       const week=wkn(t);
       const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},

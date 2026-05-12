@@ -107,7 +107,7 @@ export default async function handler(req, res) {
     if (!question) return res.status(400).json({ error: 'No question provided' });
     const ctx = exercise ? `Current exercise: ${exercise}, ${weight}lbs, ${sets}x${reps}, ${focus} day.` : '';
     const historyCtx = history && history.length ? `\nPROGRESSION HISTORY (last ${history.length} sessions):\n${history.map(h => `${h.date}: ${h.weight}lbs × ${h.reps.join(',')} reps (${h.sets} sets)`).join('\n')}` : '';
-    const recoveryCtx = recovery ? `\nTODAY'S RECOVERY: Score ${recovery.score || '?'}%, HRV ${recovery.hrv || '?'}ms, RHR ${recovery.rhr || '?'}bpm, Sleep ${recovery.sleep || '?'}h` : '';
+    const recoveryCtx = recovery ? `\nTODAY'S RECOVERY (${recovery.source || 'logged'}): Score ${recovery.score || '?'}%, HRV ${recovery.hrv || '?'}ms, RHR ${recovery.rhr || '?'}bpm, Sleep ${recovery.sleep || '?'}h${recovery.sleepDeep || recovery.sleepRem || recovery.sleepLight ? ` (deep ${recovery.sleepDeep || '?'}h, REM ${recovery.sleepRem || '?'}h, light ${recovery.sleepLight || '?'}h)` : ''}` : '';
     const stallCtx = stalled ? '\nThis exercise is STALLED (not progressing for 3+ sessions).' : '';
     const weekCtx = week ? `\nProgram week: ${week}` : '';
     const text = await callClaude({
