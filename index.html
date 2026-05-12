@@ -286,7 +286,11 @@ const syncToSB=async(d)=>{
     try{
       for(const[date,value]of Object.entries(d.wt||{})){await sb.upsert("weight",{date,value});}
       for(const[date,value]of Object.entries(d.steps||{})){await sb.upsert("steps",{date,value:Math.round(value)});}
-      for(const[date,oz]of Object.entries(d.water||{})){await sb.upsert("water",{date,oz:Math.round(oz)});}
+      for(const[date,oz]of Object.entries(d.water||{})){
+        const n=Math.round(Number(oz)||0);
+        if(n>0)await sb.upsert("water",{date,oz:n});
+        else await sb.deleteRow("water","date",date);
+      }
       for(const[date,r]of Object.entries(d.rec||{})){
         await sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
           respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
@@ -326,7 +330,7 @@ const syncToSB=async(d)=>{
 const svSB={
   weight:(date,value)=>sb.upsert("weight",{date,value}),
   steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
-  water:(date,oz)=>sb.upsert("water",{date,oz:Math.round(oz)}),
+  water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?sb.upsert("water",{date,oz:n}):sb.deleteRow("water","date",date);},
   recovery:(date,r)=>sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
     respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
     strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null}),
@@ -368,7 +372,7 @@ const loadFromSB=async()=>{
     const d=bl();
     wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
     steps.forEach(r=>{d.steps[r.date]=r.value;});
-    water.forEach(r=>{d.water[r.date]=r.oz;});
+    water.forEach(r=>{const oz=Math.round(Number(r.oz)||0);if(oz>0)d.water[r.date]=oz;});
     rec.forEach(r=>{d.rec[r.date]={recoveryScore:r.recovery_score,hrv:r.hrv,rhr:r.rhr,
       respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
       sleepLight:r.sleeplight,sleepDeep:r.sleepdeep,sleepRem:r.sleeprem,
@@ -1468,6 +1472,8 @@ const Dashboard=({data,setData,setTab})=>{
   const [dailyCoach,setDailyCoach]=useState(null);
   const [dailyCoachLoading,setDailyCoachLoading]=useState(false);
   const [dailyCoachErr,setDailyCoachErr]=useState("");
+  const [todayKey,setTodayKey]=useState(td());
+  useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
 
   const doImport=()=>{
     try{
@@ -1485,7 +1491,7 @@ const Dashboard=({data,setData,setTab})=>{
       setImportText("");
     }catch(e){setImportStatus("Error parsing data. Make sure you pasted the full HealthKit export.");}
   };
-  const t=td(),dn=dw(t),w=wkn(t);
+  const t=todayKey,dn=dw(t),w=wkn(t);
   const sess=data.program[dn],nut=data.nut[t],rec=data.rec[t];
   const wts=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
   const lw=wts[0]?.[1];
@@ -1495,9 +1501,9 @@ const Dashboard=({data,setData,setTab})=>{
   const steps=data.steps?.[t]||0;
   const ws=rec?.recoveryScore;
   const waterToday=data.water?.[t]||0;
-  const waterGoal=st?.water||DEFAULTS.water;
-  const addWater=(oz)=>{const nv=(data.water?.[t]||0)+oz;const nd={...data,water:{...data.water,[t]:nv}};setData(nd);sv(nd);svSB.water(t,nv);};
-  const resetWater=()=>{const nd={...data,water:{...data.water,[t]:0}};setData(nd);sv(nd);svSB.delWater(t);};
+  const waterGoal=(data.settings||DEFAULTS).water||DEFAULTS.water;
+  const addWater=(oz)=>setData(prev=>{const nv=Math.max(0,Math.round((Number(prev.water?.[t])||0)+oz));const water={...(prev.water||{})};if(nv>0)water[t]=nv;else delete water[t];const nd={...prev,water};sv(nd);svSB.water(t,nv);return nd;});
+  const resetWater=()=>setData(prev=>{const water={...(prev.water||{})};delete water[t];const nd={...prev,water};sv(nd);svSB.delWater(t);return nd;});
 
   let streak=0;const sd=new Date();
   for(let i=0;i<60;i++){const ds=lds(sd);const d=dw(ds);
@@ -3373,7 +3379,9 @@ const getWeekDates = (dateStr) => {
 };
 
 const Nutrition=({data,setData})=>{
-  const t=td(),dn=dw(t);
+  const [todayKey,setTodayKey]=useState(td());
+  useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
+  const t=todayKey,dn=dw(t);
   const [selM,setSelM]=useState(null);
 
   const [showWaterHist,setShowWaterHist]=useState(false);
@@ -3400,8 +3408,8 @@ const Nutrition=({data,setData})=>{
   const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
     totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
-  const addWater=(oz)=>{const nv=(data.water?.[viewDate]||0)+oz;const nd={...data,water:{...data.water,[viewDate]:nv}};setData(nd);sv(nd);svSB.water(viewDate,nv);};
-  const resetWater=()=>{const nd={...data,water:{...data.water,[viewDate]:0}};setData(nd);sv(nd);svSB.delWater(viewDate);};
+  const addWater=(oz)=>setData(prev=>{const nv=Math.max(0,Math.round((Number(prev.water?.[viewDate])||0)+oz));const water={...(prev.water||{})};if(nv>0)water[viewDate]=nv;else delete water[viewDate];const nd={...prev,water};sv(nd);svSB.water(viewDate,nv);return nd;});
+  const resetWater=()=>setData(prev=>{const water={...(prev.water||{})};delete water[viewDate];const nd={...prev,water};sv(nd);svSB.delWater(viewDate);return nd;});
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
