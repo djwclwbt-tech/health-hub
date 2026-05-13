@@ -1472,8 +1472,11 @@ const Dashboard=({data,setData,setTab})=>{
   const [dailyCoach,setDailyCoach]=useState(null);
   const [dailyCoachLoading,setDailyCoachLoading]=useState(false);
   const [dailyCoachErr,setDailyCoachErr]=useState("");
+  const [allergies,setAllergies]=useState(null);
+  const [allergyErr,setAllergyErr]=useState("");
   const [todayKey,setTodayKey]=useState(td());
   useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
+  useEffect(()=>{let dead=false;(async()=>{try{const r=await fetch("/api/allergies");const d=await r.json();if(dead)return;if(r.ok)setAllergies(d);else setAllergyErr(d.error||"Allergy data unavailable");}catch(e){if(!dead)setAllergyErr("Allergy data unavailable");}})();return()=>{dead=true};},[]);
 
   const doImport=()=>{
     try{
@@ -1577,6 +1580,8 @@ const Dashboard=({data,setData,setTab})=>{
     if(!habitsLogged)return{label:"Close habits",tab:"habits",hint:"Sleep/recovery signals guide tomorrow."};
     return{label:"Review details",tab:"dashboard",hint:"Core loops are done."};
   })();
+  const allergyTop=(allergies?.summary||[]).slice(0,3);
+  const allergyTone=allergyTop.some(x=>/^high|very/i.test(x.level||""))?C.r:allergyTop.some(x=>/^moderate/i.test(x.level||""))?C.a:C.g;
 
   const buildDailyCoachContext=()=>{
     const lastDates=(obj,n=7)=>Object.entries(obj||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,n);
@@ -1672,6 +1677,20 @@ const Dashboard=({data,setData,setTab})=>{
           <div style={{fontSize:13,fontWeight:850,color:C.p,lineHeight:1.35}}>{dailyCoach.simpleInstruction}</div>
           <div style={{fontSize:10,color:C.t3}}>Confidence: {dailyCoach.confidence}{dailyCoach.missingData?.length?` · Missing: ${dailyCoach.missingData.join(", ")}`:""}</div>
         </div>)}
+      </X>
+
+      <X style={{padding:12,borderLeft:`4px solid ${allergyTone}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Austin allergies</div>
+            {allergyTop.length?(
+              <div style={{fontSize:12,color:C.t2,marginTop:4,lineHeight:1.45}}>
+                {allergyTop.map(a=><div key={a.name}><b style={{color:C.t}}>{a.name}:</b> {a.level||"—"}{a.count?` · ${a.count}`:""}{a.trend?` · ${a.trend}`:""}</div>)}
+              </div>
+            ):<div style={{fontSize:12,color:allergyErr?C.a:C.t3,marginTop:4}}>{allergyErr||"Loading local pollen and mold counts…"}</div>}
+          </div>
+          <a href={allergies?.sourceUrl||"https://austinpollen.com/"} target="_blank" rel="noreferrer" style={{fontSize:11,fontWeight:800,color:C.p,textDecoration:"none",whiteSpace:"nowrap"}}>{allergies?.source||"AustinPollen.com"}</a>
+        </div>
       </X>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
