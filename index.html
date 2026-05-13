@@ -1086,6 +1086,38 @@ const cancelDeviceNotification=async(tag)=>{
   if(!tag||!("serviceWorker" in navigator))return;
   try{const reg=await navigator.serviceWorker.ready;reg?.active?.postMessage({type:"CANCEL_NOTIFICATION",tag});}catch{}
 };
+let vapidPublicKeyCache=null;
+const urlBase64ToUint8Array=(base64String)=>{
+  const padding="=".repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+};
+const getVapidPublicKey=async()=>{
+  if(vapidPublicKeyCache)return vapidPublicKeyCache;
+  const r=await fetch("/api/push-schedule");
+  const d=await r.json();
+  if(!r.ok||!d.publicKey)throw new Error(d.error||"Push not configured");
+  vapidPublicKeyCache=d.publicKey;
+  return vapidPublicKeyCache;
+};
+const ensurePushSubscription=async()=>{
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return null;
+  if(!(await ensureNotificationPermission()))return null;
+  const reg=await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(sub)return sub;
+  const key=await getVapidPublicKey();
+  return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+};
+const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",tag,dueAt,url="/"})=>{
+  try{
+    const sub=await ensurePushSubscription();
+    if(!sub)return false;
+    const r=await fetch("/api/push-schedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),title,body,tag,dueAt,url})});
+    return r.ok;
+  }catch{return false;}
+};
 
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
@@ -2607,8 +2639,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const endTime=Date.now()+rest*1000;
     const tag=`rest-timer-${endTime}`;
     try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now(),tag}));}catch{}
-    scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime).then(ok=>{
-      if(!ok&&addToast)addToast("Rest timer running. If you want lock-screen alerts, allow Health Hub notifications in iPhone settings.","warn");
+    Promise.all([
+      scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/"}),
+      scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime),
+    ]).then(([serverOk,localOk])=>{
+      if(!serverOk&&!localOk&&addToast)addToast("Rest timer running, but iPhone push notifications are not enabled for Health Hub.","warn");
+      else if(!serverOk&&addToast)addToast("Rest timer running. Keep app open unless iPhone push is enabled for Health Hub.","warn");
     });
     armRestTimer(endTime,rest);
   };
@@ -4162,6 +4198,7 @@ const Settings=({data,setData})=>{
                   const ok=await ensureNotificationPermission();
                   if(!ok)return;
                   notifyDevice("Health Hub notifications on",{body:"Timer alerts are enabled.",tag:"notification-test",requireInteraction:false});
+                  scheduleServerPush({title:"Health Hub push test",body:"Server push is enabled for closed-app rest timers.",tag:"server-push-test",dueAt:Date.now()+5000,url:"/"});
                 }
                 const nextNotifications={...ns,enabled:!ns.enabled};
                 saveNotificationSettings(nextNotifications);

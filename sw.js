@@ -1,5 +1,5 @@
 // Health Hub Service Worker — Offline Cache + Push Notifications
-const CACHE_NAME = 'health-hub-v2026.05.13-rest-alerts';
+const CACHE_NAME = 'health-hub-v2026.05.13-server-push';
 const PRECACHE_URLS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json'];
 
 // Pre-cache essential files on install
@@ -50,6 +50,7 @@ const showAppNotification = (payload = {}) => {
           vibrate: payload.vibrate || [200, 100, 200, 100, 200],
           renotify: payload.renotify !== false,
           requireInteraction: payload.requireInteraction !== false,
+          silent: payload.silent === true,
     };
     return self.registration.showNotification(title, options);
 };
@@ -88,7 +89,8 @@ self.addEventListener('message', (event) => {
 
 // Push notifications
 self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.json() : {};
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch { data = { title: 'Health Hub', body: event.data?.text?.() || '' }; }
     event.waitUntil(showAppNotification(data));
 });
 
