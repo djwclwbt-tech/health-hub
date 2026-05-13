@@ -2595,7 +2595,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     restNotifiedRef.current=true;
     if(navigator.vibrate)navigator.vibrate([300,120,300,120,300,120,500]);
     playRestAlarm();
-    notifyDevice("Rest complete",{body:"Next set is ready.",tag:`rest-timer-${restEndRef.current||Date.now()}`,renotify:true,requireInteraction:true,silent:false});
+    // Server Web Push owns the phone notification. In-app completion only handles local cues.
     if(addToast)addToast("Rest complete — next set","success");
   };
 
@@ -2639,12 +2639,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const endTime=Date.now()+rest*1000;
     const tag=`rest-timer-${endTime}`;
     try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now(),tag}));}catch{}
-    Promise.all([
-      scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/"}),
-      scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime),
-    ]).then(([serverOk,localOk])=>{
-      if(!serverOk&&!localOk&&addToast)addToast("Rest timer running, but iPhone push notifications are not enabled for Health Hub.","warn");
-      else if(!serverOk&&addToast)addToast("Rest timer running. Keep app open unless iPhone push is enabled for Health Hub.","warn");
+    scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/"}).then(serverOk=>{
+      if(serverOk)return;
+      scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime).then(localOk=>{
+        if(!localOk&&addToast)addToast("Rest timer running, but iPhone push notifications are not enabled for Health Hub.","warn");
+        else if(addToast)addToast("Rest timer running. Keep app open unless iPhone push is enabled for Health Hub.","warn");
+      });
     });
     armRestTimer(endTime,rest);
   };
