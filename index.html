@@ -2604,11 +2604,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const endTime=Date.now()+rest*1000;
     const tag=`rest-timer-${endTime}`;
     try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now(),tag}));}catch{}
-    const ns=data.settings?.notifications||DEFAULTS.notifications;
-    const restNotifications={...ns,enabled:true,timers:true,restTimer:true};
-    if(ns.enabled!==true||ns.timers===false||ns.restTimer===false){const nd={...data,settings:{...data.settings,notifications:restNotifications}};setData(nd);sv(nd);svSB.settings(nd.settings);}
     scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime).then(ok=>{
-      if(!ok&&addToast)addToast("Rest timer is armed, but iPhone notifications need to be allowed for Health Hub.","warn");
+      if(!ok&&addToast)addToast("Rest timer running. If you want lock-screen alerts, allow Health Hub notifications in iPhone settings.","warn");
     });
     armRestTimer(endTime,rest);
   };
