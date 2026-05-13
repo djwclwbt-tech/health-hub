@@ -82,12 +82,12 @@ const PROG = {
     wednesday:{name:"Mobility + Arms",focus:"Core",reps:"10-15",
       warmup:{cardio:"5 min bike",note:"Mobility block first, then arms.",moves:[]},
       exercises:[
-        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:60,sw:15,inc:2.5,unit:"lbs",notes:"Slow negative",cue:"Let arms hang fully stretched, don't swing"},
-        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Full stretch at bottom",cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
-        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:60,sw:30,inc:5,unit:"lbs",notes:"Squeeze brachialis",cue:"Neutral grip, keep elbows pinned, squeeze at top"},
-        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Lock out fully",cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
-        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:60,sw:40,inc:5,unit:"lbs",notes:"Forearm focus",cue:"Overhand grip, slow controlled curl, feel forearms burn"},
-        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:60,sw:20,inc:5,unit:"lbs",notes:"Full ROM",cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
+        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:0,sw:15,inc:2.5,unit:"lbs",notes:"Superset 1A — then OH rope extension",cue:"Let arms hang fully stretched, don't swing"},
+        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Superset 1B — rest 60s after this",cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
+        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:0,sw:30,inc:5,unit:"lbs",notes:"Superset 2A — then tricep pushdown",cue:"Neutral grip, keep elbows pinned, squeeze at top"},
+        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Superset 2B — rest 60s after this",cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
+        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:0,sw:40,inc:5,unit:"lbs",notes:"Superset 3A — then wrist curl",cue:"Overhand grip, slow controlled curl, feel forearms burn"},
+        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:45,sw:20,inc:5,unit:"lbs",notes:"Superset 3B — rest 45s after this",cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
       ]},
     thursday:{name:"Upper B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
       warmup:{cardio:"5 min bike",moves:[
@@ -129,6 +129,16 @@ const progKey=(ex,slot)=>ex?.progKey||`${ex?.id}__${repTrack((slot||ex)?.rr)}`;
 const legacyAmbiguousIds=new Set(["leg-press","rdl","lying-leg-curl"]);
 const saneSet=s=>s&&s.done&&Number(s.reps)>0&&(Number(s.weight)>0||s.weight===0);
 const sameRepTrack=(a,b)=>repTrack(a)===repTrack(b);
+
+const WED_SUPERSETS={
+  "incline-db-curl":"1A — pair with Overhead Tricep Extension",
+  "oh-tricep-ext":"1B — rest 60s after this",
+  "cable-hammer-curl":"2A — pair with Tricep Pushdown",
+  "tricep-pushdown":"2B — rest 60s after this",
+  "reverse-curl":"3A — pair with Wrist Curl",
+  "wrist-curl":"3B — rest 45s after this",
+};
+const supersetLabel=(day,ex)=>day==="wednesday"?WED_SUPERSETS[ex?.id]:null;
 
 const EXERCISE_LIBRARY=[
   // Chest fly / pre-exhaust
@@ -2880,8 +2890,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const dispCue=swapped?swapped.cue:ex.cue;
         const swapOpts=getSwapOptions(ex,wkEx);
         const anySetsLogged=wkEx.sets.some(s=>s.done);
+        const ss=supersetLabel(workout.day,ex);
         const prevLift=(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(s=>s.done&&(s.weight>0||s.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
-        return(<X key={ex.id+"-"+ei} style={{padding:10}}>
+        return(<X key={ex.id+"-"+ei} style={{padding:10,borderLeft:ss?`4px solid ${C.v}`:undefined}}>
           <div style={{marginBottom:6}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
@@ -2890,7 +2901,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                   {swapped&&<div style={{fontSize:10,background:C.al,color:C.a,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>SWAPPED</div>}
                 </div>
                 {swapped&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>from: {wkEx.swappedFrom.name}</div>}
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
+                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
+                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{ex.rr.join("-")} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"} — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
                 <div style={{fontSize:12,color:C.p,marginTop:2}}>{dispCue}</div>
                 {prevLift&&<div style={{fontSize:11,color:C.t2,marginTop:3}}>Last: <span style={{fontWeight:600}}>{prevLift.weight>0?`${prevLift.weight} lbs × ${prevLift.reps.join("/")} reps`:`BW × ${prevLift.reps.join("/")} reps`}</span> <span style={{color:C.t3}}>{fmt(prevLift.date)}</span></div>}
                 {workout.isDeload&&<div style={{fontSize:11,color:C.a,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
@@ -3224,17 +3236,22 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           {sess.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{sess.warmup.ramp}</div>}
         </X>
       </S>)}
+      {sel==="wednesday"&&<X style={{padding:10,borderLeft:`4px solid ${C.v}`}}>
+        <div style={{fontSize:12,fontWeight:850,color:C.v,textTransform:"uppercase",letterSpacing:"0.06em"}}>Superset day</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:3,lineHeight:1.4}}>Do A then B back-to-back. Rest only after the B move: 1B 60s, 2B 60s, 3B 45s.</div>
+      </X>}
       <S title="Exercises" collapsible defaultOpen={false}>
-        {sess.exercises.map(ex=>{const prog=getProgEntry(data.prog,ex),cw=gw(ex,ex.sw,ex);
+        {sess.exercises.map(ex=>{const prog=getProgEntry(data.prog,ex),cw=gw(ex,ex.sw,ex),ss=supersetLabel(sel,ex);
           const lastWk=(()=>{const dates=Object.keys(data.wk).sort().reverse();
             for(const d of dates){const wex=data.wk[d].exercises?.find(e=>e.id===ex.id);
               if(wex){const ds=wex.sets?.filter(saneSet);if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
           const hit=lastWk&&lastWk.reps.length===ex.sets&&lastWk.reps.every(r=>r>=ex.rr[1]);
-          return(<X key={ex.id} style={{padding:10,marginBottom:3}}>
+          return(<X key={ex.id} style={{padding:10,marginBottom:3,borderLeft:ss?`4px solid ${C.v}`:undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
-                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — Rest {ex.rest}s</div>
+                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
+                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
                   <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
