@@ -2413,6 +2413,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const restEndRef=useRef(0);
   const restTimeoutRef=useRef(null);
   const restNotifiedRef=useRef(false);
+  const restAudioCtxRef=useRef(null);
   const [showMob,setShowMob]=useState(false);
   const [showCardio,setShowCardio]=useState(false);
   const [cardioType,setCardioType]=useState("peloton");
@@ -2530,13 +2531,37 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(rest>0)startRestTimer(rest);
   };
 
+  const armRestAudio=()=>{
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return;
+      if(!restAudioCtxRef.current)restAudioCtxRef.current=new AC();
+      restAudioCtxRef.current.resume?.();
+    }catch{}
+  };
+  const playRestAlarm=()=>{
+    try{
+      const ctx=restAudioCtxRef.current;
+      if(!ctx)return;
+      ctx.resume?.();
+      [0,0.22,0.44].forEach((offset)=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type="sine";osc.frequency.value=880;
+        gain.gain.setValueAtTime(0.001,ctx.currentTime+offset);
+        gain.gain.exponentialRampToValueAtTime(0.25,ctx.currentTime+offset+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+offset+0.16);
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.start(ctx.currentTime+offset);osc.stop(ctx.currentTime+offset+0.18);
+      });
+    }catch{}
+  };
   const notifyRestDone=()=>{
     if(restNotifiedRef.current)return;
     restNotifiedRef.current=true;
-    const ns=data.settings?.notifications||{};
-    if(navigator.vibrate)navigator.vibrate([200,100,200]);
-    if(ns.restTimer===false||ns.timers===false)return;
-    notifyDevice("Rest complete",{body:"Next set is ready.",tag:`rest-timer-${restEndRef.current||Date.now()}`,renotify:true,requireInteraction:true});
+    if(navigator.vibrate)navigator.vibrate([300,120,300,120,300,120,500]);
+    playRestAlarm();
+    notifyDevice("Rest complete",{body:"Next set is ready.",tag:`rest-timer-${restEndRef.current||Date.now()}`,renotify:true,requireInteraction:true,silent:false});
+    if(addToast)addToast("Rest complete — next set","success");
   };
 
   const clearRestTimer=()=>{
@@ -2575,15 +2600,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const startRestTimer=(rest)=>{
     clearRestTimer();
+    armRestAudio();
     const endTime=Date.now()+rest*1000;
     const tag=`rest-timer-${endTime}`;
     try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total:rest,startedAt:Date.now(),tag}));}catch{}
     const ns=data.settings?.notifications||DEFAULTS.notifications;
-    if(ns.restTimer!==false&&ns.timers!==false){
-      scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true},endTime).then(ok=>{
-        if(ok&&!ns.enabled){const nd={...data,settings:{...data.settings,notifications:{...ns,enabled:true}}};setData(nd);sv(nd);svSB.settings(nd.settings);}
-      });
-    }
+    const restNotifications={...ns,enabled:true,timers:true,restTimer:true};
+    if(ns.enabled!==true||ns.timers===false||ns.restTimer===false){const nd={...data,settings:{...data.settings,notifications:restNotifications}};setData(nd);sv(nd);svSB.settings(nd.settings);}
+    scheduleDeviceNotification("Rest complete",{body:"Next set is ready.",tag,renotify:true,requireInteraction:true,silent:false},endTime).then(ok=>{
+      if(!ok&&addToast)addToast("Rest timer is armed, but iPhone notifications need to be allowed for Health Hub.","warn");
+    });
     armRestTimer(endTime,rest);
   };
 
