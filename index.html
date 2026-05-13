@@ -250,9 +250,12 @@ const cardioSummary=c=>{
 
 const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
+const NOTIF_SETTINGS_KEY="dhub6_notification_settings";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
 const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
+const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
+const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -401,7 +404,7 @@ const loadFromSB=async()=>{
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
-    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700,notifications:prevSettings.notifications||DEFAULTS.notifications};}
+    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700,notifications:getNotificationSettings(prevSettings.notifications)};}
     if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
@@ -4160,7 +4163,9 @@ const Settings=({data,setData})=>{
                   if(!ok)return;
                   notifyDevice("Health Hub notifications on",{body:"Timer alerts are enabled.",tag:"notification-test",requireInteraction:false});
                 }
-                const nd={...data,settings:{...data.settings,notifications:{...ns,enabled:!ns.enabled}}};
+                const nextNotifications={...ns,enabled:!ns.enabled};
+                saveNotificationSettings(nextNotifications);
+                const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                 setData(nd);sv(nd);svSB.settings(nd.settings);
               }} style={{padding:"6px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                 border:`1px solid ${(data.settings.notifications||{}).enabled?C.g:C.bd}`,
@@ -4177,7 +4182,9 @@ const Settings=({data,setData})=>{
                   return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
                     <span style={{fontSize:12,color:C.t}}>{n.label}</span>
                     <button onClick={()=>{
-                      const nd={...data,settings:{...data.settings,notifications:{...ns,[n.key]:!on}}};
+                      const nextNotifications={...ns,[n.key]:!on};
+                      saveNotificationSettings(nextNotifications);
+                      const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                       setData(nd);sv(nd);svSB.settings(nd.settings);
                     }} style={{padding:"3px 10px",borderRadius:3,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                       border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:"transparent",color:on?C.g:C.t3}}>
