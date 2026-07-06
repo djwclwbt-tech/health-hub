@@ -126,31 +126,35 @@ Remove an exercise from a specific day.
 ## Settings Field Reference
 | Field | Default | Description |
 |-------|---------|-------------|
-| `calories` | 2430 | Daily calorie target |
+| `calories` | 1790 | Daily calorie target (weekly 12,500 / 7) |
 | `protein` | 200 | Daily protein (g) |
 | `water` | 128 | Daily water (oz) |
-| `steps` | 10000 | Daily step target |
+| `steps` | 15000 | Daily step target |
 | `sleep` | 7.5 | Sleep target (hrs) |
 | `fiber` | 30 | Daily fiber (g) |
-| `trainingCal` | 1800 | Mon/Tue/Thu/Fri calorie target |
+| `trainingCal` | 2000 | Mon/Tue/Thu/Fri calorie target |
 | `wednesdayCal` | 900 | Wednesday (fast day) calorie target |
-| `weekendCal` | 1700 | Sat-Sun calorie target |
+| `weekendCal` | 1800 | Sat-Sun average — app renders Sat +100 / Sun −100 (1900/1700) |
 
-## Current Exercise IDs
-### Monday (Upper A — Strength)
-`cable-fly`, `converging-chest-press`, `seated-row`, `smith-ohp`, `lat-pulldown`
+## Current Exercise IDs (Summer Cut v2 — Jul 6 to Aug 30, 2026)
+Anchor lifts (`flat-bench`, `deadlift`, `back-squat`) run 3 sets and progress
+(+5/wk bench, +10/wk deadlift & squat when all sets hit the top of the range).
+Everything else holds weight at 2 sets — rep PRs only.
 
-### Tuesday (Lower A — Strength)
-`front-squat`, `rdl`, `leg-press`, `lying-leg-curl`, `standing-calf`
+### Monday (Upper A — Bench anchor)
+`flat-bench`, `seated-row`, `smith-ohp`, `lat-pulldown`, `cable-fly`
+
+### Tuesday (Lower A — Deadlift anchor)
+`deadlift`, `leg-press`, `lying-leg-curl`, `standing-calf`
 
 ### Wednesday (Mobility + Arms)
 `incline-db-curl`, `oh-tricep-ext`, `cable-hammer-curl`, `tricep-pushdown`, `reverse-curl`, `wrist-curl`
 
 ### Thursday (Upper B — Hypertrophy)
-`low-high-cable-fly`, `db-incline-press`, `overhand-cable-row`, `lateral-raise`, `reverse-fly`
+`db-incline-press`, `overhand-cable-row`, `lateral-raise`, `low-high-cable-fly`, `reverse-fly`
 
-### Friday (Lower B — Hypertrophy)
-`leg-press`, `bulgarian-split-squat`, `rdl`, `lying-leg-curl`, `leg-extension`, `seated-calf`
+### Friday (Lower B — Squat anchor)
+`back-squat`, `rdl`, `leg-extension`, `bulgarian-split-squat`, `seated-calf`
 
 ## Claude.ai Project Instructions
 Paste the following into a Claude.ai Project's custom instructions to enable the "push to app" workflow:

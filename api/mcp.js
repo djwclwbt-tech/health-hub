@@ -15,23 +15,22 @@ const sbHeaders = {
 const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "trainingCal", "wednesdayCal", "weekendCal"];
 
 const PROGRAM_SNAPSHOT = {
-  settings: { calories: 1800, protein: 200, water: 128, steps: 15000, sleep: 7.5, fiber: 30, trainingCal: 1800, wednesdayCal: 900, weekendCal: 1700 },
+  settings: { calories: 1790, protein: 200, water: 128, steps: 15000, sleep: 7.5, fiber: 30, trainingCal: 2000, wednesdayCal: 900, weekendCal: 1800 },
   days: {
     monday: {
       name: "Upper A — Strength", focus: "Strength",
       exercises: [
-        { id: "cable-fly", name: "Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
-        { id: "converging-chest-press", name: "Converging Chest Press", sets: 2, rr: [5, 8], sw: 140, unit: "lbs" },
+        { id: "flat-bench", name: "Barbell Flat Bench", sets: 3, rr: [5, 8], sw: 175, unit: "lbs", anchor: true },
         { id: "seated-row", name: "Seated Row Machine", sets: 2, rr: [5, 8], sw: 160, unit: "lbs" },
         { id: "smith-ohp", name: "Smith OHP", sets: 2, rr: [5, 8], sw: 85, unit: "lbs" },
         { id: "lat-pulldown", name: "Lat Pulldown", sets: 2, rr: [5, 8], sw: 145, unit: "lbs" },
+        { id: "cable-fly", name: "Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
       ]
     },
     tuesday: {
       name: "Lower A — Strength", focus: "Strength",
       exercises: [
-        { id: "front-squat", name: "Front Squat (BB)", sets: 2, rr: [5, 8], sw: 135, unit: "lbs" },
-        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [5, 8], sw: 125, unit: "lbs" },
+        { id: "deadlift", name: "Deadlift (BB)", sets: 3, rr: [5, 5], sw: 235, unit: "lbs", anchor: true },
         { id: "leg-press", name: "Leg Press", sets: 2, rr: [5, 8], sw: 360, unit: "lbs" },
         { id: "lying-leg-curl", name: "Lying Leg Curl", sets: 2, rr: [5, 8], sw: 130, unit: "lbs" },
         { id: "standing-calf", name: "Standing Calf Raise", sets: 2, rr: [5, 8], sw: 290, unit: "lbs" },
@@ -51,21 +50,20 @@ const PROGRAM_SNAPSHOT = {
     thursday: {
       name: "Upper B — Hypertrophy", focus: "Hypertrophy",
       exercises: [
-        { id: "low-high-cable-fly", name: "Low-to-High Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
         { id: "db-incline-press", name: "DB Incline Press", sets: 2, rr: [10, 12], sw: 40, unit: "lbs/hand" },
         { id: "overhand-cable-row", name: "Overhand Cable Row", sets: 2, rr: [10, 12], sw: 110, unit: "lbs" },
         { id: "lateral-raise", name: "Cable Lateral Raise", sets: 2, rr: [10, 12], sw: 12.5, unit: "lbs" },
+        { id: "low-high-cable-fly", name: "Low-to-High Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
         { id: "reverse-fly", name: "Reverse Fly", sets: 2, rr: [10, 12], sw: 25, unit: "lbs" },
       ]
     },
     friday: {
       name: "Lower B — Hypertrophy", focus: "Hypertrophy",
       exercises: [
-        { id: "leg-press", name: "Leg Press", sets: 2, rr: [10, 12], sw: 300, unit: "lbs" },
-        { id: "bulgarian-split-squat", name: "Bulgarian Split Squat (DB)", sets: 2, rr: [10, 12], sw: 25, unit: "lbs/hand" },
-        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [10, 12], sw: 125, unit: "lbs" },
-        { id: "lying-leg-curl", name: "Lying Leg Curl", sets: 2, rr: [10, 12], sw: 130, unit: "lbs" },
+        { id: "back-squat", name: "Back Squat (BB)", sets: 3, rr: [5, 8], sw: 135, unit: "lbs", anchor: true },
+        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [8, 10], sw: 125, unit: "lbs" },
         { id: "leg-extension", name: "Leg Extension", sets: 2, rr: [10, 12], sw: 120, unit: "lbs" },
+        { id: "bulgarian-split-squat", name: "Bulgarian Split Squat (DB)", sets: 2, rr: [10, 12], sw: 25, unit: "lbs/hand" },
         { id: "seated-calf", name: "Seated Calf Raise", sets: 2, rr: [10, 12], sw: 90, unit: "lbs" },
       ]
     }
