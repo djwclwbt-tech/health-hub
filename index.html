@@ -33,7 +33,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ PROGRAM ═══
 const PROG = {
-  name:"Summer Cut",weeks:7,deload:4,start:"2026-05-04",
+  name:"Summer Cut v2",weeks:8,deload:4,start:"2026-07-06",end:"2026-08-30",
+  checkpoint:{week:4,date:"2026-08-02"},startWeight:192,targetWeight:180,
   mobility:{
     _default:[
       {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:3,sides:["Left","Right","Left"],
@@ -60,11 +61,11 @@ const PROG = {
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
-        {id:"converging-chest-press",name:"Converging Chest Press",sets:2,rr:[5,8],rest:150,sw:140,inc:5,unit:"lbs",notes:"Primary press",cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
-        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:150,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
+        {id:"flat-bench",name:"Barbell Flat Bench",sets:3,rr:[5,8],rest:150,sw:175,inc:5,unit:"lbs",anchor:true,notes:"Anchor — progresses +5/wk when all sets hit",cue:"Retract scapula, feet driven into floor, touch and press"},
+        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:120,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
         {id:"smith-ohp",name:"Smith OHP",sets:2,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Brace hard",cue:"Brace core tight, press straight overhead not forward"},
         {id:"lat-pulldown",name:"Lat Pulldown",sets:2,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
+        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
       ]},
     tuesday:{name:"Lower A — Strength",focus:"Strength",reps:"5-8",
       warmup:{cardio:"5 min bike (easy pace)",moves:[
@@ -73,9 +74,8 @@ const PROG = {
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"front-squat",name:"Front Squat (BB)",sets:2,rr:[5,8],rest:180,sw:135,inc:5,unit:"lbs",notes:"Keep elbows high",cue:"Elbows up, sit between legs, drive out of hole"},
-        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[5,8],rest:150,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
-        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:180,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"Full depth, drive through whole foot not just toes"},
+        {id:"deadlift",name:"Deadlift (BB)",sets:3,rr:[5,5],rest:180,sw:235,inc:10,unit:"lbs",anchor:true,notes:"Anchor — fixed 3×5, progresses +10/wk when reps hold",cue:"Wedge in, brace hard, push the floor away — bar stays close"},
+        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:120,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"Full depth, drive through whole foot not just toes"},
         {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
         {id:"standing-calf",name:"Standing Calf Raise",sets:2,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
       ]},
@@ -95,10 +95,10 @@ const PROG = {
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Pre-exhaust, RIR 2",cue:"Drive from low to high, feel upper chest, squeeze at top"},
         {id:"db-incline-press",name:"DB Incline Press",sets:2,rr:[10,12],rest:90,sw:40,inc:5,unit:"lbs/hand",notes:"30-45° bench",cue:"Feel upper chest stretch at bottom, drive up and squeeze"},
         {id:"overhand-cable-row",name:"Overhand Cable Row",sets:2,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
         {id:"lateral-raise",name:"Cable Lateral Raise",sets:2,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Elbows above wrists, pour water out of a pitcher"},
+        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Drive from low to high, feel upper chest, squeeze at top"},
         {id:"reverse-fly",name:"Reverse Fly",sets:2,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
       ]},
     friday:{name:"Lower B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
@@ -108,11 +108,10 @@ const PROG = {
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"leg-press",name:"Leg Press",sets:2,rr:[10,12],rest:120,sw:300,inc:10,unit:"lbs",notes:"High reps",cue:"Full depth, drive through whole foot not just toes"},
-        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Rear foot elevated, drop back knee straight down, drive up through front heel"},
-        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[10,12],rest:120,sw:125,inc:10,unit:"lbs",notes:"Higher reps",cue:"Push hips back like closing a car door, bar stays on legs"},
-        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[10,12],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
+        {id:"back-squat",name:"Back Squat (BB)",sets:3,rr:[5,8],rest:165,sw:135,inc:10,unit:"lbs",anchor:true,notes:"Anchor — progresses +10/wk when all sets hit",cue:"Brace hard, sit between your legs, drive up out of the hole"},
+        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[8,10],rest:90,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
         {id:"leg-extension",name:"Leg Extension",sets:2,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Lock out at top, squeeze quad hard for 1 second"},
+        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Rear foot elevated, drop back knee straight down, drive up through front heel"},
         {id:"seated-calf",name:"Seated Calf Raise",sets:2,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
       ]},
   },
@@ -125,6 +124,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 
 // Progression is tracked by lift + rep range so strength and hypertrophy slots don't corrupt each other.
 const repTrack=rr=>(rr&&rr.length===2)?`${rr[0]}-${rr[1]}`:"default";
+const rrTxt=rr=>(rr&&rr.length===2)?(rr[0]===rr[1]?String(rr[0]):rr.join("-")):"";
 const progKey=(ex,slot)=>ex?.progKey||`${ex?.id}__${repTrack((slot||ex)?.rr)}`;
 const legacyAmbiguousIds=new Set(["leg-press","rdl","lying-leg-curl"]);
 const saneSet=s=>s&&s.done&&Number(s.reps)>0&&(Number(s.weight)>0||s.weight===0);
@@ -147,6 +147,7 @@ const EXERCISE_LIBRARY=[
   {id:"pec-deck",name:"Pec Deck",pattern:"chest-fly",region:"chest",sw:60,unit:"lbs",inc:5,cue:"Soft elbows, bring pads together with chest, slow return"},
   {id:"db-fly",name:"DB Fly",pattern:"chest-fly",region:"chest",sw:15,unit:"lbs/hand",inc:2.5,cue:"Small elbow bend, deep stretch, stop before shoulder strain"},
   // Chest press
+  {id:"flat-bench",name:"Barbell Flat Bench",pattern:"chest-press",region:"chest",sw:175,unit:"lbs",inc:5,cue:"Retract scapula, feet driven into floor, touch and press"},
   {id:"converging-chest-press",name:"Converging Chest Press",pattern:"chest-press",region:"chest",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
   {id:"smith-flat-bench",name:"Smith Flat Bench",pattern:"chest-press",region:"chest",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
   {id:"smith-incline",name:"Smith Incline Press",pattern:"chest-press",region:"upper chest",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
@@ -169,12 +170,14 @@ const EXERCISE_LIBRARY=[
   {id:"reverse-fly",name:"Reverse Fly",pattern:"rear-delt",region:"rear delts",sw:25,unit:"lbs",inc:5,cue:"Pinch shoulder blades, lead with elbows not hands"},
   {id:"face-pull",name:"Face Pull",pattern:"rear-delt",region:"rear delts",sw:40,unit:"lbs",inc:5,cue:"Pull to forehead, elbows high, rotate thumbs back"},
   // Quads / squat patterns
+  {id:"back-squat",name:"Back Squat (BB)",pattern:"squat",region:"quads",sw:135,unit:"lbs",inc:10,cue:"Brace hard, sit between your legs, drive up out of the hole"},
   {id:"front-squat",name:"Front Squat (BB)",pattern:"squat",region:"quads",sw:135,unit:"lbs",inc:5,cue:"Elbows up, sit between legs, drive out of hole"},
   {id:"hack-squat",name:"Hack Squat",pattern:"squat",region:"quads",sw:180,unit:"lbs",inc:10,cue:"Knees track over toes, stay upright through core"},
   {id:"leg-press",name:"Leg Press",pattern:"squat",region:"quads",sw:300,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
   {id:"goblet-squat",name:"Goblet Squat (DB)",pattern:"squat",region:"quads",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
   {id:"leg-extension",name:"Leg Extension",pattern:"knee-extension",region:"quads",sw:70,unit:"lbs",inc:5,cue:"Lock out at top, squeeze quad hard, slow eccentric"},
   // Hip hinge / hamstrings
+  {id:"deadlift",name:"Deadlift (BB)",pattern:"hinge",region:"posterior chain",sw:235,unit:"lbs",inc:10,cue:"Wedge in, brace hard, push the floor away — bar stays close"},
   {id:"rdl",name:"Romanian Deadlift",pattern:"hinge",region:"hamstrings",sw:125,unit:"lbs",inc:10,cue:"Push hips back like closing a car door, bar stays on legs"},
   {id:"sldl",name:"Stiff-Leg Deadlift",pattern:"hinge",region:"hamstrings",sw:95,unit:"lbs",inc:10,cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
   {id:"cable-pull-through",name:"Cable Pull-Through",pattern:"hinge",region:"glutes/hamstrings",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are hooks"},
@@ -253,7 +256,7 @@ const REST_TIMER_KEY="dhub6_rest_timer";
 const NOTIF_SETTINGS_KEY="dhub6_notification_settings";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
+const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
@@ -404,7 +407,7 @@ const loadFromSB=async()=>{
     bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
-    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700,notifications:getNotificationSettings(prevSettings.notifications)};}
+    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||DEFAULTS.trainingCal,wednesdayCal:s.wednesdayCal||s.wednesday_cal||DEFAULTS.wednesdayCal,weekendCal:s.weekendCal||s.weekend_cal||DEFAULTS.weekendCal,notifications:getNotificationSettings(prevSettings.notifications)};}
     if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
     return d;
   }catch(e){console.error("[SB] Load error:",e);return null;}
@@ -535,20 +538,22 @@ const isSocialWeekendActive=(dateStr,socialWeekend)=>{
   if(!socialWeekend?.active)return false;
   return getWeekMonday(dateStr)===socialWeekend.weekOf;
 };
-const SOCIAL_CAL={monday:1500,tuesday:1500,wednesday:800,thursday:1500};
+const SOCIAL_CAL={monday:1700,tuesday:1700,wednesday:800,thursday:1700};
 
 const getDayCalTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   const dt=getDayType(dateStr,travelDays);
-  if(dt==="travel")return settings?.trainingCal||1800;
+  if(dt==="travel")return settings?.trainingCal||2000;
   const sw=isSocialWeekendActive(dateStr,socialWeekend);
   if(sw){
     const day=dw(dateStr);
     if(["friday","saturday","sunday"].includes(day))return null;
-    return SOCIAL_CAL[day]||1500;
+    return SOCIAL_CAL[day]||1700;
   }
   if(dt==="wednesday")return settings?.wednesdayCal||900;
-  if(dt==="training")return settings?.trainingCal||1800;
-  return settings?.weekendCal||1700;
+  if(dt==="training")return settings?.trainingCal||2000;
+  // weekendCal is the Sat/Sun average — Saturday runs +100, Sunday -100 (e.g. 1800 avg → 1900/1700)
+  const wknd=settings?.weekendCal||1800;
+  return dw(dateStr)==="saturday"?wknd+100:wknd-100;
 };
 const getDayProTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   const dt=getDayType(dateStr,travelDays);
@@ -637,6 +642,46 @@ const repairDeloadProgression=(d)=>{
     }
   }
   return d;
+};
+
+// ═══ BLOCK V2 MIGRATION (Summer Cut v2, 2026-07-06) ═══
+const BLOCK_V2_SEEDS={
+  "flat-bench__5-8":{currentWeight:175,exerciseId:"flat-bench",repRange:[5,8],name:"Barbell Flat Bench"},
+  "deadlift__5-5":{currentWeight:235,exerciseId:"deadlift",repRange:[5,5],name:"Deadlift (BB)"},
+  "back-squat__5-8":{currentWeight:135,exerciseId:"back-squat",repRange:[5,8],name:"Back Squat (BB)"},
+};
+// Known logging errors in the prog store — each fails the sanity cap for its movement
+const BLOCK_V2_WEIGHT_FIXES={"reverse-curl":40,"cable-hammer-curl":35,"db-incline-press":45};
+const applyBlockV2=(d)=>{
+  let changed=false;
+  // Stored program predates this block (anchor lifts missing) → replace with the v2 days.
+  // Old prog entries (front-squat, converging-chest-press, ...) are kept for history.
+  const ids=new Set(Object.values(d.program||{}).flatMap(day=>(day.exercises||[]).map(e=>e.id)));
+  if(!ids.has("flat-bench")||!ids.has("deadlift")||!ids.has("back-squat")){
+    d.program=JSON.parse(JSON.stringify(PROG.days));changed=true;
+  }
+  for(const[key,seed]of Object.entries(BLOCK_V2_SEEDS)){
+    if(!getProgEntry(d.prog,{id:seed.exerciseId,rr:seed.repRange})){
+      d.prog[key]={...seed,lastReps:[],lastDate:null,progressed:false,pr:null,e1rmHistory:[]};changed=true;
+    }
+  }
+  for(const[key,p]of Object.entries(d.prog||{})){
+    const baseId=p?.exerciseId||key.split("__")[0];
+    const fix=BLOCK_V2_WEIGHT_FIXES[baseId];
+    if(fix!=null&&p?.currentWeight!=null&&!saneWeight(exLibById[baseId],p.currentWeight)){
+      p.currentWeight=fix;changed=true;
+    }
+  }
+  // One-time settings move to the v2 targets; only touches values still at their v1 defaults
+  // so later manual adjustments are never clobbered.
+  if(!d.blockV2SettingsApplied){
+    const remap={calories:[1800,1790],trainingCal:[1800,2000],weekendCal:[1700,1800]};
+    for(const[k,[oldV,newV]]of Object.entries(remap)){
+      if(d.settings?.[k]==null||d.settings[k]===oldV){d.settings={...d.settings,[k]:newV};changed=true;}
+    }
+    d.blockV2SettingsApplied=true;changed=true;
+  }
+  return changed;
 };
 
 // ═══ STALL DETECTION ═══
@@ -2415,7 +2460,7 @@ const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
     <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:520,border:`1px solid ${C.bd}`,maxHeight:"78vh",overflowY:"auto"}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:2}}>Swap Exercise</div>
       <div style={{fontSize:13,color:C.t3,marginBottom:6}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
-      {slot&&<div style={{fontSize:12,color:C.v,background:C.vl,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{slot.rr.join("-")} · rest {slot.rest}s. Progression is tracked separately for this rep range.</div>}
+      {slot&&<div style={{fontSize:12,color:C.v,background:C.vl,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{rrTxt(slot.rr)} · rest {slot.rest}s. Progression is tracked separately for this rep range.</div>}
       {options.length===0&&<div style={{fontSize:13,color:C.t3,textAlign:"center",padding:"12px 0"}}>No plan-safe alternatives found for this lift.</div>}
       {options.map((opt,idx)=>{
         const lw=getWeight(opt,opt.sw,slot);
@@ -2697,7 +2742,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       const cw=cs[0].weight>0?cs[0].weight:gw(active,asw,pe);
       const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
       const prevWeight=nd.prog[aid]?.currentWeight||gw(active,asw,pe);
-      const shouldProgress=!CUT_HOLD_PROGRESSION&&!workout.isDeload&&hit&&ainc>0;
+      // Anchor lifts (big three) progress through the cut; everything else holds and takes rep PRs
+      const isAnchor=!!(pe.anchor||active.anchor);
+      const shouldProgress=(isAnchor||!CUT_HOLD_PROGRESSION)&&!workout.isDeload&&hit&&ainc>0;
       const newWeight=workout.isDeload?prevWeight:(shouldProgress?cw+ainc:cw);
       nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:shouldProgress,pr:prevPr||null,e1rmHistory:prevHistory,exerciseId:active.id,repRange:pe.rr,name:aname}};
       if(!workout.isDeload){
@@ -2960,11 +3007,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:15,fontWeight:700,color:C.t}}>{dispName}</div>
+                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>ANCHOR</div>}
                   {swapped&&<div style={{fontSize:10,background:C.al,color:C.a,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>SWAPPED</div>}
                 </div>
                 {swapped&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>from: {wkEx.swappedFrom.name}</div>}
                 {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{ex.rr.join("-")} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"} — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
+                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"} — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
                 <div style={{fontSize:12,color:C.p,marginTop:2}}>{dispCue}</div>
                 {prevLift&&<div style={{fontSize:11,color:C.t2,marginTop:3}}>Last: <span style={{fontWeight:600}}>{prevLift.weight>0?`${prevLift.weight} lbs × ${prevLift.reps.join("/")} reps`:`BW × ${prevLift.reps.join("/")} reps`}</span> <span style={{color:C.t3}}>{fmt(prevLift.date)}</span></div>}
                 {workout.isDeload&&<div style={{fontSize:11,color:C.a,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
@@ -3311,9 +3359,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           return(<X key={ex.id} style={{padding:10,marginBottom:3,borderLeft:ss?`4px solid ${C.v}`:undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
+                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>ANCHOR</div>}
+                </div>
                 {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{ex.rr.join("-")} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"}</div>
+                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
                   <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
@@ -3325,7 +3376,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{textAlign:"right",minWidth:48}}>
                 <div style={{fontSize:20,fontWeight:700,color:C.p}}>{cw>0?cw:"BW"}</div>
                 <div style={{fontSize:10,color:C.t3}}>{ex.unit}</div>
-                {hit&&<div style={{fontSize:10,color:C.g,fontWeight:600}}>↑ +{ex.inc}</div>}
+                {hit&&(ex.anchor||!CUT_HOLD_PROGRESSION)&&<div style={{fontSize:10,color:C.g,fontWeight:600}}>↑ +{ex.inc}</div>}
+                {hit&&!ex.anchor&&CUT_HOLD_PROGRESSION&&<div style={{fontSize:10,color:C.g,fontWeight:600}}>rep PR ✓</div>}
               </div>
             </div>
           </X>);})}
@@ -3745,9 +3797,9 @@ const Nutrition=({data,setData})=>{
           const ratio=newCal/(st.calories||DEFAULTS.calories);
           const nd={...data,settings:{...st,
             calories:Math.round(newCal),
-            trainingCal:Math.round((st.trainingCal||1800)*ratio),
-            wednesdayCal:Math.round((st.wednesdayCal||900)*ratio),
-            weekendCal:Math.round((st.weekendCal||1700)*ratio)
+            trainingCal:Math.round((st.trainingCal||DEFAULTS.trainingCal)*ratio),
+            wednesdayCal:Math.round((st.wednesdayCal||DEFAULTS.wednesdayCal)*ratio),
+            weekendCal:Math.round((st.weekendCal||DEFAULTS.weekendCal)*ratio)
           }};
           setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
         }} style={{marginTop:8}}>Apply to Settings</B>
@@ -4088,7 +4140,7 @@ const Settings=({data,setData})=>{
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    trainingCal:""+(st.trainingCal||1800),wednesdayCal:""+(st.wednesdayCal||900),weekendCal:""+(st.weekendCal||1700),syncToken:st.syncToken||""});
+    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showImport,setShowImport]=useState(false);
@@ -4133,7 +4185,7 @@ const Settings=({data,setData})=>{
   const saveSettings=()=>{
     const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      trainingCal:+f.trainingCal||1800,wednesdayCal:+f.wednesdayCal||900,weekendCal:+f.weekendCal||1700,syncToken:f.syncToken||"",
+      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,syncToken:f.syncToken||"",
       notifications:data.settings?.notifications||DEFAULTS.notifications}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
@@ -4167,7 +4219,7 @@ const Settings=({data,setData})=>{
     <X style={{borderLeft:`3px solid ${C.p}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1800"/></div>
+        <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
         <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="200"/></div>
         <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
         <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
@@ -4176,10 +4228,11 @@ const Settings=({data,setData})=>{
       </div>
       <div style={{fontSize:12,fontWeight:700,color:C.t2,marginTop:10,marginBottom:4}}>Day-Type Calorie Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-        <div><L>Training</L><N value={f.trainingCal} onChange={v=>setF({...f,trainingCal:v})} placeholder="1800"/></div>
+        <div><L>Training</L><N value={f.trainingCal} onChange={v=>setF({...f,trainingCal:v})} placeholder="2000"/></div>
         <div><L>Wednesday</L><N value={f.wednesdayCal} onChange={v=>setF({...f,wednesdayCal:v})} placeholder="900"/></div>
-        <div><L>Weekend</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="1700"/></div>
+        <div><L>Weekend avg</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="1800"/></div>
       </div>
+      <div style={{fontSize:11,color:C.t3,marginTop:4}}>Weekend splits Sat +100 / Sun −100 around the average.</div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
     </X>
 
@@ -4406,7 +4459,8 @@ const Settings=({data,setData})=>{
     <X>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Program</div>
       <div style={{fontSize:13,color:C.t2}}>{PROG.name}</div>
-      <div style={{fontSize:12,color:C.t3}}>Week {wkn(td())}/{PROG.weeks} · Started {fmt(PROG.start)}</div>
+      <div style={{fontSize:12,color:C.t3}}>Week {wkn(td())}/{PROG.weeks} · {fmt(PROG.start)} → {fmt(PROG.end)}</div>
+      <div style={{fontSize:12,color:C.t3}}>~{PROG.startWeight} → under {PROG.targetWeight} lbs · Checkpoint week {PROG.checkpoint.week} ({fmt(PROG.checkpoint.date)})</div>
     </X>
 
     <div style={{textAlign:"center",padding:"12px 0",fontSize:11,color:C.t3,opacity:0.5}}>Health Hub v2026.04.09</div>
@@ -4524,7 +4578,11 @@ window.App = function App(){
       }
       // Apply pending program updates from Supabase queue
       const{data:updated,applied}=await applyProgramUpdates(finalData);
-      backfillData(updated);repairDeloadProgression(updated);setData(updated);sv(updated);
+      backfillData(updated);repairDeloadProgression(updated);
+      // Block v2 runs last so its weight fixes win over history replays of the bad logs
+      const v2Changed=applyBlockV2(updated);
+      setData(updated);sv(updated);
+      if(v2Changed){svSB.settings(updated.settings);svSB.program(updated.program);}
       Object.entries(updated.prog).forEach(([exId,p])=>{if(p.currentWeight)svSB.progression(exId,p);});
       applied.forEach(msg=>addToast(msg,"success"));
       setSbLoaded(true);

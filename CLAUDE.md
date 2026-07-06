@@ -43,12 +43,15 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 
 ## Settings (User-Customizable)
 Stored in `data.settings`:
-- `calories` — Daily calorie target (default: 1800)
-- `protein` — Daily protein target in grams (default: 180)
+- `calories` — Daily calorie target (default: 1790, weekly 12,500 / 7)
+- `protein` — Daily protein target in grams (default: 200)
 - `water` — Daily water target in oz (default: 128)
 - `steps` — Daily step target (default: 15000)
 - `sleep` — Sleep target in hours (default: 7.5)
 - `fiber` — Daily fiber target in grams (default: 30)
+- `trainingCal` — Mon/Tue/Thu/Fri calorie target (default: 2000)
+- `wednesdayCal` — Wednesday fast-day calorie target (default: 900)
+- `weekendCal` — Sat/Sun average; app renders Sat +100 / Sun −100 (default: 1800 → 1900/1700)
 
 ## Pushing Workout & Settings Updates via API
 When the user agrees to a workout program change or settings adjustment during conversation, push it live immediately using the `/api/update` endpoint — no code change or deploy needed.
