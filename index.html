@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Health Hub">
-<meta name="theme-color" content="#F6F7F6">
+<meta name="theme-color" content="#F4F5F6">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -14,14 +14,16 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-  /* ═══ IRON & TEAL — the only place hex colors are allowed ═══ */
+  /* ═══ IRON & STEEL — the only place hex colors are allowed ═══
+     Nearly monochrome graphite; red is the ONLY brand color, reserved for
+     actions. Amber = warnings, green = positive, deep red = destructive. */
   :root {
-    --bg: #F6F7F6; --surface: #FFFFFF; --ink: #101514; --muted: #5C6664;
-    --accent: #0D9488; --accent-press: #0F766E; --warn: #D97706;
-    --danger: #DC2626; --good: #16A34A; --line: #E3E7E5;
+    --bg: #F4F5F6; --surface: #FFFFFF; --ink: #111417; --muted: #5C6570;
+    --accent: #DC2626; --accent-press: #B91C1C; --warn: #D97706;
+    --danger: #991B1B; --good: #16A34A; --line: #E2E5E8;
     --on-accent: #FFFFFF;
     --ink-2: color-mix(in srgb, var(--ink) 62%, var(--muted));
-    --accent-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    --accent-soft: color-mix(in srgb, var(--accent) 8%, var(--surface));
     --warn-soft: color-mix(in srgb, var(--warn) 12%, var(--surface));
     --danger-soft: color-mix(in srgb, var(--danger) 10%, var(--surface));
     --good-soft: color-mix(in srgb, var(--good) 10%, var(--surface));
@@ -31,10 +33,10 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0C1211; --surface: #131A19; --ink: #E8ECEB; --muted: #8FA09B;
-      --accent: #2DD4BF; --accent-press: #14B8A6; --warn: #F59E0B;
-      --danger: #F87171; --good: #4ADE80; --line: #1E2826;
-      --on-accent: #0C1211;
+      --bg: #0E1114; --surface: #161B20; --ink: #E9ECEF; --muted: #8B96A0;
+      --accent: #F87171; --accent-press: #EF4444; --warn: #F59E0B;
+      --danger: #FCA5A5; --good: #4ADE80; --line: #232A31;
+      --on-accent: #0E1114;
       --shadow: none; --shadow-2: none; /* no shadows in dark mode */
     }
   }
@@ -1044,7 +1046,7 @@ const getWeeklyCutRecommendation=(data,today=td(),pre=null)=>{
   ]};
 };
 
-// Iron & Teal tokens — values live in the :root CSS block; accent is the ONLY
+// Iron & Steel tokens — values live in the :root CSS block; accent is the ONLY
 // brand color (old violet v/vl now aliases of accent), amber = warnings only,
 // red/green = semantic only. oa = text on accent surfaces.
 const C={bg:"var(--bg)",cd:"var(--surface)",bd:"var(--line)",bl:"var(--line)",
