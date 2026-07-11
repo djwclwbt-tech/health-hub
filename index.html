@@ -756,21 +756,27 @@ const getStalls=(prog,wk,programDays)=>{
   return stalls;
 };
 
-// ═══ WEIGHT TREND ═══
-const getWeightTrend=(wt)=>{
-  const entries=Object.entries(wt).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length<2)return null;
-  const now=new Date();const weekAgo=new Date(now);weekAgo.setDate(weekAgo.getDate()-7);
-  const weekStr=lds(weekAgo);
-  const recent=entries.filter(([d])=>d>=weekStr);
-  const older=entries.filter(([d])=>d<weekStr);
-  if(recent.length<1||older.length<1)return null;
-  const recentAvg=recent.reduce((s,[_,v])=>s+v,0)/recent.length;
-  const olderLast=older[older.length-1][1];
-  const weeklyRate=+(recentAvg-olderLast).toFixed(1);
-  if(Math.abs(weeklyRate)>1)return{rate:weeklyRate,direction:weeklyRate>0?"gaining":"losing",
-    advice:weeklyRate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."};
-  return null;
+// ═══ WEIGHT TREND — the one shared engine ═══
+// EWMA-smoothed OLS slope over the last 14 calendar days, in lbs/week to one
+// decimal. Every trend surface consumes this; do not add another formula.
+const getTrend=(wt,today=td())=>{
+  const start=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-13);return lds(d);})();
+  const entries=Object.entries(wt||{}).filter(([dt,v])=>v!=null&&dt>=start&&dt<=today).sort((a,b)=>a[0].localeCompare(b[0]));
+  const n=entries.length;
+  if(n<2)return null;
+  const smoothed=calcEWMA(entries.map(([,v])=>Number(v)),0.3);
+  const base=new Date(entries[0][0]+"T12:00:00");
+  const xs=entries.map(([dt])=>(new Date(dt+"T12:00:00")-base)/864e5);
+  const mx=xs.reduce((s,v)=>s+v,0)/n,my=smoothed.reduce((s,v)=>s+v,0)/n;
+  let num=0,den=0;for(let i=0;i<n;i++){num+=(xs[i]-mx)*(smoothed[i]-my);den+=(xs[i]-mx)**2;}
+  const rate=+((den?num/den:0)*7).toFixed(1);
+  const direction=rate<=-0.1?"down":rate>=0.1?"up":"flat";
+  const message=direction==="down"?`Down ${Math.abs(rate)} lb/wk`:direction==="up"?`Up ${rate} lb/wk`:"Holding steady";
+  const weekAgo=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-6);return lds(d);})();
+  const weighIns7=entries.filter(([dt])=>dt>=weekAgo).length;
+  return{rate,direction,message,n,weighIns7,
+    current:Math.round(entries[n-1][1]),
+    points:entries.map(([dt,v],i)=>({d:dt.slice(5),v:+smoothed[i].toFixed(1),raw:v}))};
 };
 
 // ═══ DATA INTELLIGENCE ═══
@@ -953,17 +959,12 @@ const getWeeklyCutSummary=(data,today=td())=>{
   const plannedTraining=dates.filter(d=>!!data.program?.[dw(d)]);
   const trainingDone=plannedTraining.filter(d=>!!data.wk?.[d]).length;
   const cardioDone=adherence.filter(a=>a.cardioDone).length;
-  const weights=dates.filter(d=>data.wt?.[d]!=null).map(d=>({date:d,weight:data.wt[d]}));
-  let weightTrend={label:"Missing",status:"unknown",weeklyChange:null,days:weights.length};
-  if(weights.length>=4){
-    const start=new Date(weights[0].date+"T12:00:00");
-    const xs=weights.map(x=>(new Date(x.date+"T12:00:00")-start)/864e5);
-    const ys=weights.map(x=>x.weight);
-    const mx=xs.reduce((s,v)=>s+v,0)/xs.length,my=ys.reduce((s,v)=>s+v,0)/ys.length;
-    let num=0,den=0;for(let i=0;i<xs.length;i++){num+=(xs[i]-mx)*(ys[i]-my);den+=(xs[i]-mx)**2;}
-    const weeklyChange=+(den?(num/den*7):0).toFixed(2);
-    weightTrend={label:weeklyChange<-1.5?"Dropping fast":weeklyChange<-0.25?"Dropping":weeklyChange<=0.25?"Flat":"Up",status:weeklyChange<-1.5?"fast":weeklyChange<-0.25?"onPace":weeklyChange<=0.25?"flat":"up",weeklyChange,days:weights.length};
-  }
+  const trend=getTrend(data.wt,today);
+  const weightTrend=trend===null
+    ?{label:"Missing",status:"unknown",weeklyChange:null,days:0}
+    :{label:trend.rate<-1.5?"Dropping fast":trend.rate<-0.25?"Dropping":trend.rate<=0.25?"Flat":"Up",
+      status:trend.rate<-1.5?"fast":trend.rate<-0.25?"onPace":trend.rate<=0.25?"flat":"up",
+      weeklyChange:trend.rate,days:trend.n};
   const recValues=dates.map(d=>data.rec?.[d]?.recoveryScore).filter(v=>v!=null);
   const recoveryAvg=recValues.length>=3?Math.round(recValues.reduce((s,v)=>s+v,0)/recValues.length):getWeeklyRecoveryAvg(data.rec||{});
   const tdee=calcAdaptiveTDEE(data.wt||{},data.nut||{},settings,data.travelDays,data.tdeeExclude||{});
@@ -973,21 +974,6 @@ const getWeeklyCutSummary=(data,today=td())=>{
     calorieRate:loggedDays?Math.round(calorieHits/loggedDays*100):0,
     weightTrend,recoveryAvg,recoveryDays:recValues.length,trainingDone,plannedTraining:plannedTraining.length,
     cardioDone,tdee,stalls:getStalls(data.prog||{},data.wk||{},data.program||PROG.days)};
-};
-
-const getWeightTrendSummary=(wt,today=td())=>{
-  const entries=Object.entries(wt||{}).filter(([,v])=>v!=null).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length<2)return null;
-  const recent=entries.slice(-14);
-  const first=recent[0],last=recent[recent.length-1];
-  const spanDays=Math.max(1,(new Date(last[0]+"T12:00:00")-new Date(first[0]+"T12:00:00"))/864e5);
-  const weeklyChange=Math.round(((last[1]-first[1])/spanDays)*7);
-  const points=recent.map(([d,v])=>({d:d.slice(5),v}));
-  const weighIns7=entries.filter(([d])=>{const x=new Date(today+"T12:00:00");x.setDate(x.getDate()-6);return d>=lds(x);}).length;
-  const direction=weeklyChange<0?"down":weeklyChange>0?"up":"flat";
-  const pace=Math.abs(weeklyChange)>=2?"fast":Math.abs(weeklyChange)>=1?"moving":"steady";
-  const message=direction==="down"?`Down ${Math.abs(weeklyChange)} lb/wk`:direction==="up"?`Up ${weeklyChange} lb/wk`:"Holding steady";
-  return{current:Math.round(last[1]),weeklyChange,points,weighIns7,direction,pace,message,days:recent.length};
 };
 
 const getWeeklyConsistency=(data,today=td())=>{
@@ -1008,7 +994,7 @@ const getWeeklyConsistency=(data,today=td())=>{
   const cardioMinutes=days.reduce((s,d)=>s+d.cardioMinutes,0);
   const weightDays=days.filter(d=>d.weightLogged).length;
   const winDays=days.filter(d=>d.weightLogged||d.liftDone||d.cardioDone).length;
-  const trend=cut.weightTrend.weeklyChange==null?"Need 4 weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${Math.round(cut.weightTrend.weeklyChange)} lb/wk`;
+  const trend=cut.weightTrend.weeklyChange==null?"Need 2+ weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${cut.weightTrend.weeklyChange} lb/wk`;
   const tone=liftsPlanned&&liftsDone>=liftsPlanned&&cardioSessions>=2&&weightDays>=5?"great":winDays>=5?"good":winDays>=3?"building":"start";
   const message=tone==="great"?"Week is on rails":tone==="good"?"Wins are stacking":tone==="building"?"Keep collecting wins":"One win starts the week";
   return{days,liftsDone,liftsPlanned,cardioSessions,cardioMinutes,weightDays,winDays,trend,tone,message};
@@ -1062,7 +1048,7 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
   }else if(lowRecovery&&s.weightTrend.status!=="flat"){
     rec={key:"stress",action:"Keep calories steady and make cardio easier this week.",why:`Weight is ${s.weightTrend.label.toLowerCase()} while recovery averages ${s.recoveryAvg}%, so the safer lever is stress/cardio, not less food.`,confidence:s.recoveryDays>=3&&s.weightTrend.days>=4?"High":"Medium"};
   }else if(s.weightTrend.status==="fast"){
-    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.round(Math.abs(s.weightTrend.weeklyChange))} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
+    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.abs(s.weightTrend.weeklyChange).toFixed(1)} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
   }else if(s.weightTrend.status==="flat"||s.weightTrend.status==="up"){
     rec={key:"adjust",action:"Adjust one lever only: add 10–15 min Zone 2 twice this week or trim ~100 calories on rest days.",why:`Adherence is ${s.nutritionAdherence}% and weight is ${s.weightTrend.label.toLowerCase()}, so one small lever is enough. Targets stay unchanged until you choose it.`,confidence:s.weightTrend.days>=4&&s.tdee.phase!=="collecting"?"High":"Medium"};
   }else if(stalls>=2){
@@ -1071,8 +1057,8 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
     rec={key:"stay",action:"Stay the course this week.",why:`Weight trend, nutrition adherence (${s.nutritionAdherence}%), and recovery are good enough. Do not change multiple levers.`,confidence:s.weightTrend.days>=4&&s.loggedDays>=5?"High":"Medium"};
   }
   return{...rec,summary:s,signals:[
-    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${Math.round(s.weightTrend.weeklyChange)} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
-    {label:"Adherence",value:`${s.nutritionAdherence}%`,tone:s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
+    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${s.weightTrend.weeklyChange} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
+    {label:"Nutrition adherence",value:s.loggedDays===0?"—":`${s.nutritionAdherence}%`,tone:s.loggedDays===0?"muted":s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
     {label:"Recovery",value:s.recoveryAvg==null?"Missing":`${s.recoveryAvg}%`,tone:s.recoveryAvg==null?"muted":s.recoveryAvg>=65?"good":s.recoveryAvg>=55?"warn":"bad"},
     {label:"Training",value:s.plannedTraining?`${s.trainingDone}/${s.plannedTraining}`:"Rest",tone:s.plannedTraining&&s.trainingDone<s.plannedTraining?"warn":"good"},
     {label:"Cardio",value:`${s.cardioDone}/7`,tone:s.cardioDone>=2?"good":s.cardioDone>=1?"warn":"muted"}
@@ -1309,7 +1295,7 @@ const WeightTrendCard=({trend,compact=false})=>{
           <div style={{fontSize:18,fontWeight:900,color:C.t,marginTop:1}}>{trend.message}</div>
           <div style={{fontSize:11,color:C.t3,marginTop:2}}>{trend.weighIns7}/7 weigh-ins · current {trend.current} lbs</div>
         </div>
-        <div style={{fontSize:22,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.weeklyChange>0?"+":""}{trend.weeklyChange}</div>
+        <div style={{fontSize:18,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.rate>0?"+":""}{trend.rate.toFixed(1)} lb/wk</div>
       </div>
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
         <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1658,8 +1644,7 @@ const Dashboard=({data,setData,setTab})=>{
   const tonightCloseout=getTonightCloseout(data,t);
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
-  const weightTrend=getWeightTrend(data.wt);
-  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
+  const weightTrend=getTrend(data.wt,t);
   const stalls=getStalls(data.prog,data.wk,data.program);
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
@@ -1790,7 +1775,7 @@ const Dashboard=({data,setData,setTab})=>{
         </div>
       </X>
 
-      <WeightTrendCard trend={weightTrendSummary} compact/>
+      <WeightTrendCard trend={weightTrend} compact/>
 
       <X style={{padding:12,borderLeft:`4px solid ${tonightCloseout.tone==="good"?C.g:tonightCloseout.tone==="bad"?C.r:C.a}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Tonight closeout</div>
@@ -1912,9 +1897,9 @@ const Dashboard=({data,setData,setTab})=>{
       </X>)}
 
       {/* ═══ WEIGHT TREND ALERT ═══ */}
-      {weightTrend&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight Alert — {weightTrend.direction} {Math.abs(weightTrend.rate)} lbs/wk</div>
-        <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.advice}</div>
+      {weightTrend&&Math.abs(weightTrend.rate)>1&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight Alert — {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
       </X>)}
 
       {/* ═══ DAY TYPE INDICATOR ═══ */}
@@ -3760,8 +3745,7 @@ const Weight=({data,setData})=>{
   const latest=entries[0]?.[1],oldest=entries[entries.length-1]?.[1];
   const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
-  const wTrend=getWeightTrend(data.wt);
-  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
+  const wTrend=getTrend(data.wt,t);
   const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
@@ -3790,12 +3774,12 @@ const Weight=({data,setData})=>{
       )}
     </X>
 
-    <WeightTrendCard trend={weightTrendSummary}/>
+    <WeightTrendCard trend={wTrend}/>
 
-    {wTrend&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
+    {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
       <div style={{fontSize:11,fontWeight:800,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut pace</div>
-      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.round(Math.abs(wTrend.rate))} lbs/week</div>
-      <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.advice}</div>
+      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="up"?"Gaining":"Losing"} {Math.abs(wTrend.rate).toFixed(1)} lb/wk</div>
+      <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
     </X>)}
 
     <S title="Scale review" collapsible defaultOpen={false}>
@@ -3848,7 +3832,7 @@ const Weight=({data,setData})=>{
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontWeight:600,color:C.t}}>{Math.round(w)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
+            <span style={{fontWeight:600,color:C.t}}>{Math.round(w)} {diff!==null&&diff!==0&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
             <button onClick={del} style={{background:"none",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:"2px 4px",opacity:0.6}}>✕</button>
           </div>
         </div>);})}
