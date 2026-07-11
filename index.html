@@ -255,7 +255,19 @@ const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
 const NOTIF_SETTINGS_KEY="dhub6_notification_settings";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
-const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
+
+// ═══ SYNC HEALTH ═══
+// Every failed write is loud: logged, counted, and toasted once per table per session.
+const syncHealth={failures:{},listeners:new Set()};
+const reportSyncFailure=(table,status,body)=>{
+  console.error(`[SB] Sync failed: ${table}`,status,body);
+  const first=!syncHealth.failures[table];
+  syncHealth.failures[table]=(syncHealth.failures[table]||0)+1;
+  syncHealth.listeners.forEach(l=>{try{l(table,first);}catch{}});
+};
+const onSyncFailure=(l)=>{syncHealth.listeners.add(l);return()=>syncHealth.listeners.delete(l);};
+
+const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch(e){reportSyncFailure("localStorage",0,String(e));}};
 const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
@@ -272,8 +284,9 @@ const sb={
       const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
       const r=await fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
         body:JSON.stringify(data)});
+      if(!r.ok)reportSyncFailure(table,r.status,await r.text().catch(()=>""));
       return r.ok;
-    }catch{return false;}
+    }catch(e){reportSyncFailure(table,0,String(e));return false;}
   },
   async select(table,order="date",dir="desc",limit=500){
     try{
@@ -3956,7 +3969,9 @@ const Habits=({data,setData})=>{
 };
 
 // ═══ SETTINGS ═══
-const Settings=({data,setData})=>{
+const Settings=({data,setData,syncFailures={}})=>{
+  const failedTables=Object.keys(syncFailures);
+  const syncOk=failedTables.length===0;
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
@@ -4034,7 +4049,14 @@ const Settings=({data,setData})=>{
   };
 
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+      <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
+        style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
+        <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
+        {syncOk?"Sync ok":`Sync failing: ${failedTables.join(", ")}`}
+      </div>
+    </div>
 
     <X style={{borderLeft:`3px solid ${C.p}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
@@ -4291,7 +4313,7 @@ const Settings=({data,setData})=>{
 const ToastStack=({toasts})=>{
   if(!toasts.length)return null;
   return(<div style={{position:"fixed",bottom:70,left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:6,maxWidth:440,width:"90%"}}>
-    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:C.v,color:"#fff",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,.15)",animation:"toastIn .3s ease"}}>{t.message}</div>))}
+    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:t.type==="error"?C.r:C.v,color:"#fff",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,.15)",animation:"toastIn .3s ease"}}>{t.message}</div>))}
   </div>);
 };
 
@@ -4347,11 +4369,16 @@ window.App = function App(){
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
   const [toasts,setToasts]=useState([]);
+  const [syncFailures,setSyncFailures]=useState({});
   const addToast=useCallback((message,type="info")=>{
     const id=Date.now()+Math.random();
     setToasts(p=>[...p,{id,message,type}]);
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),4000);
   },[]);
+  useEffect(()=>onSyncFailure((table,first)=>{
+    setSyncFailures({...syncHealth.failures});
+    if(first)addToast(`Sync failed: ${table} — not backed up`,"error");
+  }),[addToast]);
 
   useEffect(()=>{
     (async()=>{
@@ -4485,7 +4512,7 @@ window.App = function App(){
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
         {tab==="habits"&&<Habits data={data} setData={setData}/>}
-        {tab==="settings"&&<Settings data={data} setData={setData}/>}
+        {tab==="settings"&&<Settings data={data} setData={setData} syncFailures={syncFailures}/>}
       </div>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
       <ToastStack toasts={toasts}/>
