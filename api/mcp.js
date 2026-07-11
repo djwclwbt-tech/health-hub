@@ -114,27 +114,59 @@ const mcpHandler = createMcpHandler(
         inputSchema: z.object({}),
       },
       async () => {
-        // Fetch live progression data from Supabase
-        let progression = {};
-        try {
-          const res = await fetch(`${SB_URL}/rest/v1/progression?select=*`, {
-            headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-          });
-          if (res.ok) {
-            const rows = await res.json();
-            for (const r of rows) {
-              progression[r.exercise_id] = {
-                currentWeight: r.current_weight,
-                lastReps: r.last_reps,
-                lastDate: r.last_date,
-                progressed: r.progressed,
-                pr: r.pr,
-              };
-            }
-          }
-        } catch (e) { /* progression fetch failed, return snapshot without it */ }
+        // Read live state from Supabase: the app mirrors its settings and
+        // program to the `settings`/`program` tables on every change.
+        // PROGRAM_SNAPSHOT is a fallback only (empty tables / fetch failure).
+        const sbGet = async (path) => {
+          try {
+            const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+              headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+            });
+            return res.ok ? await res.json() : null;
+          } catch { return null; }
+        };
 
-        const result = { ...PROGRAM_SNAPSHOT, progression };
+        const [settingsRows, programRows, progressionRows] = await Promise.all([
+          sbGet(`settings?id=eq.user&select=*&limit=1`),
+          sbGet(`program?id=eq.user&select=*&limit=1`),
+          sbGet(`progression?select=*`),
+        ]);
+
+        const liveSettings = settingsRows?.[0] || null;
+        const liveProgram = programRows?.[0]?.data || null;
+
+        const settings = liveSettings
+          ? Object.fromEntries(SETTINGS_FIELDS.map((f) => {
+              const snake = f.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+              const v = liveSettings[f] ?? liveSettings[snake] ?? PROGRAM_SNAPSHOT.settings[f];
+              return [f, v];
+            }))
+          : PROGRAM_SNAPSHOT.settings;
+
+        const days = liveProgram || PROGRAM_SNAPSHOT.days;
+
+        const progression = {};
+        for (const r of progressionRows || []) {
+          progression[r.exercise_id] = {
+            currentWeight: r.current_weight,
+            lastReps: r.last_reps,
+            lastDate: r.last_date,
+            progressed: r.progressed,
+            pr: r.pr,
+          };
+        }
+
+        const result = {
+          source: liveProgram && liveSettings ? "live" : "snapshot",
+          sources: {
+            settings: liveSettings ? "live" : "snapshot",
+            program: liveProgram ? "live" : "snapshot",
+            progression: progressionRows ? "live" : "unavailable",
+          },
+          settings,
+          days,
+          progression,
+        };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       }
     );

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Health Hub">
-<meta name="theme-color" content="#f5f6f8">
+<meta name="theme-color" content="#F6F7F6">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -14,12 +14,37 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+  /* ═══ IRON & TEAL — the only place hex colors are allowed ═══ */
+  :root {
+    --bg: #F6F7F6; --surface: #FFFFFF; --ink: #101514; --muted: #5C6664;
+    --accent: #0D9488; --accent-press: #0F766E; --warn: #D97706;
+    --danger: #DC2626; --good: #16A34A; --line: #E3E7E5;
+    --on-accent: #FFFFFF;
+    --ink-2: color-mix(in srgb, var(--ink) 62%, var(--muted));
+    --accent-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
+    --warn-soft: color-mix(in srgb, var(--warn) 12%, var(--surface));
+    --danger-soft: color-mix(in srgb, var(--danger) 10%, var(--surface));
+    --good-soft: color-mix(in srgb, var(--good) 10%, var(--surface));
+    --scrim: color-mix(in srgb, var(--ink) 50%, transparent);
+    --shadow: 0 10px 28px color-mix(in srgb, var(--ink) 7%, transparent);
+    --shadow-2: 0 4px 14px color-mix(in srgb, var(--ink) 6%, transparent);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1211; --surface: #131A19; --ink: #E8ECEB; --muted: #8FA09B;
+      --accent: #2DD4BF; --accent-press: #14B8A6; --warn: #F59E0B;
+      --danger: #F87171; --good: #4ADE80; --line: #1E2826;
+      --on-accent: #0C1211;
+      --shadow: none; --shadow-2: none; /* no shadows in dark mode */
+    }
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(180deg,#eef4ff 0%,#f7f8fb 34%,#f3f5f8 100%); overflow-x: hidden; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--ink); overflow-x: hidden; font-variant-numeric: tabular-nums; }
   #root { min-height: 100vh; }
   #root { min-height: 100dvh; }
-  button, input, select { -webkit-font-smoothing: antialiased; }
-  * { scrollbar-width: thin; scrollbar-color: #cfd7e3 transparent; }
+  button, input, select { -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+  input::placeholder { color: var(--muted); opacity: .7; }
+  * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -255,11 +280,27 @@ const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
 const NOTIF_SETTINGS_KEY="dhub6_notification_settings";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
-const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
+
+// ═══ SYNC HEALTH ═══
+// Every failed write is loud: logged, counted, and toasted once per table per session.
+const syncHealth={failures:{},listeners:new Set()};
+const reportSyncFailure=(table,status,body)=>{
+  console.error(`[SB] Sync failed: ${table}`,status,body);
+  const first=!syncHealth.failures[table];
+  syncHealth.failures[table]=(syncHealth.failures[table]||0)+1;
+  syncHealth.listeners.forEach(l=>{try{l(table,first);}catch{}});
+};
+const onSyncFailure=(l)=>{syncHealth.listeners.add(l);return()=>syncHealth.listeners.delete(l);};
+
+const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch(e){reportSyncFailure("localStorage",0,String(e));}};
+const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],
+  notifications:{enabled:false,restTimer:true,timers:true},
+  // Dormant: reminder system removed 2026-07-11 (rest timer is the only
+  // notification). Preferences kept for a future server-push implementation.
+  reminders:{enabled:false,weighIn:"08:00",closeout:"20:30"}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},autoregLog:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -272,8 +313,9 @@ const sb={
       const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
       const r=await fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
         body:JSON.stringify(data)});
+      if(!r.ok)reportSyncFailure(table,r.status,await r.text().catch(()=>""));
       return r.ok;
-    }catch{return false;}
+    }catch(e){reportSyncFailure(table,0,String(e));return false;}
   },
   async select(table,order="date",dir="desc",limit=500){
     try{
@@ -413,56 +455,6 @@ const loadFromSB=async()=>{
   }catch(e){console.error("[SB] Load error:",e);return null;}
 };
 
-const parseHealthImport=(text)=>{
-  const d={wt:{},steps:{},rec:{},nut:{}};
-  const lines=text.split("\n");
-  let section="";
-  for(const line of lines){
-    if(line.includes("WEIGHT"))section="wt";
-    else if(line.includes("STEPS"))section="steps";
-    else if(line.includes("RESTING HEART RATE"))section="rhr";
-    else if(line.includes("SLEEP"))section="sleep";
-    else if(line.includes("CALORIES"))section="cal";
-    else if(line.includes("PROTEIN"))section="pro";
-    else if(line.includes("CARBOHYDRATE"))section="carb";
-    else if(line.includes("FAT"))section="fat";
-    else if(line.includes("FIBER"))section="fib";
-    const m=line.match(/\|(\d{4}-\d{2}-\d{2})\s*\|(.+?)\|/);
-    if(!m)continue;
-    const date=m[1],val=m[2].replace(/,/g,"").trim();
-    const num=parseFloat(val);
-    if(isNaN(num))continue;
-    if(section==="wt")d.wt[date]=num;
-    else if(section==="steps")d.steps[date]=num;
-    else if(section==="rhr"){if(!d.rec[date])d.rec[date]={};d.rec[date].rhr=num;}
-    else if(section==="cal"){
-      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalCal=num;d.nut[date].meals=[{description:"MFP Import",cal:num,protein:0,carbs:0,fat:0,fiber:0,source:"mfp"}];
-    }else if(section==="pro"){
-      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalProtein=num;if(d.nut[date].meals.length)d.nut[date].meals[0].protein=num;
-    }else if(section==="carb"){
-      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalCarbs=num;if(d.nut[date].meals.length)d.nut[date].meals[0].carbs=num;
-    }else if(section==="fat"){
-      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalFat=num;if(d.nut[date].meals.length)d.nut[date].meals[0].fat=num;
-    }else if(section==="fib"){
-      if(!d.nut[date])d.nut[date]={meals:[],totalCal:0,totalProtein:0,totalCarbs:0,totalFat:0,totalFiber:0};
-      d.nut[date].totalFiber=num;if(d.nut[date].meals.length)d.nut[date].meals[0].fiber=num;
-    }
-  }
-  let inSleep=false;
-  for(const line of lines){
-    if(line.includes("SLEEP"))inSleep=true;
-    if(line.includes("CALORIES"))inSleep=false;
-    if(!inSleep)continue;
-    const sm=line.match(/\|(\d{4}-\d{2}-\d{2})\s*\|.+?\|.+?\|\s*~?([\d.]+)/);
-    if(sm){const date=sm[1],hrs=parseFloat(sm[2]);
-      if(!d.rec[date])d.rec[date]={};d.rec[date].sleepHours=hrs;}
-  }
-  return d;
-};
 const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
   for(const[date,v]of Object.entries(rawMob)){mob[date]=v===true?{done:true,dur:null}:v;}
   return{...b,...d,
@@ -601,15 +593,24 @@ const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.don
 const completedSets=sets=>(sets||[]).filter(saneSet);
 const nextWeightFromSets=(sets,pe)=>{const cs=completedSets(sets);if(!cs.length)return null;const rr=pe?.rr;const matching=rr?cs.filter(s=>Number(s.reps)>=rr[0]&&Number(s.reps)<=rr[1]):cs;if(!matching.length)return null;const cw=Number(matching[0].weight);const hit=rr&&pe?.inc>0&&matching.length>=(pe.sets||1)&&matching.every(s=>Number(s.reps)>=rr[1]);return hit?cw+pe.inc:cw;};
 
+const BACKFILL_VERSION=2;
 const backfillData=(d)=>{
-  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
   Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});
+  // History replay is a versioned one-shot. It previously ran on every load and
+  // paired logged exercises to program exercises BY SLOT INDEX, so any program
+  // mutation (swap/add/remove/reorder) wrote historical sets into the wrong lift.
+  if((d.backfillVersion||0)>=BACKFILL_VERSION)return d;
+  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
   const allDays={...PROG.days,...(d.program||{})};
+  const byProgKey={},byId={};
+  Object.values(allDays).forEach(day=>(day.exercises||[]).forEach(pe=>{
+    const k=progKey(pe,pe);if(!byProgKey[k])byProgKey[k]=pe;if(!byId[pe.id])byId[pe.id]=pe;}));
   Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{
-    if(!w.exercises||!w.day)return;
-    const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;
-    w.exercises.forEach((ex,i)=>{
-      const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;
+    if(!w.exercises)return;
+    w.exercises.forEach(ex=>{
+      // Identity pairing only: progKey, else exercise id. Unknown -> skip, never guess.
+      const pe=(ex.progKey&&byProgKey[ex.progKey])||(ex.id&&byId[ex.id])||null;
+      if(!pe||!ex.sets)return;
       const key=ex.progKey||progKey(pe,pe);
       const cs=completedSets(ex.sets);if(!cs.length)return;
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);
@@ -617,13 +618,37 @@ const backfillData=(d)=>{
       const nextWeight=nextWeightFromSets(ex.sets,pe);
       if(!d.prog[key])d.prog[key]={currentWeight:nextWeight??bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};
       if(!d.prog[key].e1rmHistory)d.prog[key].e1rmHistory=[];
-      d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
+      if(!d.prog[key].e1rmHistory.some(h=>h.date===date))d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
       d.prog[key].e1rmHistory=d.prog[key].e1rmHistory.slice(-12);
       if(nextWeight!=null&&date>=(d.prog[key].lastDate||"")){d.prog[key].currentWeight=nextWeight;d.prog[key].lastReps=cs.map(s=>s.reps);d.prog[key].lastDate=date;d.prog[key].progressed=nextWeight>Number(cs[0].weight);}
       if(!d.prog[key].pr||newE1rm>d.prog[key].pr.e1rm){d.prog[key].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}
     });
   });
+  d.backfillVersion=BACKFILL_VERSION;
   return d;
+};
+
+// Prune orphaned/fossil progression records. Runs every boot (cheap filter) so
+// rows the cleanup migration removed server-side can't be resurrected from a
+// stale local copy or vice versa. Keeps: current id__rr keys; plain legacy IDs
+// of current non-ambiguous exercises that hold real reps (the gw() fallback
+// reads those); anything logged during the current block (protects history of
+// exercises swapped out mid-block).
+const pruneProgression=(d)=>{
+  const days=d.program||PROG.days;
+  const currentKeys=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>progKey(pe,pe))));
+  const currentIds=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>pe.id)));
+  const removed=[];
+  for(const[key,p]of Object.entries(d.prog||{})){
+    if(currentKeys.has(key))continue;
+    if(p?.lastDate&&p.lastDate>=PROG.start)continue;
+    const isPlain=!key.includes("__");
+    const hasRealReps=(p?.lastReps||[]).some(r=>Number(r)>0);
+    if(isPlain&&currentIds.has(key)&&!legacyAmbiguousIds.has(key)&&hasRealReps)continue;
+    removed.push(key);delete d.prog[key];
+  }
+  if(removed.length)console.log(`[prune] Removed ${removed.length} orphaned progression records:`,removed.join(", "));
+  return removed.length;
 };
 
 const repairDeloadProgression=(d)=>{
@@ -710,21 +735,27 @@ const getStalls=(prog,wk,programDays)=>{
   return stalls;
 };
 
-// ═══ WEIGHT TREND ═══
-const getWeightTrend=(wt)=>{
-  const entries=Object.entries(wt).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length<2)return null;
-  const now=new Date();const weekAgo=new Date(now);weekAgo.setDate(weekAgo.getDate()-7);
-  const weekStr=lds(weekAgo);
-  const recent=entries.filter(([d])=>d>=weekStr);
-  const older=entries.filter(([d])=>d<weekStr);
-  if(recent.length<1||older.length<1)return null;
-  const recentAvg=recent.reduce((s,[_,v])=>s+v,0)/recent.length;
-  const olderLast=older[older.length-1][1];
-  const weeklyRate=+(recentAvg-olderLast).toFixed(1);
-  if(Math.abs(weeklyRate)>1)return{rate:weeklyRate,direction:weeklyRate>0?"gaining":"losing",
-    advice:weeklyRate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."};
-  return null;
+// ═══ WEIGHT TREND — the one shared engine ═══
+// EWMA-smoothed OLS slope over the last 14 calendar days, in lbs/week to one
+// decimal. Every trend surface consumes this; do not add another formula.
+const getTrend=(wt,today=td())=>{
+  const start=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-13);return lds(d);})();
+  const entries=Object.entries(wt||{}).filter(([dt,v])=>v!=null&&dt>=start&&dt<=today).sort((a,b)=>a[0].localeCompare(b[0]));
+  const n=entries.length;
+  if(n<2)return null;
+  const smoothed=calcEWMA(entries.map(([,v])=>Number(v)),0.3);
+  const base=new Date(entries[0][0]+"T12:00:00");
+  const xs=entries.map(([dt])=>(new Date(dt+"T12:00:00")-base)/864e5);
+  const mx=xs.reduce((s,v)=>s+v,0)/n,my=smoothed.reduce((s,v)=>s+v,0)/n;
+  let num=0,den=0;for(let i=0;i<n;i++){num+=(xs[i]-mx)*(smoothed[i]-my);den+=(xs[i]-mx)**2;}
+  const rate=+((den?num/den:0)*7).toFixed(1);
+  const direction=rate<=-0.1?"down":rate>=0.1?"up":"flat";
+  const message=direction==="down"?`Down ${Math.abs(rate)} lb/wk`:direction==="up"?`Up ${rate} lb/wk`:"Holding steady";
+  const weekAgo=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-6);return lds(d);})();
+  const weighIns7=entries.filter(([dt])=>dt>=weekAgo).length;
+  return{rate,direction,message,n,weighIns7,
+    current:Math.round(entries[n-1][1]),
+    points:entries.map(([dt,v],i)=>({d:dt.slice(5),v:+smoothed[i].toFixed(1),raw:v}))};
 };
 
 // ═══ DATA INTELLIGENCE ═══
@@ -907,17 +938,12 @@ const getWeeklyCutSummary=(data,today=td())=>{
   const plannedTraining=dates.filter(d=>!!data.program?.[dw(d)]);
   const trainingDone=plannedTraining.filter(d=>!!data.wk?.[d]).length;
   const cardioDone=adherence.filter(a=>a.cardioDone).length;
-  const weights=dates.filter(d=>data.wt?.[d]!=null).map(d=>({date:d,weight:data.wt[d]}));
-  let weightTrend={label:"Missing",status:"unknown",weeklyChange:null,days:weights.length};
-  if(weights.length>=4){
-    const start=new Date(weights[0].date+"T12:00:00");
-    const xs=weights.map(x=>(new Date(x.date+"T12:00:00")-start)/864e5);
-    const ys=weights.map(x=>x.weight);
-    const mx=xs.reduce((s,v)=>s+v,0)/xs.length,my=ys.reduce((s,v)=>s+v,0)/ys.length;
-    let num=0,den=0;for(let i=0;i<xs.length;i++){num+=(xs[i]-mx)*(ys[i]-my);den+=(xs[i]-mx)**2;}
-    const weeklyChange=+(den?(num/den*7):0).toFixed(2);
-    weightTrend={label:weeklyChange<-1.5?"Dropping fast":weeklyChange<-0.25?"Dropping":weeklyChange<=0.25?"Flat":"Up",status:weeklyChange<-1.5?"fast":weeklyChange<-0.25?"onPace":weeklyChange<=0.25?"flat":"up",weeklyChange,days:weights.length};
-  }
+  const trend=getTrend(data.wt,today);
+  const weightTrend=trend===null
+    ?{label:"Missing",status:"unknown",weeklyChange:null,days:0}
+    :{label:trend.rate<-1.5?"Dropping fast":trend.rate<-0.25?"Dropping":trend.rate<=0.25?"Flat":"Up",
+      status:trend.rate<-1.5?"fast":trend.rate<-0.25?"onPace":trend.rate<=0.25?"flat":"up",
+      weeklyChange:trend.rate,days:trend.n};
   const recValues=dates.map(d=>data.rec?.[d]?.recoveryScore).filter(v=>v!=null);
   const recoveryAvg=recValues.length>=3?Math.round(recValues.reduce((s,v)=>s+v,0)/recValues.length):getWeeklyRecoveryAvg(data.rec||{});
   const tdee=calcAdaptiveTDEE(data.wt||{},data.nut||{},settings,data.travelDays,data.tdeeExclude||{});
@@ -929,24 +955,9 @@ const getWeeklyCutSummary=(data,today=td())=>{
     cardioDone,tdee,stalls:getStalls(data.prog||{},data.wk||{},data.program||PROG.days)};
 };
 
-const getWeightTrendSummary=(wt,today=td())=>{
-  const entries=Object.entries(wt||{}).filter(([,v])=>v!=null).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length<2)return null;
-  const recent=entries.slice(-14);
-  const first=recent[0],last=recent[recent.length-1];
-  const spanDays=Math.max(1,(new Date(last[0]+"T12:00:00")-new Date(first[0]+"T12:00:00"))/864e5);
-  const weeklyChange=Math.round(((last[1]-first[1])/spanDays)*7);
-  const points=recent.map(([d,v])=>({d:d.slice(5),v}));
-  const weighIns7=entries.filter(([d])=>{const x=new Date(today+"T12:00:00");x.setDate(x.getDate()-6);return d>=lds(x);}).length;
-  const direction=weeklyChange<0?"down":weeklyChange>0?"up":"flat";
-  const pace=Math.abs(weeklyChange)>=2?"fast":Math.abs(weeklyChange)>=1?"moving":"steady";
-  const message=direction==="down"?`Down ${Math.abs(weeklyChange)} lb/wk`:direction==="up"?`Up ${weeklyChange} lb/wk`:"Holding steady";
-  return{current:Math.round(last[1]),weeklyChange,points,weighIns7,direction,pace,message,days:recent.length};
-};
-
-const getWeeklyConsistency=(data,today=td())=>{
+const getWeeklyConsistency=(data,today=td(),pre=null)=>{
   const dates=[];for(let i=6;i>=0;i--){const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-i);dates.push(lds(d));}
-  const cut=getWeeklyCutSummary(data,today);
+  const cut=pre||getWeeklyCutSummary(data,today);
   const days=dates.map(d=>{
     const liftPlanned=!!data.program?.[dw(d)];
     const liftDone=!!data.wk?.[d];
@@ -962,7 +973,7 @@ const getWeeklyConsistency=(data,today=td())=>{
   const cardioMinutes=days.reduce((s,d)=>s+d.cardioMinutes,0);
   const weightDays=days.filter(d=>d.weightLogged).length;
   const winDays=days.filter(d=>d.weightLogged||d.liftDone||d.cardioDone).length;
-  const trend=cut.weightTrend.weeklyChange==null?"Need 4 weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${Math.round(cut.weightTrend.weeklyChange)} lb/wk`;
+  const trend=cut.weightTrend.weeklyChange==null?"Need 2+ weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${cut.weightTrend.weeklyChange} lb/wk`;
   const tone=liftsPlanned&&liftsDone>=liftsPlanned&&cardioSessions>=2&&weightDays>=5?"great":winDays>=5?"good":winDays>=3?"building":"start";
   const message=tone==="great"?"Week is on rails":tone==="good"?"Wins are stacking":tone==="building"?"Keep collecting wins":"One win starts the week";
   return{days,liftsDone,liftsPlanned,cardioSessions,cardioMinutes,weightDays,winDays,trend,tone,message};
@@ -999,8 +1010,8 @@ const getTonightCloseout=(data,date=td())=>{
   return{tomorrow:tomorrowStr,tomorrowMode,action,tone,foodOk,proteinLeft,caloriesLeft,steps,stepsTarget,stepsOk,cardioDone,liftOk,habitsLogged:!!data.habits?.[date],recovery:rec};
 };
 
-const getWeeklyCutRecommendation=(data,today=td())=>{
-  const s=getWeeklyCutSummary(data,today);
+const getWeeklyCutRecommendation=(data,today=td(),pre=null)=>{
+  const s=pre||getWeeklyCutSummary(data,today);
   const deload=wkn(today)===PROG.deload;
   const adherencePoor=s.loggedDays<4||s.weightDays<3||s.nutritionAdherence<60;
   const lowRecovery=s.recoveryAvg!=null&&s.recoveryAvg<55;
@@ -1016,7 +1027,7 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
   }else if(lowRecovery&&s.weightTrend.status!=="flat"){
     rec={key:"stress",action:"Keep calories steady and make cardio easier this week.",why:`Weight is ${s.weightTrend.label.toLowerCase()} while recovery averages ${s.recoveryAvg}%, so the safer lever is stress/cardio, not less food.`,confidence:s.recoveryDays>=3&&s.weightTrend.days>=4?"High":"Medium"};
   }else if(s.weightTrend.status==="fast"){
-    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.round(Math.abs(s.weightTrend.weeklyChange))} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
+    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.abs(s.weightTrend.weeklyChange).toFixed(1)} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
   }else if(s.weightTrend.status==="flat"||s.weightTrend.status==="up"){
     rec={key:"adjust",action:"Adjust one lever only: add 10–15 min Zone 2 twice this week or trim ~100 calories on rest days.",why:`Adherence is ${s.nutritionAdherence}% and weight is ${s.weightTrend.label.toLowerCase()}, so one small lever is enough. Targets stay unchanged until you choose it.`,confidence:s.weightTrend.days>=4&&s.tdee.phase!=="collecting"?"High":"Medium"};
   }else if(stalls>=2){
@@ -1025,18 +1036,22 @@ const getWeeklyCutRecommendation=(data,today=td())=>{
     rec={key:"stay",action:"Stay the course this week.",why:`Weight trend, nutrition adherence (${s.nutritionAdherence}%), and recovery are good enough. Do not change multiple levers.`,confidence:s.weightTrend.days>=4&&s.loggedDays>=5?"High":"Medium"};
   }
   return{...rec,summary:s,signals:[
-    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${Math.round(s.weightTrend.weeklyChange)} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
-    {label:"Adherence",value:`${s.nutritionAdherence}%`,tone:s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
+    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${s.weightTrend.weeklyChange} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
+    {label:"Nutrition adherence",value:s.loggedDays===0?"—":`${s.nutritionAdherence}%`,tone:s.loggedDays===0?"muted":s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
     {label:"Recovery",value:s.recoveryAvg==null?"Missing":`${s.recoveryAvg}%`,tone:s.recoveryAvg==null?"muted":s.recoveryAvg>=65?"good":s.recoveryAvg>=55?"warn":"bad"},
     {label:"Training",value:s.plannedTraining?`${s.trainingDone}/${s.plannedTraining}`:"Rest",tone:s.plannedTraining&&s.trainingDone<s.plannedTraining?"warn":"good"},
     {label:"Cardio",value:`${s.cardioDone}/7`,tone:s.cardioDone>=2?"good":s.cardioDone>=1?"warn":"muted"}
   ]};
 };
 
-const C={bg:"#f6f8fc",cd:"rgba(255,255,255,.92)",bd:"#dbe3ee",bl:"#edf1f6",
-  p:"#2563eb",pl:"#eaf1ff",g:"#12824c",gl:"#e7f7ee",r:"#c2412f",rl:"#fdecea",
-  a:"#c77700",al:"#fff5d9",v:"#7c3aed",vl:"#f1e9ff",
-  t:"#172033",t2:"#5b667a",t3:"#8a96a8",sh:"0 10px 28px rgba(23,32,51,.07)",sh2:"0 4px 14px rgba(23,32,51,.06)"};
+// Iron & Teal tokens — values live in the :root CSS block; accent is the ONLY
+// brand color (old violet v/vl now aliases of accent), amber = warnings only,
+// red/green = semantic only. oa = text on accent surfaces.
+const C={bg:"var(--bg)",cd:"var(--surface)",bd:"var(--line)",bl:"var(--line)",
+  p:"var(--accent)",pl:"var(--accent-soft)",g:"var(--good)",gl:"var(--good-soft)",r:"var(--danger)",rl:"var(--danger-soft)",
+  a:"var(--warn)",al:"var(--warn-soft)",v:"var(--accent)",vl:"var(--accent-soft)",
+  t:"var(--ink)",t2:"var(--ink-2)",t3:"var(--muted)",oa:"var(--on-accent)",scrim:"var(--scrim)",
+  sh:"var(--shadow)",sh2:"var(--shadow-2)"};
 
 // ═══ BASE COMPONENTS ═══
 const N=({value,onChange,placeholder,style={},min=0,max})=>{
@@ -1051,8 +1066,8 @@ const N=({value,onChange,placeholder,style={},min=0,max})=>{
   };
   return(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
-    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>
+    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>
 );};
 const TimeInput=({value,onChange,placeholder,style={}})=>{
   const handleChange=(e)=>{
@@ -1060,35 +1075,38 @@ const TimeInput=({value,onChange,placeholder,style={}})=>{
     if(raw.length<=4)onChange(fmtTime(raw));
   };
   return(<input type="text" inputMode="numeric" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
-    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>);
+    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",
+    color:C.t,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:"inherit",...style}}/>);
 };
 const T=({value,onChange,placeholder,style={}})=>(
   <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{background:"rgba(255,255,255,.95)",border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",color:C.t,
-    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",boxShadow:"inset 0 1px 2px rgba(23,32,51,.04)",...style}}/>
+    style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:10,padding:"10px 10px",color:C.t,
+    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
 );
 const B=({children,onClick,color=C.p,disabled,full,small,outline,style={}})=>(
   <button onClick={onClick} disabled={disabled} style={{
-    background:outline?"transparent":color,color:outline?color:"#fff",
+    background:outline?"transparent":color,color:outline?color:C.oa,
     border:outline?`1.5px solid ${color}`:"none",borderRadius:10,
     padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:800,
-    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":"0 6px 14px rgba(37,99,235,.16)",
+    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":C.sh2,
     width:full?"100%":"auto",fontFamily:"inherit",minHeight:44,...style,
   }}>{children}</button>
 );
 const X=({children,style={},...p})=>(
-  <div style={{background:C.cd,borderRadius:14,padding:14,border:`1px solid ${C.bd}`,boxShadow:C.sh2,backdropFilter:"blur(10px)",...style}} {...p}>{children}</div>
+  <div style={{background:C.cd,borderRadius:16,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
 );
-const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
+const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
 const S=({title,children,collapsible,defaultOpen=true})=>{
-  // No hidden dropdowns in daily use: either show the useful section or cut it.
-  if(collapsible&&defaultOpen===false)return null;
+  // Collapsible sections really collapse (tap to expand) — "buried" surfaces
+  // like photos/measurements stay reachable instead of being hidden entirely.
+  const [open,setOpen]=useState(!collapsible||defaultOpen);
   return(<div style={{marginTop:6}}>
-    <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <div onClick={collapsible?()=>setOpen(o=>!o):undefined}
+      style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
       <span>{title}</span>
+      {collapsible&&<span style={{fontSize:10}}>{open?"▴":"▾"}</span>}
     </div>
-    {children}
+    {open&&children}
   </div>);
 };
 const Br=({v,max,color=C.p,h=5})=>(
@@ -1159,15 +1177,18 @@ const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",
   try{
     const sub=await ensurePushSubscription();
     if(!sub)return false;
-    const r=await fetch("/api/push-schedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),title,body,tag,dueAt,url})});
+    const notifyToken=ld()?.settings?.notifyToken||"";
+    const r=await fetch("/api/push-schedule",{method:"POST",
+      headers:{"Content-Type":"application/json",...(notifyToken?{"x-notify-token":notifyToken}:{})},
+      body:JSON.stringify({subscription:sub.toJSON(),title,body,tag,dueAt,url})});
     return r.ok;
   }catch{return false;}
 };
 
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
-  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:"rgba(255,255,255,.88)",position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:"0 -10px 28px rgba(23,32,51,.08)",backdropFilter:"blur(14px)"}}>
-    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"habits",l:"Habits",icon:"✓"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
+  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:C.sh,backdropFilter:"blur(14px)"}}>
+    {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
         flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
         color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?800:650,fontFamily:"inherit",
@@ -1195,12 +1216,12 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   if(!workout)return null;
   const sess=(programDays||PROG.days)[workout.day];
   return(
-    <div onClick={onTap} style={{background:`linear-gradient(135deg,${C.p},#4f46e5)`,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?12:0,boxShadow:C.sh}}>
+    <div onClick={onTap} style={{background:C.p,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?12:0,boxShadow:C.sh}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:8,height:8,borderRadius:4,background:"#4ade80",animation:"pulse 2s infinite"}}/>
-        <span style={{color:"#fff",fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
+        <div style={{width:8,height:8,borderRadius:4,background:C.g,animation:"pulse 2s infinite"}}/>
+        <span style={{color:C.oa,fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
       </div>
-      <span style={{color:"#fff",fontSize:20,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
+      <span style={{color:C.oa,fontSize:20,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
     </div>
   );
 };
@@ -1214,7 +1235,7 @@ const WeeklyConsistencyCard=({summary})=>{
     <X style={{padding:12,borderLeft:`4px solid ${toneColor}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
         <div>
-          <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Weekly wins</div>
+          <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Weekly wins</div>
           <div style={{fontSize:16,fontWeight:850,color:C.t,marginTop:2}}>{summary.message}</div>
         </div>
         <div style={{fontSize:11,fontWeight:850,color:toneColor,background:toneBg,border:`1px solid ${toneColor}`,borderRadius:999,padding:"5px 8px",whiteSpace:"nowrap"}}>Trend {summary.trend}</div>
@@ -1227,7 +1248,7 @@ const WeeklyConsistencyCard=({summary})=>{
         ].map(x=>{
           const col=x.ok?C.g:C.a,bg=x.ok?C.gl:C.al;
           return <div key={x.l} style={{padding:"8px 6px",borderRadius:10,textAlign:"center",background:bg,border:`1px solid ${col}`}}>
-            <div style={{fontSize:9,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
+            <div style={{fontSize:9,fontWeight:850,color:C.t3}}>{x.l}</div>
             <div style={{fontSize:13,fontWeight:900,color:col,marginTop:1}}>{x.v}</div>
           </div>;
         })}
@@ -1259,11 +1280,11 @@ const WeightTrendCard=({trend,compact=false})=>{
     <X style={{padding:12,borderLeft:`4px solid ${color}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:8}}>
         <div>
-          <div style={{fontSize:11,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>Weight trend</div>
+          <div style={{fontSize:11,fontWeight:850,color:C.t3}}>Weight trend</div>
           <div style={{fontSize:18,fontWeight:900,color:C.t,marginTop:1}}>{trend.message}</div>
           <div style={{fontSize:11,color:C.t3,marginTop:2}}>{trend.weighIns7}/7 weigh-ins · current {trend.current} lbs</div>
         </div>
-        <div style={{fontSize:22,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.weeklyChange>0?"+":""}{trend.weeklyChange}</div>
+        <div style={{fontSize:18,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.rate>0?"+":""}{trend.rate.toFixed(1)} lb/wk</div>
       </div>
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
         <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1277,7 +1298,7 @@ const WeightTrendCard=({trend,compact=false})=>{
 const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   if(!data||data.length<2){
     if(!empty)return null;
-    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
+    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
       <div style={{height,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <span style={{fontSize:13,color:C.t3}}>{empty}</span>
       </div></X>);
@@ -1289,7 +1310,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   return(
     <X style={{padding:"10px 14px"}}>
       {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</span>
+        <span style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em"}}>{label}</span>
         <span style={{fontSize:13,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
       </div>}
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height}} preserveAspectRatio="none">
@@ -1309,7 +1330,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
 
 // ═══ CONFIRM MODAL ═══
 const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",confirmColor=C.g})=>(
-  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  <div style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:C.cd,borderRadius:8,padding:20,width:"100%",maxWidth:320,border:`1px solid ${C.bd}`}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:6}}>{title}</div>
       <div style={{fontSize:14,color:C.t2,marginBottom:16}}>{message}</div>
@@ -1453,7 +1474,7 @@ const AnalysisSection=({data})=>{
           {/* Scores */}
           {result.scores&&(
             <X style={{padding:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>Scores — Last {range}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:10}}>Scores — Last {range}</div>
               {result.scores.overall!=null&&<ScoreBar label="Overall" score={result.scores.overall} color={scoreColor(result.scores.overall)}/>}
               {result.scores.training!=null&&<ScoreBar label="Training" score={result.scores.training} color={scoreColor(result.scores.training)}/>}
               {result.scores.nutrition!=null&&<ScoreBar label="Nutrition" score={result.scores.nutrition} color={scoreColor(result.scores.nutrition)}/>}
@@ -1473,7 +1494,7 @@ const AnalysisSection=({data})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {result.wins&&result.wins.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.g}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Wins</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.g,letterSpacing:"0.06em",marginBottom:6}}>Wins</div>
                 {result.wins.map((w,i)=>(
                   <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.gl}`}}>{w}</div>
                 ))}
@@ -1481,7 +1502,7 @@ const AnalysisSection=({data})=>{
             )}
             {result.gaps&&result.gaps.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.r}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Gaps</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em",marginBottom:6}}>Gaps</div>
                 {result.gaps.map((g,i)=>(
                   <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
                 ))}
@@ -1492,7 +1513,7 @@ const AnalysisSection=({data})=>{
           {/* Trends */}
           {result.trends&&result.trends.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Trends</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Trends</div>
               {result.trends.map((t,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.a,fontWeight:700,minWidth:14}}>→</span>
@@ -1505,7 +1526,7 @@ const AnalysisSection=({data})=>{
           {/* Correlations */}
           {result.correlations&&result.correlations.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Correlations</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Correlations</div>
               {result.correlations.map((c,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.v,fontWeight:700,minWidth:14}}>↔</span>
@@ -1518,7 +1539,7 @@ const AnalysisSection=({data})=>{
           {/* Recommendations */}
           {result.recommendations&&result.recommendations.length>0&&(
             <X style={{padding:10,borderLeft:`3px solid ${C.p}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Recommendations</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:6}}>Recommendations</div>
               {result.recommendations.map((r,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
                   <span style={{fontWeight:700,color:C.p}}>{i+1}. </span>{r}
@@ -1530,7 +1551,7 @@ const AnalysisSection=({data})=>{
           {/* Next Week Focus */}
           {result.nextWeekFocus&&(
             <X style={{padding:12,background:C.pl,border:`1px solid ${C.p}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Next Week Focus</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:4}}>Next Week Focus</div>
               <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
             </X>
           )}
@@ -1538,7 +1559,7 @@ const AnalysisSection=({data})=>{
           {/* Body Composition */}
           {result.bodyComposition&&(
             <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.v,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Body Composition</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.v,letterSpacing:"0.06em",marginBottom:6}}>Body Composition</div>
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
               {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
               {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
@@ -1553,37 +1574,16 @@ const AnalysisSection=({data})=>{
 
 // ═══ DASHBOARD ═══
 const Dashboard=({data,setData,setTab})=>{
-  const [showImport,setShowImport]=useState(false);
   const [showMeasForm,setShowMeasForm]=useState(false);
   const [showFullDashboard,setShowFullDashboard]=useState(false);
   const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
-  const [importText,setImportText]=useState("");
-  const [importStatus,setImportStatus]=useState("");
-  const [dailyCoach,setDailyCoach]=useState(null);
-  const [dailyCoachLoading,setDailyCoachLoading]=useState(false);
-  const [dailyCoachErr,setDailyCoachErr]=useState("");
   const [allergies,setAllergies]=useState(null);
   const [allergyErr,setAllergyErr]=useState("");
+  const [allergyOpen,setAllergyOpen]=useState(false);
   const [todayKey,setTodayKey]=useState(td());
   useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
   useEffect(()=>{let dead=false;(async()=>{try{const r=await fetch("/api/allergies");const d=await r.json();if(dead)return;if(r.ok)setAllergies(d);else setAllergyErr(d.error||"Allergy data unavailable");}catch(e){if(!dead)setAllergyErr("Allergy data unavailable");}})();return()=>{dead=true};},[]);
 
-  const doImport=()=>{
-    try{
-      const parsed=parseHealthImport(importText);
-      const counts={wt:Object.keys(parsed.wt).length,steps:Object.keys(parsed.steps).length,
-        rhr:Object.values(parsed.rec).filter(r=>r.rhr).length,sleep:Object.values(parsed.rec).filter(r=>r.sleepHours).length,
-        cal:Object.keys(parsed.nut).length};
-      const nd={...data,
-        wt:{...parsed.wt,...data.wt},steps:{...parsed.steps,...data.steps},
-        rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
-        nut:{...parsed.nut,...data.nut},
-      };
-      setData(nd);sv(nd);syncToSB(nd);
-      setImportStatus(`Imported: ${counts.wt} weight, ${counts.steps} steps, ${counts.rhr} RHR, ${counts.sleep} sleep, ${counts.cal} nutrition entries`);
-      setImportText("");
-    }catch(e){setImportStatus("Error parsing data. Make sure you pasted the full HealthKit export.");}
-  };
   const t=todayKey,dn=dw(t),w=wkn(t);
   const sess=data.program[dn],nut=data.nut[t],rec=data.rec[t];
   const wts=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -1607,17 +1607,24 @@ const Dashboard=({data,setData,setTab})=>{
   const calT=getDayCalTarget(t,st,data.travelDays,data.socialWeekend),proT=getDayProTarget(t,st,data.travelDays,data.socialWeekend);
   const tCal=nut?.totalCal||0,tPro=nut?.totalProtein||0,tFib=nut?.totalFiber||0;
   const dayType=getDayType(t,data.travelDays);
-  const tdeeData=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
+  // One analytics computation per data change: getWeeklyCutSummary already
+  // runs calcAdaptiveTDEE + getStalls internally, so everything derives from it.
+  const analytics=React.useMemo(()=>{
+    const cutSummary=getWeeklyCutSummary(data,t);
+    return{cutSummary,
+      weeklyRecommendation:getWeeklyCutRecommendation(data,t,cutSummary),
+      weeklyConsistency:getWeeklyConsistency(data,t,cutSummary)};
+  },[data,t]);
+  const tdeeData=analytics.cutSummary.tdee;
   const weeklyRecAvg=getWeeklyRecoveryAvg(data.rec);
   const autoreg=getAutoregulation(weeklyRecAvg);
-  const weeklyRecommendation=getWeeklyCutRecommendation(data,t);
-  const weeklyConsistency=getWeeklyConsistency(data,t);
+  const weeklyRecommendation=analytics.weeklyRecommendation;
+  const weeklyConsistency=analytics.weeklyConsistency;
   const tonightCloseout=getTonightCloseout(data,t);
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
-  const weightTrend=getWeightTrend(data.wt);
-  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
-  const stalls=getStalls(data.prog,data.wk,data.program);
+  const weightTrend=getTrend(data.wt,t);
+  const stalls=analytics.cutSummary.stalls;
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const recCh=Object.entries(data.rec).filter(([_,v])=>v.recoveryScore).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
@@ -1667,67 +1674,11 @@ const Dashboard=({data,setData,setTab})=>{
     if(!nutritionLogged)return{label:"Log first meal",tab:"nutrition",hint:"Calories/protein drive the adjustment logic."};
     if(sess&&!workoutDone)return{label:"Start workout",tab:"training",hint:sess.name};
     if(!cardioDone)return{label:"Log cardio",tab:"training",hint:"Type, time, zone, optional distance/calories."};
-    if(!habitsLogged)return{label:"Close habits",tab:"habits",hint:"Sleep/recovery signals guide tomorrow."};
+    if(!habitsLogged)return{label:"Mark clean day",tab:"dashboard",hint:"One tap in Tonight closeout below."};
     return{label:"Review details",tab:"dashboard",hint:"Core loops are done."};
   })();
   const allergyTop=(allergies?.summary||[]).slice(0,3);
   const allergyTone=allergyTop.some(x=>/^high|very/i.test(x.level||""))?C.r:allergyTop.some(x=>/^moderate/i.test(x.level||""))?C.a:C.g;
-
-  const buildDailyCoachContext=()=>{
-    const lastDates=(obj,n=7)=>Object.entries(obj||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,n);
-    const avg=arr=>arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
-    const currentWeight=(ex,def)=>{
-      const key=progKey(ex,ex);
-      const p=data.prog?.[key]?.currentWeight;
-      if(p!=null&&saneWeight(ex,p))return p;
-      const dates=Object.keys(data.wk||{}).sort().reverse();
-      for(const d of dates){
-        const w=data.wk[d];
-        const wex=w.exercises?.find(e=>e.progKey===key);
-        if(wex){const next=nextWeightFromSets(wex.sets,ex);if(next!=null&&saneWeight(ex,next))return next;}
-      }
-      const targetRr=ex.rr;
-      for(const d of dates){
-        const w=data.wk[d];
-        const wex=w.exercises?.find(e=>e.id===ex.id);
-        if(wex){const ds=wex.sets?.filter(s=>saneSet(s)&&(!targetRr||Number(s.reps)>=targetRr[0]&&Number(s.reps)<=targetRr[1]));if(ds?.length&&saneWeight(ex,ds[0].weight)){const hitTop=targetRr&&ex.inc>0&&ds.length>=(ex.sets||1)&&ds.every(s=>Number(s.reps)>=targetRr[1]);return hitTop?Number(ds[0].weight)+ex.inc:ds[0].weight;}}
-      }
-      if(!legacyAmbiguousIds.has(ex.id)){
-        const lp=data.prog?.[ex.id];
-        const legacy=lp?.currentWeight;
-        const legacyHasReps=(lp?.lastReps||[]).some(r=>Number(r)>0);
-        if(legacyHasReps&&legacy!=null&&saneWeight(ex,legacy))return legacy;
-      }
-      return def;
-    };
-    const recentNut=lastDates(data.nut,7).filter(([_,v])=>v?.totalCal>0);
-    const recentSteps=lastDates(data.steps,7).map(([_,v])=>v).filter(v=>v>0);
-    const recentWorkouts=lastDates(data.wk,5).map(([date,w])=>({date,name:w.name||w.day||"Workout",exercises:(w.exercises||[]).slice(0,6).map(e=>({name:e.name||e.id,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}${s.rir?` @${s.rir}`:""}`)}))}));
-    const targetExercises=(sess?.exercises||[]).slice(0,6).map(ex=>{
-      const cur=currentWeight(ex,ex.sw);
-      const hist=Object.entries(data.wk||{}).filter(([_,w])=>(w.exercises||[]).some(e=>e.id===ex.id&&e.sets)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,w])=>{const e=w.exercises.find(x=>x.id===ex.id);return{date,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}`)}});
-      return{name:ex.name,focus:sess.focus,repRange:ex.rr?.join("-"),sets:ex.sets,currentWeight:cur,unit:ex.unit||"lbs",history:hist};
-    });
-    return{
-      date:t,phase:w===PROG.deload?"deload":"cut",program:{name:PROG.name,week:w,totalWeeks:PROG.weeks,day:dn,scheduledWorkout:sess?{name:sess.name,focus:sess.focus,estimatedMinutes:estTime(sess)}:null},
-      targets:{calories:calT,protein:proT,steps:st.steps,water:st.water,sleep:st.sleep},
-      today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours,respiratoryRate:rec.respiratoryRate,sleepLight:rec.sleepLight,sleepDeep:rec.sleepDeep,sleepRem:rec.sleepRem,source:rec.source}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
-      trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg:weeklyRecAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
-      targetExercises,recentWorkouts,
-      missing:[!weightLogged&&"today weight",!nutritionLogged&&"today nutrition",!rec&&"today recovery",!recentWorkouts.length&&"recent workouts"].filter(Boolean)
-    };
-  };
-
-  const askDailyCoach=async()=>{
-    setDailyCoachLoading(true);setDailyCoachErr("");
-    try{
-      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"daily",context:buildDailyCoachContext()})});
-      const d=await r.json();
-      if(!r.ok){setDailyCoachErr(d.error||"Coach unavailable");setDailyCoachLoading(false);return;}
-      setDailyCoach(d);
-    }catch(e){setDailyCoachErr("Coach error: "+e.message);}
-    setDailyCoachLoading(false);
-  };
 
   if(!showFullDashboard)return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -1737,60 +1688,20 @@ const Dashboard=({data,setData,setTab})=>{
       </div>
 
       <X style={{padding:16,borderLeft:`4px solid ${cutStatus.color}`}}>
-        <div style={{fontSize:11,fontWeight:800,color:cutStatus.color,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{cutStatus.label}</div>
+        <div style={{fontSize:11,fontWeight:800,color:cutStatus.color,letterSpacing:"0.08em",marginBottom:4}}>{cutStatus.label}</div>
         <div style={{fontSize:15,fontWeight:700,color:C.t,lineHeight:1.35}}>{cutStatus.msg}</div>
-        <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:12,background:`linear-gradient(135deg,${C.p},#4f46e5)`,color:"#fff",padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
+        <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:12,background:C.p,color:C.oa,padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
         <div style={{fontSize:12,color:C.t3,marginTop:6,textAlign:"center"}}>{nextAction.hint}</div>
-      </X>
-
-      <X style={{padding:12,borderLeft:`4px solid ${C.p}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Today Coach</div>
-            <div style={{fontSize:13,color:C.t2,marginTop:2}}>Data-aware plan from workout, nutrition, weight, steps, and recovery.</div>
-          </div>
-          <button onClick={askDailyCoach} disabled={dailyCoachLoading} style={{border:"none",borderRadius:10,background:C.p,color:"#fff",padding:"8px 11px",fontSize:12,fontWeight:800,fontFamily:"inherit",opacity:dailyCoachLoading?0.6:1}}>{dailyCoachLoading?"Checking":"Ask"}</button>
-        </div>
-        {dailyCoachErr&&<div style={{fontSize:12,color:C.r,marginTop:8}}>{dailyCoachErr}</div>}
-        {dailyCoach&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:13,fontWeight:800,color:C.t}}>Today’s plan</div>
-          <div style={{fontSize:12,color:C.t2,lineHeight:1.45}}>
-            <div><b>Workout:</b> {dailyCoach.todayPlan?.workout}</div>
-            <div><b>Exercises:</b> {(dailyCoach.todayPlan?.targetExercises||[]).join(", ")}</div>
-            <div><b>Weights/reps:</b> {(dailyCoach.todayPlan?.suggestedWeightsReps||[]).join("; ")}</div>
-            <div><b>Cardio/steps:</b> {dailyCoach.todayPlan?.cardioSteps}</div>
-            <div><b>Mobility:</b> {dailyCoach.todayPlan?.mobility}</div>
-            <div><b>Nutrition:</b> {dailyCoach.todayPlan?.nutritionTarget}</div>
-          </div>
-          <div style={{padding:"8px 10px",background:C.bg,borderRadius:8,fontSize:12,color:C.t2,lineHeight:1.4}}><b>Key adjustment:</b> {dailyCoach.keyAdjustment}</div>
-          {!!dailyCoach.watchOuts?.length&&<div style={{fontSize:12,color:C.t2,lineHeight:1.4}}><b>Watch-outs:</b> {dailyCoach.watchOuts.join("; ")}</div>}
-          <div style={{fontSize:13,fontWeight:850,color:C.p,lineHeight:1.35}}>{dailyCoach.simpleInstruction}</div>
-          <div style={{fontSize:10,color:C.t3}}>Confidence: {dailyCoach.confidence}{dailyCoach.missingData?.length?` · Missing: ${dailyCoach.missingData.join(", ")}`:""}</div>
-        </div>)}
-      </X>
-
-      <X style={{padding:12,borderLeft:`4px solid ${allergyTone}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Austin allergies</div>
-            {allergyTop.length?(
-              <div style={{fontSize:12,color:C.t2,marginTop:4,lineHeight:1.45}}>
-                {allergyTop.map(a=><div key={a.name}><b style={{color:C.t}}>{a.name}:</b> {a.level||"—"}{a.count?` · ${a.count}`:""}{a.trend?` · ${a.trend}`:""}</div>)}
-              </div>
-            ):<div style={{fontSize:12,color:allergyErr?C.a:C.t3,marginTop:4}}>{allergyErr||"Loading local pollen and mold counts…"}</div>}
-          </div>
-          <a href={allergies?.sourceUrl||"https://austinpollen.com/"} target="_blank" rel="noreferrer" style={{fontSize:11,fontWeight:800,color:C.p,textDecoration:"none",whiteSpace:"nowrap"}}>{allergies?.source||"AustinPollen.com"}</a>
-        </div>
       </X>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <X style={{padding:12}}>
-          <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Protein</div>
+          <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Protein</div>
           <div style={{fontSize:26,fontWeight:850,color:tPro>=proT?C.g:C.r}}>{tPro}<span style={{fontSize:14,color:C.t3,fontWeight:650}}>/{proT}g</span></div>
           <Br v={tPro} max={proT} color={tPro>=proT?C.g:C.r} h={7}/>
         </X>
         <X style={{padding:12}}>
-          <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Calories</div>
+          <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Calories</div>
           <div style={{fontSize:26,fontWeight:850,color:calT&&tCal>calT?C.a:C.p}}>{calT===null?"Flex":tCal}<span style={{fontSize:14,color:C.t3,fontWeight:650}}>{calT?`/${calT}`:""}</span></div>
           {calT?<Br v={tCal} max={calT} color={tCal>calT?C.a:C.p} h={7}/>:<div style={{fontSize:11,color:C.t3}}>protein floor only</div>}
         </X>
@@ -1799,7 +1710,7 @@ const Dashboard=({data,setData,setTab})=>{
       <X style={{padding:12,borderLeft:`4px solid ${waterToday>=waterGoal?C.g:C.p}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:8}}>
           <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Water</div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Water</div>
             <div style={{fontSize:24,fontWeight:850,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}<span style={{fontSize:14,color:C.t3,fontWeight:650}}>/{waterGoal} oz</span></div>
           </div>
           {waterToday>0&&<button onClick={resetWater} style={{border:"none",background:"transparent",color:C.t3,fontSize:11,fontWeight:800,fontFamily:"inherit"}}>Reset</button>}
@@ -1813,7 +1724,7 @@ const Dashboard=({data,setData,setTab})=>{
       <X style={{padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Today</div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Today</div>
             <div style={{fontSize:16,fontWeight:800,color:C.t}}>{sess?sess.name:"Rest Day"}</div>
             {sess&&<div style={{fontSize:12,color:C.t2}}>{sess.focus} · ~{estTime(sess)}m</div>}
           </div>
@@ -1823,16 +1734,16 @@ const Dashboard=({data,setData,setTab})=>{
           {[{l:"Scale",ok:weightLogged},{l:"Food",ok:nutritionLogged},{l:"Lift",ok:!sess||workoutDone},{l:"Cardio",ok:cardioDone},{l:"Habits",ok:habitsLogged}].map(x=>(
             <div key={x.l} style={{textAlign:"center",padding:"7px 2px",borderRadius:9,background:x.ok?C.gl:C.bg,border:`1px solid ${x.ok?C.g:C.bd}`}}>
               <div style={{fontSize:14,fontWeight:800,color:x.ok?C.g:C.t3}}>{x.ok?"✓":"○"}</div>
-              <div style={{fontSize:9,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
+              <div style={{fontSize:9,fontWeight:800,color:C.t3}}>{x.l}</div>
             </div>
           ))}
         </div>
       </X>
 
-      <WeightTrendCard trend={weightTrendSummary} compact/>
+      <WeightTrendCard trend={weightTrend} compact/>
 
       <X style={{padding:12,borderLeft:`4px solid ${tonightCloseout.tone==="good"?C.g:tonightCloseout.tone==="bad"?C.r:C.a}`}}>
-        <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Tonight closeout</div>
+        <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Tonight closeout</div>
         <div style={{fontSize:15,fontWeight:850,color:C.t,marginTop:2,lineHeight:1.3}}>Tomorrow: {tonightCloseout.tomorrowMode}</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4,lineHeight:1.35}}>{tonightCloseout.action}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginTop:9}}>
@@ -1843,19 +1754,19 @@ const Dashboard=({data,setData,setTab})=>{
             {l:"Recovery",ok:tonightCloseout.recovery==null||tonightCloseout.recovery>=55,v:tonightCloseout.recovery==null?"—":`${tonightCloseout.recovery}%`}
           ].map(x=>(
             <div key={x.l} style={{padding:"7px 4px",borderRadius:9,textAlign:"center",background:x.ok?C.gl:C.al,border:`1px solid ${x.ok?C.g:C.a}`}}>
-              <div style={{fontSize:9,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
+              <div style={{fontSize:9,fontWeight:850,color:C.t3}}>{x.l}</div>
               <div style={{fontSize:11,fontWeight:850,color:x.ok?C.g:C.a,marginTop:1}}>{x.v}</div>
             </div>
           ))}
         </div>
-        {!tonightCloseout.habitsLogged&&<button onClick={()=>setTab("habits")} style={{marginTop:10,width:"100%",border:`1px solid ${C.p}`,background:C.pl,color:C.p,borderRadius:10,padding:"9px 12px",fontSize:12,fontWeight:850,fontFamily:"inherit"}}>Close habits</button>}
+        <div style={{marginTop:10}}><CloseoutPanel data={data} setData={setData}/></div>
       </X>
 
       <X style={{padding:12,borderLeft:`4px solid ${weeklyRecommendation.key==="stay"?C.g:weeklyRecommendation.key==="adherence"||weeklyRecommendation.key==="adjust"?C.a:C.r}`}}>
-        <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Weekly recommendation</div>
+        <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Weekly recommendation</div>
         <div style={{fontSize:15,fontWeight:800,color:C.t,marginTop:2,lineHeight:1.3}}>{weeklyRecommendation.action}</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4,lineHeight:1.35}}>{weeklyRecommendation.why}</div>
-        <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase",marginTop:8}}>Confidence: {weeklyRecommendation.confidence} · data quality: {weeklyRecommendation.summary.loggedDays}/7 food, {weeklyRecommendation.summary.weightDays}/7 weight, {weeklyRecommendation.summary.recoveryDays}/7 recovery</div>
+        <div style={{fontSize:11,fontWeight:800,color:C.t3,marginTop:8}}>Confidence: {weeklyRecommendation.confidence} · data quality: {weeklyRecommendation.summary.loggedDays}/7 food, {weeklyRecommendation.summary.weightDays}/7 weight, {weeklyRecommendation.summary.recoveryDays}/7 recovery</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
           {weeklyRecommendation.signals.map(sig=>{
             const col=sig.tone==="good"?C.g:sig.tone==="bad"?C.r:sig.tone==="warn"?C.a:C.t3;
@@ -1866,6 +1777,23 @@ const Dashboard=({data,setData,setTab})=>{
       </X>
 
       <WeeklyConsistencyCard summary={weeklyConsistency}/>
+
+      {/* Allergies — demoted to a compact expandable line below primary cards */}
+      <X style={{padding:"9px 12px",borderLeft:`3px solid ${allergyTone}`,cursor:"pointer"}} onClick={()=>setAllergyOpen(o=>!o)}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:allergyOpen?"normal":"nowrap"}}>
+            <b style={{color:C.t3,fontSize:11}}>Allergies</b>{" "}
+            {allergyTop.length?allergyTop.map(a=>`${a.name} ${a.level||"—"}`).join(" · "):allergyErr||"Loading…"}
+          </div>
+          <span style={{fontSize:11,color:C.t3}}>{allergyOpen?"▴":"▾"}</span>
+        </div>
+        {allergyOpen&&(
+          <div style={{fontSize:12,color:C.t2,marginTop:6,lineHeight:1.5}}>
+            {allergyTop.map(a=><div key={a.name}><b style={{color:C.t}}>{a.name}:</b> {a.level||"—"}{a.count?` · ${a.count}`:""}{a.trend?` · ${a.trend}`:""}</div>)}
+            <a href={allergies?.sourceUrl||"https://austinpollen.com/"} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:11,fontWeight:800,color:C.p,textDecoration:"none"}}>{allergies?.source||"AustinPollen.com"}</a>
+          </div>
+        )}
+      </X>
 
       <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:12,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Open review details</button>
     </div>
@@ -1881,7 +1809,7 @@ const Dashboard=({data,setData,setTab})=>{
       <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:600,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em"}}>Today</div>
+            <div style={{fontSize:11,fontWeight:600,color:C.p,letterSpacing:"0.06em"}}>Today</div>
             <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
             {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div>}
           </div>
@@ -1890,18 +1818,10 @@ const Dashboard=({data,setData,setTab})=>{
         </div>
       </X>
 
-      {/* ═══ HABIT NUDGE ═══ */}
-      {hour<22&&(()=>{const th=data.habits[t];const logged=th&&Object.values(th).some(v=>v!==null&&v!==undefined);return !logged&&setTab?(
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.bl,borderRadius:6,border:`1px solid ${C.bd}`}}>
-          <span style={{fontSize:13,color:C.t2,fontWeight:600}}>Habits not logged today</span>
-          <button onClick={()=>setTab("habits")} style={{background:"none",border:"none",color:C.p,fontSize:13,fontWeight:700,cursor:"pointer",padding:"4px 8px",fontFamily:"inherit"}}>Log Now →</button>
-        </div>
-      ):null;})()}
-
       {/* ═══ MORNING GAME PLAN ═══ */}
       {mealSlots>0&&proRemaining>0&&(
         <X style={{borderLeft:`3px solid ${C.p}`,padding:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.p,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Game Plan</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:6}}>Game Plan</div>
           <div style={{fontSize:13,color:C.t,marginBottom:8}}>
             <span style={{fontWeight:700}}>{proRemaining}g protein</span> remaining across <span style={{fontWeight:700}}>{mealSlots} meal{mealSlots!==1?"s":""}</span>
             {calRemaining>0&&<span style={{color:C.t2}}> / {calRemaining} cal left</span>}
@@ -1941,7 +1861,7 @@ const Dashboard=({data,setData,setTab})=>{
       {/* ═══ AUTOREGULATION CARD ═══ */}
       {autoreg&&(<X style={{padding:10,borderLeft:`3px solid ${autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.a:C.r}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <div style={{fontSize:11,fontWeight:700,color:autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.a:C.r,textTransform:"uppercase",letterSpacing:"0.06em"}}>
+          <div style={{fontSize:11,fontWeight:700,color:autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.a:C.r,letterSpacing:"0.06em"}}>
             Recovery Gate {weeklyRecAvg!=null?`— ${weeklyRecAvg}% avg`:""}
           </div>
         </div>
@@ -1951,14 +1871,14 @@ const Dashboard=({data,setData,setTab})=>{
       </X>)}
 
       {/* ═══ WEIGHT TREND ALERT ═══ */}
-      {weightTrend&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight Alert — {weightTrend.direction} {Math.abs(weightTrend.rate)} lbs/wk</div>
-        <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.advice}</div>
+      {weightTrend&&Math.abs(weightTrend.rate)>1&&(<X style={{padding:10,borderLeft:`3px solid ${C.a}`}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.a,letterSpacing:"0.06em"}}>Weight Alert — {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
       </X>)}
 
       {/* ═══ DAY TYPE INDICATOR ═══ */}
       <X style={{padding:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>{isSocialWeekendActive(t,data.socialWeekend)&&calT===null?"Social Weekend":dayType==="wednesday"?"Wednesday (Fast)":dayType==="training"?"Training Day":"Weekend"}</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3}}>{isSocialWeekendActive(t,data.socialWeekend)&&calT===null?"Social Weekend":dayType==="wednesday"?"Wednesday (Fast)":dayType==="training"?"Training Day":"Weekend"}</div>
         <div style={{fontSize:12,color:C.t2}}>{calT!==null?`${calT} cal · ${proT}g protein target`:`${proT}g protein floor`}</div>
       </X>
 
@@ -1972,10 +1892,10 @@ const Dashboard=({data,setData,setTab})=>{
         };
         return(<X style={{padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:swActive?C.a:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Social Weekend</div>
+            <div style={{fontSize:11,fontWeight:700,color:swActive?C.a:C.t3,letterSpacing:"0.06em"}}>Social Weekend</div>
             {swActive&&<div style={{fontSize:10,color:C.t2}}>Mon-Thu targets lowered · ~1.5 lbs this week</div>}
           </div>
-          <button onClick={toggleSW} style={{background:swActive?C.a:C.bl,color:swActive?"#fff":C.t2,border:`1px solid ${swActive?C.a:C.bd}`,borderRadius:12,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
+          <button onClick={toggleSW} style={{background:swActive?C.a:C.bl,color:swActive?C.oa:C.t2,border:`1px solid ${swActive?C.a:C.bd}`,borderRadius:12,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
         </X>);
       })()}
 
@@ -2013,15 +1933,15 @@ const Dashboard=({data,setData,setTab})=>{
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
                   <div style={{fontSize:14,fontWeight:700,color:td.weeklyChange<0?C.g:td.weeklyChange>0?C.a:C.t2}}>{td.weeklyChange>0?"+":""}{Math.round(td.weeklyChange)}</div>
-                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600}}>lbs/wk</div>
                 </div>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
                   <div style={{fontSize:14,fontWeight:700,color:C.t2}}>{td.avgCalories.toLocaleString()}</div>
-                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>avg in</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600}}>avg in</div>
                 </div>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
                   <div style={{fontSize:14,fontWeight:700,color:deficitColor}}>{Math.abs(td.deficit)}</div>
-                  <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{deficitLabel}</div>
+                  <div style={{fontSize:9,color:C.t3,fontWeight:600}}>{deficitLabel}</div>
                 </div>
               </div>
               <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:4,fontSize:11,color:C.g}}>
@@ -2035,7 +1955,7 @@ const Dashboard=({data,setData,setTab})=>{
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Weight</span>
+            <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Weight</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?Math.round(lw):"—"}</span>
           </div>
           {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:wc>0?C.r:C.t3,marginBottom:4}}>{wc>0?"+":""}{wc} lbs 7d</div>}
@@ -2052,7 +1972,7 @@ const Dashboard=({data,setData,setTab})=>{
 
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
+            <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Steps</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
           </div>
           <Br v={steps} max={cutStepsTarget(st)} color={steps>=cutStepsTarget(st)?C.g:C.a} h={6}/>
@@ -2063,7 +1983,7 @@ const Dashboard=({data,setData,setTab})=>{
       {(()=>{const wt=data.water?.[t]||0;const waterG=st.water||128;return(
       <X style={{padding:10}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Water</span>
+          <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Water</span>
           <span style={{fontSize:16,fontWeight:700,color:wt>=waterG?C.g:C.p}}>{wt} <span style={{fontSize:12,color:C.t3,fontWeight:500}}>/ {waterG} oz</span></span>
         </div>
         <Br v={wt} max={waterG} color={wt>=waterG?C.g:C.p} h={6}/>
@@ -2096,7 +2016,7 @@ const Dashboard=({data,setData,setTab})=>{
             <div key={i} style={{textAlign:"center"}}>
               <div style={{fontSize:20,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
               {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
-              <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:2}}>{m.l}</div>
+              <div style={{fontSize:10,fontWeight:600,color:C.t3,marginTop:2}}>{m.l}</div>
               {m.x&&<Br v={m.v} max={m.x} color={m.c} h={4}/>}
             </div>
           ))}
@@ -2111,7 +2031,7 @@ const Dashboard=({data,setData,setTab})=>{
 
       {/* ═══ PROTEIN CHECKPOINTS ═══ */}
       {dayType==="training"&&(<X style={{padding:10}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Protein Checkpoints</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Protein Checkpoints</div>
         {PROTEIN_CHECKPOINTS.map((cp,i)=>{
           const hit=tPro>=cp.target;
           return(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
@@ -2128,14 +2048,14 @@ const Dashboard=({data,setData,setTab})=>{
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
         <X style={{padding:8,textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:700,color:ws>=67?C.g:ws>=34?C.a:ws!=null?C.r:C.t3}}>{ws??"-"}{ws!=null?"%":""}</div>
-          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Recovery{rec?.source?` · ${String(rec.source).toUpperCase()}`:""}</div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3}}>Recovery{rec?.source?` · ${String(rec.source).toUpperCase()}`:""}</div>
           {rec&&<div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.35}}>
             {rec.sleepHours?`${rec.sleepHours}h sleep`:"Sleep —"} · {rec.hrv?`${rec.hrv} HRV`:"HRV —"} · {rec.rhr?`${rec.rhr} RHR`:"RHR —"}
           </div>}
         </X>
         <X style={{padding:8,textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:700,color:streak>=5?C.g:C.a}}>{streak}<span style={{fontSize:12,fontWeight:600}}>d</span></div>
-          <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Streak</div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3}}>Streak</div>
         </X>
       </div>
 
@@ -2154,7 +2074,7 @@ const Dashboard=({data,setData,setTab})=>{
         <X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut Retention Score</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Cut Retention Score</div>
               <div style={{fontSize:10,color:C.t3}}>Cut pace + protein + lift retention</div>
             </div>
             <div style={{fontSize:28,fontWeight:800,color:retention.score>=70?C.g:retention.score>=45?C.a:C.r}}>{retention.score}</div>
@@ -2162,15 +2082,15 @@ const Dashboard=({data,setData,setTab})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.weight.score>=70?C.g:C.a}}>{retention.weight.change>0?"+":""}{retention.weight.change}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600}}>lbs/wk</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.lifts.score>=50?C.g:C.a}}>{retention.lifts.held}/{retention.lifts.total}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Held</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600}}>Lifts Held</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.protein.score>=70?C.g:C.a}}>{retention.protein.hit}/{retention.protein.days}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Pro Days</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600}}>Pro Days</div>
             </div>
           </div>
         </X>
@@ -2190,7 +2110,7 @@ const Dashboard=({data,setData,setTab})=>{
         return(
           <X style={{padding:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Body Measurements</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Body Measurements</div>
               <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
             </div>
             {showMeasForm&&(
@@ -2214,7 +2134,7 @@ const Dashboard=({data,setData,setTab})=>{
                     const d=prev&&prev[1][f.k]?parseFloat((latest[1][f.k]-prev[1][f.k]).toFixed(1)):null;
                     return(<div key={f.k} style={{textAlign:"center",padding:"4px 2px",background:C.bg,borderRadius:4}}>
                       <div style={{fontSize:13,fontWeight:700,color:C.t}}>{latest[1][f.k]}"</div>
-                      <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{f.l}</div>
+                      <div style={{fontSize:9,color:C.t3,fontWeight:600}}>{f.l}</div>
                       {d!==null&&d!==0&&<div style={{fontSize:10,fontWeight:600,color:f.up?(d>0?C.g:C.r):(d<0?C.g:C.r)}}>{d>0?"↑":"↓"}{Math.abs(d)}</div>}
                     </div>);
                   })}
@@ -2232,7 +2152,7 @@ const Dashboard=({data,setData,setTab})=>{
       {/* ═══ DATA INSIGHTS ═══ */}
       {dataInsights.length>0&&(
         <X style={{padding:10}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Insights</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Insights</div>
           {dataInsights.map((ins,i)=>(
             <div key={i} style={{display:"flex",gap:6,alignItems:"flex-start",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
               <span style={{fontSize:12,color:ins.type==="win"?C.g:ins.type==="gap"?C.a:C.p,fontWeight:700,minWidth:14}}>
@@ -2274,7 +2194,7 @@ const Dashboard=({data,setData,setTab})=>{
         const pct=lastWk>0?Math.round((thisWk-lastWk)/lastWk*100):0;
         return thisWk>0?(
           <X style={{padding:10,borderLeft:"3px solid "+C.p}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Weekly Volume</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Weekly Volume</div>
             <div style={{fontSize:22,fontWeight:700}}>{thisWk.toLocaleString()} lbs</div>
             {lastWk>0&&<div style={{fontSize:12,color:pct>=0?C.g:C.r,marginTop:2}}>{pct>=0?"+":""}{pct}% vs last week</div>}
             {volData.length>1&&<Ch data={volData} color={C.p} label="Daily Volume" yUnit=" lbs"/>}
@@ -2287,7 +2207,7 @@ const Dashboard=({data,setData,setTab})=>{
         const recent=prs.filter(p=>{const d=new Date(p.date);const ago=new Date();ago.setDate(ago.getDate()-7);return d>=ago;});
         return prs.length>0?(
           <X style={{padding:10,borderLeft:"3px solid "+C.a}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Personal Records{recent.length>0?" ("+recent.length+" new this week)":""}</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Personal Records{recent.length>0?" ("+recent.length+" new this week)":""}</div>
             {prs.slice(0,8).map(p=>(
               <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+C.bd}}>
                 <div style={{fontSize:13,textTransform:"capitalize"}}>{p.name}</div>
@@ -2307,7 +2227,7 @@ const Dashboard=({data,setData,setTab})=>{
         if(!deltas.length)return null;
         return(
           <X style={{padding:10,borderLeft:"3px solid "+C.v}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Measurement Changes <span style={{fontWeight:400}}>({fmt(prev[0])} → {fmt(latest[0])})</span></div>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Measurement Changes <span style={{fontWeight:400}}>({fmt(prev[0])} → {fmt(latest[0])})</span></div>
             {deltas.map(f=>(
               <div key={f.k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
                 <span style={{fontSize:13}}>{f.l}</span>
@@ -2325,7 +2245,7 @@ const Dashboard=({data,setData,setTab})=>{
         const tierData=tiers.map(t=>{const p=pairs.filter(x=>x.rec>=t.min&&x.rec<=t.max);return{...t,count:p.length,avgVol:p.length?Math.round(p.reduce((s,x)=>s+x.vol,0)/p.length):0};}).filter(t=>t.count>0);
         return(
           <X style={{padding:10,borderLeft:"3px solid "+C.g}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",marginBottom:6}}>Recovery → Performance</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Recovery → Performance</div>
             {tierData.map(t=>(
               <div key={t.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+C.bd}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -2456,7 +2376,7 @@ const SWAP_MAP={
 
 // ═══ SWAP MODAL ═══
 const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
-  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 16px 16px"}}>
+  <div style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 16px 16px"}}>
     <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:520,border:`1px solid ${C.bd}`,maxHeight:"78vh",overflowY:"auto"}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:2}}>Swap Exercise</div>
       <div style={{fontSize:13,color:C.t3,marginBottom:6}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
@@ -2471,7 +2391,7 @@ const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
           cursor:"pointer",fontFamily:"inherit"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
-            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:"#fff",borderRadius:10,padding:"2px 6px"}}>BEST FIT</span>}
+            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:C.cd,borderRadius:10,padding:"2px 6px"}}>BEST FIT</span>}
           </div>
           <div style={{fontSize:12,color:hasHistory?C.p:C.t3,marginTop:2}}>
             {hasHistory?`This slot: ${lw} ${opt.unit}`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"} · {opt.region}
@@ -2534,12 +2454,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
-  const [aiQ,setAiQ]=useState("");
-  const [aiA,setAiA]=useState("");
-  const [aiLoading,setAiLoading]=useState(false);
-  const [aiCooldown,setAiCooldown]=useState(false);
-  const [aiExIdx,setAiExIdx]=useState(null);
-  const [showAi,setShowAi]=useState(false);
   const [swapModal,setSwapModal]=useState(null);
   const [wuDone,setWuDone]=useState(false);
   const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
@@ -2591,15 +2505,36 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const isDeload=wkn(t)===PROG.deload;
+  // Last session's completed sets for an exercise — feeds one-tap prefill.
+  const lastSessionSets=(key,id)=>{
+    const dates=Object.keys(data.wk||{}).sort().reverse();
+    for(const dt of dates){
+      const wex=data.wk[dt]?.exercises?.find(e=>(key&&e.progKey===key)||(id&&e.id===id));
+      if(wex?.sets?.some(saneSet))return wex.sets.filter(saneSet);
+    }
+    return null;
+  };
   const startW=(day=sel)=>{const startVariant=activeVariant[day]||null;const startSess=getSess(day,startVariant);if(!startSess)return;
+    // Accepted auto-regulation mutates TODAY'S plan only: −1 set on each
+    // non-anchor accessory. The stored program is never touched.
+    const autoregToday=data.autoregLog?.[t]?.type==="minusOneSet";
     setWorkout({day,variant:startVariant,exercises:startSess.exercises.map(ex=>{
       const key=progKey(ex,ex);const cw=gw(ex,ex.sw,ex);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
+      const effSets=autoregToday&&!ex.anchor?Math.max(1,ex.sets-1):ex.sets;
+      ex={...ex,sets:effSets};
+      const last=lastSessionSets(key,ex.id);
       return{id:ex.id,progKey:key,
       wu:WU(wt).map(w=>({...w,done:false})),
-      sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
+      // Prefill reps with last session's per-set value (fallback: top of rep
+      // range) and RIR with last session's. Prefilled-unconfirmed sets render
+      // lighter; tapping Log logs the prefill, typing overrides it.
+      sets:Array.from({length:ex.sets},(_,si)=>({weight:wt,
+        reps:Number(last?.[si]?.reps)>0?Number(last[si].reps):(ex.rr?.[1]||0),
+        rir:last?.[si]?.rir??"",
+        prefilled:true,done:false})),
     };}),start:Date.now(),isDeload});setWuDone(false);};
 
-  const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
+  const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;if(f==="reps"||f==="rir")n.exercises[ei].sets[si].prefilled=false;return n;});
   const dWU=(ei,wi,rest)=>{
     setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].wu[wi].done=true;return n;});
     if(rest&&rest>0){startRestTimer(Math.min(rest,60));}
@@ -2839,7 +2774,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
       {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
         padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-        border:`1px solid ${cardioType===p.type?C.a:C.bd}`,background:cardioType===p.type?C.al:"#fff",color:cardioType===p.type?C.a:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
+        border:`1px solid ${cardioType===p.type?C.a:C.bd}`,background:cardioType===p.type?C.al:C.cd,color:cardioType===p.type?C.a:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
     </div>
     <div style={{display:"flex",gap:4,overflowX:"auto"}}>
       {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
@@ -2851,79 +2786,17 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
-        <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
+        <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
           {["easy","zone2","tempo","hard","hiit"].map(i=><option key={i} value={i}>{intensityLabel(i)}</option>)}
         </select>
       </label>
     </div>
-    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       <B small onClick={()=>logCardio()} color={C.a}>Log Cardio</B>
       <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
     </div>
   </div>);
-
-  const applyCoachActions=(actions)=>{
-    if(!actions||!actions.length)return;
-    const nd=JSON.parse(JSON.stringify(data));
-    actions.forEach(c=>{
-      try{
-        if(c.type==="settings"&&c.field&&['calories','protein','water','steps','sleep','fiber','trainingCal','wednesdayCal','weekendCal','trainingPro','mondayPro','weekendPro'].includes(c.field)){
-          nd.settings={...nd.settings,[c.field]:c.value};
-          if(addToast)addToast(`${c.field}: updated to ${c.value}`,"success");
-        }else if(c.type==="exercise"&&c.action==="update"&&c.exerciseId){
-          for(const day of Object.values(nd.program)){
-            const ex=day.exercises?.find(e=>e.id===c.exerciseId);
-            if(ex&&c.fields){Object.assign(ex,c.fields);if(addToast)addToast(`Updated ${ex.name}`,"success");}
-          }
-        }else if(c.type==="exercise"&&c.action==="swap"&&c.oldExerciseId&&c.newExercise){
-          for(const day of Object.values(nd.program)){
-            const idx=day.exercises?.findIndex(e=>e.id===c.oldExerciseId);
-            if(idx>=0){const old=day.exercises[idx].name;day.exercises[idx]=c.newExercise;if(addToast)addToast(`Swapped ${old} → ${c.newExercise.name}`,"success");}
-          }
-        }
-      }catch(e){console.error("[coach] Failed to apply action:",e);}
-    });
-    setData(nd);sv(nd);svSB.program(nd.program);if(nd.settings)svSB.settings(nd.settings);
-  };
-
-  const askCoach=async(q,exIdx)=>{
-    if(!q.trim()||aiLoading||aiCooldown)return;
-    setAiLoading(true);setAiA("");
-    const wSess=getSess(workout.day,workout.variant);
-    const ex=workout&&exIdx!=null?wSess?.exercises[exIdx]:null;
-    const cw=ex?gw(ex,ex.sw,ex):null;
-    try{
-      const history=ex?Object.entries(data.wk||{})
-        .filter(([d,w])=>w.exercises&&w.exercises.some(e=>e.id===ex.id&&e.sets))
-        .sort((a,b)=>b[0].localeCompare(a[0]))
-        .slice(0,4)
-        .map(([d,w])=>{
-          const logged=w.exercises.find(e=>e.id===ex.id);
-          if(!logged||!logged.sets)return null;
-          const done=logged.sets.filter(saneSet);
-          if(!done.length)return null;
-          return{date:d,weight:done[0].weight,reps:done.map(s=>s.reps),sets:done.length};
-        }).filter(Boolean):[];
-      const recovery=data.rec&&data.rec[t]?{
-        score:data.rec[t].recoveryScore||null,hrv:data.rec[t].hrv||null,
-        rhr:data.rec[t].rhr||null,sleep:data.rec[t].sleepHours||null,
-        source:data.rec[t].source||null,sleepLight:data.rec[t].sleepLight||null,
-        sleepDeep:data.rec[t].sleepDeep||null,sleepRem:data.rec[t].sleepRem||null}:null;
-      const stalled=ex?((getStalls(data.prog,data.wk,data.program)||[]).some(s=>s.id===ex.id)):false;
-      const week=wkn(t);
-      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
-          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||"",
-          history,recovery,stalled,week})});
-      const d=await r.json();
-      if(!r.ok){setAiA(d.error||"Coach unavailable — check API key");setAiLoading(false);return;}
-      setAiA(d.answer||"No response");
-      if(d.actions&&d.actions.length)applyCoachActions(d.actions);
-    }catch(e){console.error("Coach error:",e);setAiA("Error connecting to coach: "+e.message);}
-    setAiLoading(false);setAiCooldown(true);
-    setTimeout(()=>setAiCooldown(false),10000);
-  };
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const [viewW,setViewW]=useState(null);
@@ -2955,9 +2828,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </div>)}
 
       {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:rl<=0?C.g:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center",transition:"background 0.3s"}}>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:600}}>{rl<=0?"Done! Go!":"Rest"}</div>
-        <div style={{fontSize:36,fontWeight:700,color:"#fff",fontVariantNumeric:"tabular-nums"}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
-        <button onClick={clearRestTimer} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
+        <div style={{fontSize:10,color:C.oa,letterSpacing:"0.08em",fontWeight:600}}>{rl<=0?"Done! Go!":"Rest"}</div>
+        <div style={{fontSize:36,fontWeight:700,color:C.oa,fontVariantNumeric:"tabular-nums"}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
+        <button onClick={clearRestTimer} style={{background:C.scrim,border:"none",color:C.oa,padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
       </div>)}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -3011,7 +2884,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                   {swapped&&<div style={{fontSize:10,background:C.al,color:C.a,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>SWAPPED</div>}
                 </div>
                 {swapped&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>from: {wkEx.swappedFrom.name}</div>}
-                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
+                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
                 <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"} — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
                 <div style={{fontSize:12,color:C.p,marginTop:2}}>{dispCue}</div>
                 {prevLift&&<div style={{fontSize:11,color:C.t2,marginTop:3}}>Last: <span style={{fontWeight:600}}>{prevLift.weight>0?`${prevLift.weight} lbs × ${prevLift.reps.join("/")} reps`:`BW × ${prevLift.reps.join("/")} reps`}</span> <span style={{color:C.t3}}>{fmt(prevLift.date)}</span></div>}
@@ -3025,7 +2898,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             </div>
           </div>
           {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",marginBottom:3}}>Warm-up</div>
+            <div style={{fontSize:10,fontWeight:600,color:C.t3,marginBottom:3}}>Warm-up</div>
             {wuSets.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.3:0.7,fontSize:14}}>
               <span style={{color:C.t3,width:32}}>{wu.l}</span>
               <span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
@@ -3035,15 +2908,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",fontSize:10,color:C.t3,fontWeight:600}}>
             <span style={{width:18}}>#</span><span style={{width:68,textAlign:"center"}}>LBS</span><span style={{width:13}}></span><span style={{width:56,textAlign:"center"}}>REPS</span><span style={{width:42,textAlign:"center"}}>RIR</span><span style={{width:44}}></span>
           </div>
-          {wkEx.sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
+          {wkEx.sets.map((s,si)=>{const ghost=s.prefilled&&!s.done;
+          return(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
             borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
             <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
             <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:68,fontSize:16}}/>
             <span style={{color:C.t3,fontSize:13}}>×</span>
-            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16}}/>
-            <N value={s.rir} onChange={v=>uS(ei,si,"rir",v)} placeholder="RIR" max={5} style={{width:42,fontSize:14,color:C.v}}/>
+            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16,...(ghost?{color:C.t3,fontWeight:500}:{})}}/>
+            <N value={s.rir} onChange={v=>uS(ei,si,"rir",v)} placeholder="RIR" max={5} style={{width:42,fontSize:14,color:ghost?C.t3:C.v}}/>
             {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
-          </div>))}
+          </div>);})}
         </X>);
       })}
 
@@ -3068,33 +2942,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>);
       })()}
 
-      <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:C.v}}>AI Coach</div>
-          <button onClick={()=>{setShowAi(!showAi);setAiA("");}} style={{background:"none",border:"none",color:C.v,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showAi?"Hide":"Ask"}</button>
-        </div>
-        {showAi&&(<div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
-            {[{l:"Substitute?",q:"What's a good substitute for this exercise with the equipment I have?"},{l:"Drop weight?",q:"Should I drop weight on this? I'm struggling with form."},
-              {l:"Form check",q:"Give me the top form cue for this exercise."},{l:"Deload?",q:"My reps are dropping. Should I deload or push through?"}
-            ].map((p,i)=>(
-              <button key={i} onClick={()=>{setAiQ(p.q);setAiExIdx(null);askCoach(p.q,null);}} disabled={aiLoading||aiCooldown}
-                style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:aiLoading||aiCooldown?"not-allowed":"pointer",
-                  background:C.vl,border:"none",color:C.v,fontFamily:"inherit",opacity:aiLoading||aiCooldown?0.4:1}}>{p.l}</button>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:4}}>
-            <input type="text" value={aiQ} onChange={e=>setAiQ(e.target.value)} placeholder="Ask about an exercise..."
-              onKeyDown={e=>{if(e.key==="Enter")askCoach(aiQ,aiExIdx);}}
-              style={{flex:1,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
-            <B small onClick={()=>askCoach(aiQ,aiExIdx)} disabled={aiLoading||aiCooldown||!aiQ.trim()} color={C.v}>
-              {aiLoading?"...":"Ask"}
-            </B>
-          </div>
-          {aiCooldown&&!aiLoading&&<div style={{fontSize:10,color:C.t3,marginTop:4}}>Cooldown — wait a few seconds</div>}
-          {aiA&&(<div style={{marginTop:8,padding:10,background:C.vl,borderRadius:6,fontSize:13,color:C.t,lineHeight:1.5}}>{aiA}</div>)}
-        </div>)}
-      </X>
     </div>);
   }
 
@@ -3142,7 +2989,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
-      <div style={{fontSize:11,fontWeight:800,color:todayLiftDone?C.g:todaySess?C.p:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{todayLiftDone?"After lift":todaySess?"Before lift":"Recovery day"}</div>
+      <div style={{fontSize:11,fontWeight:800,color:todayLiftDone?C.g:todaySess?C.p:C.t3,letterSpacing:"0.06em"}}>{todayLiftDone?"After lift":todaySess?"Before lift":"Recovery day"}</div>
     </div>
 
     <X style={{padding:12,borderLeft:`3px solid ${todayLiftDone?C.g:todaySess?C.p:C.t3}`}}>
@@ -3179,11 +3026,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </X>
 
     <X style={{padding:10}}>
-      <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Week plan</div>
+      <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Week plan</div>
       <div style={{display:"flex",gap:3}}>
         {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:8,
           border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-          fontSize:11,cursor:"pointer",fontWeight:800,textTransform:"uppercase",fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+          fontSize:11,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
       </div>
     </X>
 
@@ -3217,7 +3064,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       ):mobRunning?(
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-            <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase"}}>
+            <span style={{fontSize:11,fontWeight:700,color:C.t3}}>
               {stretchDone.length}/{totalStretchSets} sets complete
             </span>
             <span style={{fontSize:12,color:C.t3}}>{fmtElapsed(mobTimer)}</span>
@@ -3266,7 +3113,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                       <div key={si} style={{width:24,height:24,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",
                         fontSize:10,fontWeight:700,
                         background:stretchDone.includes(`${ei}-${si}`)?C.g:si===stretchSetIdx?C.v:"transparent",
-                        color:stretchDone.includes(`${ei}-${si}`)?"#fff":si===stretchSetIdx?"#fff":C.t3,
+                        color:stretchDone.includes(`${ei}-${si}`)?C.oa:si===stretchSetIdx?C.oa:C.t3,
                         border:`1px solid ${stretchDone.includes(`${ei}-${si}`)?C.g:si===stretchSetIdx?C.v:C.bd}`}}>
                         {side[0]}
                       </div>
@@ -3296,7 +3143,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     {/* ═══ STALL WARNINGS ═══ */}
     {(()=>{const stalls=getStalls(data.prog,data.wk,data.program);const weekAvg=getWeeklyRecoveryAvg(data.rec);
       return stalls.length>0?(<X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>Strength Drop (2 sessions)</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em",marginBottom:4}}>Strength Drop (2 sessions)</div>
         {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:3}}>
           <span style={{fontWeight:600,color:C.t}}>{s.name}</span> dropped {s.drop} lbs → {s.currentWeight} lbs — {weekAvg&&weekAvg>=65?
             <span style={{color:C.a}}>Check sleep & food</span>:
@@ -3331,7 +3178,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <button onClick={()=>setVariant(sel,null)} style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${!activeVariant[sel]?C.p:C.bd}`,background:!activeVariant[sel]?C.pl:"transparent",color:!activeVariant[sel]?C.p:C.t3}}>Standard</button>
         {Object.entries(hasVariants).map(([k,v])=>(<button key={k} onClick={()=>setVariant(sel,k)} style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
-          border:`1px solid ${activeVariant[sel]===k?C.a:C.bd}`,background:activeVariant[sel]===k?"rgba(245,158,11,0.1)":"transparent",color:activeVariant[sel]===k?C.a:C.t3}}>{v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")}</button>))}
+          border:`1px solid ${activeVariant[sel]===k?C.a:C.bd}`,background:activeVariant[sel]===k?C.al:"transparent",color:activeVariant[sel]===k?C.a:C.t3}}>{v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")}</button>))}
       </X>)}
       {sess.warmup&&(<S title="Warm-Up" collapsible defaultOpen={false}>
         <X style={{padding:10}}>
@@ -3347,7 +3194,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>
       </S>)}
       {sel==="wednesday"&&<X style={{padding:10,borderLeft:`4px solid ${C.v}`}}>
-        <div style={{fontSize:12,fontWeight:850,color:C.v,textTransform:"uppercase",letterSpacing:"0.06em"}}>Superset day</div>
+        <div style={{fontSize:12,fontWeight:850,color:C.v,letterSpacing:"0.06em"}}>Superset day</div>
         <div style={{fontSize:12,color:C.t2,marginTop:3,lineHeight:1.4}}>Do A then B back-to-back. Rest only after the B move: 1B 60s, 2B 60s, 3B 45s.</div>
       </X>}
       <S title="Exercises" collapsible defaultOpen={false}>
@@ -3363,7 +3210,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                   <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
                   {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>ANCHOR</div>}
                 </div>
-                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,textTransform:"uppercase",letterSpacing:"0.04em"}}>Superset {ss}</div>}
+                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
                 <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
@@ -3464,7 +3311,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       const yTicks=[mnV,mnV+rng*0.5,mxV].map(v=>Math.round(v));
       return(
         <div style={{marginTop:6}}>
-          <div onClick={()=>setSpOpen(!spOpen)} style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div onClick={()=>setSpOpen(!spOpen)} style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span>Strength Progress</span><span style={{fontSize:10}}>{spOpen?"▾":"▸"}</span>
           </div>
           {spOpen&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -3563,7 +3410,7 @@ const Nutrition=({data,setData})=>{
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
-  const nutTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
+  const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{}),[data,st]);
 
   const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
   const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
@@ -3603,7 +3450,7 @@ const Nutrition=({data,setData})=>{
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,textTransform:"uppercase",
+            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,
               color:meal.source==="mfp"?C.g:C.t3,
               background:meal.source==="mfp"?C.gl:"transparent",
             }}>{meal.source==="mfp"?"Sync":meal.source}</span>}
@@ -3620,7 +3467,7 @@ const Nutrition=({data,setData})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
             {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.a},
               {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
-              <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>{m.l}</div></div>))}
+              <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600}}>{m.l}</div></div>))}
           </div>
         </div>)}
         <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginTop:6,marginBottom:2}}>
@@ -3628,10 +3475,14 @@ const Nutrition=({data,setData})=>{
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
+      {(meal.source==="cronometer"||meal.source==="mfp")?(
+        <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"6px 0"}}>Synced from Cronometer — read-only here; edit in Cronometer.</div>
+      ):(
       <div style={{display:"flex",gap:6}}>
         <B full outline onClick={()=>setEditing(editing==="macros"?null:"macros")}>Edit Macros</B>
         <B full outline onClick={()=>rm(selM)} color={C.r}>Remove</B>
       </div>
+      )}
     </div>);
   }
 
@@ -3676,7 +3527,7 @@ const Nutrition=({data,setData})=>{
     <S title={`Week view · ${weekRemaining>=0?`${weekRemaining.toLocaleString()} cal left`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}`} collapsible defaultOpen={false}>
       <X style={{padding:10,marginBottom:4}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-          <span style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Week Total</span>
+          <span style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Week Total</span>
           <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.a}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
         </div>
         <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.a:C.p} h={4}/>
@@ -3717,23 +3568,16 @@ const Nutrition=({data,setData})=>{
       </div>
       <Br v={tl.totalProtein} max={proT} color={tl.totalProtein>=proT?C.g:C.p} h={7}/>
       </>)}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginTop:10}}>
-        {[{l:"Protein",v:tl.totalProtein,x:proT,u:"g",c:tl.totalProtein>=proT?C.g:C.r},
-          {l:"Carbs",v:tl.totalCarbs,x:null,u:"g",c:C.a},
-          {l:"Fat",v:tl.totalFat,x:null,u:"g",c:viewFatPct>25?C.r:C.t2},
-          {l:"Fiber",v:tl.totalFiber||0,x:st.fiber||30,u:"g",c:C.v}].map((m,i)=>(
-          <div key={i} style={{textAlign:"center"}}>
-            <div style={{fontSize:18,fontWeight:700,color:m.c}}>{m.v}{m.u}</div>
-            {m.x?<div style={{fontSize:10,color:C.t3}}>/ {m.x}{m.u}</div>:<div style={{fontSize:10,color:C.t3}}>&nbsp;</div>}
-            <div style={{fontSize:9,fontWeight:600,color:C.t3,textTransform:"uppercase",marginTop:1}}>{m.l}</div>
-          </div>
-        ))}
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:13,fontWeight:700}}>
+        <span style={{color:tl.totalProtein>=proT?C.g:C.r}}>{tl.totalProtein}g / {proT}g protein</span>
+        <span style={{color:C.t2}}>{tl.totalCal} cal</span>
+        <span style={{color:C.v}}>{tl.totalFiber||0}g / {st.fiber||30}g fiber</span>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
         <span style={{fontWeight:600,color:viewDayType==="travel"?C.a:calT===null?C.a:C.t2}}>{calT===null?"Social Weekend":viewDayType==="travel"?"Travel Day":viewDayType==="wednesday"?"Wednesday (Fast)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {tl.meals?.length>0&&tl.meals.every(m=>!m.source||m.source==="mfp"||m.source==="cronometer")&&(
-            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,background:C.gl,color:C.g,textTransform:"uppercase"}}>Cronometer</span>
+            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:8,background:C.gl,color:C.g}}>Cronometer</span>
           )}
           <span>{calT} cal · {proT}g pro target</span>
         </div>
@@ -3761,7 +3605,7 @@ const Nutrition=({data,setData})=>{
           <div style={{fontSize:11,color:C.t2}}>
             <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.a}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
           </div>
-          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:"#fff",border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
+          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:C.oa,border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
         </div>
       </S>
     )}
@@ -3805,25 +3649,6 @@ const Nutrition=({data,setData})=>{
         }} style={{marginTop:8}}>Apply to Settings</B>
       </X>
     )}
-
-    {/* ═══ PROTEIN CHECKPOINTS ═══ */}
-    {viewDayType==="training"&&isViewingToday&&(<X style={{padding:10}}>
-      <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>Protein Checkpoints</div>
-      {PROTEIN_CHECKPOINTS.map((cp,i)=>{
-        const hit=tl.totalProtein>=cp.target;
-        return(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
-          <span style={{fontSize:14,color:hit?C.g:C.t3}}>{hit?"✓":"○"}</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:12,fontWeight:600,color:hit?C.g:C.t}}>{cp.label}</div>
-            <div style={{fontSize:10,color:C.t3}}>{cp.time} · {cp.target}g</div>
-          </div>
-          <div style={{width:60}}><Br v={Math.min(tl.totalProtein,cp.target)} max={cp.target} color={hit?C.g:C.a} h={4}/></div>
-        </div>);
-      })}
-      {tl.totalProtein>0&&tl.totalProtein<100&&(<div style={{marginTop:6,padding:"6px 8px",background:C.al,borderRadius:4,fontSize:11,color:C.a,fontWeight:600}}>
-        3 PM gut-check: {tl.totalProtein}g protein — load remaining meals with lean protein + carbs, minimal fat.
-      </div>)}
-    </X>)}
 
     <S title={`Water · ${waterToday}/${waterGoal} oz`} collapsible defaultOpen={false}>
     <X style={{padding:12}}>
@@ -3873,9 +3698,9 @@ const Nutrition=({data,setData})=>{
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,textTransform:"uppercase",flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
+                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
               </div>
-                <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} · {m.protein}gP · {m.carbs}gC · {m.fat}gF{m.fiber?` · ${m.fiber}gFib`:""}</div></div>
+                <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} cal · {m.protein}g protein{m.fiber?` · ${m.fiber}g fiber`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
             </div>
           </X>))}
@@ -3894,9 +3719,8 @@ const Weight=({data,setData})=>{
   const latest=entries[0]?.[1],oldest=entries[entries.length-1]?.[1];
   const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
-  const wTrend=getWeightTrend(data.wt);
-  const weightTrendSummary=getWeightTrendSummary(data.wt,t);
-  const wtTDEE=calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{});
+  const wTrend=getTrend(data.wt,t);
+  const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{}),[data,st]);
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
@@ -3924,20 +3748,20 @@ const Weight=({data,setData})=>{
       )}
     </X>
 
-    <WeightTrendCard trend={weightTrendSummary}/>
+    <WeightTrendCard trend={wTrend}/>
 
-    {wTrend&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
-      <div style={{fontSize:11,fontWeight:800,color:C.a,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut pace</div>
-      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="gaining"?"Gaining":"Losing"} {Math.round(Math.abs(wTrend.rate))} lbs/week</div>
-      <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.advice}</div>
+    {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.a}`}}>
+      <div style={{fontSize:11,fontWeight:800,color:C.a,letterSpacing:"0.06em"}}>Cut pace</div>
+      <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="up"?"Gaining":"Losing"} {Math.abs(wTrend.rate).toFixed(1)} lb/wk</div>
+      <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
     </X>)}
 
     <S title="Scale review" collapsible defaultOpen={false}>
       <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?Math.round(latest):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div></X>
-        {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Trend</div></X>}
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Total</div></X>
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Entries</div></X>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?Math.round(latest):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Current</div></X>
+        {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Trend</div></X>}
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.a}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Total</div></X>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Entries</div></X>
       </div>
       {trendWeights&&trendWeights.length>=2?(()=>{
         const rawPts=trendWeights.map(tw=>({v:tw.raw,d:tw.d.slice(5)}));
@@ -3951,7 +3775,7 @@ const Weight=({data,setData})=>{
         return(
           <X style={{padding:"10px 14px",marginTop:8}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Weight + Trend</span>
+              <span style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em"}}>Weight + Trend</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:10,color:C.t3}}>· raw</span>
                 <span style={{fontSize:10,color:C.g}}>— trend</span>
@@ -3982,7 +3806,7 @@ const Weight=({data,setData})=>{
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.bl}`,fontSize:14,alignItems:"center"}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontWeight:600,color:C.t}}>{Math.round(w)} {diff&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
+            <span style={{fontWeight:600,color:C.t}}>{Math.round(w)} {diff!==null&&diff!==0&&<span style={{color:diff>0?C.r:C.g,fontSize:12}}>{diff>0?"+":""}{diff}</span>}</span>
             <button onClick={del} style={{background:"none",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:"2px 4px",opacity:0.6}}>✕</button>
           </div>
         </div>);})}
@@ -3990,162 +3814,56 @@ const Weight=({data,setData})=>{
   </div>);
 };
 
-// ═══ RECOVERY ═══
-const Habits=({data,setData})=>{
+// ═══ CLOSEOUT PANEL ═══
+// "Mark clean day" + compact quick metrics. Lives in the evening/closeout
+// surface (Habits tab removed 2026-07-11; same habit record shape is written
+// so the weekly analyze payload keeps its input).
+const SYSTEM_HABITS=[
+  {field:"alcohol",target:false},{field:"cannabis",target:false},{field:"screensOff",target:true},
+  {field:"bedBy1030",target:true},{field:"supplements",target:true},{field:"sunlight",target:true},{field:"readBeforeBed",target:true},
+];
+const CloseoutPanel=({data,setData})=>{
   const t=td();
   const tr=data.rec[t]||{};
   const h=data.habits[t]||{};
   const st=data.settings||DEFAULTS;
   const customHabits=st.customHabits||[];
-  const [showMgmt,setShowMgmt]=useState(false);
-  const [newHabit,setNewHabit]=useState("");
   const [f,setF]=useState({rs:tr.recoveryScore||"",hrv:tr.hrv||"",rhr:tr.rhr||"",sh:tr.sleepHours||"",steps:data.steps?.[t]||"",wt:data.wt?.[t]||""});
-
-  const systemHabits=[
-    {field:"alcohol",label:"Alcohol",target:false,goodLabel:"None",badLabel:"Had it"},
-    {field:"cannabis",label:"Cannabis",target:false,goodLabel:"None",badLabel:"Had it"},
-    {field:"screensOff",label:"Screens",target:true,goodLabel:"Off",badLabel:"Late"},
-    {field:"bedBy1030",label:"Bedtime",target:true,goodLabel:"On time",badLabel:"Late"},
-    {field:"supplements",label:"Supplements",target:true,goodLabel:"Done",badLabel:"Missed"},
-    {field:"sunlight",label:"Sunlight",target:true,goodLabel:"Done",badLabel:"Missed"},
-    {field:"readBeforeBed",label:"Read",target:true,goodLabel:"Done",badLabel:"Skipped"},
-  ];
-  const calcScore=(hab)=>{if(!hab)return 0;let c=0;systemHabits.forEach(x=>{if(hab[x.field]===x.target)c++;});c+=Object.values(hab.custom||{}).filter(v=>v).length;return c;};
-  const tot=systemHabits.length+customHabits.length;
-  const todayScore=calcScore(h),todayPct=tot?Math.round(todayScore/tot*100):0;
-  const last7=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return lds(d);});
-  const avg7=(()=>{const vals=last7.map(d=>data.habits[d]?calcScore(data.habits[d])/tot*100:null).filter(v=>v!=null);return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;})();
-  const recScore=+f.rs||null;
-  const steps=+f.steps||data.steps?.[t]||0;
-  const stepsTarget=cutStepsTarget(st);
-  const sleep=+f.sh||null;
-  const protein=(data.nut?.[t]?.totalProtein)||0;
-  const proteinTarget=getDayProTarget(t,st,data.travelDays,data.socialWeekend);
-  const cardioDone=!!data.cardio?.[t]?.done;
-  const foodClosed=protein>=proteinTarget;
-  const closeoutGood=todayPct>=70&&foodClosed&&(steps>=stepsTarget||cardioDone)&&(!recScore||recScore>=55);
-  const tomorrow=(()=>{
-    if(recScore&&recScore<55)return{label:"Recovery-biased",why:"Reduce cardio/stress before cutting food.",color:C.r};
-    if(!foodClosed)return{label:"Protein-first",why:`Finish ${Math.max(0,proteinTarget-protein)}g protein or start tomorrow with protein.`,color:C.a};
-    if(steps<stepsTarget&&!cardioDone)return{label:"Movement-first",why:`Get steps/cardio back on plan before changing calories.`,color:C.a};
-    if(sleep&&sleep<6.5)return{label:"Sleep repair",why:"Protect recovery before adding more cut pressure.",color:C.a};
-    return{label:"Normal cut day",why:"Stay the course. No target changes needed.",color:C.g};
-  })();
-
+  const [saved,setSaved]=useState(false);
+  const clean=SYSTEM_HABITS.every(x=>h[x.field]===x.target);
+  const markCleanDay=()=>{
+    const nh={...h};SYSTEM_HABITS.forEach(x=>nh[x.field]=x.target);customHabits.forEach(x=>{nh.custom={...(nh.custom||{}),[x.id]:true};});
+    const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
+  };
   const saveMetrics=()=>{
     const rec={...tr,recoveryScore:+f.rs||null,hrv:+f.hrv||null,rhr:+f.rhr||null,sleepHours:+f.sh||null};
     const nd={...data,rec:{...data.rec,[t]:rec},steps:{...data.steps,...(f.steps?{[t]:+f.steps}:{})},wt:{...data.wt,...(f.wt?{[t]:+f.wt}:{})}};
     setData(nd);sv(nd);svSB.recovery(t,rec);if(f.steps)svSB.steps(t,+f.steps);if(f.wt)svSB.weight(t,+f.wt);
+    setSaved(true);setTimeout(()=>setSaved(false),1500);
   };
-  const setHabit=(field,val,isCustom=false)=>{
-    const nh=isCustom?{...h,custom:{...(h.custom||{}),[field]:val}}:{...h,[field]:val};
-    const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
-  };
-  const markCleanDay=()=>{
-    const nh={...h};systemHabits.forEach(x=>nh[x.field]=x.target);customHabits.forEach(x=>{nh.custom={...(nh.custom||{}),[x.id]:true};});
-    const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
-  };
-  const addCustom=()=>{const name=newHabit.trim();if(!name)return;const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-+$/,"");if(customHabits.some(c=>c.id===id))return;const nd={...data,settings:{...st,customHabits:[...customHabits,{id,label:name}]}};setData(nd);sv(nd);svSB.settings(nd.settings);setNewHabit("");};
-  const removeCustom=(id)=>{const nd={...data,settings:{...st,customHabits:customHabits.filter(c=>c.id!==id)}};setData(nd);sv(nd);svSB.settings(nd.settings);};
-  const Pill=({children,onClick,active,color=C.p})=><button onClick={onClick} style={{border:`1.5px solid ${active?color:C.bd}`,background:active?(color===C.g?C.gl:color===C.r?C.rl:C.pl):"#fff",color:active?color:C.t3,borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:850,fontFamily:"inherit",cursor:"pointer",minHeight:44}}>{children}</button>;
-
-  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-    <div>
-      <div style={{fontSize:18,fontWeight:850,color:C.t}}>Recovery Closeout</div>
-      <div style={{fontSize:13,color:C.t3}}>{fmt(t)} · decide tomorrow, then be done</div>
+  return(<div>
+    <B full color={clean?C.g:C.p} onClick={markCleanDay}>{clean?"Clean day ✓":"Mark clean day"}</B>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:4,marginTop:8}}>
+      {[["rs","Rec %","72"],["sh","Sleep","7.5"],["steps","Steps","15000"],["wt","Weight","185"],["hrv","HRV","68"],["rhr","RHR","42"]].map(([k,l,ph])=>(
+        <div key={k}>
+          <div style={{fontSize:8,fontWeight:700,color:C.t3,marginBottom:2,textAlign:"center"}}>{l}</div>
+          <N value={f[k]} onChange={v=>setF({...f,[k]:v})} placeholder={ph} style={{fontSize:12,padding:"7px 2px",textAlign:"center"}}/>
+        </div>
+      ))}
     </div>
-
-    <X style={{borderLeft:`4px solid ${tomorrow.color}`,padding:16}}>
-      <div style={{fontSize:11,fontWeight:850,color:tomorrow.color,textTransform:"uppercase",letterSpacing:"0.08em"}}>Tomorrow</div>
-      <div style={{fontSize:21,fontWeight:900,color:C.t,marginTop:2}}>{tomorrow.label}</div>
-      <div style={{fontSize:13,color:C.t2,marginTop:4,lineHeight:1.4}}>{tomorrow.why}</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginTop:12}}>
-        {[{l:"Habits",v:`${todayScore}/${tot}`,ok:todayPct>=70},{l:"Protein",v:`${protein}/${proteinTarget}`,ok:foodClosed},{l:"Steps",v:`${Math.round(steps/1000)}k`,ok:steps>=stepsTarget},{l:"Cardio",v:cardioDone?"Done":"Open",ok:cardioDone}].map(x=>(
-          <div key={x.l} style={{padding:"8px 3px",borderRadius:10,textAlign:"center",background:x.ok?C.gl:C.bg,border:`1px solid ${x.ok?C.g:C.bd}`}}>
-            <div style={{fontSize:9,fontWeight:850,color:C.t3,textTransform:"uppercase"}}>{x.l}</div>
-            <div style={{fontSize:12,fontWeight:900,color:x.ok?C.g:C.t2,marginTop:2}}>{x.v}</div>
-          </div>
-        ))}
-      </div>
-    </X>
-
-    <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Quick metrics</div><div style={{fontSize:12,color:C.t3}}>Only what changes tomorrow's call.</div></div>
-        <B small onClick={saveMetrics}>Save</B>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-        <div><L>Recovery</L><N value={f.rs} onChange={v=>setF({...f,rs:v})} placeholder="72" max={100}/></div>
-        <div><L>Sleep</L><N value={f.sh} onChange={v=>setF({...f,sh:v})} placeholder="7.5"/></div>
-        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:6}}>
-        <div><L>Weight</L><N value={f.wt} onChange={v=>setF({...f,wt:v})} placeholder="185"/></div>
-        <div><L>HRV</L><N value={f.hrv} onChange={v=>setF({...f,hrv:v})} placeholder="68"/></div>
-        <div><L>RHR</L><N value={f.rhr} onChange={v=>setF({...f,rhr:v})} placeholder="42"/></div>
-      </div>
-    </X>
-
-    <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Closeout checks</div><div style={{fontSize:12,color:C.t3}}>Tap the truth. No charts.</div></div>
-        <button onClick={()=>setShowMgmt(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:10,padding:"8px 10px",fontSize:12,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Edit</button>
-      </div>
-      <B full color={closeoutGood?C.g:C.p} onClick={markCleanDay}>{closeoutGood?"Closed for today":"Mark clean day"}</B>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:10}}>
-        {systemHabits.map(x=>{const good=h[x.field]===x.target;const bad=h[x.field]!==undefined&&h[x.field]!==x.target;return(
-          <div key={x.field} style={{padding:9,borderRadius:12,border:`1px solid ${good?C.g:bad?C.r:C.bd}`,background:good?C.gl:bad?C.rl:C.bg}}>
-            <div style={{fontSize:13,fontWeight:850,color:C.t,marginBottom:6}}>{x.label}</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-              <Pill active={good} color={C.g} onClick={()=>setHabit(x.field,x.target)}>{x.goodLabel}</Pill>
-              <Pill active={bad} color={C.r} onClick={()=>setHabit(x.field,!x.target)}>{x.badLabel}</Pill>
-            </div>
-          </div>
-        );})}
-        {customHabits.map(x=>{const val=(h.custom||{})[x.id];return(
-          <div key={x.id} style={{padding:9,borderRadius:12,border:`1px solid ${val?C.g:C.bd}`,background:val?C.gl:C.bg}}>
-            <div style={{fontSize:13,fontWeight:850,color:C.t,marginBottom:6}}>{x.label}</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
-              <Pill active={val===true} color={C.g} onClick={()=>setHabit(x.id,true,true)}>Done</Pill>
-              <Pill active={val===false} color={C.r} onClick={()=>setHabit(x.id,false,true)}>Missed</Pill>
-            </div>
-          </div>
-        );})}
-      </div>
-    </X>
-
-    <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div><div style={{fontSize:14,fontWeight:850,color:C.t}}>Last 7 days</div><div style={{fontSize:12,color:C.t3}}>Average {avg7}% · today {todayPct}%</div></div>
-        <div style={{fontSize:24,fontWeight:900,color:avg7>=70?C.g:avg7>=40?C.a:C.r}}>{avg7}%</div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-        {last7.slice().reverse().map(d=>{const hb=data.habits[d];const pct=hb?Math.round(calcScore(hb)/tot*100):0;return <div key={d} style={{height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:850,color:pct>=70?C.g:pct>0?C.a:C.t3,background:pct>=70?C.gl:pct>0?C.al:C.bg,border:`1px solid ${pct>=70?C.g:pct>0?C.a:C.bd}`}}>{pct||"—"}</div>;})}
-      </div>
-    </X>
-
-    {showMgmt&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.cd,borderRadius:14,padding:16,width:"100%",maxWidth:360,maxHeight:"80vh",overflowY:"auto",border:`1px solid ${C.bd}`}}>
-        <div style={{fontSize:16,fontWeight:850,color:C.t,marginBottom:10}}>Edit custom checks</div>
-        {customHabits.map(ch=>(<div key={ch.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.bl}`}}><span style={{fontSize:13,color:C.t,fontWeight:700}}>{ch.label}</span><button onClick={()=>removeCustom(ch.id)} style={{background:"none",border:"none",fontSize:16,color:C.r,cursor:"pointer",padding:"2px 6px"}}>✕</button></div>))}
-        <div style={{display:"flex",gap:6,marginTop:10}}><T value={newHabit} onChange={setNewHabit} placeholder="New custom check" style={{flex:1}}/><B small onClick={addCustom} disabled={!newHabit.trim()}>Add</B></div>
-        <B full style={{marginTop:12}} onClick={()=>setShowMgmt(false)}>Done</B>
-      </div>
-    </div>)}
+    <B full small outline style={{marginTop:6}} onClick={saveMetrics} color={saved?C.g:C.p}>{saved?"Saved":"Save metrics"}</B>
   </div>);
 };
 
 // ═══ SETTINGS ═══
-const Settings=({data,setData})=>{
+const Settings=({data,setData,syncFailures={}})=>{
+  const failedTables=Object.keys(syncFailures);
+  const syncOk=failedTables.length===0;
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||""});
+    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
-  const [showExport,setShowExport]=useState(false);
-  const [showImport,setShowImport]=useState(false);
-  const [importText,setImportText]=useState("");
-  const [importStatus,setImportStatus]=useState("");
   const isTravel=!!(data.travelDays||{})[t];
 
   const toggleTravel=()=>{
@@ -4183,10 +3901,13 @@ const Settings=({data,setData})=>{
   };
 
   const saveSettings=()=>{
-    const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
+    // Spread existing settings first so fields not managed by this form
+    // (customHabits, reminders, notifications) survive a save.
+    const nd={...data,settings:{...DEFAULTS,...data.settings,
+      calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,syncToken:f.syncToken||"",
-      notifications:data.settings?.notifications||DEFAULTS.notifications}};
+      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,
+      syncToken:f.syncToken||"",notifyToken:f.notifyToken||""}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
@@ -4196,25 +3917,15 @@ const Settings=({data,setData})=>{
     const a=document.createElement("a");a.href=url;a.download=`health-hub-export-${td()}.json`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
-  const doImport=()=>{
-    try{
-      const parsed=parseHealthImport(importText);
-      const counts={wt:Object.keys(parsed.wt).length,steps:Object.keys(parsed.steps).length,
-        rhr:Object.values(parsed.rec).filter(r=>r.rhr).length,sleep:Object.values(parsed.rec).filter(r=>r.sleepHours).length,
-        cal:Object.keys(parsed.nut).length};
-      const nd={...data,
-        wt:{...parsed.wt,...data.wt},steps:{...parsed.steps,...data.steps},
-        rec:Object.keys({...parsed.rec,...data.rec}).reduce((acc,k)=>{acc[k]={...(parsed.rec[k]||{}),...(data.rec[k]||{})};return acc;},{}),
-        nut:{...parsed.nut,...data.nut},
-      };
-      setData(nd);sv(nd);setImportStatus(`Imported ${counts.wt} weights, ${counts.steps} step days, ${counts.rhr} RHR, ${counts.sleep} sleep, ${counts.cal} calorie days`);setImportText("");
-      Object.entries(parsed.wt).forEach(([d,v])=>svSB.weight(d,v));Object.entries(parsed.steps).forEach(([d,v])=>svSB.steps(d,v));
-      Object.entries(parsed.rec).forEach(([d,v])=>svSB.recovery(d,v));Object.entries(parsed.nut).forEach(([d,v])=>svSB.nutrition(d,v));
-    }catch(e){setImportStatus("Error: "+e.message);}
-  };
-
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+      <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
+        style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
+        <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
+        {syncOk?"Sync ok":`Sync failing: ${failedTables.join(", ")}`}
+      </div>
+    </div>
 
     <X style={{borderLeft:`3px solid ${C.p}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
@@ -4266,7 +3977,7 @@ const Settings=({data,setData})=>{
             </div>
             {(data.settings.notifications||{}).enabled&&(
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"},{key:"restTimer",label:"Rest timer complete"},{key:"timers",label:"All workout timers"}].map(n=>{
+                {[{key:"restTimer",label:"Rest timer complete"},{key:"timers",label:"All workout timers"}].map(n=>{
                   const ns=data.settings.notifications||{};
                   const on=ns[n.key]!==false;
                   return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
@@ -4284,36 +3995,33 @@ const Settings=({data,setData})=>{
                 })}
               </div>
             )}
+            {(data.settings.notifications||{}).enabled&&(
+              <div style={{marginTop:8}}>
+                <L>Push token</L>
+                <input value={f.notifyToken} onChange={e=>setF({...f,notifyToken:e.target.value})} placeholder="Same value as Vercel env NOTIFY_TOKEN"
+                  style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/>
+                <div style={{fontSize:11,color:C.t3,marginTop:3}}>Authorizes closed-app rest-timer push. Saved with Save Targets.</div>
+              </div>
+            )}
           </>
         )}
       </X>
     </S>
 
-    {/* ═══ NUTRITION SYNC ═══ */}
+    {/* ═══ HEALTH SYNC ═══ */}
     <X style={{borderLeft:`3px solid ${C.v}`}}>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Nutrition Sync (via Apple Health)</div>
-      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Auto-sync nutrition from Cronometer via Apple Health Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Steps + Weight Sync (via Apple Health)</div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
       <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
-        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:"#fff",color:C.t,boxSizing:"border-box"}}/></div>
-      <div style={{marginTop:8,padding:8,background:C.bl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6}}>
-        <div style={{fontWeight:700,marginBottom:4}}>Apple Shortcut Setup:</div>
-        1. Open Shortcuts → + → New Shortcut<br/>
-        2. Add 5× "Find Health Samples" (Start: Today, Group: Day):<br/>
-        &nbsp;&nbsp;&nbsp;Dietary Energy, Protein, Total Carbohydrates, Total Fat, Dietary Fiber<br/>
-        3. Add "Get Contents of URL" — paste URL below, tap each placeholder to insert the matching Health Sample variable:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
-          https://your-domain.vercel.app/api/sync-nutrition?token=YOUR_TOKEN&cal=&#123;Energy&#125;&protein=&#123;Protein&#125;&carbs=&#123;Carbs&#125;&fat=&#123;Fat&#125;&fiber=&#123;Fiber&#125;
-        </span>
-        4. Automation tab → Time of Day → 9 PM → Run Shortcut
-      </div>
+        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/></div>
       <div style={{marginTop:8,padding:8,background:C.pl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.p}`}}>
         <div style={{fontWeight:700,marginBottom:4,color:C.p}}>Steps + Weight Shortcuts:</div>
         Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:3,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
         </span>
         Weight: use latest Body Mass, convert to pounds, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:"#fff",borderRadius:3,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:3,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
         </span>
       </div>
@@ -4330,7 +4038,7 @@ const Settings=({data,setData})=>{
           background:isTravel?C.al:"transparent",border:`1px solid ${isTravel?C.a:C.bd}`,color:isTravel?C.a:C.t3}}>{isTravel?"ON":"OFF"}</button>
       </div>
       {isTravel&&(<div style={{marginTop:8,padding:8,background:C.al,borderRadius:4}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",marginBottom:4}}>Travel Protocol</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.a,marginBottom:4}}>Travel Protocol</div>
         <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>
           • Hydrate aggressively: 20-32 oz water + electrolytes before bed<br/>
           • Take magnesium glycinate regardless of time<br/>
@@ -4342,7 +4050,8 @@ const Settings=({data,setData})=>{
       </div>)}
     </X>
 
-    {/* ═══ BODY COMP ═══ */}
+    {/* ═══ BODY COMP — buried per 2026-07-11 decisions ═══ */}
+    <S title="Photos & measurements" collapsible defaultOpen={false}>
     <X>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
         <div style={{fontSize:14,fontWeight:700,color:C.t}}>Progress Photos</div>
@@ -4372,15 +4081,15 @@ const Settings=({data,setData})=>{
             <span style={{fontSize:11,color:C.t3}}>estimated BF%</span>
           </div>
           {a.muscleDevelopment?.length>0&&(<div style={{marginBottom:6}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",marginBottom:3}}>Muscle Development</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:3}}>Muscle Development</div>
             {a.muscleDevelopment.map((m,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{m}</div>))}
           </div>)}
           {a.areasOfProgress?.length>0&&(<div style={{marginBottom:6}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.g,textTransform:"uppercase",marginBottom:3}}>Progress</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.g,marginBottom:3}}>Progress</div>
             {a.areasOfProgress.map((p,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.g}`,marginBottom:3}}>{p}</div>))}
           </div>)}
           {a.focusAreas?.length>0&&(<div style={{marginBottom:6}}>
-            <div style={{fontSize:11,fontWeight:700,color:C.a,textTransform:"uppercase",marginBottom:3}}>Focus Areas</div>
+            <div style={{fontSize:11,fontWeight:700,color:C.a,marginBottom:3}}>Focus Areas</div>
             {a.focusAreas.map((f,i)=>(<div key={i} style={{fontSize:12,color:C.t,paddingLeft:8,borderLeft:`2px solid ${C.a}`,marginBottom:3}}>{f}</div>))}
           </div>)}
           {a.notes&&<div style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>{a.notes}</div>}
@@ -4404,7 +4113,7 @@ const Settings=({data,setData})=>{
     </X>
 
     <X>
-      <S title="Body Measurements">
+      <S title="Body Measurements" collapsible defaultOpen={false}>
         {(()=>{
           const today=t;
           const cur=data.bodyMeas&&data.bodyMeas[today]||{};
@@ -4427,6 +4136,7 @@ const Settings=({data,setData})=>{
         })()}
       </S>
     </X>
+    </S>
 
     <X>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Data</div>
@@ -4435,20 +4145,6 @@ const Settings=({data,setData})=>{
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:6}}>Download all your health data as a JSON file for backup.</div>
       <S title="Admin data tools" collapsible defaultOpen={false}>
-        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Import HealthKit exports or reset data. These controls stay here so daily cut review stays focused.</div>
-        <button onClick={()=>setShowImport(!showImport)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:700,padding:0,marginBottom:8}}>
-          {showImport?"Hide Import":"Import Health Data"}
-        </button>
-        {showImport&&(
-          <div style={{marginBottom:8}}>
-            <textarea value={importText} onChange={e=>setImportText(e.target.value)}
-              placeholder="Paste HealthKit data export here..."
-              style={{width:"100%",minHeight:80,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,
-                padding:10,color:C.t,fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-            <B full onClick={doImport} disabled={!importText.trim()} style={{marginTop:4}}>Import Data</B>
-            {importStatus&&<div style={{fontSize:12,color:importStatus.startsWith("Error")?C.r:C.g,marginTop:6,fontWeight:600}}>{importStatus}</div>}
-          </div>
-        )}
         <button onClick={async()=>{if(confirm("This will erase ALL data. Are you sure?")){const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}}
           style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:4,opacity:0.7,padding:0}}>
           Reset All Data
@@ -4471,7 +4167,203 @@ const Settings=({data,setData})=>{
 const ToastStack=({toasts})=>{
   if(!toasts.length)return null;
   return(<div style={{position:"fixed",bottom:70,left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:6,maxWidth:440,width:"90%"}}>
-    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:C.v,color:"#fff",padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:"0 4px 12px rgba(0,0,0,.15)",animation:"toastIn .3s ease"}}>{t.message}</div>))}
+    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:t.type==="error"?C.r:C.v,color:C.oa,padding:"10px 16px",borderRadius:10,fontSize:13,fontWeight:600,boxShadow:C.sh2,animation:"toastIn .3s ease"}}>{t.message}</div>))}
+  </div>);
+};
+
+// ═══ THREE MOMENTS SHELL ═══
+// Boot resolves a mode from the clock + today's state. ?clock=07:00 simulates
+// the time and &day=monday the weekday (mode logic only) for testing.
+const clockParam=()=>{try{const v=new URLSearchParams(location.search).get("clock");const m=v&&v.match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]+(+m[2])/60:null;}catch{return null;}};
+const dayParam=()=>{try{const v=new URLSearchParams(location.search).get("day");return ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(v)?v:null;}catch{return null;}};
+const nowHM=()=>{const c=clockParam();if(c!=null)return c;const d=new Date();return d.getHours()+d.getMinutes()/60;};
+const resolveMode=(data,t,workout)=>{
+  const hm=nowHM();
+  const dayName=dayParam()||dw(t);
+  const weightLogged=data.wt?.[t]!=null;
+  const isTraining=!!data.program?.[dayName];
+  const liftDone=!!data.wk?.[t];
+  if(workout)return"session";                                   // active workout always wins
+  if(hm>=4.5&&hm<9&&!weightLogged)return"morning";
+  if(isTraining&&!liftDone&&hm<13&&hm>=4.5)return"session";
+  if(hm>=19.5)return"closeout";
+  return"neutral";
+};
+
+// Rule-based auto-regulation from Oura recovery — no AI call. Accept mutates
+// TODAY'S session plan only (applied at startW), never the stored program.
+const getAutoregProposal=(rec)=>{
+  const score=rec?.recoveryScore;
+  if(score==null||score>=60)return null;
+  const proposals=[{id:"minusOneSet",label:"−1 set on non-anchor accessories today"}];
+  if(score<40)proposals.push({id:"mobilitySwap",label:"Swap to mobility session"});
+  return{score,proposals};
+};
+
+const MODE_LABELS={morning:"Morning",session:"Session",closeout:"Closeout",neutral:"Home"};
+
+const Moments=({data,setData,setTab,workout,addToast})=>{
+  const [nowTick,setNowTick]=useState(0);
+  useEffect(()=>{const iv=setInterval(()=>setNowTick(x=>x+1),60000);return()=>clearInterval(iv);},[]);
+  const [override,setOverride]=useState(null);
+  const [showClassic,setShowClassic]=useState(false);
+  const [wIn,setWIn]=useState("");
+  const [allergies,setAllergies]=useState(null);
+  const [allergyErr,setAllergyErr]=useState("");
+  useEffect(()=>{let dead=false;(async()=>{try{const r=await fetch("/api/allergies");const d=await r.json();if(dead)return;if(r.ok)setAllergies(d);else setAllergyErr(d.error||"unavailable");}catch(e){if(!dead)setAllergyErr("unavailable");}})();return()=>{dead=true};},[]);
+  const t=td();
+  const dayName=dayParam()||dw(t);
+  const mode=override||resolveMode(data,t,workout);
+  const trend=getTrend(data.wt,t);
+  const rec=data.rec?.[t];
+  const sess=data.program?.[dayName];
+  const st=data.settings||DEFAULTS;
+  const yesterdayWt=(()=>{const e=Object.entries(data.wt||{}).filter(([d])=>d<t).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[1]||null;})();
+  const waterToday=data.water?.[t]||0;
+  const addWater=(oz)=>setData(prev=>{const nv=Math.max(0,Math.round((Number(prev.water?.[t])||0)+oz));const water={...(prev.water||{})};if(nv>0)water[t]=nv;else delete water[t];const nd={...prev,water};sv(nd);svSB.water(t,nv);return nd;});
+  const logWeight=()=>{if(!wIn)return;const v=Number(wIn);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setWIn("");setOverride(null);};
+
+  const autoreg=getAutoregProposal(rec);
+  const adj=data.autoregLog?.[t];
+  const decideAutoreg=(type)=>{
+    const entry={type,recovery:autoreg?.score??null,at:new Date().toISOString()};
+    const nd={...data,autoregLog:{...(data.autoregLog||{}),[t]:entry},debrief:{...data.debrief,[t]:true}};
+    setData(nd);sv(nd);svSB.debrief(t);
+    if(addToast&&type!=="dismissed")addToast(type==="minusOneSet"?"Today: −1 set on non-anchor accessories":"Today: mobility session instead","success");
+  };
+
+  const ModeChip=({m})=>(
+    <button onClick={()=>setOverride(m===mode?null:m)} style={{border:`1px solid ${m===mode?C.p:C.bd}`,background:m===mode?C.pl:"transparent",color:m===mode?C.p:C.t3,borderRadius:999,padding:"5px 10px",fontSize:11,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>{MODE_LABELS[m]}</button>
+  );
+  const header=(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+      <div style={{fontSize:13,color:C.t3,fontWeight:700}}>{fmt(t)} · Wk {wkn(t)}/{PROG.weeks}</div>
+      <div style={{display:"flex",gap:4}}>{["morning","session","closeout","neutral"].map(m=><ModeChip key={m} m={m}/>)}</div>
+    </div>
+  );
+
+  if(showClassic)return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <button onClick={()=>setShowClassic(false)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:0}}>← Back to today</button>
+    <Dashboard data={data} setData={setData} setTab={setTab}/>
+  </div>);
+
+  // ── MORNING: full-screen scale pad, ~10 seconds ──
+  if(mode==="morning")return(<div style={{display:"flex",flexDirection:"column",gap:10,minHeight:"70vh"}}>
+    {header}
+    <X style={{padding:24,textAlign:"center",borderLeft:`4px solid ${C.p}`}}>
+      <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Morning weigh-in</div>
+      {yesterdayWt&&<div style={{fontSize:13,color:C.t3,marginTop:4,opacity:0.6}}>yesterday {yesterdayWt.toFixed(1)}</div>}
+      <N value={wIn} onChange={setWIn} placeholder={yesterdayWt?yesterdayWt.toFixed(1):"185.0"} style={{fontSize:44,fontWeight:800,padding:"14px 10px",marginTop:8}}/>
+      <B full style={{marginTop:12}} disabled={!wIn} onClick={logWeight}>Log weight</B>
+      {trend&&<div style={{fontSize:14,fontWeight:700,color:trend.direction==="down"?C.g:trend.direction==="up"?C.a:C.t2,marginTop:14}}>{trend.message} · {trend.n} weigh-ins in 14d</div>}
+    </X>
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Water <span style={{color:C.p,fontWeight:800}}>{waterToday}</span><span style={{color:C.t3}}> / {st.water} oz</span></div>
+        <div style={{display:"flex",gap:6}}>{[8,12,16].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{background:C.pl,border:`1px solid ${C.p}`,color:C.p,borderRadius:8,padding:"7px 10px",fontSize:12,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>+{oz}</button>)}</div>
+      </div>
+    </X>
+  </div>);
+
+  // ── SESSION: today's workout only + auto-regulation ──
+  if(mode==="session"){
+    const nonAnchor=(sess?.exercises||[]).filter(e=>!e.anchor).length;
+    return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {header}
+      <X style={{padding:12,borderLeft:`4px solid ${rec?.recoveryScore!=null?(rec.recoveryScore>=60?C.g:rec.recoveryScore>=40?C.a:C.r):C.bd}`}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Recovery{rec?.source==="oura"?" · Oura":""}</div>
+        {rec?.recoveryScore!=null?(
+          <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{rec.recoveryScore}%{rec.hrv?` · HRV ${rec.hrv}`:""}{rec.rhr?` · RHR ${rec.rhr}`:""}{rec.sleepHours?` · ${rec.sleepHours}h sleep`:""}</div>
+        ):<div style={{fontSize:13,color:C.t3,marginTop:2}}>No recovery data yet today.</div>}
+        {autoreg&&!adj&&(
+          <div style={{marginTop:10,padding:10,borderRadius:12,background:C.al,border:`1px solid ${C.a}`}}>
+            <div style={{fontSize:12,fontWeight:800,color:C.a}}>Recovery {autoreg.score}% — adjust today?</div>
+            {autoreg.proposals.map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8}}>
+                <span style={{fontSize:13,fontWeight:700,color:C.t}}>{p.label}</span>
+                <B small onClick={()=>decideAutoreg(p.id)}>Accept</B>
+              </div>
+            ))}
+            <button onClick={()=>decideAutoreg("dismissed")} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,padding:0}}>Dismiss — run as planned</button>
+          </div>
+        )}
+        {adj&&adj.type!=="dismissed"&&(
+          <div style={{marginTop:8,fontSize:12,fontWeight:700,color:C.p}}>{adj.type==="minusOneSet"?`Accepted: −1 set on ${nonAnchor} non-anchor accessories (today only)`:"Accepted: mobility session today"}</div>
+        )}
+      </X>
+      {adj?.type==="mobilitySwap"?(
+        <X style={{padding:16,borderLeft:`4px solid ${C.p}`}}>
+          <div style={{fontSize:16,fontWeight:800,color:C.t}}>Mobility session</div>
+          <div style={{fontSize:13,color:C.t2,marginTop:4}}>Recovery-biased day: full stretch block instead of lifting.</div>
+          <B full style={{marginTop:10}} onClick={()=>setTab("training")}>Open stretch player</B>
+        </X>
+      ):sess?(
+        <X style={{padding:16,borderLeft:`4px solid ${C.p}`}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Today</div>
+          <div style={{fontSize:20,fontWeight:850,color:C.t,marginTop:2}}>{sess.name}</div>
+          <div style={{fontSize:13,color:C.t2,marginTop:2}}>{sess.exercises.length} exercises · ~{estTime(sess)} min{data.wk?.[t]?" · logged ✓":""}</div>
+          <B full style={{marginTop:12}} onClick={()=>setTab("training")}>{workout?"Resume session":data.wk?.[t]?"View in Train":"Start session"}</B>
+        </X>
+      ):(
+        <X style={{padding:16}}><div style={{fontSize:14,fontWeight:700,color:C.t}}>Rest day — no lift scheduled.</div>
+        <B full outline style={{marginTop:10}} onClick={()=>setTab("training")}>Open Train anyway</B></X>
+      )}
+      <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
+    </div>);
+  }
+
+  // ── CLOSEOUT: stretch, clean day, metrics, tomorrow ──
+  if(mode==="closeout"){
+    const tomorrow=(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()+1);return lds(d);})();
+    const tmrSess=data.program?.[dw(tomorrow)];
+    const stretchDone=!!(data.mob?.[t]?.done||data.mob?.[t]===true);
+    return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {header}
+      <X style={{padding:14,borderLeft:`4px solid ${stretchDone?C.g:C.p}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:C.t}}>Evening stretch</div>
+            <div style={{fontSize:12,color:C.t3}}>{stretchDone?"Done for today ✓":"Hips first. ~12 minutes."}</div>
+          </div>
+          {!stretchDone&&<B small onClick={()=>setTab("training")}>Start</B>}
+        </div>
+      </X>
+      <X style={{padding:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8}}>Close the day</div>
+        <CloseoutPanel data={data} setData={setData}/>
+      </X>
+      <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Tomorrow</div>
+        <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{tmrSess?tmrSess.name:"Rest / unstructured"}{trend?` · trend ${trend.rate>0?"+":""}${trend.rate} lb/wk`:""}</div>
+      </X>
+      <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
+    </div>);
+  }
+
+  // ── NEUTRAL: compact home ──
+  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+    {header}
+    {trend?<WeightTrendCard trend={trend} compact/>:(
+      <X style={{padding:14}}><div style={{fontSize:13,color:C.t3}}>Log a couple of weigh-ins to see your trend.</div></X>
+    )}
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Water <span style={{color:C.p,fontWeight:800}}>{waterToday}</span><span style={{color:C.t3}}> / {st.water} oz</span></div>
+        <div style={{display:"flex",gap:6}}>{[8,12,16].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{background:C.pl,border:`1px solid ${C.p}`,color:C.p,borderRadius:8,padding:"7px 10px",fontSize:12,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>+{oz}</button>)}</div>
+      </div>
+    </X>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+      <B outline onClick={()=>setOverride("morning")}>Weigh in</B>
+      <B outline onClick={()=>setOverride("session")}>Start session</B>
+      <B outline onClick={()=>setOverride("closeout")}>Closeout</B>
+    </div>
+    <X style={{padding:"9px 12px"}}>
+      <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+        <b style={{color:C.t3,fontSize:11}}>Allergies</b>{" "}
+        {(allergies?.summary||[]).slice(0,3).length?(allergies.summary.slice(0,3).map(a=>`${a.name} ${a.level||"—"}`).join(" · ")):allergyErr||"Loading…"}
+      </div>
+    </X>
+    <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
   </div>);
 };
 
@@ -4527,11 +4419,16 @@ window.App = function App(){
   const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
   const [toasts,setToasts]=useState([]);
+  const [syncFailures,setSyncFailures]=useState({});
   const addToast=useCallback((message,type="info")=>{
     const id=Date.now()+Math.random();
     setToasts(p=>[...p,{id,message,type}]);
     setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),4000);
   },[]);
+  useEffect(()=>onSyncFailure((table,first)=>{
+    setSyncFailures({...syncHealth.failures});
+    if(first)addToast(`Sync failed: ${table} — not backed up`,"error");
+  }),[addToast]);
 
   useEffect(()=>{
     (async()=>{
@@ -4581,73 +4478,27 @@ window.App = function App(){
       backfillData(updated);repairDeloadProgression(updated);
       // Block v2 runs last so its weight fixes win over history replays of the bad logs
       const v2Changed=applyBlockV2(updated);
+      const pruned=pruneProgression(updated);
       setData(updated);sv(updated);
       if(v2Changed){svSB.settings(updated.settings);svSB.program(updated.program);}
       Object.entries(updated.prog).forEach(([exId,p])=>{if(p.currentWeight)svSB.progression(exId,p);});
       applied.forEach(msg=>addToast(msg,"success"));
+      if(pruned)addToast(`Cleaned ${pruned} orphaned lift record${pruned===1?"":"s"} (archived by cleanup migration)`,"success");
       setSbLoaded(true);
     })();
     // Register service worker for notifications
     if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{});}
   },[]);
 
+  // Keep the browser chrome color in sync with the active light/dark theme.
   useEffect(()=>{
-    if(!data.settings?.notifications?.enabled)return;
-    const checkNotifications=()=>{
-      if(Notification.permission!=="granted")return;
-      const now=new Date();const hour=now.getHours();
-      const ns=data.settings.notifications;
-      const t=td();
-
-      // Morning habit reminder (8-9 AM, if habits not logged today)
-      if(ns.habits&&hour>=8&&hour<9&&!data.habits?.[t]){
-        const lastNotif=localStorage.getItem("dhub6_notif_habits");
-        if(lastNotif!==t){
-          notifyDevice("Health Hub",{body:"Time to log your habits and metrics for today",tag:"habits"});
-          localStorage.setItem("dhub6_notif_habits",t);
-        }
-      }
-
-      // Water reminder (every 3 hours, 10AM-8PM, if under 50% of target)
-      if(ns.water&&hour>=10&&hour<=20&&hour%3===1){
-        const waterNow=data.water?.[t]||0;
-        const waterGoal=data.settings?.water||128;
-        if(waterNow<waterGoal*0.5){
-          const lastNotif=localStorage.getItem("dhub6_notif_water_hr");
-          if(lastNotif!==""+hour){
-            notifyDevice("Health Hub",{body:`${waterNow}/${waterGoal}oz water — keep hydrating!`,tag:"water"});
-            localStorage.setItem("dhub6_notif_water_hr",""+hour);
-          }
-        }
-      }
-
-      // Evening stretch reminder (8-9 PM, if stretch not done today)
-      if(ns.stretch&&hour>=20&&hour<21&&!(data.mob?.[t]?.done||data.mob?.[t]===true)){
-        const lastNotif=localStorage.getItem("dhub6_notif_stretch");
-        if(lastNotif!==t){
-          notifyDevice("Health Hub",{body:"Time for your evening stretch routine",tag:"stretch"});
-          localStorage.setItem("dhub6_notif_stretch",t);
-        }
-      }
-
-      // Training day reminder (7-8 AM on training days)
-      if(ns.workout&&hour>=7&&hour<8){
-        const dayName=dw(t);
-        const sess=data.program?.[dayName];
-        if(sess&&!data.wk?.[t]){
-          const lastNotif=localStorage.getItem("dhub6_notif_workout");
-          if(lastNotif!==t){
-            notifyDevice("Health Hub",{body:`${sess.name} today`,tag:"workout"});
-            localStorage.setItem("dhub6_notif_workout",t);
-          }
-        }
-      }
-    };
-
-    checkNotifications();
-    const iv=setInterval(checkNotifications,30*60*1000);
-    return()=>clearInterval(iv);
-  },[data.settings?.notifications?.enabled]);
+    const meta=document.querySelector('meta[name="theme-color"]');
+    const apply=()=>{try{if(meta)meta.setAttribute("content",getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());}catch{}};
+    apply();
+    const mq=window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener?.("change",apply);
+    return()=>mq.removeEventListener?.("change",apply);
+  },[]);
 
   useEffect(()=>{
     sv(data);
@@ -4660,12 +4511,11 @@ window.App = function App(){
       {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/>}
       <div style={{flex:1,padding:"18px 14px",overflowY:"auto",paddingBottom:88}}>
-        {tab==="dashboard"&&<Dashboard data={data} setData={setData} setTab={setTab}/>}
+        {tab==="dashboard"&&<Moments data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/>}
         {tab==="training"&&<Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast}/>}
         {tab==="nutrition"&&<Nutrition data={data} setData={setData}/>}
         {tab==="weight"&&<Weight data={data} setData={setData}/>}
-        {tab==="habits"&&<Habits data={data} setData={setData}/>}
-        {tab==="settings"&&<Settings data={data} setData={setData}/>}
+        {tab==="settings"&&<Settings data={data} setData={setData} syncFailures={syncFailures}/>}
       </div>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
       <ToastStack toasts={toasts}/>

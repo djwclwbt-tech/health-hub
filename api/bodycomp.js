@@ -1,3 +1,5 @@
+const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -51,7 +53,7 @@ Return ONLY valid JSON (no markdown, no backticks):
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: MODEL,
         max_tokens: 1000,
         system: systemPrompt,
         messages: [{ role: 'user', content }],
@@ -59,7 +61,10 @@ Return ONLY valid JSON (no markdown, no backticks):
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'API error' });
+    if (!response.ok) {
+      console.error('[bodycomp] API error:', response.status, data.error?.message);
+      return res.status(response.status).json({ error: 'Analysis unavailable.' });
+    }
 
     const text = data.content?.[0]?.text || '{}';
     const clean = text.replace(/```json|```/g, '').trim();
@@ -67,6 +72,7 @@ Return ONLY valid JSON (no markdown, no backticks):
 
     return res.status(200).json(parsed);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[bodycomp] Handler error:', err);
+    return res.status(500).json({ error: 'Analysis unavailable.' });
   }
 }
