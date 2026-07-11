@@ -614,15 +614,24 @@ const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.don
 const completedSets=sets=>(sets||[]).filter(saneSet);
 const nextWeightFromSets=(sets,pe)=>{const cs=completedSets(sets);if(!cs.length)return null;const rr=pe?.rr;const matching=rr?cs.filter(s=>Number(s.reps)>=rr[0]&&Number(s.reps)<=rr[1]):cs;if(!matching.length)return null;const cw=Number(matching[0].weight);const hit=rr&&pe?.inc>0&&matching.length>=(pe.sets||1)&&matching.every(s=>Number(s.reps)>=rr[1]);return hit?cw+pe.inc:cw;};
 
+const BACKFILL_VERSION=2;
 const backfillData=(d)=>{
-  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
   Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});
+  // History replay is a versioned one-shot. It previously ran on every load and
+  // paired logged exercises to program exercises BY SLOT INDEX, so any program
+  // mutation (swap/add/remove/reorder) wrote historical sets into the wrong lift.
+  if((d.backfillVersion||0)>=BACKFILL_VERSION)return d;
+  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
   const allDays={...PROG.days,...(d.program||{})};
+  const byProgKey={},byId={};
+  Object.values(allDays).forEach(day=>(day.exercises||[]).forEach(pe=>{
+    const k=progKey(pe,pe);if(!byProgKey[k])byProgKey[k]=pe;if(!byId[pe.id])byId[pe.id]=pe;}));
   Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{
-    if(!w.exercises||!w.day)return;
-    const dayDef=allDays[w.day];if(!dayDef||!dayDef.exercises)return;
-    w.exercises.forEach((ex,i)=>{
-      const pe=dayDef.exercises[i];if(!pe||!ex.sets)return;
+    if(!w.exercises)return;
+    w.exercises.forEach(ex=>{
+      // Identity pairing only: progKey, else exercise id. Unknown -> skip, never guess.
+      const pe=(ex.progKey&&byProgKey[ex.progKey])||(ex.id&&byId[ex.id])||null;
+      if(!pe||!ex.sets)return;
       const key=ex.progKey||progKey(pe,pe);
       const cs=completedSets(ex.sets);if(!cs.length)return;
       const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);
@@ -630,13 +639,37 @@ const backfillData=(d)=>{
       const nextWeight=nextWeightFromSets(ex.sets,pe);
       if(!d.prog[key])d.prog[key]={currentWeight:nextWeight??bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};
       if(!d.prog[key].e1rmHistory)d.prog[key].e1rmHistory=[];
-      d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
+      if(!d.prog[key].e1rmHistory.some(h=>h.date===date))d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
       d.prog[key].e1rmHistory=d.prog[key].e1rmHistory.slice(-12);
       if(nextWeight!=null&&date>=(d.prog[key].lastDate||"")){d.prog[key].currentWeight=nextWeight;d.prog[key].lastReps=cs.map(s=>s.reps);d.prog[key].lastDate=date;d.prog[key].progressed=nextWeight>Number(cs[0].weight);}
       if(!d.prog[key].pr||newE1rm>d.prog[key].pr.e1rm){d.prog[key].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}
     });
   });
+  d.backfillVersion=BACKFILL_VERSION;
   return d;
+};
+
+// Prune orphaned/fossil progression records. Runs every boot (cheap filter) so
+// rows the cleanup migration removed server-side can't be resurrected from a
+// stale local copy or vice versa. Keeps: current id__rr keys; plain legacy IDs
+// of current non-ambiguous exercises that hold real reps (the gw() fallback
+// reads those); anything logged during the current block (protects history of
+// exercises swapped out mid-block).
+const pruneProgression=(d)=>{
+  const days=d.program||PROG.days;
+  const currentKeys=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>progKey(pe,pe))));
+  const currentIds=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>pe.id)));
+  const removed=[];
+  for(const[key,p]of Object.entries(d.prog||{})){
+    if(currentKeys.has(key))continue;
+    if(p?.lastDate&&p.lastDate>=PROG.start)continue;
+    const isPlain=!key.includes("__");
+    const hasRealReps=(p?.lastReps||[]).some(r=>Number(r)>0);
+    if(isPlain&&currentIds.has(key)&&!legacyAmbiguousIds.has(key)&&hasRealReps)continue;
+    removed.push(key);delete d.prog[key];
+  }
+  if(removed.length)console.log(`[prune] Removed ${removed.length} orphaned progression records:`,removed.join(", "));
+  return removed.length;
 };
 
 const repairDeloadProgression=(d)=>{
@@ -4428,10 +4461,12 @@ window.App = function App(){
       backfillData(updated);repairDeloadProgression(updated);
       // Block v2 runs last so its weight fixes win over history replays of the bad logs
       const v2Changed=applyBlockV2(updated);
+      const pruned=pruneProgression(updated);
       setData(updated);sv(updated);
       if(v2Changed){svSB.settings(updated.settings);svSB.program(updated.program);}
       Object.entries(updated.prog).forEach(([exId,p])=>{if(p.currentWeight)svSB.progression(exId,p);});
       applied.forEach(msg=>addToast(msg,"success"));
+      if(pruned)addToast(`Cleaned ${pruned} orphaned lift record${pruned===1?"":"s"} (archived by cleanup migration)`,"success");
       setSbLoaded(true);
     })();
     // Register service worker for notifications
