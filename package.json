@@ -1,6 +1,9 @@
 {
   "private": true,
   "type": "module",
+  "scripts": {
+    "check": "for f in api/*.js; do node --check \"$f\" || exit 1; done && echo 'api syntax OK'"
+  },
   "dependencies": {
     "@vercel/functions": "^3.5.1",
     "mcp-handler": "^1.0.5",

@@ -5,58 +5,62 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 
 ## Tech Stack
 - **Frontend**: React 18 (CDN, Babel in-browser transpilation)
-- **Backend**: Vercel Serverless Functions (3 API endpoints in `/api/`)
-- **Database**: Supabase PostgreSQL (cloud sync)
+- **Backend**: Vercel Serverless Functions in `/api/`
+- **Database**: Supabase PostgreSQL (cloud sync; migrations in `/supabase/`)
 - **Local Storage**: Browser localStorage for offline-first functionality
-- **AI**: Claude API (Sonnet 4) for meal estimation, workout coaching, weekly analysis
+- **AI**: Claude API (`AI_MODEL` env, default `claude-sonnet-4-6`) for weekly analysis and body-comp photo analysis
 
 ## Architecture
-- `index.html` — Complete SPA (~1600 lines, all components inline)
+- `index.html` — Complete SPA (~4,500 lines, all components inline)
 - `api/analyze.js` — Weekly health analysis endpoint
-- `api/coach.js` — Mid-workout AI coaching endpoint
-- `api/estimate.js` — Meal nutrition estimation endpoint
-- `api/update.js` — Program update endpoint (curl/script)
+- `api/bodycomp.js` — Body-composition photo analysis
+- `api/update.js` — Program update endpoint (curl/script, Bearer UPDATE_TOKEN)
 - `api/mcp.js` — Remote MCP server (Claude.ai integration)
+- `api/oura-sync.js` — Oura recovery sync (cron 2x daily)
+- `api/cronometer-sync.js` — Cronometer nutrition sync (cron nightly; source of truth for food)
+- `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
+- `api/push-schedule.js` — Server web push for rest timers (VAPID + optional NOTIFY_TOKEN)
+- `api/allergies.js` — Austin pollen/mold counts
+- `sw.js` — Service worker (offline cache + push display)
+- `supabase/*.sql` — Database migrations (run in Supabase SQL editor)
 - `manifest.json` — PWA manifest
+
+## UI: Three Moments shell
+The Home tab resolves a **mode** from the clock and today's state (test with `?clock=HH:MM&day=weekday`):
+- **Morning** (04:30–09:00, until weight logged): full-screen scale pad, trend one-liner, water quick-add
+- **Session** (training day after weigh-in until 13:00, or manual): today's workout + Oura recovery line with rule-based auto-regulation — recovery <60% proposes "−1 set on non-anchor accessories" (tap-to-accept, mutates today's plan only), <40% additionally offers a mobility swap
+- **Closeout** (after 19:30): stretch launch, "Mark clean day", compact metrics, tomorrow one-liner
+- **Neutral** (weekends/unmatched): compact trend + water + manual mode buttons
+
+Tabs: Home (moments) / Train / Food / Scale / Setup. The Habits tab is gone — habit logging is the one-tap "Mark clean day" in the closeout surface. Food is a quick-log (calories+protein, three presets); Cronometer-synced meals are read-only in-app.
+
+## Visual system: Iron & Teal
+All colors are CSS custom properties in the single `:root` block in `index.html` (auto dark/light via `prefers-color-scheme`). **Never hardcode a hex outside that block.** The JS `C` object maps token names to `var(--…)`. Accent (teal) is the only brand color; amber = warnings, red/green = semantic. Tabular numerals globally.
 
 ## Data Structure
 All data is stored in localStorage under key `dhub6` and synced to Supabase:
 - `wk` — Workout logs (keyed by date)
 - `nut` — Nutrition logs (keyed by date, contains meals array)
 - `wt` — Weight entries (keyed by date)
-- `rec` — Recovery data (keyed by date: recoveryScore, hrv, rhr, sleepHours, etc.)
-- `steps` — Step counts (keyed by date)
-- `water` — Water intake in oz (keyed by date)
-- `habits` — Daily habit tracking (keyed by date)
-- `prog` — Exercise progression state (keyed by exercise ID)
-- `qm` — Quick meal library (array)
-- `mob` — Mobility completion (keyed by date)
-- `stp` — Stepper completion (keyed by date)
-- `debrief` — Morning debrief completion (keyed by date)
-- `settings` — User-customizable targets and preferences
+- `rec` — Recovery data (keyed by date: recoveryScore, hrv, rhr, sleepHours, source, ...)
+- `steps`, `water`, `habits`, `mob`, `stp`, `debrief`, `cardio` — daily stores (keyed by date)
+- `prog` — Exercise progression, keyed by `exerciseId__repRange` (legacy plain-id rows kept only where the fallback reads them; orphans pruned on boot)
+- `autoregLog` — Accepted/dismissed auto-regulation decisions (keyed by date; local)
+- `bodyComp`, `bodyMeas`, `travelDays`, `tdeeExclude`, `settings`, `program`
+- `backfillVersion` — history-replay one-shot marker
 
-## Key Design Decisions
-- **Offline-first**: All data writes go to localStorage immediately, then sync to Supabase
-- **No build step**: React loaded via CDN for simplicity; no npm/webpack needed
-- **Single file**: All components in index.html for easy deployment to Vercel
-- **Date-keyed data**: Each day's data is independent — no carryover between days
+## Weight trend
+`getTrend()` (EWMA-smoothed OLS slope over the last 14 calendar days, lbs/week to 1 decimal) is the **only** trend formula. Every surface consumes it; do not add another.
+
+## Sync health
+`sb.upsert` failures are loud: console.error + one toast per table per session + a red dot on Setup. If the dot is red, a Supabase column/table is missing — check `/supabase/` for a pending migration.
 
 ## Settings (User-Customizable)
-Stored in `data.settings`:
-- `calories` — Daily calorie target (default: 1790, weekly 12,500 / 7)
-- `protein` — Daily protein target in grams (default: 200)
-- `water` — Daily water target in oz (default: 128)
-- `steps` — Daily step target (default: 15000)
-- `sleep` — Sleep target in hours (default: 7.5)
-- `fiber` — Daily fiber target in grams (default: 30)
-- `trainingCal` — Mon/Tue/Thu/Fri calorie target (default: 2000)
-- `wednesdayCal` — Wednesday fast-day calorie target (default: 900)
-- `weekendCal` — Sat/Sun average; app renders Sat +100 / Sun −100 (default: 1800 → 1900/1700)
+Stored in `data.settings`: `calories` (default 1790), `protein` (200), `water` (128), `steps` (15000), `sleep` (7.5), `fiber` (30), `trainingCal` (2000), `wednesdayCal` (900), `weekendCal` (1800; app renders Sat +100 / Sun −100), `syncToken`, `notifyToken`, `customHabits`, `reminders` (dormant).
 
 ## Pushing Workout & Settings Updates via API
-When the user agrees to a workout program change or settings adjustment during conversation, push it live immediately using the `/api/update` endpoint — no code change or deploy needed.
+When the user agrees to a workout program change or settings adjustment during conversation, push it live using `/api/update` — no code change or deploy needed.
 
-**How to push an update:**
 ```bash
 source /home/user/health-hub/.env
 curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
@@ -65,57 +69,22 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
   -d '{"changes":[...],"reason":"..."}'
 ```
 
-Or use the helper script:
-```bash
-/home/user/health-hub/scripts/push-update.sh '{"changes":[...],"reason":"..."}'
-```
+Payload format: see `api/schema.md`. Change types: `settings` field/value, `exercise` update/swap/add/remove. Always include a `reason`; the app applies pending updates on next load (toast).
 
-**Payload format**: See `api/schema.md` for the full schema. Supported change types:
-- `{"type":"settings","field":"<name>","value":<number>}` — Update a setting (calories, protein, water, steps, sleep, fiber, trainingCal, wednesdayCal, weekendCal)
-- `{"type":"exercise","action":"update","exerciseId":"<id>","fields":{...}}` — Modify an existing exercise
-- `{"type":"exercise","action":"swap","oldExerciseId":"<id>","newExercise":{...}}` — Replace an exercise
-- `{"type":"exercise","action":"add","day":"<day>","exercise":{...}}` — Add exercise to a day
-- `{"type":"exercise","action":"remove","day":"<day>","exerciseId":"<id>"}` — Remove exercise from a day
+## Claude.ai MCP Integration
+`/api/mcp` exposes `get_program`, `update_settings`, `update_exercise`. `get_program` reads **live state** from the Supabase `settings`/`program`/`progression` tables (the app mirrors them on every change) and tags the response `source:"live"`; a hardcoded snapshot is the fallback only. Updates flow through the `program_updates` queue and apply on next app load.
 
-**Rules:**
-- Always include a `reason` field explaining why the change was made
-- Confirm to the user what was pushed and show the API response
-- The app picks up pending updates on next load (toast notification)
+## Environment variables (Vercel)
+`ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
+
+## Checks
+`npm run check` — syntax-checks every `/api/*.js`. There is no build step or test suite; verify UI changes by loading the app (use `?clock=` to simulate times).
 
 ## Git Workflow
-When making code changes to the repo:
 1. Commit with a clear message
 2. Push to a feature branch
-3. Create a PR with `gh pr create`
-4. Merge immediately with `gh pr merge --merge --delete-branch`
+3. Create a PR
+4. Note: `.github/workflows/auto-merge-claude.yml` auto-merges `claude/**` branches
 
-This gives a paper trail of every change while removing manual work.
-
-## Claude.ai MCP Integration (Remote Connector)
-The app exposes a remote MCP server at `/api/mcp` so regular Claude.ai conversations can directly update the workout program and settings — no code, no CLI needed.
-
-**How it works:**
-1. User chats with Claude on claude.ai (phone, desktop, anywhere)
-2. Says "bump my protein to 200g" or "swap hack squat for belt squat"
-3. Claude calls the MCP tool → writes to Supabase `program_updates` table
-4. App picks up the change on next load (toast notification)
-
-**Setup (one-time):**
-1. In Claude.ai: **Settings → Integrations → Add custom integration**
-2. Enter URL: `https://health-hub-topaz-sigma.vercel.app/api/mcp`
-3. When prompted for auth, use the `UPDATE_TOKEN` as Bearer token
-4. Done — any Claude.ai conversation can now control the app
-
-**Available MCP tools:**
-- `get_program` — View current workout program, exercises, settings
-- `update_settings` — Change a target (calories, protein, water, steps, sleep, fiber, etc.)
-- `update_exercise` — Add, remove, swap, or update exercises in the program
-
-## Deployment
-Deploy to Vercel with `ANTHROPIC_API_KEY` environment variable set for AI features.
-
-## Common Tasks
-- **Add a new exercise**: Add to `PROG.days` object in index.html
-- **Change targets**: Use the Settings tab in the app (or modify defaults in code)
-- **Add API endpoint**: Create new file in `/api/` directory
-- **Push workout/settings change**: Use the `/api/update` endpoint (see above)
+## Security
+See `SECURITY.md` — hardening is documented and deliberately deferred.

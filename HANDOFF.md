@@ -1,5 +1,15 @@
 # Health Hub — Full Project Handoff
 
+> ⚠️ **2026-07-11: Large overhaul landed (fix/full-overhaul).** This document
+> predates it and is kept for background. Where it disagrees with CLAUDE.md,
+> **CLAUDE.md is correct.** Headline changes: Three Moments shell (Home resolves
+> a morning/session/closeout/neutral mode), Iron & Teal token theme with auto
+> dark/light, Habits tab removed (one-tap "Mark clean day" in closeout), Food is
+> a quick-log with Cronometer as source of truth, AI coach deleted, one shared
+> weight-trend engine, identity-paired one-shot history backfill, loud sync
+> failures + Setup health dot, MCP get_program reads live Supabase state, and
+> Supabase migrations live in /supabase/.
+
 ## What This Is
 A single-page PWA for personal health/fitness tracking built for one user executing a fat-loss cut while preserving muscle and performance. Deployed on Vercel, data in Supabase, offline-first via localStorage.
 
