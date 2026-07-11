@@ -268,7 +268,11 @@ const reportSyncFailure=(table,status,body)=>{
 const onSyncFailure=(l)=>{syncHealth.listeners.add(l);return()=>syncHealth.listeners.delete(l);};
 
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch(e){reportSyncFailure("localStorage",0,String(e));}};
-const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true,restTimer:true,timers:true}};
+const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],
+  notifications:{enabled:false,restTimer:true,timers:true},
+  // Dormant: reminder system removed 2026-07-11 (rest timer is the only
+  // notification). Preferences kept for a future server-push implementation.
+  reminders:{enabled:false,weighIn:"08:00",closeout:"20:30"}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
@@ -1191,7 +1195,10 @@ const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",
   try{
     const sub=await ensurePushSubscription();
     if(!sub)return false;
-    const r=await fetch("/api/push-schedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),title,body,tag,dueAt,url})});
+    const notifyToken=ld()?.settings?.notifyToken||"";
+    const r=await fetch("/api/push-schedule",{method:"POST",
+      headers:{"Content-Type":"application/json",...(notifyToken?{"x-notify-token":notifyToken}:{})},
+      body:JSON.stringify({subscription:sub.toJSON(),title,body,tag,dueAt,url})});
     return r.ok;
   }catch{return false;}
 };
@@ -4009,7 +4016,7 @@ const Settings=({data,setData,syncFailures={}})=>{
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||""});
+    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showImport,setShowImport]=useState(false);
@@ -4052,10 +4059,13 @@ const Settings=({data,setData,syncFailures={}})=>{
   };
 
   const saveSettings=()=>{
-    const nd={...data,settings:{calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
+    // Spread existing settings first so fields not managed by this form
+    // (customHabits, reminders, notifications) survive a save.
+    const nd={...data,settings:{...DEFAULTS,...data.settings,
+      calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,syncToken:f.syncToken||"",
-      notifications:data.settings?.notifications||DEFAULTS.notifications}};
+      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,
+      syncToken:f.syncToken||"",notifyToken:f.notifyToken||""}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
@@ -4142,7 +4152,7 @@ const Settings=({data,setData,syncFailures={}})=>{
             </div>
             {(data.settings.notifications||{}).enabled&&(
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {[{key:"habits",label:"Morning habits reminder"},{key:"water",label:"Water reminders"},{key:"stretch",label:"Evening stretch reminder"},{key:"workout",label:"Training day reminder"},{key:"restTimer",label:"Rest timer complete"},{key:"timers",label:"All workout timers"}].map(n=>{
+                {[{key:"restTimer",label:"Rest timer complete"},{key:"timers",label:"All workout timers"}].map(n=>{
                   const ns=data.settings.notifications||{};
                   const on=ns[n.key]!==false;
                   return(<div key={n.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.bl}`}}>
@@ -4158,6 +4168,14 @@ const Settings=({data,setData,syncFailures={}})=>{
                     </button>
                   </div>);
                 })}
+              </div>
+            )}
+            {(data.settings.notifications||{}).enabled&&(
+              <div style={{marginTop:8}}>
+                <L>Push token</L>
+                <input value={f.notifyToken} onChange={e=>setF({...f,notifyToken:e.target.value})} placeholder="Same value as Vercel env NOTIFY_TOKEN"
+                  style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:"#fff",color:C.t,boxSizing:"border-box"}}/>
+                <div style={{fontSize:11,color:C.t3,marginTop:3}}>Authorizes closed-app rest-timer push. Saved with Save Targets.</div>
               </div>
             )}
           </>
@@ -4473,64 +4491,6 @@ window.App = function App(){
     // Register service worker for notifications
     if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{});}
   },[]);
-
-  useEffect(()=>{
-    if(!data.settings?.notifications?.enabled)return;
-    const checkNotifications=()=>{
-      if(Notification.permission!=="granted")return;
-      const now=new Date();const hour=now.getHours();
-      const ns=data.settings.notifications;
-      const t=td();
-
-      // Morning habit reminder (8-9 AM, if habits not logged today)
-      if(ns.habits&&hour>=8&&hour<9&&!data.habits?.[t]){
-        const lastNotif=localStorage.getItem("dhub6_notif_habits");
-        if(lastNotif!==t){
-          notifyDevice("Health Hub",{body:"Time to log your habits and metrics for today",tag:"habits"});
-          localStorage.setItem("dhub6_notif_habits",t);
-        }
-      }
-
-      // Water reminder (every 3 hours, 10AM-8PM, if under 50% of target)
-      if(ns.water&&hour>=10&&hour<=20&&hour%3===1){
-        const waterNow=data.water?.[t]||0;
-        const waterGoal=data.settings?.water||128;
-        if(waterNow<waterGoal*0.5){
-          const lastNotif=localStorage.getItem("dhub6_notif_water_hr");
-          if(lastNotif!==""+hour){
-            notifyDevice("Health Hub",{body:`${waterNow}/${waterGoal}oz water — keep hydrating!`,tag:"water"});
-            localStorage.setItem("dhub6_notif_water_hr",""+hour);
-          }
-        }
-      }
-
-      // Evening stretch reminder (8-9 PM, if stretch not done today)
-      if(ns.stretch&&hour>=20&&hour<21&&!(data.mob?.[t]?.done||data.mob?.[t]===true)){
-        const lastNotif=localStorage.getItem("dhub6_notif_stretch");
-        if(lastNotif!==t){
-          notifyDevice("Health Hub",{body:"Time for your evening stretch routine",tag:"stretch"});
-          localStorage.setItem("dhub6_notif_stretch",t);
-        }
-      }
-
-      // Training day reminder (7-8 AM on training days)
-      if(ns.workout&&hour>=7&&hour<8){
-        const dayName=dw(t);
-        const sess=data.program?.[dayName];
-        if(sess&&!data.wk?.[t]){
-          const lastNotif=localStorage.getItem("dhub6_notif_workout");
-          if(lastNotif!==t){
-            notifyDevice("Health Hub",{body:`${sess.name} today`,tag:"workout"});
-            localStorage.setItem("dhub6_notif_workout",t);
-          }
-        }
-      }
-    };
-
-    checkNotifications();
-    const iv=setInterval(checkNotifications,30*60*1000);
-    return()=>clearInterval(iv);
-  },[data.settings?.notifications?.enabled]);
 
   useEffect(()=>{
     sv(data);

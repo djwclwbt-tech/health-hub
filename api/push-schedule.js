@@ -45,7 +45,10 @@ const scheduleOrSend = async (req, job) => {
   const host = req.headers.host;
   await fetch(`${proto}://${host}/api/push-schedule`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(process.env.NOTIFY_TOKEN ? { 'x-notify-token': process.env.NOTIFY_TOKEN } : {}),
+    },
     body: JSON.stringify(job),
   });
 };
@@ -64,6 +67,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (process.env.NOTIFY_TOKEN && req.headers['x-notify-token'] !== process.env.NOTIFY_TOKEN) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   if (!configureWebPush()) return res.status(500).json({ error: 'VAPID keys not configured' });
 
   try {
