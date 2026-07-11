@@ -2531,15 +2531,31 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const isDeload=wkn(t)===PROG.deload;
+  // Last session's completed sets for an exercise — feeds one-tap prefill.
+  const lastSessionSets=(key,id)=>{
+    const dates=Object.keys(data.wk||{}).sort().reverse();
+    for(const dt of dates){
+      const wex=data.wk[dt]?.exercises?.find(e=>(key&&e.progKey===key)||(id&&e.id===id));
+      if(wex?.sets?.some(saneSet))return wex.sets.filter(saneSet);
+    }
+    return null;
+  };
   const startW=(day=sel)=>{const startVariant=activeVariant[day]||null;const startSess=getSess(day,startVariant);if(!startSess)return;
     setWorkout({day,variant:startVariant,exercises:startSess.exercises.map(ex=>{
       const key=progKey(ex,ex);const cw=gw(ex,ex.sw,ex);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
+      const last=lastSessionSets(key,ex.id);
       return{id:ex.id,progKey:key,
       wu:WU(wt).map(w=>({...w,done:false})),
-      sets:Array.from({length:ex.sets},()=>({weight:wt,reps:0,rir:"",done:false})),
+      // Prefill reps with last session's per-set value (fallback: top of rep
+      // range) and RIR with last session's. Prefilled-unconfirmed sets render
+      // lighter; tapping Log logs the prefill, typing overrides it.
+      sets:Array.from({length:ex.sets},(_,si)=>({weight:wt,
+        reps:Number(last?.[si]?.reps)>0?Number(last[si].reps):(ex.rr?.[1]||0),
+        rir:last?.[si]?.rir??"",
+        prefilled:true,done:false})),
     };}),start:Date.now(),isDeload});setWuDone(false);};
 
-  const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;return n;});
+  const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;if(f==="reps"||f==="rir")n.exercises[ei].sets[si].prefilled=false;return n;});
   const dWU=(ei,wi,rest)=>{
     setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].wu[wi].done=true;return n;});
     if(rest&&rest>0){startRestTimer(Math.min(rest,60));}
@@ -2913,15 +2929,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",fontSize:10,color:C.t3,fontWeight:600}}>
             <span style={{width:18}}>#</span><span style={{width:68,textAlign:"center"}}>LBS</span><span style={{width:13}}></span><span style={{width:56,textAlign:"center"}}>REPS</span><span style={{width:42,textAlign:"center"}}>RIR</span><span style={{width:44}}></span>
           </div>
-          {wkEx.sets.map((s,si)=>(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
+          {wkEx.sets.map((s,si)=>{const ghost=s.prefilled&&!s.done;
+          return(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
             borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
             <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
             <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:68,fontSize:16}}/>
             <span style={{color:C.t3,fontSize:13}}>×</span>
-            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16}}/>
-            <N value={s.rir} onChange={v=>uS(ei,si,"rir",v)} placeholder="RIR" max={5} style={{width:42,fontSize:14,color:C.v}}/>
+            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16,...(ghost?{color:C.t3,fontWeight:500}:{})}}/>
+            <N value={s.rir} onChange={v=>uS(ei,si,"rir",v)} placeholder="RIR" max={5} style={{width:42,fontSize:14,color:ghost?C.t3:C.v}}/>
             {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
-          </div>))}
+          </div>);})}
         </X>);
       })}
 
