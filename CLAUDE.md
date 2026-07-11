@@ -35,7 +35,7 @@ The Home tab resolves a **mode** from the clock and today's state (test with `?c
 Tabs: Home (moments) / Train / Food / Scale / Setup. The Habits tab is gone — habit logging is the one-tap "Mark clean day" in the closeout surface. Food is a quick-log (calories+protein, three presets); Cronometer-synced meals are read-only in-app.
 
 ## Visual system: Iron & Steel
-All colors are CSS custom properties in the single `:root` block in `index.html` (auto dark/light via `prefers-color-scheme`). **Never hardcode a hex outside that block.** The JS `C` object maps token names to `var(--…)`. Accent (red, reserved for actions) is the only brand color; the UI is otherwise monochrome graphite; amber = warnings, red/green = semantic. Tabular numerals globally.
+All colors are CSS custom properties in the single `:root` block in `index.html` (auto dark/light via `prefers-color-scheme`). **Never hardcode a hex outside that block.** The JS `C` object maps token names to `var(--…)`. Accent (red, reserved for actions) is the only brand color; the UI is otherwise monochrome graphite; amber = warnings, red/green = semantic. Type: Barlow (UI) + Barlow Condensed (display/numerals/buttons, uppercase). Tabular numerals globally; sharp 3-4px radii — industrial, not SaaS.
 
 ## Data Structure
 All data is stored in localStorage under key `dhub6` and synced to Supabase:
