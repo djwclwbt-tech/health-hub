@@ -1,3 +1,5 @@
+const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -89,7 +91,7 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: MODEL,
         max_tokens: 1000,
         system: systemPrompt,
         messages: [{ role: 'user', content: dataStr }],
@@ -97,7 +99,10 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'API error' });
+    if (!response.ok) {
+      console.error('[analyze] API error:', response.status, data.error?.message);
+      return res.status(response.status).json({ error: 'Analysis unavailable.' });
+    }
 
     const raw = data.content?.[0]?.text || '{}';
     let parsed;
@@ -105,11 +110,13 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
       const cleaned = raw.replace(/```json|```/g, '').trim();
       parsed = JSON.parse(cleaned);
     } catch (e) {
-      return res.status(422).json({ error: 'Failed to parse analysis', raw });
+      console.error('[analyze] Failed to parse analysis:', raw.slice(0, 500));
+      return res.status(422).json({ error: 'Analysis unavailable.' });
     }
 
     return res.status(200).json(parsed);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[analyze] Handler error:', err);
+    return res.status(500).json({ error: 'Analysis unavailable.' });
   }
 }

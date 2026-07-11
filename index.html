@@ -1559,9 +1559,6 @@ const Dashboard=({data,setData,setTab})=>{
   const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
   const [importText,setImportText]=useState("");
   const [importStatus,setImportStatus]=useState("");
-  const [dailyCoach,setDailyCoach]=useState(null);
-  const [dailyCoachLoading,setDailyCoachLoading]=useState(false);
-  const [dailyCoachErr,setDailyCoachErr]=useState("");
   const [allergies,setAllergies]=useState(null);
   const [allergyErr,setAllergyErr]=useState("");
   const [todayKey,setTodayKey]=useState(td());
@@ -1673,62 +1670,6 @@ const Dashboard=({data,setData,setTab})=>{
   const allergyTop=(allergies?.summary||[]).slice(0,3);
   const allergyTone=allergyTop.some(x=>/^high|very/i.test(x.level||""))?C.r:allergyTop.some(x=>/^moderate/i.test(x.level||""))?C.a:C.g;
 
-  const buildDailyCoachContext=()=>{
-    const lastDates=(obj,n=7)=>Object.entries(obj||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,n);
-    const avg=arr=>arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length):null;
-    const currentWeight=(ex,def)=>{
-      const key=progKey(ex,ex);
-      const p=data.prog?.[key]?.currentWeight;
-      if(p!=null&&saneWeight(ex,p))return p;
-      const dates=Object.keys(data.wk||{}).sort().reverse();
-      for(const d of dates){
-        const w=data.wk[d];
-        const wex=w.exercises?.find(e=>e.progKey===key);
-        if(wex){const next=nextWeightFromSets(wex.sets,ex);if(next!=null&&saneWeight(ex,next))return next;}
-      }
-      const targetRr=ex.rr;
-      for(const d of dates){
-        const w=data.wk[d];
-        const wex=w.exercises?.find(e=>e.id===ex.id);
-        if(wex){const ds=wex.sets?.filter(s=>saneSet(s)&&(!targetRr||Number(s.reps)>=targetRr[0]&&Number(s.reps)<=targetRr[1]));if(ds?.length&&saneWeight(ex,ds[0].weight)){const hitTop=targetRr&&ex.inc>0&&ds.length>=(ex.sets||1)&&ds.every(s=>Number(s.reps)>=targetRr[1]);return hitTop?Number(ds[0].weight)+ex.inc:ds[0].weight;}}
-      }
-      if(!legacyAmbiguousIds.has(ex.id)){
-        const lp=data.prog?.[ex.id];
-        const legacy=lp?.currentWeight;
-        const legacyHasReps=(lp?.lastReps||[]).some(r=>Number(r)>0);
-        if(legacyHasReps&&legacy!=null&&saneWeight(ex,legacy))return legacy;
-      }
-      return def;
-    };
-    const recentNut=lastDates(data.nut,7).filter(([_,v])=>v?.totalCal>0);
-    const recentSteps=lastDates(data.steps,7).map(([_,v])=>v).filter(v=>v>0);
-    const recentWorkouts=lastDates(data.wk,5).map(([date,w])=>({date,name:w.name||w.day||"Workout",exercises:(w.exercises||[]).slice(0,6).map(e=>({name:e.name||e.id,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}${s.rir?` @${s.rir}`:""}`)}))}));
-    const targetExercises=(sess?.exercises||[]).slice(0,6).map(ex=>{
-      const cur=currentWeight(ex,ex.sw);
-      const hist=Object.entries(data.wk||{}).filter(([_,w])=>(w.exercises||[]).some(e=>e.id===ex.id&&e.sets)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,w])=>{const e=w.exercises.find(x=>x.id===ex.id);return{date,sets:(e.sets||[]).filter(saneSet).map(s=>`${s.weight}x${s.reps}`)}});
-      return{name:ex.name,focus:sess.focus,repRange:ex.rr?.join("-"),sets:ex.sets,currentWeight:cur,unit:ex.unit||"lbs",history:hist};
-    });
-    return{
-      date:t,phase:w===PROG.deload?"deload":"cut",program:{name:PROG.name,week:w,totalWeeks:PROG.weeks,day:dn,scheduledWorkout:sess?{name:sess.name,focus:sess.focus,estimatedMinutes:estTime(sess)}:null},
-      targets:{calories:calT,protein:proT,steps:st.steps,water:st.water,sleep:st.sleep},
-      today:{nutrition:nut?{calories:tCal,protein:tPro,carbs:nut.totalCarbs||0,fat:nut.totalFat||0,fiber:tFib,meals:(nut.meals||[]).map(m=>m.description).slice(-5)}:null,weight:lw,steps,recovery:rec?{score:rec.recoveryScore,hrv:rec.hrv,rhr:rec.rhr,sleep:rec.sleepHours,respiratoryRate:rec.respiratoryRate,sleepLight:rec.sleepLight,sleepDeep:rec.sleepDeep,sleepRem:rec.sleepRem,source:rec.source}:null,workoutDone,cardio:data.cardio?.[t]||null,habits:data.habits?.[t]||null},
-      trends:{weight:weightTrendSummary,tdee:tdeeData,weeklyRecoveryAvg:weeklyRecAvg,redDays,steps7Avg:avg(recentSteps),nutrition7Avg:recentNut.length?{calories:avg(recentNut.map(([_,v])=>v.totalCal||0)),protein:avg(recentNut.map(([_,v])=>v.totalProtein||0))}:null,stalls:stalls.slice(0,5)},
-      targetExercises,recentWorkouts,
-      missing:[!weightLogged&&"today weight",!nutritionLogged&&"today nutrition",!rec&&"today recovery",!recentWorkouts.length&&"recent workouts"].filter(Boolean)
-    };
-  };
-
-  const askDailyCoach=async()=>{
-    setDailyCoachLoading(true);setDailyCoachErr("");
-    try{
-      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"daily",context:buildDailyCoachContext()})});
-      const d=await r.json();
-      if(!r.ok){setDailyCoachErr(d.error||"Coach unavailable");setDailyCoachLoading(false);return;}
-      setDailyCoach(d);
-    }catch(e){setDailyCoachErr("Coach error: "+e.message);}
-    setDailyCoachLoading(false);
-  };
-
   if(!showFullDashboard)return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <div>
@@ -1741,32 +1682,6 @@ const Dashboard=({data,setData,setTab})=>{
         <div style={{fontSize:15,fontWeight:700,color:C.t,lineHeight:1.35}}>{cutStatus.msg}</div>
         <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:12,background:`linear-gradient(135deg,${C.p},#4f46e5)`,color:"#fff",padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
         <div style={{fontSize:12,color:C.t3,marginTop:6,textAlign:"center"}}>{nextAction.hint}</div>
-      </X>
-
-      <X style={{padding:12,borderLeft:`4px solid ${C.p}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3,textTransform:"uppercase"}}>Today Coach</div>
-            <div style={{fontSize:13,color:C.t2,marginTop:2}}>Data-aware plan from workout, nutrition, weight, steps, and recovery.</div>
-          </div>
-          <button onClick={askDailyCoach} disabled={dailyCoachLoading} style={{border:"none",borderRadius:10,background:C.p,color:"#fff",padding:"8px 11px",fontSize:12,fontWeight:800,fontFamily:"inherit",opacity:dailyCoachLoading?0.6:1}}>{dailyCoachLoading?"Checking":"Ask"}</button>
-        </div>
-        {dailyCoachErr&&<div style={{fontSize:12,color:C.r,marginTop:8}}>{dailyCoachErr}</div>}
-        {dailyCoach&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:13,fontWeight:800,color:C.t}}>Today’s plan</div>
-          <div style={{fontSize:12,color:C.t2,lineHeight:1.45}}>
-            <div><b>Workout:</b> {dailyCoach.todayPlan?.workout}</div>
-            <div><b>Exercises:</b> {(dailyCoach.todayPlan?.targetExercises||[]).join(", ")}</div>
-            <div><b>Weights/reps:</b> {(dailyCoach.todayPlan?.suggestedWeightsReps||[]).join("; ")}</div>
-            <div><b>Cardio/steps:</b> {dailyCoach.todayPlan?.cardioSteps}</div>
-            <div><b>Mobility:</b> {dailyCoach.todayPlan?.mobility}</div>
-            <div><b>Nutrition:</b> {dailyCoach.todayPlan?.nutritionTarget}</div>
-          </div>
-          <div style={{padding:"8px 10px",background:C.bg,borderRadius:8,fontSize:12,color:C.t2,lineHeight:1.4}}><b>Key adjustment:</b> {dailyCoach.keyAdjustment}</div>
-          {!!dailyCoach.watchOuts?.length&&<div style={{fontSize:12,color:C.t2,lineHeight:1.4}}><b>Watch-outs:</b> {dailyCoach.watchOuts.join("; ")}</div>}
-          <div style={{fontSize:13,fontWeight:850,color:C.p,lineHeight:1.35}}>{dailyCoach.simpleInstruction}</div>
-          <div style={{fontSize:10,color:C.t3}}>Confidence: {dailyCoach.confidence}{dailyCoach.missingData?.length?` · Missing: ${dailyCoach.missingData.join(", ")}`:""}</div>
-        </div>)}
       </X>
 
       <X style={{padding:12,borderLeft:`4px solid ${allergyTone}`}}>
@@ -2534,12 +2449,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
-  const [aiQ,setAiQ]=useState("");
-  const [aiA,setAiA]=useState("");
-  const [aiLoading,setAiLoading]=useState(false);
-  const [aiCooldown,setAiCooldown]=useState(false);
-  const [aiExIdx,setAiExIdx]=useState(null);
-  const [showAi,setShowAi]=useState(false);
   const [swapModal,setSwapModal]=useState(null);
   const [wuDone,setWuDone]=useState(false);
   const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
@@ -2863,68 +2772,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </div>
   </div>);
 
-  const applyCoachActions=(actions)=>{
-    if(!actions||!actions.length)return;
-    const nd=JSON.parse(JSON.stringify(data));
-    actions.forEach(c=>{
-      try{
-        if(c.type==="settings"&&c.field&&['calories','protein','water','steps','sleep','fiber','trainingCal','wednesdayCal','weekendCal','trainingPro','mondayPro','weekendPro'].includes(c.field)){
-          nd.settings={...nd.settings,[c.field]:c.value};
-          if(addToast)addToast(`${c.field}: updated to ${c.value}`,"success");
-        }else if(c.type==="exercise"&&c.action==="update"&&c.exerciseId){
-          for(const day of Object.values(nd.program)){
-            const ex=day.exercises?.find(e=>e.id===c.exerciseId);
-            if(ex&&c.fields){Object.assign(ex,c.fields);if(addToast)addToast(`Updated ${ex.name}`,"success");}
-          }
-        }else if(c.type==="exercise"&&c.action==="swap"&&c.oldExerciseId&&c.newExercise){
-          for(const day of Object.values(nd.program)){
-            const idx=day.exercises?.findIndex(e=>e.id===c.oldExerciseId);
-            if(idx>=0){const old=day.exercises[idx].name;day.exercises[idx]=c.newExercise;if(addToast)addToast(`Swapped ${old} → ${c.newExercise.name}`,"success");}
-          }
-        }
-      }catch(e){console.error("[coach] Failed to apply action:",e);}
-    });
-    setData(nd);sv(nd);svSB.program(nd.program);if(nd.settings)svSB.settings(nd.settings);
-  };
-
-  const askCoach=async(q,exIdx)=>{
-    if(!q.trim()||aiLoading||aiCooldown)return;
-    setAiLoading(true);setAiA("");
-    const wSess=getSess(workout.day,workout.variant);
-    const ex=workout&&exIdx!=null?wSess?.exercises[exIdx]:null;
-    const cw=ex?gw(ex,ex.sw,ex):null;
-    try{
-      const history=ex?Object.entries(data.wk||{})
-        .filter(([d,w])=>w.exercises&&w.exercises.some(e=>e.id===ex.id&&e.sets))
-        .sort((a,b)=>b[0].localeCompare(a[0]))
-        .slice(0,4)
-        .map(([d,w])=>{
-          const logged=w.exercises.find(e=>e.id===ex.id);
-          if(!logged||!logged.sets)return null;
-          const done=logged.sets.filter(saneSet);
-          if(!done.length)return null;
-          return{date:d,weight:done[0].weight,reps:done.map(s=>s.reps),sets:done.length};
-        }).filter(Boolean):[];
-      const recovery=data.rec&&data.rec[t]?{
-        score:data.rec[t].recoveryScore||null,hrv:data.rec[t].hrv||null,
-        rhr:data.rec[t].rhr||null,sleep:data.rec[t].sleepHours||null,
-        source:data.rec[t].source||null,sleepLight:data.rec[t].sleepLight||null,
-        sleepDeep:data.rec[t].sleepDeep||null,sleepRem:data.rec[t].sleepRem||null}:null;
-      const stalled=ex?((getStalls(data.prog,data.wk,data.program)||[]).some(s=>s.id===ex.id)):false;
-      const week=wkn(t);
-      const r=await fetch("/api/coach",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({question:q,exercise:ex?.name||"",weight:cw||0,
-          reps:ex?ex.rr.join("-"):"",sets:ex?.sets||0,focus:wSess?.focus||"",
-          history,recovery,stalled,week})});
-      const d=await r.json();
-      if(!r.ok){setAiA(d.error||"Coach unavailable — check API key");setAiLoading(false);return;}
-      setAiA(d.answer||"No response");
-      if(d.actions&&d.actions.length)applyCoachActions(d.actions);
-    }catch(e){console.error("Coach error:",e);setAiA("Error connecting to coach: "+e.message);}
-    setAiLoading(false);setAiCooldown(true);
-    setTimeout(()=>setAiCooldown(false),10000);
-  };
-
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const [viewW,setViewW]=useState(null);
   const [spOpen,setSpOpen]=useState(false);
@@ -3068,33 +2915,6 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>);
       })()}
 
-      <X style={{padding:10,borderLeft:`3px solid ${C.v}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showAi?8:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:C.v}}>AI Coach</div>
-          <button onClick={()=>{setShowAi(!showAi);setAiA("");}} style={{background:"none",border:"none",color:C.v,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>{showAi?"Hide":"Ask"}</button>
-        </div>
-        {showAi&&(<div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
-            {[{l:"Substitute?",q:"What's a good substitute for this exercise with the equipment I have?"},{l:"Drop weight?",q:"Should I drop weight on this? I'm struggling with form."},
-              {l:"Form check",q:"Give me the top form cue for this exercise."},{l:"Deload?",q:"My reps are dropping. Should I deload or push through?"}
-            ].map((p,i)=>(
-              <button key={i} onClick={()=>{setAiQ(p.q);setAiExIdx(null);askCoach(p.q,null);}} disabled={aiLoading||aiCooldown}
-                style={{padding:"6px 10px",borderRadius:12,fontSize:12,fontWeight:600,cursor:aiLoading||aiCooldown?"not-allowed":"pointer",
-                  background:C.vl,border:"none",color:C.v,fontFamily:"inherit",opacity:aiLoading||aiCooldown?0.4:1}}>{p.l}</button>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:4}}>
-            <input type="text" value={aiQ} onChange={e=>setAiQ(e.target.value)} placeholder="Ask about an exercise..."
-              onKeyDown={e=>{if(e.key==="Enter")askCoach(aiQ,aiExIdx);}}
-              style={{flex:1,background:"#fff",border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
-            <B small onClick={()=>askCoach(aiQ,aiExIdx)} disabled={aiLoading||aiCooldown||!aiQ.trim()} color={C.v}>
-              {aiLoading?"...":"Ask"}
-            </B>
-          </div>
-          {aiCooldown&&!aiLoading&&<div style={{fontSize:10,color:C.t3,marginTop:4}}>Cooldown — wait a few seconds</div>}
-          {aiA&&(<div style={{marginTop:8,padding:10,background:C.vl,borderRadius:6,fontSize:13,color:C.t,lineHeight:1.5}}>{aiA}</div>)}
-        </div>)}
-      </X>
     </div>);
   }
 
