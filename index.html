@@ -306,7 +306,7 @@ const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:
   reminders:{enabled:false,weighIn:"08:00",closeout:"20:30"}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},autoregLog:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},autoregLog:{},tdeeCal:null,socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -887,49 +887,86 @@ const linReg=(ys)=>{
   return{slope:den?num/den:0};
 };
 
-const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={})=>{
+const median=(a)=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+
+// Imputed TDEE: anchor on weight trend, classify each day (full / partial /
+// unlogged), impute the gaps, report a range whose width scales with how much
+// of the window is imputed vs measured. Calibration (data.tdeeCal) tightens
+// the unlogged-day assumptions.
+const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={},tdeeCal=null)=>{
   const planStart=PROG.start;
   const today=td();
-  const pairedAll=Object.keys(wt||{})
-    .filter(dt=>dt<=today&&wt[dt]!=null&&(nut[dt]?.totalCal||0)>=1200&&!tdeeExclude[dt])
-    .sort();
-  const current=pairedAll.filter(dt=>dt>=planStart);
-  const history=pairedAll.filter(dt=>dt<planStart);
+  const cal=tdeeCal&&tdeeCal.answered?tdeeCal:null;
+  // Median full dinner per DAY (Cronometer tags each item "Dinner", so sum per date first)
+  const dinnerByDay={};
+  Object.entries(nut||{}).forEach(([dt,n])=>{(n?.meals||[]).forEach(m=>{if(/dinner/i.test(m?.mealType||"")){const c=Number(m.cal)||0;if(c>0)dinnerByDay[dt]=(dinnerByDay[dt]||0)+c;}});});
+  const medDinner=Math.round(median(Object.values(dinnerByDay).filter(v=>v>150))||650);
+  const listDays=(a,b)=>{const out=[];const d=new Date(a+"T12:00:00");const end=new Date(b+"T12:00:00");while(d<=end){out.push(lds(d));d.setDate(d.getDate()+1);}return out;};
+  const shiftDay=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return lds(d);};
 
-  const estimate=(dates)=>{
-    if(dates.length<3)return null;
-    const weights=dates.map(dt=>wt[dt]);
-    const calories=dates.map(dt=>nut[dt].totalCal);
+  const estimate=(startD,endD)=>{
+    if(endD<startD)return null;
+    const nutDates=Object.keys(nut||{}).filter(dt=>dt>=startD&&dt<=endD&&(nut[dt]?.totalCal||0)>0).sort();
+    if(nutDates.length<5)return null;
+    const days=listDays(nutDates[0],nutDates[nutDates.length-1]).filter(dt=>!tdeeExclude[dt]&&dt<=today);
+    const fullCals=[];const classified=[];
+    for(const dt of days){
+      const target=getDayCalTarget(dt,settings,travelDays,null)||1800;
+      const t=nut[dt]?.totalCal||0;
+      if(t>=Math.max(800,target*0.6)){classified.push({dt,cls:"full",t});fullCals.push(t);}
+      else if(t>0)classified.push({dt,cls:"partial",t});
+      else classified.push({dt,cls:"unlogged",t:0});
+    }
+    if(fullCals.length<5)return null;
+    const medFull=median(fullCals);
+    const vals=classified.map(({dt,cls,t})=>{
+      if(cls==="full")return t;
+      if(cls==="partial")return t+medDinner;
+      const wd=new Date(dt+"T12:00:00").getDay();
+      if(cal&&(cal.unloggedIs==="blowup"||(cal.unloggedIs==="mixed"&&(wd===5||wd===6))))return cal.socialCal||3000;
+      if(cal&&cal.fastSlips&&wd===3)return settings?.trainingCal||1800;
+      return medFull;
+    });
+    const nFull=fullCals.length,nPart=classified.filter(c=>c.cls==="partial").length,nUn=classified.length-nFull-nPart;
+    const imputedShare=classified.length?(nPart*0.5+nUn)/classified.length:0;
+    const avgCal=Math.round(vals.reduce((s,v)=>s+v,0)/vals.length);
+    const wDates=Object.keys(wt||{}).filter(dt=>dt>=days[0]&&dt<=days[days.length-1]&&wt[dt]!=null).sort();
+    if(wDates.length<3)return null;
+    const weights=wDates.map(dt=>wt[dt]);
     const trendW=calcEWMA(weights,0.1);
-    const avgCal=Math.round(calories.reduce((s,v)=>s+v,0)/calories.length);
-    const weeklyChange=linReg(weights).slope*7;
+    const spanDays=Math.max(1,(new Date(wDates[wDates.length-1]+"T12:00:00")-new Date(wDates[0]+"T12:00:00"))/864e5);
+    const weeklyChange=(trendW[trendW.length-1]-trendW[0])/spanDays*7;
     const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
     const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
-    return{tdee,avgCalories:avgCal,weeklyChange,trendWeight:+trendW[trendW.length-1].toFixed(1),
-      trendWeights:dates.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
+    return{tdee,avgCalories:avgCal,weeklyChange,imputedShare,nFull,nPart,nUn,
+      trendWeight:+trendW[trendW.length-1].toFixed(1),
+      trendWeights:wDates.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
   };
 
-  const cur=estimate(current);
-  const hist=estimate(history);
-  if(!cur&&!hist)return{daysUsed:current.length,historyDays:history.length,daysNeeded:7,phase:"collecting"};
+  const cur=estimate(planStart,today);
+  const hist=estimate("2000-01-01",shiftDay(planStart,-1));
+  if(!cur&&!hist)return{daysUsed:0,historyDays:0,daysNeeded:7,phase:"collecting"};
 
   let source="current",base=cur,historyWeight=0;
-  if(hist&&current.length<7){
+  const curFull=cur?cur.nFull:0,histFull=hist?hist.nFull:0;
+  if(hist&&(!cur||curFull<7)){
     source="history";base=hist;historyWeight=1;
   }else if(hist&&cur){
-    const currentWeight=Math.min(1,current.length/21);
+    const currentWeight=Math.min(1,curFull/21);
     historyWeight=1-currentWeight;
     source=historyWeight>0.15?"blended":"current";
-    base={...cur,tdee:Math.round(hist.tdee*historyWeight+cur.tdee*currentWeight),
-      avgCalories:cur.avgCalories,weeklyChange:cur.weeklyChange};
+    base={...cur,tdee:Math.round(hist.tdee*historyWeight+cur.tdee*currentWeight)};
   }
 
-  const confidence=Math.min(95,Math.round((current.length*5)+(history.length?Math.min(35,history.length*1.5):0)));
+  const imputedShare=base.imputedShare??0;
+  const half=Math.round(120+imputedShare*430);
+  const confidence=Math.min(95,Math.round(((curFull*5)+(histFull?Math.min(35,histFull*1.5):0))*(1-0.35*imputedShare)));
   const calT=getDayCalTarget(today,settings,travelDays,null);
   const deficit=base.tdee-calT;
-  return{tdee:base.tdee,confidence,avgCalories:base.avgCalories,weeklyChange:+base.weeklyChange.toFixed(2),
-    daysUsed:current.length,historyDays:history.length,historyTDEE:hist?.tdee,historyWeight:+historyWeight.toFixed(2),source,
-    phase:current.length<7?(hist?"seeded":"collecting"):confidence<60?"early":"confident",
+  return{tdee:base.tdee,tdeeLow:base.tdee-half,tdeeHigh:base.tdee+half,imputedShare:+imputedShare.toFixed(2),calibrated:!!cal,
+    confidence,avgCalories:base.avgCalories,weeklyChange:+base.weeklyChange.toFixed(2),
+    daysUsed:curFull,historyDays:histFull,historyTDEE:hist?.tdee,historyWeight:+historyWeight.toFixed(2),source,
+    phase:curFull<7?(hist?"seeded":"collecting"):confidence<60?"early":"confident",
     deficit,trendWeight:base.trendWeight,trendWeights:(cur||hist).trendWeights};
 };
 
@@ -966,7 +1003,7 @@ const getWeeklyCutSummary=(data,today=td())=>{
       weeklyChange:trend.rate,days:trend.n};
   const recValues=dates.map(d=>data.rec?.[d]?.recoveryScore).filter(v=>v!=null);
   const recoveryAvg=recValues.length>=3?Math.round(recValues.reduce((s,v)=>s+v,0)/recValues.length):getWeeklyRecoveryAvg(data.rec||{});
-  const tdee=calcAdaptiveTDEE(data.wt||{},data.nut||{},settings,data.travelDays,data.tdeeExclude||{});
+  const tdee=calcAdaptiveTDEE(data.wt||{},data.nut||{},settings,data.travelDays,data.tdeeExclude||{},data.tdeeCal);
   return{dates,adherence,loggedDays,proteinHits,calorieHits,weightDays,
     nutritionAdherence:loggedDays?Math.round(((proteinHits+calorieHits)/(loggedDays*2))*100):0,
     proteinRate:loggedDays?Math.round(proteinHits/loggedDays*100):0,
@@ -1950,10 +1987,11 @@ const Dashboard=({data,setData,setTab})=>{
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
               <span style={{fontSize:26,fontWeight:800,color:C.t}}>{td.phase==="early"?"~":""}{td.tdee.toLocaleString()}</span>
+              {td.tdeeLow!=null&&<span style={{fontSize:13,fontWeight:600,color:C.t3}}>±{td.tdee-td.tdeeLow}</span>}
               <span style={{fontSize:13,color:C.t3}}>cal/day</span>
             </div>
             <Br v={td.confidence} max={100} color={borderColor} h={5}/>
-            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.phase==="early"?" — keep logging for accuracy":td.phase==="seeded"?" — seeded from recomp data":""}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.imputedShare!=null?` · ${Math.round((1-td.imputedShare)*100)}% measured`:""}{td.calibrated===false?" · calibrate in Setup to tighten":""}{td.phase==="early"?" — keep logging for accuracy":td.phase==="seeded"?" — seeded from recomp data":""}</div>
             {td.phase==="confident"&&(<>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
                 <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
@@ -3435,7 +3473,7 @@ const Nutrition=({data,setData})=>{
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
-  const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{}),[data,st]);
+  const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
 
   const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
   const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
@@ -3628,7 +3666,7 @@ const Nutrition=({data,setData})=>{
       <S title="Target logic" collapsible defaultOpen={false}>
         <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
           <div style={{fontSize:11,color:C.t2}}>
-            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.r}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
+            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?`±${nutTDEE.tdee-nutTDEE.tdeeLow}`:""}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.r}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
           </div>
           <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:C.oa,border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
         </div>
@@ -3745,7 +3783,7 @@ const Weight=({data,setData})=>{
   const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getTrend(data.wt,t);
-  const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{}),[data,st]);
+  const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
@@ -4085,6 +4123,39 @@ const Settings=({data,setData,syncFailures={}})=>{
         </div>
       </div>)}
     </X>
+
+    {/* ═══ TDEE CALIBRATION ═══ */}
+    {(()=>{
+      const tc=data.tdeeCal||{};
+      const saveCal=(patch)=>{const nd={...data,tdeeCal:{...tc,...patch,answered:true}};setData(nd);sv(nd);};
+      const btn=(active)=>({padding:"7px 10px",borderRadius:4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+        background:active?C.pl:"transparent",border:`1px solid ${active?C.p:C.bd}`,color:active?C.p:C.t3});
+      return(
+      <X style={{borderLeft:`3px solid ${C.bd}`}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>TDEE Calibration</div>
+        <div style={{fontSize:12,color:C.t3,marginBottom:10}}>Three answers make the TDEE range much tighter on days you don't log.</div>
+        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>When you don't log food, it's usually…</div>
+        <div style={{display:"flex",gap:6,marginBottom:10}}>
+          <button style={btn(tc.unloggedIs==="normal")} onClick={()=>saveCal({unloggedIs:"normal"})}>A normal day</button>
+          <button style={btn(tc.unloggedIs==="blowup")} onClick={()=>saveCal({unloggedIs:"blowup"})}>A blow-up</button>
+          <button style={btn(tc.unloggedIs==="mixed")} onClick={()=>saveCal({unloggedIs:"mixed"})}>Weekends blow up</button>
+        </div>
+        {(tc.unloggedIs==="blowup"||tc.unloggedIs==="mixed")&&(<>
+          <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Typical blow-up day total (food + drinks)</div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
+            {[2500,3000,3500,4000].map(v=>(
+              <button key={v} style={btn((tc.socialCal||3000)===v)} onClick={()=>saveCal({socialCal:v})}>{v.toLocaleString()}</button>
+            ))}
+          </div>
+        </>)}
+        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Does the Wednesday fast ever slip?</div>
+        <div style={{display:"flex",gap:6}}>
+          <button style={btn(tc.fastSlips===false)} onClick={()=>saveCal({fastSlips:false})}>Holds</button>
+          <button style={btn(tc.fastSlips===true)} onClick={()=>saveCal({fastSlips:true})}>Sometimes slips</button>
+        </div>
+        {tc.answered&&<div style={{fontSize:11,color:C.g,marginTop:8}}>Calibrated — the TDEE estimate now uses these answers.</div>}
+      </X>);
+    })()}
 
     {/* ═══ BODY COMP — buried per 2026-07-11 decisions ═══ */}
     <S title="Photos & measurements" collapsible defaultOpen={false}>
