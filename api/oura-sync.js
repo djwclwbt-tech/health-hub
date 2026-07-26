@@ -112,10 +112,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Optional: protect endpoint
+  // Cron requests come from Vercel — allowed without a secret. All others must present it.
   const syncSecret = process.env.OURA_SYNC_SECRET;
-  if (syncSecret && req.headers['x-sync-secret'] !== syncSecret) {
-    if (req.query.secret !== syncSecret) {
+  const isCron = req.headers['user-agent']?.startsWith('vercel-cron/');
+  if (!isCron) {
+    if (!syncSecret) return res.status(500).json({ error: 'OURA_SYNC_SECRET not configured' });
+    if (req.headers['x-sync-secret'] !== syncSecret && req.query.secret !== syncSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
@@ -128,13 +130,13 @@ export default async function handler(req, res) {
   try {
     const { date } = req.query;
 
-    // Default: yesterday + today
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Default: yesterday + today, resolved in Chicago tz so late-night entries land on the correct day.
+    const chicagoToday = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+    const yesterdayMs = new Date(`${chicagoToday}T00:00:00-06:00`).getTime() - 86400000;
+    const chicagoYesterday = new Date(yesterdayMs).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
-    const startDate = date || yesterday.toISOString().slice(0, 10);
-    const endDate = date || now.toISOString().slice(0, 10);
+    const startDate = date || chicagoYesterday;
+    const endDate = date || chicagoToday;
 
     const results = await syncOura(token, startDate, endDate);
 

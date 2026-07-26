@@ -31,7 +31,7 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ PROGRAM ═══
 const PROG = {
-  name:"Summer Cut",weeks:7,deload:4,start:"2026-05-04",
+  name:"Summer Cut",weeks:7,deload:null,start:"2026-05-04",
   mobility:{
     _default:[
       {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:3,sides:["Left","Right","Left"],
@@ -124,7 +124,7 @@ const WU=w=>{if(!w||w<=0)return[];const s=[];
 const SK="dhub6";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch{}};
-const DEFAULTS={calories:1800,protein:200,water:128,steps:10000,sleep:7.5,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
+const DEFAULTS={calories:1800,protein:200,water:128,steps:15000,sleep:8,fiber:30,trainingCal:1800,wednesdayCal:900,weekendCal:1700,customHabits:[],notifications:{enabled:false,habits:true,water:true,stretch:true,workout:true}};
 const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
@@ -252,6 +252,7 @@ const loadFromSB=async()=>{
     water.forEach(r=>{d.water[r.date]=r.oz;});
     rec.forEach(r=>{d.rec[r.date]={recoveryScore:r.recovery_score,hrv:r.hrv,rhr:r.rhr,
       respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
+      sleepLight:r.sleeplight||null,sleepDeep:r.sleepdeep||null,sleepRem:r.sleeprem||null,
       strain:r.strain,wakeTime:r.wake_time,notes:r.notes};});
     habits.forEach(r=>{d.habits[r.date]={alcohol:r.alcohol,cannabis:r.cannabis,screensOff:r.screens_off,
       sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed,supplements:r.supplements,custom:r.custom||null};});
@@ -264,13 +265,27 @@ const loadFromSB=async()=>{
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
     cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,done:true};});
-    bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
+    bodyComp.forEach(r=>{
+      if(!r.analysis){d.bodyComp[r.date]=true;return;}
+      if(typeof r.analysis==="string"){
+        try{d.bodyComp[r.date]={photoTaken:true,analysis:JSON.parse(r.analysis)};}
+        catch{console.warn("[SB] bad body_comp.analysis JSON for",r.date);d.bodyComp[r.date]=true;}
+      }else{d.bodyComp[r.date]={photoTaken:true,analysis:r.analysis};}
+    });
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
     if(settingsRows.length>0){const s=settingsRows[0];d.settings={calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||1800,wednesdayCal:s.wednesdayCal||s.wednesday_cal||900,weekendCal:s.weekendCal||s.weekend_cal||1700};}
-    if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
+    if(programRows.length>0){
+      const raw=programRows[0].data;
+      const parsed=typeof raw==="string"?(()=>{try{return JSON.parse(raw);}catch{return null;}})():raw;
+      if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){
+        const progExIds=Object.values(PROG.days).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");
+        const sbExIds=Object.values(parsed).flatMap(dy=>(dy&&dy.exercises||[]).map(e=>e.id)).sort().join(",");
+        d.program=progExIds===sbExIds?parsed:JSON.parse(JSON.stringify(PROG.days));
+      }
+    }
     return d;
-  }catch(e){console.error("[SB] Load error:",e);return null;}
+  }catch(e){console.error("[SB] Load error:",e);const empty=bl();empty.__loadError=e.message||String(e);return empty;}
 };
 
 const parseHealthImport=(text)=>{
@@ -497,7 +512,7 @@ const getWeightTrend=(wt)=>{
   const olderLast=older[older.length-1][1];
   const weeklyRate=+(recentAvg-olderLast).toFixed(1);
   if(Math.abs(weeklyRate)>1)return{rate:weeklyRate,direction:weeklyRate>0?"gaining":"losing",
-    advice:weeklyRate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting, not recomping."};
+    advice:weeklyRate>0?"Pull back weekend portions — you're in surplus.":weeklyRate<-2.5?"Losing too fast (>2.5 lbs/wk). Add 200 cal to training days.":"On track."};
   return null;
 };
 
@@ -565,33 +580,6 @@ const getInsights=(data)=>{
   return ins.slice(0,4);
 };
 
-const getRecompScore=(data)=>{
-  const planStart=PROG.start;
-  const wEntries=Object.entries(data.wt||{}).filter(([d])=>d>=planStart).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(wEntries.length<3)return null;
-  const mid=Math.floor(wEntries.length/2);
-  const firstHalf=wEntries.slice(0,mid),secondHalf=wEntries.slice(mid);
-  if(secondHalf.length<1||firstHalf.length<1)return null;
-  const rAvg=secondHalf.reduce((s,[_,v])=>s+v,0)/secondHalf.length;
-  const oAvg=firstHalf.reduce((s,[_,v])=>s+v,0)/firstHalf.length;
-  const weeks=Math.max(1,(new Date(wEntries[wEntries.length-1][0])-new Date(wEntries[0][0]))/6048e5);
-  const wkChange=Math.abs(rAvg-oAvg)/weeks;
-  const wScore=wkChange<=0.5?100:wkChange<=1?85:wkChange<=1.5?65:wkChange<=2?45:20;
-  const totalL=Object.keys(data.prog||{}).length;
-  const progL=Object.values(data.prog||{}).filter(p=>p.progressed).length;
-  const lScore=totalL>0?Math.round(progL/totalL*100):50;
-  const nutDates=Object.keys(data.nut||{}).filter(d=>d>=planStart).sort();
-  let pH=0,pDays=0;
-  for(const d of nutDates){
-    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
-    const p=data.nut[d]?.totalProtein||0;
-    if(p>0){pDays++;if(p>=pt)pH++;}
-  }
-  const pScore=pDays>0?Math.round(pH/pDays*100):50;
-  const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
-  return{score:total,weight:{score:wScore,change:+((rAvg-oAvg)/weeks).toFixed(1)},
-    lifts:{score:lScore,progressed:progL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
-};
 
 const calcEWMA=(values,alpha=0.1)=>{
   if(!values.length)return[];
@@ -1071,8 +1059,11 @@ const Dashboard=({data,setData,setTab})=>{
   const rhrCh=Object.entries(data.rec).filter(([_,v])=>v.rhr).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.rhr,d:d.slice(5)}));
   const stCh=Object.entries(data.steps||{}).filter(([_,v])=>v>0).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v,d:d.slice(5)}));
   const slCh=Object.entries(data.rec).filter(([_,v])=>v.sleepHours).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.sleepHours,d:d.slice(5)}));
-  const lifts=Object.values(data.prog).filter(p=>p.progressed).length;
-  const totalL=Object.keys(data.prog).length;
+  const programExIds=new Set(Object.values(data.program||{}).flatMap(d=>d.exercises||[]).map(e=>e.id));
+  const progEntries=Object.entries(data.prog).filter(([id])=>programExIds.has(id));
+  const stalls2=getStalls(data.prog,data.wk,data.program);
+  const lifts=progEntries.filter(([id])=>!stalls2.some(s=>s.id===id)).length;
+  const totalL=progEntries.length;
 
   const habitDays=Object.entries(data.habits||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
   const customHLen=(data.settings.customHabits||[]).length;
@@ -1092,7 +1083,6 @@ const Dashboard=({data,setData,setTab})=>{
   const preDinnerSlots=Math.max(0,mealSlots-1);
   const perMealPro=preDinnerSlots>0?Math.ceil(Math.max(0,proRemaining-dinnerPro)/preDinnerSlots):0;
   const topProMeals=getTopProteinMeals(data);
-  const recomp=getRecompScore(data);
   const dataInsights=getInsights(data);
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
@@ -1281,8 +1271,8 @@ const Dashboard=({data,setData,setTab})=>{
             <span style={{fontSize:11,fontWeight:600,color:C.t3,textTransform:"uppercase"}}>Steps</span>
             <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
           </div>
-          <Br v={steps} max={st.steps||10000} color={steps>=(st.steps||10000)?C.g:C.a} h={6}/>
-          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/(st.steps||10000)*100):0}% of {((st.steps||10000)/1000).toFixed(0)}k</div>
+          <Br v={steps} max={st.steps||15000} color={steps>=(st.steps||15000)?C.g:C.a} h={6}/>
+          <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/(st.steps||15000)*100):0}% of {((st.steps||15000)/1000).toFixed(0)}k</div>
         </X>
       </div>
 
@@ -1362,6 +1352,27 @@ const Dashboard=({data,setData,setTab})=>{
         </X>
       </div>
 
+      {rec?.sleepHours&&(<X style={{padding:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:rec.sleepDeep?6:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.t2}}>Sleep</div>
+          <div style={{fontSize:13,fontWeight:700,color:rec.sleepHours>=8?C.g:rec.sleepHours>=7?C.a:C.r}}>{rec.sleepHours.toFixed(1)}h</div>
+        </div>
+        {rec.sleepDeep&&(<div style={{display:"flex",gap:4,alignItems:"center"}}>
+          <div style={{flex:rec.sleepDeep,height:8,background:"#5B21B6",borderRadius:4}} title={`Deep ${rec.sleepDeep.toFixed(1)}h`}/>
+          <div style={{flex:rec.sleepRem||0,height:8,background:"#2563EB",borderRadius:4}} title={`REM ${(rec.sleepRem||0).toFixed(1)}h`}/>
+          <div style={{flex:rec.sleepLight||0,height:8,background:"#D1D5DB",borderRadius:4}} title={`Light ${(rec.sleepLight||0).toFixed(1)}h`}/>
+        </div>)}
+        {rec.sleepDeep&&(<div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:10,color:C.t3}}>
+          <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#5B21B6",marginRight:3,verticalAlign:"middle"}}/>Deep {rec.sleepDeep.toFixed(1)}h</span>
+          <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#2563EB",marginRight:3,verticalAlign:"middle"}}/>REM {(rec.sleepRem||0).toFixed(1)}h</span>
+          <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#D1D5DB",marginRight:3,verticalAlign:"middle"}}/>Light {(rec.sleepLight||0).toFixed(1)}h</span>
+        </div>)}
+        {rec.hrv&&(<div style={{display:"flex",gap:12,marginTop:6,fontSize:11,color:C.t2}}>
+          <span>HRV <strong>{rec.hrv}</strong>ms</span>
+          <span>RHR <strong>{rec.rhr}</strong>bpm</span>
+        </div>)}
+      </X>)}
+
       {habitScore!=null&&(
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13}}>
@@ -1372,32 +1383,41 @@ const Dashboard=({data,setData,setTab})=>{
         </X>
       )}
 
-      {/* ═══ RECOMP SCORE ═══ */}
-      {recomp&&(
-        <X style={{padding:12}}>
+      {/* ═══ CUT PROGRESS ═══ */}
+      {(()=>{
+        const planStart=PROG.start;
+        const wEntries=Object.entries(data.wt||{}).filter(([d])=>d>=planStart).sort((a,b)=>a[0].localeCompare(b[0]));
+        if(wEntries.length<2)return null;
+        const startW=wEntries[0][1];const latestW=wEntries[wEntries.length-1][1];
+        const totalLoss=startW-latestW;
+        const weeks=Math.max(0.5,(new Date(wEntries[wEntries.length-1][0])-new Date(wEntries[0][0]))/6048e5);
+        const rate=(totalLoss/weeks).toFixed(1);
+        const rateOk=rate>=0.5&&rate<=2.5;
+        const target=176;const remaining=Math.max(0,latestW-target);
+        return(<X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Recomp Score</div>
-              <div style={{fontSize:10,color:C.t3}}>Weight stable + lifts up = recomp working</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>Cut Progress</div>
+              <div style={{fontSize:10,color:C.t3}}>Target: {target} lbs by Jun 19</div>
             </div>
-            <div style={{fontSize:28,fontWeight:800,color:recomp.score>=70?C.g:recomp.score>=45?C.a:C.r}}>{recomp.score}</div>
+            <div style={{fontSize:28,fontWeight:800,color:totalLoss>0?C.g:C.a}}>-{totalLoss.toFixed(1)}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.weight.score>=70?C.g:C.a}}>{recomp.weight.change>0?"+":""}{recomp.weight.change}</div>
+              <div style={{fontSize:14,fontWeight:700,color:rateOk?C.g:C.a}}>{rate}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>lbs/wk</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.lifts.score>=50?C.g:C.a}}>{recomp.lifts.progressed}/{recomp.lifts.total}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Lifts Up</div>
+              <div style={{fontSize:14,fontWeight:700,color:C.t}}>{latestW.toFixed(1)}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Current</div>
             </div>
             <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
-              <div style={{fontSize:14,fontWeight:700,color:recomp.protein.score>=70?C.g:C.a}}>{recomp.protein.hit}/{recomp.protein.days}</div>
-              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>Pro Days</div>
+              <div style={{fontSize:14,fontWeight:700,color:remaining<5?C.g:C.t}}>{remaining.toFixed(1)}</div>
+              <div style={{fontSize:9,color:C.t3,fontWeight:600,textTransform:"uppercase"}}>To Go</div>
             </div>
           </div>
-        </X>
-      )}
+        </X>);
+      })()}
 
       {/* ═══ BODY MEASUREMENTS ═══ */}
       {(()=>{
@@ -1480,7 +1500,7 @@ const Dashboard=({data,setData,setTab})=>{
       {totalL>0&&(
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
-            <span style={{color:C.t2,fontWeight:600}}>Lift Progressions</span>
+            <span style={{color:C.t2,fontWeight:600}}>Strength Maintained</span>
             <span style={{color:C.g,fontWeight:700}}>{lifts}/{totalL}</span>
           </div>
           <Br v={lifts} max={totalL} color={C.g}/>
@@ -1606,49 +1626,32 @@ const Dashboard=({data,setData,setTab})=>{
 
 // ═══ SWAP MAP ═══
 const SWAP_MAP={
-  "smith-flat-bench":[
-    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
-    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
-    {id:"cable-fly",name:"Cable Fly (flat)",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
-  ],
-  "smith-incline":[
-    {id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
-    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
-    {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
-  ],
   "cable-fly":[
-    {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
-    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
+    {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sw:15,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
   ],
   "low-high-cable-fly":[
-    {id:"cable-fly",name:"Cable Fly (flat)",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
-    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
+    {id:"cable-fly",name:"Cable Fly (flat)",sw:15,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
   ],
   "converging-chest-press":[
-    {id:"smith-flat-bench",name:"Smith Flat Bench",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
-    {id:"smith-incline",name:"Smith Incline Press",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
-    {id:"cable-fly",name:"Cable Fly",sw:10,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+    {id:"db-incline-press",name:"DB Incline Press",sw:40,unit:"lbs/hand",inc:5,cue:"Full stretch at bottom, drive up and squeeze chest"},
+  ],
+  "db-incline-press":[
+    {id:"converging-chest-press",name:"Converging Chest Press",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
   ],
   "seated-row":[
     {id:"overhand-cable-row",name:"Overhand Cable Row",sw:110,unit:"lbs",inc:5,cue:"Overhand grip hits upper back, pause and squeeze"},
-    {id:"dumbbell-row",name:"DB Row",sw:60,unit:"lbs",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
     {id:"lat-pulldown",name:"Lat Pulldown",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
   ],
   "overhand-cable-row":[
     {id:"seated-row",name:"Seated Row Machine",sw:160,unit:"lbs",inc:5,cue:"Pull elbows past torso, squeeze mid-back hard"},
-    {id:"dumbbell-row",name:"DB Row",sw:60,unit:"lbs",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
     {id:"lat-pulldown",name:"Lat Pulldown",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
   ],
-  "hack-squat-a":[
-    {id:"leg-press",name:"Leg Press",sw:360,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
-    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
-  ],
-  "hack-squat-b":[
-    {id:"leg-press",name:"Leg Press",sw:300,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
-    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
-  ],
   "leg-press":[
-    {id:"hack-squat-a",name:"Hack Squat",sw:180,unit:"lbs",inc:10,cue:"Knees track over toes, stay upright through core"},
+    {id:"front-squat",name:"Front Squat (BB)",sw:135,unit:"lbs",inc:5,cue:"Upright torso, elbows high, sit between hips"},
+    {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
+  ],
+  "front-squat":[
+    {id:"leg-press",name:"Leg Press",sw:360,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
     {id:"goblet-squat",name:"Goblet Squat (DB)",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
   ],
   "incline-db-curl":[
@@ -2754,7 +2757,7 @@ const Nutrition=({data,setData})=>{
         <B full color={C.p} onClick={()=>{
           const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0,lean_bulk:200}[tdeeGoal]||0;
           const newCal=nutTDEE.tdee+opt;
-          const ratio=newCal/(st.calories||2430);
+          const ratio=newCal/(st.calories||1800);
           const nd={...data,settings:{...st,
             calories:Math.round(newCal),
             trainingCal:Math.round((st.trainingCal||1800)*ratio),
@@ -3237,7 +3240,7 @@ const Settings=({data,setData})=>{
         <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1800"/></div>
         <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="200"/></div>
         <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
-        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="10000"/></div>
+        <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
         <div><L>Sleep (hrs)</L><N value={f.sleep} onChange={v=>setF({...f,sleep:v})} placeholder="7.5"/></div>
         <div><L>Fiber (g)</L><N value={f.fiber} onChange={v=>setF({...f,fiber:v})} placeholder="30"/></div>
       </div>
@@ -3552,6 +3555,7 @@ window.App = function App(){
       }else{
         finalData=data;
       }
+      if(sbData&&sbData.__loadError){setSyncStatus("Offline — using local data");setTimeout(()=>setSyncStatus(""),4000);}
       // Apply pending program updates from Supabase queue
       const{data:updated,applied}=await applyProgramUpdates(finalData);
       backfillData(updated);repairDeloadProgression(updated);setData(updated);sv(updated);
@@ -3645,8 +3649,23 @@ window.App = function App(){
   );
 }
 
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){console.error("[ErrorBoundary]",err,info);}
+  render(){
+    if(!this.state.err)return this.props.children;
+    const msg=this.state.err&&(this.state.err.message||String(this.state.err))||"Unknown error";
+    return React.createElement("div",{style:{padding:20,fontFamily:"'Inter',sans-serif",maxWidth:480,margin:"40px auto",color:"#111"}},
+      React.createElement("h2",{style:{fontSize:18,fontWeight:700,marginBottom:8}},"Something went wrong"),
+      React.createElement("p",{style:{fontSize:14,color:"#555",marginBottom:14}},"The app hit an error while loading. Your data is safe — try reloading."),
+      React.createElement("pre",{style:{fontSize:11,background:"#f5f5f5",padding:10,borderRadius:6,overflow:"auto",color:"#b00",whiteSpace:"pre-wrap"}},msg),
+      React.createElement("button",{onClick:()=>{try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch{}setTimeout(()=>location.reload(),300);},style:{marginTop:14,padding:"10px 18px",background:"#111",color:"#fff",border:"none",borderRadius:6,fontSize:14,fontWeight:600,cursor:"pointer"}},"Clear cache & reload")
+    );
+  }
+}
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(App));
+root.render(React.createElement(ErrorBoundary,null,React.createElement(App)));
 </script>
 </body>
 </html>
