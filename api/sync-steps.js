@@ -18,29 +18,44 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    // Health Auto Export REST payload: {data:{metrics:[{name:"step_count",data:[{date,qty}]}]}}
-    // Sums all points per calendar day (HAE can send hourly buckets).
+    // Health Auto Export REST payload: {data:{metrics:[{name,units,data:[{date,qty}]}]}}
+    // Steps: sums all points per calendar day (HAE can send hourly buckets).
+    // Weight (body mass, e.g. Renpho via Apple Health): last reading per day, kg→lbs if needed.
     const haeMetrics = params?.data?.metrics;
     if (Array.isArray(haeMetrics)) {
+      const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
+      const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
+      const sbHeaders = { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Prefer": "resolution=merge-duplicates" };
+      const upsert = async (table, rows) => {
+        const r = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=date`, { method: "POST", headers: sbHeaders, body: JSON.stringify(rows) });
+        if (!r.ok) throw new Error(`Supabase ${table} error: ${await r.text()}`);
+      };
+
       const stepMetric = haeMetrics.find(m => /step/i.test(m?.name || ''));
-      const byDay = {};
+      const stepsByDay = {};
       for (const point of stepMetric?.data || []) {
         const date = String(point?.date || '').slice(0, 10);
         const qty = Number(point?.qty) || 0;
-        if (/^\d{4}-\d{2}-\d{2}$/.test(date) && qty > 0) byDay[date] = (byDay[date] || 0) + qty;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date) && qty > 0) stepsByDay[date] = (stepsByDay[date] || 0) + qty;
       }
-      const haeRows = Object.entries(byDay).map(([date, v]) => ({ date, value: Math.round(v) }));
-      if (!haeRows.length) return res.status(400).json({ error: 'No step data points in payload' });
+      const stepRows = Object.entries(stepsByDay).map(([date, v]) => ({ date, value: Math.round(v) }));
 
-      const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
-      const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-      const r = await fetch(`${SB_URL}/rest/v1/steps?on_conflict=date`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Prefer": "resolution=merge-duplicates" },
-        body: JSON.stringify(haeRows),
-      });
-      if (!r.ok) return res.status(500).json({ error: `Supabase error: ${await r.text()}` });
-      return res.status(200).json({ ok: true, synced: haeRows });
+      const weightMetric = haeMetrics.find(m => /body.?mass|^weight/i.test(m?.name || ''));
+      const isKg = /kg/i.test(weightMetric?.units || '');
+      const weightByDay = {};
+      for (const point of weightMetric?.data || []) {
+        const date = String(point?.date || '').slice(0, 10);
+        const qty = Number(point?.qty) || 0;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || qty <= 0) continue;
+        const lbs = +(isKg ? qty * 2.20462 : qty).toFixed(1);
+        if (lbs > 80 && lbs < 500) weightByDay[date] = lbs;
+      }
+      const weightRows = Object.entries(weightByDay).map(([date, value]) => ({ date, value }));
+
+      if (!stepRows.length && !weightRows.length) return res.status(400).json({ error: 'No step or weight data points in payload' });
+      if (stepRows.length) await upsert('steps', stepRows);
+      if (weightRows.length) await upsert('weight', weightRows);
+      return res.status(200).json({ ok: true, steps: stepRows.length, weight: weightRows.length, syncedSteps: stepRows.slice(-3), syncedWeight: weightRows.slice(-3) });
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
