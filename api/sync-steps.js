@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     const params = req.method === 'GET' ? req.query : req.body;
     const authToken = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    const token = params.token || authToken;
+    const token = params.token || req.query.token || authToken;
     const resolvedDate = params.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
     if (!token || token !== syncToken) {
