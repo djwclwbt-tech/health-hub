@@ -17,7 +17,7 @@
  *   OURA_SYNC_SECRET  — (optional) protect endpoint from public access
  */
 
-import { getDailyReadiness, getSleepSessions, secToHours } from '../lib/oura.js';
+import { getDailyReadiness, getSleepSessions, getDailyActivity, secToHours } from '../lib/oura.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
@@ -59,9 +59,10 @@ async function syncOura(token, startDate, endDate) {
   // Oura sleep sessions can land on the requested day while ending the next morning,
   // so fetch sleep through end+1 and then filter back to the target day range.
   const sleepEndDate = addDays(endDate, 1);
-  const [readinessRecords, sleepRecordsRaw] = await Promise.all([
+  const [readinessRecords, sleepRecordsRaw, activityRecords] = await Promise.all([
     getDailyReadiness(token, startDate, endDate),
     getSleepSessions(token, startDate, sleepEndDate),
+    getDailyActivity(token, startDate, endDate),
   ]);
   const sleepRecords = sleepRecordsRaw.filter(s => inRange(s.day, startDate, endDate));
 
@@ -128,7 +129,25 @@ async function syncOura(token, startDate, endDate) {
     results.push(row);
   }
 
-  return results;
+  // Steps from Oura daily activity (replaces the retired Apple Shortcut pipeline)
+  const steps = [];
+  for (const act of activityRecords) {
+    if (!act.day || !(act.steps > 0)) continue;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/steps?on_conflict=date`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({ date: act.day, value: Math.round(act.steps) }),
+    });
+    if (!res.ok) throw new Error(`Supabase steps upsert failed (${res.status}): ${await res.text()}`);
+    steps.push({ date: act.day, steps: Math.round(act.steps) });
+  }
+
+  return { results, steps };
 }
 
 export default async function handler(req, res) {
@@ -136,10 +155,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Optional: protect endpoint
-  const syncSecret = process.env.OURA_SYNC_SECRET;
-  if (syncSecret && req.headers['x-sync-secret'] !== syncSecret) {
-    if (req.query.secret !== syncSecret) {
+  // Vercel cron requests are allowed through; everything else must present the secret.
+  const isCron = (req.headers['user-agent'] || '').startsWith('vercel-cron/');
+  if (!isCron) {
+    const syncSecret = process.env.OURA_SYNC_SECRET;
+    if (!syncSecret) return res.status(401).json({ error: 'Unauthorized (OURA_SYNC_SECRET not configured)' });
+    if (req.headers['x-sync-secret'] !== syncSecret && req.query.secret !== syncSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
@@ -152,22 +173,21 @@ export default async function handler(req, res) {
   try {
     const { date, start, end } = req.query;
 
-    // Default: yesterday + today
+    // Default: yesterday + today in America/Chicago, so late-night data lands on the right day
+    const chi = (d) => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const startDate = date || start || yesterday.toISOString().slice(0, 10);
-    const endDate = date || end || now.toISOString().slice(0, 10);
+    const startDate = date || start || chi(new Date(now.getTime() - 86400000));
+    const endDate = date || end || chi(now);
     if (endDate < startDate) {
       return res.status(400).json({ error: 'end must be on or after start' });
     }
 
-    const results = await syncOura(token, startDate, endDate);
+    const { results, steps } = await syncOura(token, startDate, endDate);
 
     return res.status(200).json({
       ok: true,
       synced: results,
+      steps,
       range: { start: startDate, end: endDate },
     });
   } catch (err) {

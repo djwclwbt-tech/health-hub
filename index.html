@@ -452,13 +452,27 @@ const loadFromSB=async()=>{
     stp.forEach(r=>{d.stp[r.date]=true;});
     debrief.forEach(r=>{d.debrief[r.date]=true;});
     cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,intensity:r.intensity||"zone2",distance:r.distance_mi||null,calories:r.calories||null,notes:r.notes||"",done:true};});
-    bodyComp.forEach(r=>{d.bodyComp[r.date]=r.analysis?{photoTaken:true,analysis:typeof r.analysis==="string"?JSON.parse(r.analysis):r.analysis}:true;});
+    bodyComp.forEach(r=>{
+      if(!r.analysis){d.bodyComp[r.date]=true;return;}
+      if(typeof r.analysis==="string"){
+        try{d.bodyComp[r.date]={photoTaken:true,analysis:JSON.parse(r.analysis)};}
+        catch{console.warn("[SB] bad body_comp.analysis JSON for",r.date);d.bodyComp[r.date]=true;}
+      }else{d.bodyComp[r.date]={photoTaken:true,analysis:r.analysis};}
+    });
     travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
     tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
     if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||DEFAULTS.trainingCal,wednesdayCal:s.wednesdayCal||s.wednesday_cal||DEFAULTS.wednesdayCal,weekendCal:s.weekendCal||s.weekend_cal||DEFAULTS.weekendCal,notifications:getNotificationSettings(prevSettings.notifications)};}
-    if(programRows.length>0&&programRows[0].data){const progExIds=Object.values(PROG.days).flatMap(dy=>dy.exercises.map(e=>e.id)).sort().join(",");const sbExIds=Object.values(programRows[0].data).flatMap(dy=>(dy.exercises||[]).map(e=>e.id)).sort().join(",");if(progExIds===sbExIds){d.program=programRows[0].data;}else{d.program=JSON.parse(JSON.stringify(PROG.days));}}
+    if(programRows.length>0){
+      const raw=programRows[0].data;
+      const parsed=typeof raw==="string"?(()=>{try{return JSON.parse(raw);}catch{return null;}})():raw;
+      if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){
+        const progExIds=Object.values(PROG.days).flatMap(dy=>(dy&&dy.exercises||[]).map(e=>e.id)).sort().join(",");
+        const sbExIds=Object.values(parsed).flatMap(dy=>(dy&&dy.exercises||[]).map(e=>e.id)).sort().join(",");
+        d.program=progExIds===sbExIds?parsed:JSON.parse(JSON.stringify(PROG.days));
+      }
+    }
     return d;
-  }catch(e){console.error("[SB] Load error:",e);return null;}
+  }catch(e){console.error("[SB] Load error:",e);const empty=bl();empty.__loadError=e.message||String(e);return empty;}
 };
 
 const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
@@ -499,8 +513,8 @@ const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"
 const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
 const estTime=(sess)=>{if(!sess)return"";
   const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
-  const wuSets=sess.exercises.reduce((t,ex)=>t+(WU(ex.sw).length||0)*0.75,0);
-  const work=sess.exercises.reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);
+  const wuSets=(sess.exercises||[]).reduce((t,ex)=>t+(WU(ex.sw).length||0)*0.75,0);
+  const work=(sess.exercises||[]).reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);
   const stretch=(PROG.mobility?._default||PROG.mobility?.[Object.keys(PROG.mobility)[0]]||[]).reduce((t,s)=>t+((s.dur||60)*(s.sets||2))/60,0);
   return Math.round(wu+wuSets+work+stretch);
 };
@@ -720,7 +734,7 @@ const getStalls=(prog,wk,programDays)=>{
   // Cut mode: flag when weight DROPS on same lift for 2 consecutive sessions
   const days=programDays||PROG.days;
   const stalls=[];
-  const programExIds=new Set(Object.values(days).flatMap(d=>d.exercises).map(e=>e.id));
+  const programExIds=new Set(Object.values(days).flatMap(d=>d&&d.exercises||[]).map(e=>e.id));
   Object.entries(prog).forEach(([id,p])=>{
     if(!p.lastDate)return;
     const baseId=p.exerciseId||id.split("__")[0];
@@ -733,7 +747,7 @@ const getStalls=(prog,wk,programDays)=>{
     // Check if last 2 sessions both dropped weight vs the session before them
     const baseline=sessions[2].weight;
     if(sessions[0].weight<baseline&&sessions[1].weight<baseline){
-      const exDef=Object.values(days).flatMap(d=>d.exercises).find(e=>e.id===baseId);
+      const exDef=Object.values(days).flatMap(d=>d&&d.exercises||[]).find(e=>e.id===baseId);
       const drop=baseline-sessions[0].weight;
       stalls.push({id,name:exDef?.name||p.name||baseId,weeks:2,currentWeight:sessions[0].weight,drop});
     }
@@ -1440,7 +1454,7 @@ const AnalysisSection=({data})=>{
         bodyComp:bcEntries.length?{assessments:bcEntries.map(([d,v])=>({date:d,bfRange:v.analysis.bodyFatRange,muscleDev:v.analysis.muscleDevelopment,progress:v.analysis.areasOfProgress,focus:v.analysis.focusAreas,notes:v.analysis.notes})),count:bcEntries.length,lastPhotoDate:bcEntries[0][0],daysSincePhoto:Math.round((new Date()-new Date(bcEntries[0][0]+"T12:00:00"))/864e5)}:null,
       };
 
-      const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json","x-sync-token":data.settings?.syncToken||""},body:JSON.stringify(payload)});
       const resp=await r.json();
       if(resp.error)throw new Error(resp.error);
       setResult(resp);
@@ -2676,7 +2690,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(!workout)return;const nd={...data};
     nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
     const s=getSess(workout.day,workout.variant);
-    workout.exercises.forEach((ex,i)=>{const pe=s.exercises[i];if(!pe)return;
+    workout.exercises.forEach((ex,i)=>{const pe=s?.exercises?.[i];if(!pe)return;
       const active=ex.swappedTo?{...ex.swappedTo,sets:pe.sets,rr:pe.rr,rest:pe.rest}:pe;
       const aid=ex.progKey||progKey(active,pe);
       const ainc=active.inc??pe.inc;
@@ -3900,7 +3914,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       const prev=prevEntries[0];
       const context={currentWeight:data.wt[t]||Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]};
       if(prev){context.previousAssessment=prev[1].analysis;context.previousDate=prev[0];}
-      const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json"},
+      const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json","x-sync-token":data.settings?.syncToken||""},
         body:JSON.stringify({image:{mediaType,data:dataStr},context})});
       const result=await resp.json();
       if(resp.ok){
@@ -4398,7 +4412,9 @@ const applyProgramUpdates=async(currentData)=>{
     if(!pending.length)return{data:currentData,applied:[]};
     const nd=JSON.parse(JSON.stringify(currentData));
     for(const row of pending){
-      const c=typeof row.payload==="string"?JSON.parse(row.payload):row.payload;
+      let c=row.payload;
+      if(typeof c==="string"){try{c=JSON.parse(c);}catch{console.error("[update] bad payload JSON, skipping",row.id);continue;}}
+      if(!c||typeof c!=="object"){console.error("[update] empty payload, skipping",row.id);continue;}
       try{
         if(c.type==="settings"&&c.field){
           const old=nd.settings[c.field];
@@ -4545,8 +4561,24 @@ window.App = function App(){
   );
 }
 
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){console.error("[ErrorBoundary]",err,info);}
+  render(){
+    if(!this.state.err)return this.props.children;
+    const msg=this.state.err&&(this.state.err.message||String(this.state.err))||"Unknown error";
+    return React.createElement("div",{style:{padding:20,maxWidth:480,margin:"40px auto",fontFamily:"'Barlow',sans-serif"}},
+      React.createElement("h2",{style:{fontSize:18,fontWeight:700,marginBottom:8}},"Something went wrong"),
+      React.createElement("p",{style:{fontSize:14,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe — clear the cache and reload."),
+      React.createElement("pre",{style:{fontSize:11,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid #ccc",color:"#b91c1c"}},msg),
+      React.createElement("button",{onClick:()=>{try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch{}setTimeout(()=>location.reload(),300);},
+        style:{marginTop:14,padding:"10px 18px",background:"#1a1a1a",color:"#fff",border:"none",borderRadius:4,fontSize:14,fontWeight:600,cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.04em"}},"Clear cache & reload")
+    );
+  }
+}
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(App));
+root.render(React.createElement(ErrorBoundary,null,React.createElement(App)));
 </script>
 </body>
 </html>
