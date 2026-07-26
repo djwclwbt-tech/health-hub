@@ -95,19 +95,19 @@ async function upsertNutritionRow(row) {
   }
 }
 
-function fmt(date) {
-  return date.toISOString().slice(0, 10);
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Optional endpoint protection
-  const syncSecret = process.env.CRONOMETER_SYNC_SECRET;
-  if (syncSecret && req.headers['x-sync-secret'] !== syncSecret && req.query.secret !== syncSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Vercel cron requests are allowed through; everything else must present the secret.
+  const isCron = (req.headers['user-agent'] || '').startsWith('vercel-cron/');
+  if (!isCron) {
+    const syncSecret = process.env.CRONOMETER_SYNC_SECRET;
+    if (!syncSecret) return res.status(401).json({ error: 'Unauthorized (CRONOMETER_SYNC_SECRET not configured)' });
+    if (req.headers['x-sync-secret'] !== syncSecret && req.query.secret !== syncSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   const username = process.env.CRONOMETER_USERNAME;
@@ -117,13 +117,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Date range: specific date or yesterday→today
+    // Date range: specific date or yesterday→today in America/Chicago,
+    // so post-dinner entries sync to the correct calendar day
+    const chi = (d) => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
 
-    const startDate = req.query.date ?? fmt(yesterday);
-    const endDate   = req.query.date ?? fmt(now);
+    const startDate = req.query.date ?? chi(new Date(now.getTime() - 86400000));
+    const endDate   = req.query.date ?? chi(now);
 
     // Auth + fetch
     const { authToken, cookieHeader } = await login(username, password);

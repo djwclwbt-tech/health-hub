@@ -3,10 +3,14 @@ const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-sync-token');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const syncToken = process.env.SYNC_TOKEN;
+  if (!syncToken) return res.status(500).json({ error: 'SYNC_TOKEN not configured' });
+  if (req.headers['x-sync-token'] !== syncToken) return res.status(401).json({ error: 'Unauthorized — set your Sync Token in Setup' });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
