@@ -129,10 +129,13 @@ async function syncOura(token, startDate, endDate) {
     results.push(row);
   }
 
-  // Steps from Oura daily activity (replaces the retired Apple Shortcut pipeline)
+  // Steps from Oura daily activity (replaces the retired Apple Shortcut pipeline).
+  // Skip days the ring was barely worn — near-zero counts are non-wear artifacts,
+  // not real sedentary days, and they poison TDEE/trend math.
+  const MIN_PLAUSIBLE_STEPS = 2000;
   const steps = [];
   for (const act of activityRecords) {
-    if (!act.day || !(act.steps > 0)) continue;
+    if (!act.day || !(act.steps >= MIN_PLAUSIBLE_STEPS)) continue;
     const res = await fetch(`${SUPABASE_URL}/rest/v1/steps?on_conflict=date`, {
       method: 'POST',
       headers: {
