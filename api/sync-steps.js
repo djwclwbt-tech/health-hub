@@ -17,6 +17,32 @@ export default async function handler(req, res) {
     if (!token || token !== syncToken) {
       return res.status(401).json({ error: 'Invalid token' });
     }
+
+    // Health Auto Export REST payload: {data:{metrics:[{name:"step_count",data:[{date,qty}]}]}}
+    // Sums all points per calendar day (HAE can send hourly buckets).
+    const haeMetrics = params?.data?.metrics;
+    if (Array.isArray(haeMetrics)) {
+      const stepMetric = haeMetrics.find(m => /step/i.test(m?.name || ''));
+      const byDay = {};
+      for (const point of stepMetric?.data || []) {
+        const date = String(point?.date || '').slice(0, 10);
+        const qty = Number(point?.qty) || 0;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date) && qty > 0) byDay[date] = (byDay[date] || 0) + qty;
+      }
+      const haeRows = Object.entries(byDay).map(([date, v]) => ({ date, value: Math.round(v) }));
+      if (!haeRows.length) return res.status(400).json({ error: 'No step data points in payload' });
+
+      const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
+      const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
+      const r = await fetch(`${SB_URL}/rest/v1/steps?on_conflict=date`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(haeRows),
+      });
+      if (!r.ok) return res.status(500).json({ error: `Supabase error: ${await r.text()}` });
+      return res.status(200).json({ ok: true, synced: haeRows });
+    }
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }

@@ -17,7 +17,7 @@
  *   OURA_SYNC_SECRET  — (optional) protect endpoint from public access
  */
 
-import { getDailyReadiness, getSleepSessions, getDailyActivity, secToHours } from '../lib/oura.js';
+import { getDailyReadiness, getSleepSessions, secToHours } from '../lib/oura.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
@@ -59,10 +59,9 @@ async function syncOura(token, startDate, endDate) {
   // Oura sleep sessions can land on the requested day while ending the next morning,
   // so fetch sleep through end+1 and then filter back to the target day range.
   const sleepEndDate = addDays(endDate, 1);
-  const [readinessRecords, sleepRecordsRaw, activityRecords] = await Promise.all([
+  const [readinessRecords, sleepRecordsRaw] = await Promise.all([
     getDailyReadiness(token, startDate, endDate),
     getSleepSessions(token, startDate, sleepEndDate),
-    getDailyActivity(token, startDate, endDate),
   ]);
   const sleepRecords = sleepRecordsRaw.filter(s => inRange(s.day, startDate, endDate));
 
@@ -129,28 +128,7 @@ async function syncOura(token, startDate, endDate) {
     results.push(row);
   }
 
-  // Steps from Oura daily activity (replaces the retired Apple Shortcut pipeline).
-  // Skip days the ring was barely worn — near-zero counts are non-wear artifacts,
-  // not real sedentary days, and they poison TDEE/trend math.
-  const MIN_PLAUSIBLE_STEPS = 2000;
-  const steps = [];
-  for (const act of activityRecords) {
-    if (!act.day || !(act.steps >= MIN_PLAUSIBLE_STEPS)) continue;
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/steps?on_conflict=date`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({ date: act.day, value: Math.round(act.steps) }),
-    });
-    if (!res.ok) throw new Error(`Supabase steps upsert failed (${res.status}): ${await res.text()}`);
-    steps.push({ date: act.day, steps: Math.round(act.steps) });
-  }
-
-  return { results, steps };
+  return results;
 }
 
 export default async function handler(req, res) {
@@ -185,12 +163,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'end must be on or after start' });
     }
 
-    const { results, steps } = await syncOura(token, startDate, endDate);
+    const results = await syncOura(token, startDate, endDate);
 
     return res.status(200).json({
       ok: true,
       synced: results,
-      steps,
       range: { start: startDate, end: endDate },
     });
   } catch (err) {
