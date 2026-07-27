@@ -1351,7 +1351,7 @@ const WeeklyConsistencyCard=({summary})=>{
 // CUT TRAJECTORY card · mock 1g. Dotted raw weigh-ins, solid EWMA trend (ember),
 // dashed projection to PROG.targetWeight at the current getTrend() rate, goal line,
 // checkpoint marker, pace verdict. Same getTrend() engine · presentation only.
-const WeightTrendCard=({trend,compact=false})=>{
+const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   if(!trend)return null;
   const goal=PROG.targetWeight,rate=trend.rate,pts=trend.points,lastP=pts[pts.length-1],cur=lastP.v;
   const wkNum=Math.max(1,Math.min(PROG.weeks,Math.floor((new Date(td()+"T12:00:00")-new Date(PROG.start+"T12:00:00"))/6048e5)+1));
@@ -1407,7 +1407,7 @@ const WeightTrendCard=({trend,compact=false})=>{
       {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>CHECKPOINT {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · GOAL {goal}</span></div>}
       {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD,letterSpacing:"0.04em"}}><span>{rate>0?"+":""}{rate.toFixed(1)} LB/WK</span><span>{toGo.toFixed(1)} LBS TO {goal}</span><span>GOAL BY {projLabel}</span></div>}
       {!compact&&<div style={{display:"flex",gap:7,marginTop:10}}>
-        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],[projLabel,"GOAL BY"]].map(([v,l])=>(
+        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],tdee?[Math.round(tdee).toLocaleString(),"TDEE EST"]:[projLabel,"GOAL BY"]].map(([v,l])=>(
           <div key={l} style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
             <div style={{fontSize:18,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div>
@@ -4026,6 +4026,7 @@ const Weight=({data,setData})=>{
   const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
+  const yesterdayWt=(()=>{const e=Object.entries(data.wt||{}).filter(([d])=>d<t).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[1]||null;})();
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
@@ -4033,25 +4034,24 @@ const Weight=({data,setData})=>{
       <div style={{fontSize:13,color:C.t3}}>Log the number, then watch the trend.</div>
     </div>
 
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
-      <L>{todayLogged?"Logged today":"Fast log · "+fmt(t)}</L>
-      {todayLogged?(
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-            <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{Math.round(data.wt[t])}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
-            <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
-          </div>
-          {nw!==""&&<div style={{display:"flex",gap:6,marginTop:10}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:20,fontWeight:800}}/><B onClick={add}>Update</B></div>}
-        </div>
-      ):(
-        <div>
-          <div style={{fontSize:13,color:C.t2,marginBottom:8}}>Log before food/water if possible. This anchors the weekly cut call.</div>
-          <div style={{display:"flex",gap:6}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:22,fontWeight:800}}/><B onClick={add}>Log</B></div>
-        </div>
-      )}
+    <X style={{padding:"18px 16px",textAlign:"center",boxShadow:C.sh2}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>{todayLogged?`LOGGED ${data.wt[t].toFixed(1)} · LOG AGAIN TO CORRECT`:`TODAY${yesterdayWt?` · YESTERDAY ${yesterdayWt.toFixed(1)}`:""}`}</div>
+      <div style={{fontSize:58,fontWeight:800,fontFamily:FD,lineHeight:1,marginTop:6,color:nw?C.t:C.t3,fontVariantNumeric:"tabular-nums"}}>{nw||(yesterdayWt?yesterdayWt.toFixed(1):"185.0")}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:12}}>
+        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k=>(
+          <button key={k} onClick={()=>{
+            if(k==="⌫"){setNw(nw.slice(0,-1));return;}
+            if(k==="."&&nw.includes("."))return;
+            if(nw.replace(".","").length>=4)return;
+            setNw(nw+k);
+          }} style={{minHeight:48,border:`1px solid ${C.bd}`,borderRadius:8,background:C.bg,fontSize:k==="⌫"?17:19,fontWeight:700,color:k==="⌫"?C.t3:C.t,cursor:"pointer",fontFamily:"'Barlow',sans-serif"}}>{k}</button>
+        ))}
+      </div>
+      <button onClick={add} disabled={!nw||!(Number(nw)>80&&Number(nw)<500)} style={{width:"100%",marginTop:8,minHeight:52,border:"none",borderRadius:9,background:C.p,opacity:!nw||!(Number(nw)>80&&Number(nw)<500)?0.4:1,color:C.oa,fontFamily:FD,fontSize:17,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.08em",cursor:"pointer"}}>{nw?`Log ${nw}`:"Log weight"}</button>
+      <div style={{fontSize:11,color:C.t3,marginTop:8}}>type it like the scale shows it</div>
     </X>
 
-    <WeightTrendCard trend={wTrend}/>
+    <WeightTrendCard trend={wTrend} tdee={wtTDEE&&wtTDEE.tdee}/>
 
     {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
       <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em"}}>Cut pace</div>
