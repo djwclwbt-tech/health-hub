@@ -1,5 +1,5 @@
 // Health Hub Service Worker — Offline Cache + Push Notifications
-const CACHE_NAME = 'health-hub-v2026.07.26-hardening';
+const CACHE_NAME = 'health-hub-v2026.07.26-iron-ember';
 const PRECACHE_URLS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json'];
 
 // Pre-cache essential files on install
