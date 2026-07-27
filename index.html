@@ -4724,31 +4724,120 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     </div>);
   }
 
-  // ── CLOSEOUT: stretch, clean day, metrics, tomorrow ──
+  // ── CLOSEOUT: habit chips, tonight's numbers, honest Oura, weekly readout (mocks 2d+3c) ──
   if(mode==="closeout"){
     const tomorrow=(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()+1);return lds(d);})();
     const tmrSess=data.program?.[dw(tomorrow)];
     const stretchDone=!!(data.mob?.[t]?.done||data.mob?.[t]===true);
+    const h=data.habits?.[t]||{};
+    const HABIT_LABELS={alcohol:"No alcohol",cannabis:"No cannabis",screensOff:"Screens off",bedBy1030:"Bed by 10:30",supplements:"Supplements",sunlight:"Sunlight",readBeforeBed:"Read in bed"};
+    const held=SYSTEM_HABITS.filter(x=>h[x.field]===x.target).length;
+    const toggleHabit=(x)=>{
+      const nh={...h,[x.field]:h[x.field]===x.target?null:x.target};
+      const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
+    };
+    const streak=(()=>{let n=0;for(let i=1;i<60;i++){const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-i);const hd=data.habits?.[lds(d)];if(hd&&SYSTEM_HABITS.every(x=>hd[x.field]===x.target))n++;else break;}return n+(held===7?1:0);})();
+    const closed=!!data.debrief?.[t];
+    const closeDay=()=>{const nd={...data,debrief:{...data.debrief,[t]:true}};setData(nd);sv(nd);svSB.debrief(t);};
+    const st2=data.settings||DEFAULTS;
+    const nutT=data.nut?.[t];const calNow=Math.round(nutT?.totalCal||0);const proNow=Math.round(nutT?.totalProtein||0);
+    const stepsNow=data.steps?.[t]||0;
+    const calTarget=getDayCalTarget(t,st2,data.travelDays,data.socialWeekend);const proTarget=st2.protein||200;const stepsTarget=cutStepsTarget(st2);
+    const lastRec=(()=>{const e=Object.entries(data.rec||{}).filter(([_,v])=>v&&v.recoveryScore!=null).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]||null;})();
+    const recStale=!lastRec||lastRec[0]<t;
+    const rv=lastRec?lastRec[1]:null;
+    const week=(()=>{
+      const days=[];for(let i=6;i>=0;i--){const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-i);days.push(lds(d));}
+      const liftPlanned=days.filter(ds=>{const s=data.program?.[dw(ds)];return s&&(s.exercises||[]).length>0;}).length;
+      const liftDone=days.filter(ds=>data.wk?.[ds]).length;
+      const proDays=days.filter(ds=>Math.round(data.nut?.[ds]?.totalProtein||0)>=proTarget).length;
+      const weighs=days.filter(ds=>data.wt?.[ds]!=null).length;
+      const stepMisses=days.filter(ds=>(data.steps?.[ds]||0)>0&&(data.steps?.[ds]||0)<stepsTarget).map(ds=>dw(ds).slice(0,3));
+      return{liftPlanned,liftDone,proDays,weighs,stepMisses};
+    })();
+    const wkTrend=trend?`${trend.rate>0?"+":""}${trend.rate} lb/wk`:null;
+    const verdict=(()=>{
+      const pace=trend?(trend.rate<-0.4?`A ${Math.abs(trend.rate).toFixed(1)} lb/wk drop`:trend.rate<=0?"Weight is holding":"Weight ticked up"):"Not enough weigh-ins yet";
+      const lift=week.liftDone>=week.liftPlanned&&week.liftPlanned>0?"with every lift logged":week.liftDone>0?`with ${week.liftDone} of ${week.liftPlanned} lifts in`:"";
+      const leak=week.stepMisses.length?"Steps are the leak.":week.proDays<5?"Protein is the leak.":"No leaks this week.";
+      return `${pace} ${lift}. ${leak}`.replace(/\s+/g," ").trim();
+    })();
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
       {header}
     {fastCard}
-      <X style={{padding:14,borderLeft:`4px solid ${C.bd}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:15,fontWeight:800,color:C.t}}>Evening stretch</div>
-            <div style={{fontSize:12,color:C.t3}}>{stretchDone?"Done for today ✓":"Hips first. ~12 minutes."}</div>
-          </div>
-          {!stretchDone&&<B small onClick={()=>setTab("training")}>Start</B>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+        <div>
+          <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Close the day</div>
+          <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:3}}>{fmt(t)}{stretchDone?" · stretch done ✓":""}</div>
         </div>
+        {streak>0&&<div style={{textAlign:"right"}}><div style={{fontSize:22,fontWeight:800,color:C.g,fontFamily:FD,lineHeight:1}}>{streak}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:C.t3,fontFamily:FD}}>CLEAN-DAY STREAK</div></div>}
+      </div>
+      <X style={{padding:16,boxShadow:C.sh2}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>CLEAN DAY · {held}/7</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>tap what held</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:11}}>
+          {SYSTEM_HABITS.map(x=>{const on=h[x.field]===x.target;return(
+            <button key={x.field} onClick={()=>toggleHabit(x)} style={{minHeight:44,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t3,fontFamily:FD,fontSize:13,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":"○"}</span></button>
+          );})}
+        </div>
+        <button onClick={closeDay} disabled={closed||held<6} style={{marginTop:12,width:"100%",border:"none",background:closed?C.g:held>=6?C.p:C.bl,color:closed||held>=6?C.oa:C.t3,borderRadius:9,padding:15,fontFamily:FD,fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.08em",cursor:closed||held<6?"default":"pointer"}}>{closed?"Day closed ✓":held>=6?"Close the day":`${held}/7 · tap what held`}</button>
       </X>
-      <X style={{padding:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8}}>Close the day</div>
-        <CloseoutPanel data={data} setData={setData}/>
+      <X style={{padding:16}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TONIGHT'S NUMBERS</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
+          {[{v:stepsNow?`${(stepsNow/1000).toFixed(1)}k`:"○",l:"STEPS",ok:stepsNow>=stepsTarget},
+            {v:calNow?calNow.toLocaleString():"○",l:"CAL",ok:calNow>0&&(calTarget==null||calNow<=calTarget)},
+            {v:proNow?`${proNow}g`:"○",l:"PROTEIN",ok:proNow>=proTarget}].map(x=>(
+            <div key={x.l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
+              <div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{x.v}</div>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:x.ok?C.g:C.t3,fontFamily:FD}}>{x.l}{x.ok?" ✓":""}</div>
+            </div>))}
+        </div>
+        <div style={{fontSize:11.5,color:C.t3,marginTop:9}}>Cronometer and HAE fill these overnight. Type only what is missing.</div>
+        <S title="Manual entry" collapsible defaultOpen={false}><CloseoutPanel data={data} setData={setData}/></S>
       </X>
-      <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Tomorrow</div>
-        <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{tmrSess?tmrSess.name:"Rest / unstructured"}{trend?` · trend ${trend.rate>0?"+":""}${trend.rate} lb/wk`:""}</div>
+      <X style={{padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>RECOVERY · OURA</div>
+          {recStale&&lastRec?<div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>LAST WORN {fmt(lastRec[0]).toUpperCase()}</div>:null}
+        </div>
+        {rv?(<React.Fragment>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:7,marginTop:10,opacity:recStale?0.55:1}}>
+            {[[rv.recoveryScore!=null?`${rv.recoveryScore}%`:"○","RECOVERY"],[rv.hrv?Math.round(rv.hrv):"○","HRV"],[rv.rhr?Math.round(rv.rhr):"○","RHR"],[rv.sleepHours?`${Math.floor(rv.sleepHours)}:${String(Math.round((rv.sleepHours%1)*60)).padStart(2,"0")}`:"○","SLEEP"]].map(([v,l])=>(
+              <div key={l} style={{background:C.bg,borderRadius:8,padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:19,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div></div>))}
+          </div>
+          {recStale&&<div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>The ring is off. The numbers dim and pause. Nothing breaks. Wear it tonight and tomorrow's session adjusts to recovery again.</div>}
+        </React.Fragment>):(<div style={{fontSize:12,color:C.t3,marginTop:8}}>No recovery data yet.</div>)}
       </X>
+      <X style={{padding:16}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>WEEK {wkn(t)} · WHAT THE LOG SAYS</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+          {[
+            {ok:week.liftPlanned>0&&week.liftDone>=week.liftPlanned,txt:`Lifts ${week.liftDone}/${week.liftPlanned||0} logged this week`},
+            {ok:week.proDays>=5,txt:`Protein floor hit ${week.proDays} of 7 days`},
+            {ok:week.weighs>=5,txt:`Weigh-ins ${week.weighs}/7${wkTrend?` · trend ${wkTrend}`:""}`},
+            {ok:week.stepMisses.length===0,txt:week.stepMisses.length?`Steps under ${Math.round(stepsTarget/1000)}k ${week.stepMisses.join(" & ")}`:"Steps target held all week"},
+          ].map((x,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:9}}>
+              <span style={{flexShrink:0,width:20,fontSize:14,fontWeight:800,fontFamily:FD,color:x.ok?C.g:C.t3,textAlign:"center"}}>{x.ok?"✓":"○"}</span>
+              <span style={{fontSize:12.5,fontWeight:600,color:x.ok?C.t:C.t3,flex:1}}>{x.txt}</span>
+            </div>))}
+        </div>
+        <div style={{marginTop:11,background:C.pl,borderRadius:8,padding:"10px 12px",fontSize:12.5,lineHeight:1.5,fontWeight:600,color:C.t}}>{verdict}</div>
+      </X>
+      <X style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TOMORROW</div>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginTop:3}}>{tmrSess?tmrSess.name:"Rest day · steps + protein floor"}</div>
+        </div>
+        <div style={{fontSize:13,fontWeight:800,color:C.p,fontFamily:FD,textTransform:"uppercase"}}>{dw(tomorrow).slice(0,3)}</div>
+      </X>
+      {!stretchDone&&<X style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Evening stretch · ~12 min</div>
+        <B small onClick={()=>setTab("training")}>Start</B>
+      </X>}
       <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
     </div>);
   }
