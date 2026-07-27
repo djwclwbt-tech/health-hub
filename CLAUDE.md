@@ -34,8 +34,8 @@ The Home tab resolves a **mode** from the clock and today's state (test with `?c
 
 Tabs: Home (moments) / Train / Food / Scale / Setup. The Habits tab is gone — habit logging is the one-tap "Mark clean day" in the closeout surface. Food is a quick-log (calories+protein, three presets); Cronometer-synced meals are read-only in-app.
 
-## Visual system: Iron & Steel
-All colors are CSS custom properties in the single `:root` block in `index.html` (auto dark/light via `prefers-color-scheme`). **Never hardcode a hex outside that block.** The JS `C` object maps token names to `var(--…)`. Accent (red, reserved for actions) is the only brand color; the UI is otherwise monochrome graphite; red/green = semantic, and there is deliberately **no amber/warning tier** — mid states render graphite (`t2`/`t3`). Type: Barlow (UI) + Barlow Condensed (display/numerals/buttons, uppercase). Tabular numerals globally; sharp 3-4px radii — industrial, not SaaS.
+## Visual system: Iron & Ember
+All colors are CSS custom properties in the single `:root` block in `index.html`. **Light mode only** — dark mode was removed on purpose; do not add a `prefers-color-scheme` block back. **Never hardcode a hex outside `:root`.** The JS `C` object maps token names to `var(--…)`. Warm paper bg, graphite ink, one ember accent (`--accent #C2410C`, actions only); olive = earned, deep red = destructive/broken only, and there is deliberately **no amber/warning tier** — mid states render graphite (`t2`/`t3`). Type: Barlow (UI) + Barlow Condensed (display/numerals/buttons, uppercase). Tabular numerals globally; radii 6 (inputs) / 8-9 (buttons) / 10-12 (cards). Copy rules: active voice, short sentences, no em dashes, no semicolons in prose, middots only between data values, empty numerics render "○".
 
 ## Data Structure
 All data is stored in localStorage under key `dhub6` and synced to Supabase:
