@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Health Hub">
@@ -14,31 +14,23 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-  /* ═══ IRON & STEEL — the only place hex colors are allowed ═══
-     Nearly monochrome graphite; red is the ONLY brand color, reserved for
-     actions. Green = positive, deep red = bad/destructive; everything else
-     is graphite — there is deliberately no amber/warning tier. */
+  /* ═══ IRON & EMBER · the only place hex colors are allowed ═══
+     Warm paper + graphite; ember is the ONLY brand color, reserved for
+     actions. Olive = earned, deep red = destructive only; everything else
+     is graphite · there is deliberately no amber/warning tier.
+     Light mode only. Dark mode was removed on purpose; do not add it back. */
   :root {
-    --bg: #F4F5F6; --surface: #FFFFFF; --ink: #111417; --muted: #5C6570;
-    --accent: #DC2626; --accent-press: #B91C1C;
-    --danger: #991B1B; --good: #16A34A; --line: #E2E5E8;
+    --bg: #F4F2EF; --surface: #FFFFFF; --ink: #1A1714; --muted: #6B645C;
+    --accent: #C2410C; --accent-press: #9A3412;
+    --danger: #B91C1C; --good: #4D7C0F; --line: #E6E2DC;
     --on-accent: #FFFFFF;
     --ink-2: color-mix(in srgb, var(--ink) 62%, var(--muted));
-    --accent-soft: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    --accent-soft: #F9EBE2;
     --danger-soft: color-mix(in srgb, var(--danger) 10%, var(--surface));
     --good-soft: color-mix(in srgb, var(--good) 10%, var(--surface));
-    --scrim: color-mix(in srgb, var(--ink) 50%, transparent);
+    --scrim: color-mix(in srgb, var(--ink) 45%, transparent);
     --shadow: 0 10px 28px color-mix(in srgb, var(--ink) 7%, transparent);
-    --shadow-2: 0 4px 14px color-mix(in srgb, var(--ink) 6%, transparent);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0E1114; --surface: #161B20; --ink: #E9ECEF; --muted: #8B96A0;
-      --accent: #F87171; --accent-press: #EF4444;
-      --danger: #FCA5A5; --good: #4ADE80; --line: #232A31;
-      --on-accent: #0E1114;
-      --shadow: none; --shadow-2: none; /* no shadows in dark mode */
-    }
+    --shadow-2: 0 6px 18px color-mix(in srgb, var(--ink) 6%, transparent);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--ink); overflow-x: hidden; font-variant-numeric: tabular-nums; }
@@ -51,7 +43,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -64,81 +56,81 @@ const PROG = {
   checkpoint:{week:4,date:"2026-08-02"},startWeight:192,targetWeight:180,
   mobility:{
     _default:[
-      {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:3,sides:["Left","Right","Left"],
-       notes:"Most important. Left gets second round. Squeeze glute on down knee hard.",
-       cue:"Half-kneeling, squeeze back-leg glute, shift forward"},
+      {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:2,sides:["Left","Right"],
+       notes:"Most important one. Squeeze the down-knee glute hard the whole time.",
+       cue:"Half-kneel with one knee down. Squeeze the glute of the down leg hard and shift your hips forward until you feel it down the front of that hip. Stay tall through your chest, don't arch your low back."},
       {id:"hip-90-90",name:"Hip 90/90",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Internal and external rotation — feeds squat depth",
-       cue:"Sit on floor, both legs bent 90°. Lean forward over front shin"},
+       notes:"Internal and external rotation · feeds squat depth",
+       cue:"Sit with both legs bent at 90°, front shin across your body. Keep your chest tall and hinge forward over the front shin until the outside of that hip lights up. Swivel your knees to switch sides."},
       {id:"pigeon",name:"Pigeon Stretch",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Figure-4 supine if pigeon bothers back. Opens deep external rotators.",
-       cue:"Feel deep stretch in glute. Breathe into it"},
+       notes:"Figure-4 on your back if pigeon bothers your knee or back.",
+       cue:"Front shin flat on the floor, back leg straight behind you. Square your hips, then lean your chest forward over the shin. You should feel it deep in the glute, never in the knee."},
       {id:"psoas-release",name:"Supine Psoas Release",dur:90,sets:2,sides:["Left","Right"],
-       notes:"Left side priority. 90s minimum.",
-       cue:"Lie on back, let leg hang off edge. Full relaxation"},
+       notes:"Left side priority. 90 seconds minimum per side.",
+       cue:"Lie on your back near the edge of the bed and let one leg hang off. Hug the other knee to your chest and let the hanging leg go completely loose. Breathe slow and feel the front of the hip let go."},
       {id:"spinal-twist",name:"Supine Spinal Twist",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Decompresses. Thoracolumbar rotation.",
-       cue:"Pull knee across body toward floor. Both shoulders flat"},
+       notes:"Decompresses the low back after loading.",
+       cue:"On your back, pull one knee across your body toward the floor. Keep both shoulders flat on the ground and turn your head the other way. Let the low back unwind into it."},
     ],
   },
   days:{
-    monday:{name:"Upper A — Strength",focus:"Strength",reps:"5-8",
+    monday:{name:"Upper A · Strength",focus:"Strength",reps:"5-8",
       warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"flat-bench",name:"Barbell Flat Bench",sets:3,rr:[5,8],rest:150,sw:175,inc:5,unit:"lbs",anchor:true,notes:"Anchor — progresses +5/wk when all sets hit",cue:"Retract scapula, feet driven into floor, touch and press"},
-        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:120,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Pull elbows past torso, squeeze mid-back hard"},
-        {id:"smith-ohp",name:"Smith OHP",sets:2,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Brace hard",cue:"Brace core tight, press straight overhead not forward"},
-        {id:"lat-pulldown",name:"Lat Pulldown",sets:2,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Drive elbows down to hips, feel lats stretch at top"},
-        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
+        {id:"flat-bench",name:"Barbell Flat Bench",sets:3,rr:[5,8],rest:150,sw:175,inc:5,unit:"lbs",anchor:true,notes:"Anchor · progresses +5/wk when all sets hit",cue:"Pinch your shoulder blades like you're holding a pencil between them, push the floor with your feet. Feel the chest stretch at the bottom, then squeeze it to press up"},
+        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:120,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Hands are hooks. Pull with your elbows and feel the middle of your back do the work, hold the squeeze one second"},
+        {id:"smith-ohp",name:"Smith OHP",sets:2,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Brace hard",cue:"Squeeze your butt and belly into one solid pillar. Press straight up and feel your shoulders, not your arms, carry it"},
+        {id:"lat-pulldown",name:"Lat Pulldown",sets:2,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Pull your elbows down into your back pockets, chest tall. Feel the muscles under your armpits do the pulling"},
+        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Hug a barrel. Deep stretch across the chest when your arms are wide, squeeze the middle of your chest as your hands meet"},
       ]},
-    tuesday:{name:"Lower A — Strength",focus:"Strength",reps:"5-8",
+    tuesday:{name:"Lower A · Strength",focus:"Strength",reps:"5-8",
       warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"deadlift",name:"Deadlift (BB)",sets:3,rr:[5,5],rest:180,sw:235,inc:10,unit:"lbs",anchor:true,notes:"Anchor — fixed 3×5, progresses +10/wk when reps hold",cue:"Wedge in, brace hard, push the floor away — bar stays close"},
-        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:120,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"Full depth, drive through whole foot not just toes"},
-        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Drive heels toward glutes, squeeze hamstrings at peak, control the eccentric"},
-        {id:"standing-calf",name:"Standing Calf Raise",sets:2,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at bottom, drive up on big toe"},
+        {id:"deadlift",name:"Deadlift (BB)",sets:3,rr:[5,5],rest:180,sw:235,inc:10,unit:"lbs",anchor:true,notes:"Anchor · fixed 3×5, progresses +10/wk when reps hold",cue:"Wedge in, big breath, push the floor away. The bar stays on your legs the whole way"},
+        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:120,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"All the way down, drive through your whole foot. Feel your thighs load at the bottom"},
+        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Pull your heels to your butt and squeeze the back of your thighs. Lower slow, three counts"},
+        {id:"standing-calf",name:"Standing Calf Raise",sets:2,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at the bottom, then drive up onto your big toe and hold the top for two"},
       ]},
     wednesday:{name:"Mobility + Arms",focus:"Core",reps:"10-15",
       warmup:{cardio:"5 min bike",note:"Mobility block first, then arms.",moves:[]},
       exercises:[
-        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:0,sw:15,inc:2.5,unit:"lbs",notes:"Superset 1A — then OH rope extension",cue:"Let arms hang fully stretched, don't swing"},
-        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Superset 1B — rest 60s after this",cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
-        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:0,sw:30,inc:5,unit:"lbs",notes:"Superset 2A — then tricep pushdown",cue:"Neutral grip, keep elbows pinned, squeeze at top"},
-        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Superset 2B — rest 60s after this",cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
-        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:0,sw:40,inc:5,unit:"lbs",notes:"Superset 3A — then wrist curl",cue:"Overhand grip, slow controlled curl, feel forearms burn"},
-        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:45,sw:20,inc:5,unit:"lbs",notes:"Superset 3B — rest 45s after this",cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
+        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:0,sw:15,inc:2.5,unit:"lbs",notes:"Superset 1A · then OH rope extension",cue:"Let your arms hang all the way back and feel the biceps stretch. Curl without swinging"},
+        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Superset 1B · rest 60s after this",cue:"Elbows tight by your head. Feel the back of your arms stretch deep, then squeeze to lock out"},
+        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:0,sw:30,inc:5,unit:"lbs",notes:"Superset 2A · then tricep pushdown",cue:"Thumbs up, elbows pinned to your sides. Squeeze at the top and feel the outside of your arms"},
+        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Superset 2B · rest 60s after this",cue:"Pin your elbows to your ribs. Squeeze the back of your arms hard at the bottom, let it up slow"},
+        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:0,sw:40,inc:5,unit:"lbs",notes:"Superset 3A · then wrist curl",cue:"Knuckles up, curl slow. Feel the burn along the top of your forearms"},
+        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:45,sw:20,inc:5,unit:"lbs",notes:"Superset 3B · rest 45s after this",cue:"Let the bar roll to your fingertips, curl it back up and squeeze your forearms"},
       ]},
-    thursday:{name:"Upper B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
+    thursday:{name:"Upper B · Hypertrophy",focus:"Hypertrophy",reps:"10-12",
       warmup:{cardio:"5 min bike",moves:[
         {name:"Band Pull-Aparts",rx:"15 reps"},
         {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
       ],ramp:"1-2 ramp-up sets on your first press"},
       exercises:[
-        {id:"db-incline-press",name:"DB Incline Press",sets:2,rr:[10,12],rest:90,sw:40,inc:5,unit:"lbs/hand",notes:"30-45° bench",cue:"Feel upper chest stretch at bottom, drive up and squeeze"},
-        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:2,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Overhand grip hits upper back, pause and squeeze"},
-        {id:"lateral-raise",name:"Cable Lateral Raise",sets:2,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Elbows above wrists, pour water out of a pitcher"},
-        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Drive from low to high, feel upper chest, squeeze at top"},
-        {id:"reverse-fly",name:"Reverse Fly",sets:2,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Pinch shoulder blades, lead with elbows not hands"},
+        {id:"db-incline-press",name:"DB Incline Press",sets:2,rr:[10,12],rest:90,sw:40,inc:5,unit:"lbs/hand",notes:"30-45° bench",cue:"Feel the top of your chest stretch at the bottom. Drive the dumbbells up and in, then squeeze"},
+        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:2,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Knuckles up, pull to your ribs. Pause and feel your upper back pinch for one second"},
+        {id:"lateral-raise",name:"Cable Lateral Raise",sets:2,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Lead with your elbows, like pouring water from a pitcher. Feel the side of your shoulders float the weight"},
+        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Sweep low to high and feel the top of your chest. Squeeze where your hands meet"},
+        {id:"reverse-fly",name:"Reverse Fly",sets:2,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Lead with your elbows and pinch your shoulder blades. Feel the back of your shoulders, not your arms"},
       ]},
-    friday:{name:"Lower B — Hypertrophy",focus:"Hypertrophy",reps:"10-12",
+    friday:{name:"Lower B · Hypertrophy",focus:"Hypertrophy",reps:"10-12",
       warmup:{cardio:"5 min bike (easy pace)",moves:[
         {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
         {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
         {name:"QL Side Stretch",rx:"20s per side"},
       ],ramp:"1-2 ramp-up sets on your first exercise"},
       exercises:[
-        {id:"back-squat",name:"Back Squat (BB)",sets:3,rr:[5,8],rest:165,sw:135,inc:10,unit:"lbs",anchor:true,notes:"Anchor — progresses +10/wk when all sets hit",cue:"Brace hard, sit between your legs, drive up out of the hole"},
-        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[8,10],rest:90,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push hips back like closing a car door, bar stays on legs"},
-        {id:"leg-extension",name:"Leg Extension",sets:2,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Lock out at top, squeeze quad hard for 1 second"},
-        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Rear foot elevated, drop back knee straight down, drive up through front heel"},
+        {id:"back-squat",name:"Back Squat (BB)",sets:3,rr:[5,8],rest:165,sw:135,inc:10,unit:"lbs",anchor:true,notes:"Anchor · progresses +10/wk when all sets hit",cue:"Big breath, brace, sit down between your legs. Drive the floor apart on the way up and feel the whole leg work"},
+        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[8,10],rest:90,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push your hips back like you're closing a car door with your butt. The bar slides on your legs, feel the hamstrings stretch"},
+        {id:"leg-extension",name:"Leg Extension",sets:2,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Kick to full lockout and squeeze the front of your thigh hard for one second"},
+        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Back foot up, drop the back knee straight down. Drive up through the front heel and feel that glute"},
         {id:"seated-calf",name:"Seated Calf Raise",sets:2,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
       ]},
   },
@@ -158,12 +150,12 @@ const saneSet=s=>s&&s.done&&Number(s.reps)>0&&(Number(s.weight)>0||s.weight===0)
 const sameRepTrack=(a,b)=>repTrack(a)===repTrack(b);
 
 const WED_SUPERSETS={
-  "incline-db-curl":"1A — pair with Overhead Tricep Extension",
-  "oh-tricep-ext":"1B — rest 60s after this",
-  "cable-hammer-curl":"2A — pair with Tricep Pushdown",
-  "tricep-pushdown":"2B — rest 60s after this",
-  "reverse-curl":"3A — pair with Wrist Curl",
-  "wrist-curl":"3B — rest 45s after this",
+  "incline-db-curl":"1A · pair with Overhead Tricep Extension",
+  "oh-tricep-ext":"1B · rest 60s after this",
+  "cable-hammer-curl":"2A · pair with Tricep Pushdown",
+  "tricep-pushdown":"2B · rest 60s after this",
+  "reverse-curl":"3A · pair with Wrist Curl",
+  "wrist-curl":"3B · rest 45s after this",
 };
 const supersetLabel=(day,ex)=>day==="wednesday"?WED_SUPERSETS[ex?.id]:null;
 
@@ -204,7 +196,7 @@ const EXERCISE_LIBRARY=[
   {id:"goblet-squat",name:"Goblet Squat (DB)",pattern:"squat",region:"quads",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
   {id:"leg-extension",name:"Leg Extension",pattern:"knee-extension",region:"quads",sw:70,unit:"lbs",inc:5,cue:"Lock out at top, squeeze quad hard, slow eccentric"},
   // Hip hinge / hamstrings
-  {id:"deadlift",name:"Deadlift (BB)",pattern:"hinge",region:"posterior chain",sw:235,unit:"lbs",inc:10,cue:"Wedge in, brace hard, push the floor away — bar stays close"},
+  {id:"deadlift",name:"Deadlift (BB)",pattern:"hinge",region:"posterior chain",sw:235,unit:"lbs",inc:10,cue:"Wedge in, brace hard, push the floor away · bar stays close"},
   {id:"rdl",name:"Romanian Deadlift",pattern:"hinge",region:"hamstrings",sw:125,unit:"lbs",inc:10,cue:"Push hips back like closing a car door, bar stays on legs"},
   {id:"sldl",name:"Stiff-Leg Deadlift",pattern:"hinge",region:"hamstrings",sw:95,unit:"lbs",inc:10,cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
   {id:"cable-pull-through",name:"Cable Pull-Through",pattern:"hinge",region:"glutes/hamstrings",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are hooks"},
@@ -224,6 +216,18 @@ const EXERCISE_LIBRARY=[
   {id:"wrist-curl",name:"Wrist Curl",pattern:"forearms",region:"forearms",sw:20,unit:"lbs",inc:5,cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
 ];
 const exLibById=Object.fromEntries(EXERCISE_LIBRARY.map(e=>[e.id,e]));
+// Short display names for strips/charts: drop filler words, keep the lift word.
+const SHORT_FILLER=new Set(["barbell","db","bb","machine","smith","seated","lying","standing","cable","(bb)","(db)"]);
+const shortLiftName=n=>{const ws=(n||"").replace(/[()]/g,"").split(" ").filter(w=>!SHORT_FILLER.has(w.toLowerCase()));return(ws[ws.length-1]||n||"").toUpperCase().slice(0,8);};
+// Stick-figure pose diagrams for the guided stretch (mock 6e) · 72×56 viewBox,
+// hl = the ember-highlighted segment where you should feel it.
+const STRETCH_POSES={
+  "hip-flexor":{pose:"M10,38 L24,50 L36,38 L52,40 L54,52 M36,38 L36,18 M36,22 L46,34",hl:"M24,50 L36,38",hx:36,hy:11},
+  "hip-90-90":{pose:"M30,44 L16,48 L10,40 M30,44 L44,48 L52,42 M30,44 L40,22",hl:"M30,44 L16,48",hx:43,hy:16},
+  "pigeon":{pose:"M8,50 L30,46 L46,50 L32,52 M30,46 L42,22 M42,24 L54,46",hl:"M30,46 L46,50",hx:44,hy:15},
+  "psoas-release":{prop:"M6,34 h34 v18 h-34 z",pose:"M10,30 L36,30 M36,30 L46,44 L48,52 M28,30 L34,18",hl:"M36,30 L46,44",hx:8,hy:26},
+  "spinal-twist":{pose:"M10,50 L50,50 M34,50 L28,36 L18,40",hl:"M28,36 L18,40",hx:54,hy:46},
+};
 const weightCap=ex=>{
   const p=(exLibById[ex?.id]?.pattern||ex?.pattern||"");
   const unit=ex?.unit||exLibById[ex?.id]?.unit||"";
@@ -260,6 +264,17 @@ const relatedPatterns={
   "calf":["calf"],"biceps":["biceps","brachialis"],"brachialis":["brachialis","biceps"],"triceps":["triceps"],"forearms":["forearms","brachialis"]
 };
 
+// Dinner rotation from the Jul 6 cut plan. Shared dinners, two plate sizes.
+const DINNERS={
+  monday:{name:"Sheet-pan salmon",tag:"FISH 1/3",how:"Salmon, baby potatoes, broccoli. One pan, 425°F, about 18 minutes.",you:"~720 · 48g",dani:"~480 · 32g"},
+  tuesday:{name:"Salsa chicken bowls",tag:"PREPPED, ZERO COOK",how:"Reheat salsa chicken, microwave rice, quick peppers. Fage crema on top.",you:"~650 · 55g",dani:"~430 · 35g"},
+  wednesday:{name:"Fast day",tag:"36 H FAST",how:"You fast until Thursday breakfast. Danielle eats normally: rotisserie chicken, microwave rice, bagged salad.",you:"0",dani:"~430 · 35g"},
+  thursday:{name:"Air fryer shrimp or cod",tag:"FISH 2/3",how:"Frozen shrimp or cod, air fryer 8 to 10 minutes, rice, asparagus.",you:"~620 · 58g",dani:"~400 · 36g"},
+  friday:{name:"Taco bowls",tag:"ONE SKILLET",how:"Ground turkey, taco seasoning, rice, peppers, Fage crema, salsa.",you:"~680 · 52g",dani:"~450 · 33g"},
+  saturday:{name:"Grill night",tag:"COOK TOGETHER · FISH 3/3",how:"Steak or salmon, baked potato, big salad. The one real cooking night.",you:"~750 · 55g",dani:"~520 · 36g"},
+  sunday:{name:"Prep-day dinner",tag:"WHILE PREP RUNS",how:"Extra salsa chicken bowls, or shrimp stir-fry with frozen veg.",you:"~600 · 50g",dani:"~430 · 32g"},
+};
+
 const CARDIO_PRESETS=[
   {type:"stairs",label:"Stairs",duration:20,intensity:"zone2"},
   {type:"incline-walk",label:"Incline Walk",duration:20,intensity:"zone2"},
@@ -275,7 +290,7 @@ const cardioSummary=c=>{
   if(!c)return"";
   const parts=[cardioLabel(c.type),c.duration?`${c.duration}m`:null,intensityLabel(c.intensity)].filter(Boolean);
   const metrics=[c.distance?`${c.distance} mi`:null,c.calories?`${c.calories} cal`:null].filter(Boolean);
-  return `${parts.join(" · ")}${metrics.length?` — ${metrics.join(" · ")}`:""}`;
+  return `${parts.join(" · ")}${metrics.length?` · ${metrics.join(" · ")}`:""}`;
 };
 
 const SK="dhub6";
@@ -395,6 +410,7 @@ const svSB={
   weight:(date,value)=>sb.upsert("weight",{date,value}),
   steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
   water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?sb.upsert("water",{date,oz:n}):sb.deleteRow("water","date",date);},
+  lytes:(date,l)=>sb.upsert("lytes",{date,na:Math.round(l.na||0),k:Math.round(l.k||0),mg:Math.round(l.mg||0)}),
   recovery:(date,r)=>sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
     respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
     strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null}),
@@ -563,7 +579,7 @@ const getDayCalTarget=(dateStr,settings,travelDays,socialWeekend)=>{
   }
   if(dt==="wednesday")return settings?.wednesdayCal||900;
   if(dt==="training")return settings?.trainingCal||2000;
-  // weekendCal is the Sat/Sun average — Saturday runs +100, Sunday -100 (e.g. 1800 avg → 1900/1700)
+  // weekendCal is the Sat/Sun average · Saturday runs +100, Sunday -100 (e.g. 1800 avg → 1900/1700)
   const wknd=settings?.weekendCal||1800;
   return dw(dateStr)==="saturday"?wknd+100:wknd-100;
 };
@@ -695,7 +711,7 @@ const BLOCK_V2_SEEDS={
   "deadlift__5-5":{currentWeight:235,exerciseId:"deadlift",repRange:[5,5],name:"Deadlift (BB)"},
   "back-squat__5-8":{currentWeight:135,exerciseId:"back-squat",repRange:[5,8],name:"Back Squat (BB)"},
 };
-// Known logging errors in the prog store — each fails the sanity cap for its movement
+// Known logging errors in the prog store · each fails the sanity cap for its movement
 const BLOCK_V2_WEIGHT_FIXES={"reverse-curl":40,"cable-hammer-curl":35,"db-incline-press":45};
 const applyBlockV2=(d)=>{
   let changed=false;
@@ -755,7 +771,7 @@ const getStalls=(prog,wk,programDays)=>{
   return stalls;
 };
 
-// ═══ WEIGHT TREND — the one shared engine ═══
+// ═══ WEIGHT TREND · the one shared engine ═══
 // EWMA-smoothed OLS slope over the last 14 calendar days, in lbs/week to one
 // decimal. Every trend surface consumes this; do not add another formula.
 const getTrend=(wt,today=td())=>{
@@ -1101,9 +1117,9 @@ const getWeeklyCutRecommendation=(data,today=td(),pre=null)=>{
   ]};
 };
 
-// Iron & Steel tokens — values live in the :root CSS block; accent is the ONLY
+// Iron & Ember tokens · values live in the :root CSS block; accent is the ONLY
 // brand color (old violet v/vl now aliases of accent). red/green = semantic
-// only; there is no amber tier — mid states render graphite (t2/t3).
+// only; there is no amber tier · mid states render graphite (t2/t3).
 // oa = text on accent surfaces.
 const FD="'Barlow Condensed','Barlow',sans-serif";
 const C={bg:"var(--bg)",cd:"var(--surface)",bd:"var(--line)",bl:"var(--line)",
@@ -1125,7 +1141,7 @@ const N=({value,onChange,placeholder,style={},min=0,max})=>{
   };
   return(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 10px",
+    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
     color:C.t,fontSize:16,fontWeight:700,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:FD,...style}}/>
 );};
 const TimeInput=({value,onChange,placeholder,style={}})=>{
@@ -1134,31 +1150,31 @@ const TimeInput=({value,onChange,placeholder,style={}})=>{
     if(raw.length<=4)onChange(fmtTime(raw));
   };
   return(<input type="text" inputMode="numeric" value={value} onChange={handleChange}
-    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 10px",
+    placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
     color:C.t,fontSize:16,fontWeight:700,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:FD,...style}}/>);
 };
 const T=({value,onChange,placeholder,style={}})=>(
   <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:4,padding:"10px 10px",color:C.t,
+    style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",color:C.t,
     fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
 );
 const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
   // Filled = accent (or explicit color). Outline with no explicit color =
-  // neutral graphite — secondary actions carry no color of their own.
+  // neutral graphite · secondary actions carry no color of their own.
   <button onClick={onClick} disabled={disabled} style={{
     background:outline?"transparent":(color||C.p),color:outline?(color||C.t):C.oa,
-    border:outline?`1px solid ${color||C.bd}`:"none",borderRadius:4,
+    border:outline?`1px solid ${color||C.bd}`:"none",borderRadius:9,
     padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.05em",
     cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":C.sh2,
     width:full?"100%":"auto",minHeight:44,...style,
   }}>{children}</button>
 );
 const X=({children,style={},...p})=>(
-  <div style={{background:C.cd,borderRadius:4,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
+  <div style={{background:C.cd,borderRadius:12,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
 );
 const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
 const S=({title,children,collapsible,defaultOpen=true})=>{
-  // Collapsible sections really collapse (tap to expand) — "buried" surfaces
+  // Collapsible sections really collapse (tap to expand) · "buried" surfaces
   // like photos/measurements stay reachable instead of being hidden entirely.
   const [open,setOpen]=useState(!collapsible||defaultOpen);
   return(<div style={{marginTop:6}}>
@@ -1171,8 +1187,8 @@ const S=({title,children,collapsible,defaultOpen=true})=>{
   </div>);
 };
 const Br=({v,max,color=C.p,h=5})=>(
-  <div style={{height:h,background:C.bl,borderRadius:3,overflow:"hidden"}}>
-    <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:3,transition:"width 0.3s"}}/>
+  <div style={{height:h,background:C.bl,borderRadius:6,overflow:"hidden"}}>
+    <div style={{width:`${Math.min(100,(v/(max||1))*100)}%`,height:"100%",background:color,borderRadius:6,transition:"width 0.3s"}}/>
   </div>
 );
 const ensureNotificationPermission=async()=>{
@@ -1248,17 +1264,17 @@ const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",
 
 // ═══ TAB BAR ═══
 const TabBar=({active,set,hasActiveWorkout})=>(
-  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:C.sh,backdropFilter:"blur(14px)"}}>
+  <div style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:C.sh,backdropFilter:"blur(14px)",paddingBottom:"max(env(safe-area-inset-bottom), 6px)"}}>
     {[{id:"dashboard",l:"Home",icon:"⌂"},{id:"training",l:"Train",icon:"◎"},{id:"nutrition",l:"Food",icon:"◉"},{id:"weight",l:"Scale",icon:"⊖"},{id:"settings",l:"Setup",icon:"⚙"}].map(t=>(
       <button key={t.id} onClick={()=>set(t.id)} style={{
-        flex:1,padding:"10px 4px 18px",background:"transparent",border:"none",cursor:"pointer",
+        flex:1,padding:"12px 4px 10px",background:"transparent",border:"none",cursor:"pointer",
         color:active===t.id?C.p:C.t3,fontSize:14,fontWeight:active===t.id?800:650,fontFamily:"inherit",
         borderTop:"3px solid transparent",
-        position:"relative",minHeight:62,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+        position:"relative",minHeight:74,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
       }}>
         <span style={{position:"absolute",top:0,left:"20%",right:"20%",height:2,background:active===t.id?C.p:"transparent"}}/>
-        <span style={{fontSize:19,lineHeight:1}}>{t.icon}</span>
-        <span style={{fontSize:11,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}>{t.l}</span>
+        <span style={{fontSize:24,lineHeight:1}}>{t.icon}</span>
+        <span style={{fontSize:13,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:800}}>{t.l}</span>
         {t.id==="training"&&hasActiveWorkout&&active!=="training"&&(
           <div style={{position:"absolute",top:6,right:"50%",marginRight:-18,width:10,height:10,borderRadius:5,background:C.g,border:`2px solid ${C.cd}`}}/>
         )}
@@ -1280,7 +1296,7 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   return(
     <div onClick={onTap} style={{background:C.p,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?4:0,boxShadow:C.sh}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{width:8,height:8,borderRadius:4,background:C.g,animation:"pulse 2s infinite"}}/>
+        <div style={{width:8,height:8,borderRadius:8,background:C.g,animation:"pulse 2s infinite"}}/>
         <span style={{color:C.oa,fontSize:14,fontWeight:600}}>{sess?.name||"Workout"}</span>
       </div>
       <span style={{color:C.oa,fontSize:20,fontWeight:700,fontFamily:FD,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
@@ -1300,7 +1316,7 @@ const WeeklyConsistencyCard=({summary})=>{
           <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Weekly wins</div>
           <div style={{fontSize:16,fontWeight:850,color:C.t,marginTop:2}}>{summary.message}</div>
         </div>
-        <div style={{fontSize:11,fontWeight:850,color:C.t3,background:"transparent",border:`1px solid ${C.bd}`,borderRadius:3,padding:"5px 8px",whiteSpace:"nowrap"}}>Trend <span style={{color:toneColor}}>{summary.trend}</span></div>
+        <div style={{fontSize:11,fontWeight:850,color:C.t3,background:"transparent",border:`1px solid ${C.bd}`,borderRadius:6,padding:"5px 8px",whiteSpace:"nowrap"}}>Trend <span style={{color:toneColor}}>{summary.trend}</span></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:10}}>
         {[
@@ -1309,7 +1325,7 @@ const WeeklyConsistencyCard=({summary})=>{
           {l:"Scale",v:`${summary.weightDays}/7`,ok:summary.weightDays>=5}
         ].map(x=>{
           const col=x.ok?C.g:C.t3;
-          return <div key={x.l} style={{padding:"8px 6px",borderRadius:4,textAlign:"center",background:"transparent",border:`1px solid ${C.bd}`}}>
+          return <div key={x.l} style={{padding:"8px 6px",borderRadius:8,textAlign:"center",background:"transparent",border:`1px solid ${C.bd}`}}>
             <div style={{fontSize:9,fontWeight:850,color:C.t3}}>{x.l}</div>
             <div style={{fontSize:13,fontWeight:900,color:col,marginTop:1}}>{x.v}</div>
           </div>;
@@ -1320,10 +1336,10 @@ const WeeklyConsistencyCard=({summary})=>{
           const wins=(d.weightLogged?1:0)+(d.liftDone?1:0)+(d.cardioDone?1:0);
           const bg="transparent";
           const bd=C.bd;
-          return <div key={d.date} style={{border:`1px solid ${bd}`,background:bg,borderRadius:3,padding:"6px 2px",textAlign:"center",minHeight:48}}>
+          return <div key={d.date} style={{border:`1px solid ${bd}`,background:bg,borderRadius:6,padding:"6px 2px",textAlign:"center",minHeight:48}}>
             <div style={{fontSize:10,fontWeight:900,color:C.t2}}>{d.label}</div>
             <div style={{display:"flex",justifyContent:"center",gap:2,marginTop:4,flexWrap:"wrap"}}>
-              {[{k:"W",ok:d.weightLogged},{k:"L",ok:d.liftDone,hide:!d.liftPlanned},{k:"C",ok:d.cardioDone}].filter(x=>!x.hide).map(x=><span key={x.k} style={{fontSize:8,fontWeight:900,color:x.ok?C.g:C.t3,background:x.ok?C.gl:"transparent",borderRadius:4,padding:"1px 2px"}}>{x.ok?x.k:"·"}</span>)}
+              {[{k:"W",ok:d.weightLogged},{k:"L",ok:d.liftDone,hide:!d.liftPlanned},{k:"C",ok:d.cardioDone}].filter(x=>!x.hide).map(x=><span key={x.k} style={{fontSize:8,fontWeight:900,color:x.ok?C.g:C.t3,background:x.ok?C.gl:"transparent",borderRadius:8,padding:"1px 2px"}}>{x.ok?x.k:"·"}</span>)}
             </div>
           </div>;
         })}
@@ -1332,27 +1348,71 @@ const WeeklyConsistencyCard=({summary})=>{
   );
 };
 
+// CUT TRAJECTORY card · mock 1g. Dotted raw weigh-ins, solid EWMA trend (ember),
+// dashed projection to PROG.targetWeight at the current getTrend() rate, goal line,
+// checkpoint marker, pace verdict. Same getTrend() engine · presentation only.
 const WeightTrendCard=({trend,compact=false})=>{
   if(!trend)return null;
-  const color=trend.direction==="down"?C.g:trend.direction==="up"?C.r:C.p;
-  const vals=trend.points.map(p=>p.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
-  const w=Math.max(160,trend.points.length*26),h=compact?42:54;
-  const pts=trend.points.map((p,i)=>`${i*(w/(trend.points.length-1))},${h-6-((p.v-mn)/rng)*(h-14)}`).join(" ");
+  const goal=PROG.targetWeight,rate=trend.rate,pts=trend.points,lastP=pts[pts.length-1],cur=lastP.v;
+  const wkNum=Math.max(1,Math.min(PROG.weeks,Math.floor((new Date(td()+"T12:00:00")-new Date(PROG.start+"T12:00:00"))/6048e5)+1));
+  const toGo=Math.max(0,+(cur-goal).toFixed(1));
+  const daysToGoal=rate<-0.05&&cur>goal?(cur-goal)/(-rate)*7:null;
+  const projDate=daysToGoal!=null&&daysToGoal<=180?(()=>{const d=new Date(td()+"T12:00:00");d.setDate(d.getDate()+Math.round(daysToGoal));return d;})():null;
+  const projLabel=projDate?projDate.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase():"—";
+  const dLbl=ds=>new Date(ds+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
+  const dteEnd=(new Date(PROG.end+"T12:00:00")-new Date(td()+"T12:00:00"))/864e5;
+  const wtEnd=rate<-0.05&&dteEnd>0?Math.max(goal,+(cur+rate*(dteEnd/7)).toFixed(1)):null;
+  const st=rate>=0.1?{txt:`OFF PACE · +${rate.toFixed(1)} LB/WK`,c:C.r}
+    :rate<=-2?{txt:`FAST · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.t2}
+    :rate<=-0.6?{txt:`ON PACE · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.g}
+    :rate<=-0.1?{txt:`SLOW · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.t2}
+    :{txt:"HOLDING",c:C.t2};
+  const yr=+td().slice(0,4);
+  const dayOf=md=>{let d=new Date(`${yr}-${md}T12:00:00`);if(d-new Date(td()+"T12:00:00")>1728e5)d=new Date(`${yr-1}-${md}T12:00:00`);return d;};
+  const d0=dayOf(pts[0].d),dx=p=>(dayOf(p.d)-d0)/864e5,lastX=dx(lastP);
+  const endX=Math.max(lastX+10,Math.min(lastX+84,daysToGoal!=null?lastX+daysToGoal:lastX+28));
+  const W=358,H=compact?96:120,padT=10,padB=10,padR=4;
+  const gx=d=>d/endX*(W-padR);
+  const vals=[...pts.map(p=>Number(p.raw)),...pts.map(p=>p.v),goal];
+  const mn=Math.min(...vals)-0.6,mx=Math.max(...vals)+0.6;
+  const gy=v=>padT+(mx-v)/(mx-mn)*(H-padT-padB);
+  const rawLine=pts.map(p=>`${gx(dx(p)).toFixed(1)},${gy(Number(p.raw)).toFixed(1)}`).join(" ");
+  const emaLine=pts.map(p=>`${gx(dx(p)).toFixed(1)},${gy(p.v).toFixed(1)}`).join(" ");
+  const cx=gx(lastX),cy=gy(cur);
+  const projY=daysToGoal!=null?(daysToGoal<=84?gy(goal):gy(cur+rate*((endX-lastX)/7))):null;
+  const ckD=PROG.checkpoint?.date?(new Date(PROG.checkpoint.date+"T12:00:00")-d0)/864e5:null;
+  const showCk=!compact&&ckD!=null&&ckD>0&&ckD<endX;
+  const tagW=76,tagX=cx>W-tagW-14?cx-tagW-10:cx+10,tagY=Math.max(padT,Math.min(H-padB-16,cy-8));
+  const delta=+(PROG.startWeight-cur).toFixed(1);
   return(
-    <X style={{padding:12,borderLeft:`4px solid ${C.bd}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:8}}>
-        <div>
-          <div style={{fontSize:11,fontWeight:850,color:C.t3}}>Weight trend</div>
-          <div style={{fontSize:18,fontWeight:900,color:C.t,marginTop:1}}>{trend.message}</div>
-          <div style={{fontSize:11,color:C.t3,marginTop:2}}>{trend.weighIns7}/7 weigh-ins · current {trend.current} lbs</div>
-        </div>
-        <div style={{fontSize:18,fontWeight:900,color,whiteSpace:"nowrap"}}>{trend.rate>0?"+":""}{trend.rate.toFixed(1)} lb/wk</div>
+    <X style={{padding:"12px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>CUT TRAJECTORY · WK {wkNum}/{PROG.weeks}</div>
+        <div style={{fontSize:12,fontWeight:700,color:compact?st.c:(wtEnd!=null?(wtEnd<=goal+0.75?C.g:C.t2):st.c),fontFamily:FD,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{compact?st.txt:(wtEnd!=null?`PROJECTED ${wtEnd.toFixed(1)} BY ${dLbl(PROG.end)}`:st.txt)}</div>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:h}} preserveAspectRatio="none">
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-        {trend.points.map((p,i)=><circle key={i} cx={i*(w/(trend.points.length-1))} cy={h-6-((p.v-mn)/rng)*(h-14)} r="2.5" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,marginTop:8,display:"block"}}>
+        <line x1="0" y1={gy(goal)} x2={W} y2={gy(goal)} stroke={C.g} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.7"/>
+        <text x="2" y={gy(goal)-4} fontFamily={FD} fontSize="10" fontWeight="800" fill={C.g}>GOAL {goal}</text>
+        <text x="2" y={Math.max(padT+8,gy(pts[0].v)-6)} fontFamily={FD} fontSize="10" fontWeight="700" fill={C.t3}>{Math.round(pts[0].v)}</text>
+        {showCk&&<line x1={gx(ckD)} y1={padT-4} x2={gx(ckD)} y2={H-padB+4} stroke={C.bd} strokeWidth="1"/>}
+        {showCk&&<text x={gx(ckD)+4} y={padT+4} fontFamily={FD} fontSize="9" fontWeight="700" fill={C.t3}>{`CHECKPOINT ${dLbl(PROG.checkpoint.date)} · DELOAD`}</text>}
+        <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1.5" strokeDasharray="2,3"/>
+        <polyline points={emaLine} fill="none" stroke={C.p} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {projY!=null&&<polyline points={`${cx},${cy} ${W-padR},${projY}`} fill="none" stroke={C.p} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.55"/>}
+        {!compact&&projY!=null&&daysToGoal!=null&&daysToGoal<=84&&(<g><rect x={W-92} y={Math.max(padT,projY-22)} width="88" height="15" rx="3" fill={C.gl}/><text x={W-48} y={Math.max(padT,projY-22)+11} textAnchor="middle" fontFamily={FD} fontSize="10" fontWeight="800" fill={C.g}>{projLabel} · {goal}</text></g>)}
+        <circle cx={cx} cy={cy} r="4.5" fill={C.cd} stroke={C.p} strokeWidth="2.5"/>
+        <rect x={tagX} y={tagY} width={tagW} height="16" rx="3" fill={C.t}/>
+        <text x={tagX+tagW/2} y={tagY+11.5} textAnchor="middle" fontFamily={FD} fontSize="10" fontWeight="800" fill={C.oa}>{compact?`${cur.toFixed(1)} TODAY`:`${cur.toFixed(1)} · ${delta>=0?"−":"+"}${Math.abs(delta).toFixed(1)}`}</text>
       </svg>
-      {!compact&&<div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}><span>{trend.points[0]?.d}</span><span>{trend.points[trend.points.length-1]?.d}</span></div>}
+      {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>CHECKPOINT {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · GOAL {goal}</span></div>}
+      {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD,letterSpacing:"0.04em"}}><span>{rate>0?"+":""}{rate.toFixed(1)} LB/WK</span><span>{toGo.toFixed(1)} LBS TO {goal}</span><span>GOAL BY {projLabel}</span></div>}
+      {!compact&&<div style={{display:"flex",gap:7,marginTop:10}}>
+        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],[projLabel,"GOAL BY"]].map(([v,l])=>(
+          <div key={l} style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div>
+          </div>))}
+      </div>}
     </X>
   );
 };
@@ -1393,7 +1453,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
 // ═══ CONFIRM MODAL ═══
 const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",confirmColor=C.g})=>(
   <div style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div style={{background:C.cd,borderRadius:3,padding:20,width:"100%",maxWidth:320,border:`1px solid ${C.bd}`}}>
+    <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:320,border:`1px solid ${C.bd}`}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:6}}>{title}</div>
       <div style={{fontSize:14,color:C.t2,marginBottom:16}}>{message}</div>
       <div style={{display:"flex",gap:8}}>
@@ -1518,7 +1578,7 @@ const AnalysisSection=({data})=>{
         <div style={{display:"flex",gap:3}}>
           {["7d","14d","30d"].map(r=>(
             <button key={r} onClick={()=>setRange(r)} style={{
-              padding:"5px 10px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              padding:"5px 10px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
               border:`1px solid ${range===r?C.p:C.bd}`,background:range===r?C.pl:"transparent",color:range===r?C.p:C.t3,
             }}>{r}</button>
           ))}
@@ -1536,7 +1596,7 @@ const AnalysisSection=({data})=>{
           {/* Scores */}
           {result.scores&&(
             <X style={{padding:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:10}}>Scores — Last {range}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:10}}>Scores · Last {range}</div>
               {result.scores.overall!=null&&<ScoreBar label="Overall" score={result.scores.overall} color={scoreColor(result.scores.overall)}/>}
               {result.scores.training!=null&&<ScoreBar label="Training" score={result.scores.training} color={scoreColor(result.scores.training)}/>}
               {result.scores.nutrition!=null&&<ScoreBar label="Nutrition" score={result.scores.nutrition} color={scoreColor(result.scores.nutrition)}/>}
@@ -1746,13 +1806,13 @@ const Dashboard=({data,setData,setTab})=>{
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <div>
         <div style={{fontSize:18,fontWeight:800,color:C.t}}>Cut Command</div>
-        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}{dayType==="travel"?" — TRAVEL DAY":""}</div>
+        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} · Wk {w}/{PROG.weeks}{w===PROG.deload?" · DELOAD":""}{dayType==="travel"?" · TRAVEL DAY":""}</div>
       </div>
 
       <X style={{padding:16,borderLeft:`4px solid ${cutStatus.color}`}}>
         <div style={{fontSize:11,fontWeight:800,color:cutStatus.color,letterSpacing:"0.08em",marginBottom:4}}>{cutStatus.label}</div>
         <div style={{fontSize:15,fontWeight:700,color:C.t,lineHeight:1.35}}>{cutStatus.msg}</div>
-        <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:4,background:C.p,color:C.oa,padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
+        <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:8,background:C.p,color:C.oa,padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
         <div style={{fontSize:12,color:C.t3,marginTop:6,textAlign:"center"}}>{nextAction.hint}</div>
       </X>
 
@@ -1778,29 +1838,41 @@ const Dashboard=({data,setData,setTab})=>{
           {waterToday>0&&<button onClick={resetWater} style={{border:"none",background:"transparent",color:C.t3,fontSize:11,fontWeight:800,fontFamily:"inherit"}}>Reset</button>}
         </div>
         <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={7}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginTop:9}}>
-          {[8,12,16,24].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:4,padding:"9px 4px",fontSize:12,fontWeight:850,fontFamily:"inherit"}}>+{oz}oz</button>)}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:9}}>
+          {[{oz:24,l:"SMALL BOTTLE"},{oz:32,l:"BIG BOTTLE"},{oz:64,l:"JUG"}].map(b=><button key={b.oz} onClick={()=>addWater(b.oz)} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:60,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:22,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,marginTop:3}}>{b.l}</span></button>)}
         </div>
       </X>
 
       <X style={{padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <div>
-            <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Today</div>
-            <div style={{fontSize:16,fontWeight:800,color:C.t}}>{sess?sess.name:"Rest Day"}</div>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Today</div>            <div style={{fontSize:16,fontWeight:800,color:C.t}}>{sess?sess.name:"Rest Day"}</div>
             {sess&&<div style={{fontSize:12,color:C.t2}}>{sess.focus} · ~{estTime(sess)}m</div>}
           </div>
-          <button onClick={()=>setTab("training")} style={{border:`1px solid ${C.bd}`,background:"transparent",color:C.t,borderRadius:4,padding:"8px 12px",fontSize:12,fontWeight:800,fontFamily:"inherit"}}>{workoutDone?"Done":"Open"}</button>
+          <button onClick={()=>setTab("training")} style={{border:`1px solid ${C.bd}`,background:"transparent",color:C.t,borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:800,fontFamily:"inherit"}}>{workoutDone?"Done":"Open"}</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
           {[{l:"Scale",ok:weightLogged},{l:"Food",ok:nutritionLogged},{l:"Lift",ok:!sess||workoutDone},{l:"Cardio",ok:cardioDone},{l:"Habits",ok:habitsLogged}].map(x=>(
-            <div key={x.l} style={{textAlign:"center",padding:"7px 2px",borderRadius:3,background:"transparent",border:`1px solid ${C.bd}`}}>
+            <div key={x.l} style={{textAlign:"center",padding:"7px 2px",borderRadius:6,background:"transparent",border:`1px solid ${C.bd}`}}>
               <div style={{fontSize:14,fontWeight:800,color:x.ok?C.g:C.t3}}>{x.ok?"✓":"○"}</div>
               <div style={{fontSize:9,fontWeight:800,color:C.t3}}>{x.l}</div>
             </div>
           ))}
         </div>
       </X>
+
+      {(()=>{const r=data.rec?.[t];if(!r||(r.recoveryScore==null&&r.hrv==null&&r.sleepHours==null))return null;
+        const sc=r.recoveryScore;const col=sc==null?C.t2:sc>=60?C.g:sc<40?C.r:C.t2;
+        return(<X style={{padding:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Recovery{r.source?` · ${String(r.source).toUpperCase()}`:""}</div>
+            {sc!=null&&<div style={{fontSize:22,fontWeight:800,color:col,fontFamily:FD}}>{sc}%</div>}
+          </div>
+          <div style={{display:"flex",gap:16,marginTop:4}}>
+            {[["HRV",r.hrv?`${Math.round(r.hrv)}ms`:null],["RHR",r.rhr?`${Math.round(r.rhr)}`:null],["SLEEP",r.sleepHours?`${(+r.sleepHours).toFixed(1)}h`:null]].filter(x=>x[1]).map(([l,v])=>(
+              <div key={l}><span style={{fontSize:16,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</span> <span style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD,letterSpacing:"0.06em"}}>{l}</span></div>))}
+          </div>
+        </X>);})()}
 
       <WeightTrendCard trend={weightTrend} compact/>
 
@@ -1815,7 +1887,7 @@ const Dashboard=({data,setData,setTab})=>{
             {l:"Cardio",ok:tonightCloseout.cardioDone,v:tonightCloseout.cardioDone?"Done":"Open"},
             {l:"Recovery",ok:tonightCloseout.recovery==null||tonightCloseout.recovery>=55,v:tonightCloseout.recovery==null?"—":`${tonightCloseout.recovery}%`}
           ].map(x=>(
-            <div key={x.l} style={{padding:"7px 4px",borderRadius:3,textAlign:"center",background:"transparent",border:`1px solid ${C.bd}`}}>
+            <div key={x.l} style={{padding:"7px 4px",borderRadius:6,textAlign:"center",background:"transparent",border:`1px solid ${C.bd}`}}>
               <div style={{fontSize:9,fontWeight:850,color:C.t3}}>{x.l}</div>
               <div style={{fontSize:11,fontWeight:850,color:x.ok?C.g:C.t3,marginTop:1}}>{x.v}</div>
             </div>
@@ -1833,14 +1905,14 @@ const Dashboard=({data,setData,setTab})=>{
           {weeklyRecommendation.signals.map(sig=>{
             const col=sig.tone==="good"?C.g:sig.tone==="bad"?C.r:sig.tone==="warn"?C.t2:C.t3;
             const bg=sig.tone==="good"?C.gl:sig.tone==="bad"?C.rl:sig.tone==="warn"?C.bg:C.bg;
-            return <span key={sig.label} style={{fontSize:10,fontWeight:850,color:C.t3,background:"transparent",border:`1px solid ${C.bd}`,borderRadius:3,padding:"5px 7px"}}>{sig.label}: <span style={{color:col}}>{sig.value}</span></span>;
+            return <span key={sig.label} style={{fontSize:10,fontWeight:850,color:C.t3,background:"transparent",border:`1px solid ${C.bd}`,borderRadius:6,padding:"5px 7px"}}>{sig.label}: <span style={{color:col}}>{sig.value}</span></span>;
           })}
         </div>
       </X>
 
       <WeeklyConsistencyCard summary={weeklyConsistency}/>
 
-      {/* Allergies — demoted to a compact expandable line below primary cards */}
+      {/* Allergies · demoted to a compact expandable line below primary cards */}
       <X style={{padding:"9px 12px",borderLeft:`3px solid ${C.bd}`,cursor:"pointer"}} onClick={()=>setAllergyOpen(o=>!o)}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
           <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:allergyOpen?"normal":"nowrap"}}>
@@ -1857,15 +1929,15 @@ const Dashboard=({data,setData,setTab})=>{
         )}
       </X>
 
-      <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Open review details</button>
+      <button onClick={()=>setShowFullDashboard(true)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:8,padding:"11px",fontSize:13,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>Open review details</button>
     </div>
   );
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
       <div>
-        <div style={{fontSize:18,fontWeight:700,color:C.t}}>Review Details</div><button onClick={()=>setShowFullDashboard(false)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:4,padding:"7px 10px",fontSize:12,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>← Cut Command</button>
-        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} — Wk {w}/{PROG.weeks}{w===PROG.deload?" — DELOAD":""}{dayType==="travel"?" — TRAVEL DAY":""}</div>
+        <div style={{fontSize:18,fontWeight:700,color:C.t}}>Review Details</div><button onClick={()=>setShowFullDashboard(false)} style={{background:"transparent",border:`1px solid ${C.bd}`,borderRadius:8,padding:"7px 10px",fontSize:12,fontWeight:800,color:C.t2,fontFamily:"inherit"}}>← Cut Command</button>
+        <div style={{fontSize:13,color:C.t3}}>{fmt(t)} · Wk {w}/{PROG.weeks}{w===PROG.deload?" · DELOAD":""}{dayType==="travel"?" · TRAVEL DAY":""}</div>
       </div>
 
       <X style={{borderLeft:`3px solid ${C.bd}`,padding:12}}>
@@ -1873,7 +1945,7 @@ const Dashboard=({data,setData,setTab})=>{
           <div>
             <div style={{fontSize:11,fontWeight:600,color:C.p,letterSpacing:"0.06em"}}>Today</div>
             <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
-            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div>}
+            {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} · {sess.exercises.length} ex · ~{estTime(sess)}m</div>}
           </div>
           {data.wk[t]?<span style={{fontSize:13,fontWeight:600,color:C.g}}>Complete</span>
            :sess?<span style={{fontSize:13,fontWeight:600,color:C.p}}>Ready</span>:null}
@@ -1900,21 +1972,21 @@ const Dashboard=({data,setData,setTab})=>{
           )}
           <div style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:12}}>
             <span style={{color:C.t2}}>Dinner (flexible)</span>
-            <span style={{fontWeight:600,color:C.t}}>~{dinnerPro}g protein — eat what you want</span>
+            <span style={{fontWeight:600,color:C.t}}>~{dinnerPro}g protein · eat what you want</span>
           </div>
           {topProMeals.length>0&&(
             <div style={{marginTop:8,paddingTop:6,borderTop:`1px solid ${C.bl}`}}>
               <div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>HIGH-PROTEIN FROM YOUR HISTORY</div>
               {topProMeals.slice(0,3).map((m,i)=>(
                 <div key={i} style={{fontSize:12,color:C.t2,padding:"2px 0"}}>
-                  {m.desc} — <span style={{fontWeight:600,color:C.g}}>{m.pro}g pro</span>, {m.cal} cal
+                  {m.desc} · <span style={{fontWeight:600,color:C.g}}>{m.pro}g pro</span>, {m.cal} cal
                 </div>
               ))}
             </div>
           )}
           {rec?.recoveryScore!=null&&rec.recoveryScore<55&&(
-            <div style={{marginTop:6,padding:"6px 8px",background:C.bg,borderRadius:4,fontSize:11,color:C.t2,fontWeight:600}}>
-              Recovery at {rec.recoveryScore}% — add ~25g protein today. Don't cut calories, your body needs fuel to recover.
+            <div style={{marginTop:6,padding:"6px 8px",background:C.bg,borderRadius:8,fontSize:11,color:C.t2,fontWeight:600}}>
+              Recovery at {rec.recoveryScore}% · add ~25g protein today. Don't cut calories, your body needs fuel to recover.
             </div>
           )}
         </X>
@@ -1929,12 +2001,12 @@ const Dashboard=({data,setData,setTab})=>{
         </div>
         <div style={{fontSize:13,fontWeight:600,color:C.t}}>{autoreg.msg}</div>
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{autoreg.action}</div>
-        {redDays>=2&&<div style={{fontSize:12,color:C.r,fontWeight:700,marginTop:4}}>⚠ {redDays} consecutive red days — take a rest day. Shift the split forward.</div>}
+        {redDays>=2&&<div style={{fontSize:12,color:C.r,fontWeight:700,marginTop:4}}>⚠ {redDays} consecutive red days · take a rest day. Shift the split forward.</div>}
       </X>)}
 
       {/* ═══ WEIGHT TREND ALERT ═══ */}
       {weightTrend&&Math.abs(weightTrend.rate)>1&&(<X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em"}}>Weight Alert — {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em"}}>Weight Alert · {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
       </X>)}
 
@@ -1957,7 +2029,7 @@ const Dashboard=({data,setData,setTab})=>{
             <div style={{fontSize:11,fontWeight:700,color:swActive?C.p:C.t3,letterSpacing:"0.06em"}}>Social Weekend</div>
             {swActive&&<div style={{fontSize:10,color:C.t2}}>Mon-Thu targets lowered · ~1.5 lbs this week</div>}
           </div>
-          <button onClick={toggleSW} style={{background:swActive?C.p:C.bl,color:swActive?C.oa:C.t2,border:`1px solid ${swActive?C.p:C.bd}`,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
+          <button onClick={toggleSW} style={{background:swActive?C.p:C.bl,color:swActive?C.oa:C.t2,border:`1px solid ${swActive?C.p:C.bd}`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
         </X>);
       })()}
 
@@ -1982,7 +2054,7 @@ const Dashboard=({data,setData,setTab})=>{
         return(
           <X style={{padding:12,borderLeft:`3px solid ${borderColor}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <L>Adaptive TDEE{td.phase==="early"?" — early estimate":td.phase==="seeded"?" — recomp seeded":""}</L>
+              <L>Adaptive TDEE{td.phase==="early"?" · early estimate":td.phase==="seeded"?" · recomp seeded":""}</L>
               <span style={{fontSize:10,color:C.t3}}>{td.daysUsed}d cut{td.historyDays?` + ${td.historyDays}d history`:""}</span>
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
@@ -1991,24 +2063,24 @@ const Dashboard=({data,setData,setTab})=>{
               <span style={{fontSize:13,color:C.t3}}>cal/day</span>
             </div>
             <Br v={td.confidence} max={100} color={borderColor} h={5}/>
-            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.imputedShare!=null?` · ${Math.round((1-td.imputedShare)*100)}% measured`:""}{td.calibrated===false?" · calibrate in Setup to tighten":""}{td.phase==="early"?" — keep logging for accuracy":td.phase==="seeded"?" — seeded from recomp data":""}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>confidence: {td.confidence}%{td.imputedShare!=null?` · ${Math.round((1-td.imputedShare)*100)}% measured`:""}{td.calibrated===false?" · calibrate in Setup to tighten":""}{td.phase==="early"?" · keep logging for accuracy":td.phase==="seeded"?" · seeded from recomp data":""}</div>
             {td.phase==="confident"&&(<>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
-                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
                   <div style={{fontSize:14,fontWeight:700,color:td.weeklyChange<0?C.g:td.weeklyChange>0?C.r:C.t2}}>{td.weeklyChange>0?"+":""}{Math.round(td.weeklyChange)}</div>
                   <div style={{fontSize:9,color:C.t3,fontWeight:600}}>lbs/wk</div>
                 </div>
-                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
                   <div style={{fontSize:14,fontWeight:700,color:C.t2}}>{td.avgCalories.toLocaleString()}</div>
                   <div style={{fontSize:9,color:C.t3,fontWeight:600}}>avg in</div>
                 </div>
-                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+                <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
                   <div style={{fontSize:14,fontWeight:700,color:deficitColor}}>{Math.abs(td.deficit)}</div>
                   <div style={{fontSize:9,color:C.t3,fontWeight:600}}>{deficitLabel}</div>
                 </div>
               </div>
-              <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:4,fontSize:11,color:C.g}}>
-                Eating {Math.abs(td.deficit)} cal {td.deficit>0?"below":"above"} TDEE — {paceLabel}
+              <div style={{marginTop:8,padding:"6px 8px",background:C.gl,borderRadius:8,fontSize:11,color:C.g}}>
+                Eating {Math.abs(td.deficit)} cal {td.deficit>0?"below":"above"} TDEE · {paceLabel}
               </div>
             </>)}
           </X>
@@ -2064,7 +2136,7 @@ const Dashboard=({data,setData,setTab})=>{
         </div>
         <Br v={tCal} max={calT} color={tCal>calT?C.r:C.p} h={8}/>
         </>):(<>
-        <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend — log your food, protein first</div>
+        <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend · log your food, protein first</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
           <div style={{fontSize:28,fontWeight:700,color:tPro>=proT?C.g:C.p}}>{tPro}g</div>
           <div style={{fontSize:14,color:C.t3}}>/ {proT}g protein floor</div>
@@ -2084,11 +2156,11 @@ const Dashboard=({data,setData,setTab})=>{
             </div>
           ))}
         </div>
-        {fatPct>25&&tCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:4,fontSize:11,color:C.r,fontWeight:600}}>
+        {fatPct>25&&tCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:8,fontSize:11,color:C.r,fontWeight:600}}>
           Fat at {fatPct}% of calories (target: 20-25%). Check cooking oil, cheese, sauces.
         </div>)}
-        {dayType==="training"&&tPro>0&&tPro<100&&(<div style={{marginTop:4,padding:"6px 8px",background:C.bg,borderRadius:4,fontSize:11,color:C.t2,fontWeight:600}}>
-          Protein checkpoint: {tPro}g so far — load remaining meals heavier on lean protein.
+        {dayType==="training"&&tPro>0&&tPro<100&&(<div style={{marginTop:4,padding:"6px 8px",background:C.bg,borderRadius:8,fontSize:11,color:C.t2,fontWeight:600}}>
+          Protein checkpoint: {tPro}g so far · load remaining meals heavier on lean protein.
         </div>)}
       </X>
 
@@ -2143,15 +2215,15 @@ const Dashboard=({data,setData,setTab})=>{
             <div style={{fontSize:28,fontWeight:800,color:retention.score>=70?C.g:retention.score>=45?C.t2:C.r}}>{retention.score}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.weight.score>=70?C.g:C.t2}}>{retention.weight.change>0?"+":""}{retention.weight.change}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600}}>lbs/wk</div>
             </div>
-            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.lifts.score>=50?C.g:C.t2}}>{retention.lifts.held}/{retention.lifts.total}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600}}>Lifts Held</div>
             </div>
-            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:4}}>
+            <div style={{textAlign:"center",padding:6,background:C.bg,borderRadius:8}}>
               <div style={{fontSize:14,fontWeight:700,color:retention.protein.score>=70?C.g:C.t2}}>{retention.protein.hit}/{retention.protein.days}</div>
               <div style={{fontSize:9,color:C.t3,fontWeight:600}}>Pro Days</div>
             </div>
@@ -2174,7 +2246,7 @@ const Dashboard=({data,setData,setTab})=>{
           <X style={{padding:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
               <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Body Measurements</div>
-              <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:4,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
+              <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
             </div>
             {showMeasForm&&(
               <div style={{marginBottom:8,padding:8,background:C.bg,borderRadius:6,border:`1px solid ${C.bd}`}}>
@@ -2195,7 +2267,7 @@ const Dashboard=({data,setData,setTab})=>{
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
                   {measFields.filter(f=>latest[1][f.k]).map(f=>{
                     const d=prev&&prev[1][f.k]?parseFloat((latest[1][f.k]-prev[1][f.k]).toFixed(1)):null;
-                    return(<div key={f.k} style={{textAlign:"center",padding:"4px 2px",background:C.bg,borderRadius:4}}>
+                    return(<div key={f.k} style={{textAlign:"center",padding:"4px 2px",background:C.bg,borderRadius:8}}>
                       <div style={{fontSize:13,fontWeight:700,color:C.t}}>{latest[1][f.k]}"</div>
                       <div style={{fontSize:9,color:C.t3,fontWeight:600}}>{f.l}</div>
                       {d!==null&&d!==0&&<div style={{fontSize:10,fontWeight:600,color:f.up?(d>0?C.g:C.r):(d<0?C.g:C.r)}}>{d>0?"↑":"↓"}{Math.abs(d)}</div>}
@@ -2312,7 +2384,7 @@ const Dashboard=({data,setData,setTab})=>{
             {tierData.map(t=>(
               <div key={t.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid "+C.bd}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:8,height:8,borderRadius:4,background:t.c}}/>
+                  <div style={{width:8,height:8,borderRadius:8,background:t.c}}/>
                   <span style={{fontSize:12}}>{t.l}</span>
                   <span style={{fontSize:11,color:C.t3}}>({t.count} sessions)</span>
                 </div>
@@ -2327,10 +2399,10 @@ const Dashboard=({data,setData,setTab})=>{
       <div style={{display:"flex",gap:3}}>
         {dks.map((dk,i)=>{
           const isToday=dk===dn,done=Object.keys(data.wk).some(ws=>dw(ws)===dk&&wkn(ws)===w);
-          return(<div key={dk} style={{flex:1,borderRadius:4,padding:"6px 2px",textAlign:"center",
+          return(<div key={dk} style={{flex:1,borderRadius:8,padding:"6px 2px",textAlign:"center",
             background:isToday?C.pl:C.cd,border:`1px solid ${done?C.g:isToday?C.p:C.bd}`}}>
             <div style={{fontSize:11,fontWeight:700,color:isToday?C.p:C.t2}}>{["M","T","W","T","F","S","S"][i]}</div>
-            {done&&<div style={{width:6,height:6,borderRadius:3,background:C.g,margin:"2px auto 0"}}/>}
+            {done&&<div style={{width:6,height:6,borderRadius:6,background:C.g,margin:"2px auto 0"}}/>}
           </div>);
         })}
       </div>
@@ -2440,7 +2512,7 @@ const SWAP_MAP={
 // ═══ SWAP MODAL ═══
 const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
   <div style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0 16px 16px"}}>
-    <div style={{background:C.cd,borderRadius:4,padding:20,width:"100%",maxWidth:520,border:`1px solid ${C.bd}`,maxHeight:"78vh",overflowY:"auto"}}>
+    <div style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:520,border:`1px solid ${C.bd}`,maxHeight:"78vh",overflowY:"auto"}}>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:2}}>Swap Exercise</div>
       <div style={{fontSize:13,color:C.t3,marginBottom:6}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
       {slot&&<div style={{fontSize:12,color:C.v,background:C.vl,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{rrTxt(slot.rr)} · rest {slot.rest}s. Progression is tracked separately for this rep range.</div>}
@@ -2450,11 +2522,11 @@ const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
         const hasHistory=lw!==opt.sw;
         return(<button key={opt.id} onClick={()=>onSelect(opt)} style={{
           display:"block",width:"100%",textAlign:"left",background:idx===0?C.pl:"transparent",
-          border:`1px solid ${idx===0?C.p:C.bd}`,borderRadius:3,padding:"12px 14px",marginBottom:8,
+          border:`1px solid ${idx===0?C.p:C.bd}`,borderRadius:6,padding:"12px 14px",marginBottom:8,
           cursor:"pointer",fontFamily:"inherit"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
-            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:C.cd,borderRadius:4,padding:"2px 6px"}}>BEST FIT</span>}
+            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:C.cd,borderRadius:8,padding:"2px 6px"}}>BEST FIT</span>}
           </div>
           <div style={{fontSize:12,color:hasHistory?C.p:C.t3,marginTop:2}}>
             {hasHistory?`This slot: ${lw} ${opt.unit}`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"} · {opt.region}
@@ -2518,6 +2590,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
   const [showCancelConfirm,setShowCancelConfirm]=useState(false);
   const [swapModal,setSwapModal]=useState(null);
+  const [showAddEx,setShowAddEx]=useState(false);
+  const [liftTab,setLiftTab]=useState("upper");
   const [wuDone,setWuDone]=useState(false);
   const [activeVariant,setActiveVariant]=useState(()=>{try{return JSON.parse(localStorage.getItem("dhub6_variant"))||{};}catch{return {};}});
   const setVariant=(day,variant)=>{const nv=variant?{...activeVariant,[day]:variant}:{...activeVariant};if(!variant)delete nv[day];setActiveVariant(nv);try{localStorage.setItem("dhub6_variant",JSON.stringify(nv));}catch{}};
@@ -2525,6 +2599,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const hasVariants=PROG.variants?.[sel];
   const getSess=(day,variant)=>(variant&&PROG.variants?.[day]?.[variant])||data.program[day];
   const sess=getSess(sel,activeVariant[sel]);
+  // Manual sessions carry their own slot definitions on each exercise entry;
+  // sessOf gives the renderer/finisher a session-shaped object either way.
+  const sessOf=w=>w?.manual?{name:"Manual Session",focus:"Ad-hoc · add exercises as you go",exercises:[]}:getSess(w.day,w.variant);
 
   const gw=(exOrId,def,slot=null)=>{
     const ex=typeof exOrId==="string"?{id:exOrId,sw:def,rr:slot?.rr}:exOrId;
@@ -2568,7 +2645,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   };
 
   const isDeload=wkn(t)===PROG.deload;
-  // Last session's completed sets for an exercise — feeds one-tap prefill.
+  // Last session's completed sets for an exercise · feeds one-tap prefill.
   const lastSessionSets=(key,id)=>{
     const dates=Object.keys(data.wk||{}).sort().reverse();
     for(const dt of dates){
@@ -2596,6 +2673,23 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         rir:last?.[si]?.rir??"",
         prefilled:true,done:false})),
     };}),start:Date.now(),isDeload});setWuDone(false);};
+
+  // Manual workout: start empty, add exercises from the library mid-session.
+  // Weights come from gw() (progression + history), rest timers work as normal.
+  const startManualW=()=>{setWorkout({day:sel,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);};
+  const addManualEx=(opt)=>{
+    const slot={id:opt.id,name:opt.name,sets:3,rr:[8,12],rest:90,sw:opt.sw,inc:opt.inc,unit:opt.unit,cue:opt.cue,pattern:opt.pattern,region:opt.region};
+    const key=progKey(slot,slot);
+    const cw=gw({...slot,progKey:key},slot.sw,slot);
+    const wt=workout?.isDeload?Math.round(cw*0.5/5)*5:cw;
+    const last=lastSessionSets(key,slot.id);
+    setWorkout(p=>({...p,exercises:[...p.exercises,{id:slot.id,progKey:key,slot,
+      wu:p.exercises.length===0?WU(wt).map(w=>({...w,done:false})):[],
+      sets:Array.from({length:slot.sets},(_,si)=>({weight:wt,
+        reps:Number(last?.[si]?.reps)>0?Number(last[si].reps):slot.rr[1],
+        rir:last?.[si]?.rir??"",prefilled:true,done:false}))}]}));
+    setShowAddEx(false);
+  };
 
   const uS=(ei,si,f,v)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si][f]=v;if(f==="reps"||f==="rir")n.exercises[ei].sets[si].prefilled=false;return n;});
   const dWU=(ei,wi,rest)=>{
@@ -2639,7 +2733,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(navigator.vibrate)navigator.vibrate([300,120,300,120,300,120,500]);
     playRestAlarm();
     // Server Web Push owns the phone notification. In-app completion only handles local cues.
-    if(addToast)addToast("Rest complete — next set","success");
+    if(addToast)addToast("Rest complete. Next set.","success");
   };
 
   const clearRestTimer=()=>{
@@ -2658,6 +2752,21 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setRt(0);setRl(0);
     notifyRestDone();
     restEndRef.current=0;
+  };
+
+  const adjustRestTimer=(delta)=>{
+    if(restEndRef.current<=0)return;
+    const endTime=restEndRef.current+delta*1000;
+    if(endTime<=Date.now()+250){completeRestTimer();return;}
+    let old=null;try{old=JSON.parse(localStorage.getItem(REST_TIMER_KEY));}catch{}
+    const total=Math.max(1,(old?.total||rt||0)+delta);
+    const tag=`rest-timer-${endTime}`;
+    try{if(old?.tag)cancelDeviceNotification(old.tag);}catch{}
+    try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total,startedAt:old?.startedAt||Date.now(),tag}));}catch{}
+    scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/"});
+    if(tr.current)clearInterval(tr.current);
+    if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
+    armRestTimer(endTime,total);
   };
 
   const armRestTimer=(endTime,total)=>{
@@ -2726,9 +2835,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   const finishWorkout=()=>{
     if(!workout)return;const nd={...data};
-    nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
-    const s=getSess(workout.day,workout.variant);
-    workout.exercises.forEach((ex,i)=>{const pe=s?.exercises?.[i];if(!pe)return;
+    nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,manual:workout.manual||false,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
+    const s=sessOf(workout);
+    workout.exercises.forEach((ex,i)=>{const pe=s?.exercises?.[i]||ex.slot;if(!pe)return;
       const active=ex.swappedTo?{...ex.swappedTo,sets:pe.sets,rr:pe.rr,rest:pe.rest}:pe;
       const aid=ex.progKey||progKey(active,pe);
       const ainc=active.inc??pe.inc;
@@ -2829,7 +2938,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       distance:cardioDistance?+cardioDistance:null,calories:cardioCals?+cardioCals:null,notes:cardioNotes.trim()||"",done:true};
     const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);
     const saved=await svSB.cardio(t,c);
-    if(!saved)addToast?.("Cardio saved locally only — Supabase cardio table/schema needs migration", "warning");
+    if(!saved)addToast?.("Cardio saved locally only · Supabase cardio table/schema needs migration", "warning");
     setShowCardio(false);
     setCardioDistance("");setCardioCals("");setCardioNotes("");
   };
@@ -2841,7 +2950,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </div>
     <div style={{display:"flex",gap:4,overflowX:"auto"}}>
       {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
-        padding:"6px 9px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+        padding:"6px 9px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
         border:`1px solid ${cardioType===ct?C.p:C.bd}`,background:cardioType===ct?C.pl:"transparent",color:cardioType===ct?C.p:C.t3}}>{cardioLabel(ct)}</button>))}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -2877,23 +2986,47 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [calYear,setCalYear]=useState(now.getFullYear());
 
   if(workout){
-    const s=getSess(workout.day,workout.variant);
-    const swapExercise=(ei,newEx)=>{const oldEx=s.exercises[ei];const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false,reps:0,rir:""}));return n;});setSwapModal(null);};
+    const s=sessOf(workout);
+    const slotAt=ei=>s.exercises?.[ei]||workout.exercises[ei]?.slot;
+    const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false,reps:0,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
-      {swapModal&&<SwapModal exName={swapModal.exName} slot={s.exercises[swapModal.ei]} options={getSwapOptions(s.exercises[swapModal.ei],workout.exercises[swapModal.ei])} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
+      {swapModal&&<SwapModal exName={swapModal.exName} slot={slotAt(swapModal.ei)} options={getSwapOptions(slotAt(swapModal.ei),workout.exercises[swapModal.ei])} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
+      {showAddEx&&(<div style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowAddEx(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:C.cd,borderRadius:"12px 12px 0 0",width:"100%",maxWidth:520,maxHeight:"75vh",overflowY:"auto",padding:"14px 14px 24px",border:`1px solid ${C.bd}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:15,fontWeight:800,color:C.t}}>Add exercise</div>
+            <B small outline onClick={()=>setShowAddEx(false)}>Close</B>
+          </div>
+          {(()=>{const used=new Set(workout.exercises.map(e=>e.id));
+            const groups={};EXERCISE_LIBRARY.filter(o=>!used.has(o.id)).forEach(o=>{(groups[o.region]=groups[o.region]||[]).push(o);});
+            return Object.entries(groups).map(([rg,opts])=>(<div key={rg} style={{marginBottom:8}}>
+              <div style={{fontSize:10,fontWeight:800,color:C.t3,letterSpacing:"0.08em",textTransform:"uppercase",fontFamily:FD,padding:"4px 0"}}>{rg}</div>
+              {opts.map(o=>(<div key={o.id} onClick={()=>addManualEx(o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:44,padding:"4px 8px",borderTop:`1px solid ${C.bl}`,cursor:"pointer"}}>
+                <span style={{fontSize:14,fontWeight:600,color:C.t}}>{o.name}</span>
+                <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap"}}>{gw(o,o.sw)} {o.unit}</span>
+              </div>))}
+            </div>));})()}
+        </div>
+      </div>)}
 
       <WorkoutTimerBar workout={workout} compact/>
 
       {workout.isDeload&&(<div style={{background:C.bg,border:`1px solid ${C.bd}`,padding:"8px 12px",borderRadius:6,marginBottom:4}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.t}}>DELOAD WEEK — All weights at 50%. Keep reps the same. Focus on form.</div>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>DELOAD WEEK · All weights at 50%. Keep reps the same. Focus on form.</div>
       </div>)}
 
-      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:rl<=0?C.g:C.p,padding:"10px 14px",borderRadius:6,textAlign:"center",transition:"background 0.3s"}}>
-        <div style={{fontSize:10,color:C.oa,letterSpacing:"0.08em",fontWeight:600}}>{rl<=0?"Done! Go!":"Rest"}</div>
-        <div style={{fontSize:40,fontWeight:700,color:C.oa,fontFamily:FD,fontVariantNumeric:"tabular-nums"}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
-        <button onClick={clearRestTimer} style={{background:C.scrim,border:"none",color:C.oa,padding:"4px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>{rl<=0?"Dismiss":"Skip"}</button>
+      {rt>0&&(<div style={{position:"sticky",top:0,zIndex:50,background:rl<=0?C.g:C.p,padding:"12px 14px",borderRadius:10,textAlign:"center",transition:"background 0.3s"}}>
+        <div style={{fontSize:10,color:C.oa,letterSpacing:"0.14em",fontWeight:700,fontFamily:FD}}>{rl<=0?"REST DONE. GO.":"REST"}</div>
+        <div style={{fontSize:48,fontWeight:800,color:C.oa,fontFamily:FD,fontVariantNumeric:"tabular-nums",lineHeight:1.05}}>{rl<=0?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
+        <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.25)",overflow:"hidden",margin:"8px auto 0",maxWidth:300}}><div style={{height:"100%",background:C.oa,width:`${rt?Math.min(100,Math.round((1-rl/Math.max(rt,1))*100)):0}%`,transition:"width 0.4s"}}/></div>
+        <div style={{display:"flex",gap:6,marginTop:9,justifyContent:"center"}}>
+          <button onClick={()=>adjustRestTimer(-30)} style={{minHeight:40,flex:1,maxWidth:110,background:"transparent",border:"1px solid rgba(255,255,255,0.4)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.06em"}}>−30s</button>
+          <button onClick={()=>adjustRestTimer(30)} style={{minHeight:40,flex:1,maxWidth:110,background:"transparent",border:"1px solid rgba(255,255,255,0.4)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.06em"}}>+30s</button>
+          <button onClick={clearRestTimer} style={{minHeight:40,flex:1,maxWidth:110,background:"rgba(255,255,255,0.92)",border:"none",color:C.t,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.06em"}}>{rl<=0?"Dismiss":"Skip"}</button>
+        </div>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginTop:6,fontWeight:600}}>One push per rest, fires at 0:00. ±30 moves it. Panel closes itself.</div>
       </div>)}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -2927,65 +3060,100 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done ✓</span>
       </X>)}
 
-      {s.exercises.map((ex,ei)=>{
-        const wkEx=workout.exercises[ei];
-        const wuSets=wkEx.wu;
-        const swapped=wkEx.swappedTo;
-        const dispName=swapped?swapped.name:ex.name;
-        const dispCue=swapped?swapped.cue:ex.cue;
-        const swapOpts=getSwapOptions(ex,wkEx);
-        const anySetsLogged=wkEx.sets.some(s=>s.done);
-        const ss=supersetLabel(workout.day,ex);
-        const prevLift=(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(s=>s.done&&(s.weight>0||s.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(s=>s.reps)};}}return null;})();
-        return(<X key={ex.id+"-"+ei} style={{padding:10,borderLeft:ss?`4px solid ${C.v}`:undefined}}>
-          <div style={{marginBottom:6}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                  <div style={{fontSize:15,fontWeight:700,color:C.t}}>{dispName}</div>
-                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>ANCHOR</div>}
-                  {swapped&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>SWAPPED</div>}
-                </div>
-                {swapped&&<div style={{fontSize:11,color:C.t3,marginTop:1}}>from: {wkEx.swappedFrom.name}</div>}
-                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:12,color:C.t3,marginTop:2}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"} — <span style={{color:C.v,fontWeight:600}}>1-2 RIR</span></div>
-                <div style={{fontSize:12,color:C.p,marginTop:2}}>{dispCue}</div>
-                {prevLift&&<div style={{fontSize:11,color:C.t2,marginTop:3}}>Last: <span style={{fontWeight:600}}>{prevLift.weight>0?`${prevLift.weight} lbs × ${prevLift.reps.join("/")} reps`:`BW × ${prevLift.reps.join("/")} reps`}</span> <span style={{color:C.t3}}>{fmt(prevLift.date)}</span></div>}
-                {workout.isDeload&&<div style={{fontSize:11,color:C.t2,fontWeight:600,marginTop:2}}>DELOAD — 50% weight, same reps</div>}
+      {(()=>{ // ═══ SET DECK · mock 3a · one set at a time ═══
+        const exs=workout.exercises;
+        const curEi=exs.findIndex(e=>e.sets.some(x=>!x.done));
+        const allDone=exs.length>0&&curEi<0;
+        const segs=exs.map((e,i)=>{const done=e.sets.filter(x=>x.done).length;
+          return{k:i,short:shortLiftName(e.swappedTo?.name||slotAt(i)?.name||""),pct:Math.round(done/Math.max(1,e.sets.length)*100),cur:i===curEi};});
+        const wkEx=curEi>=0?exs[curEi]:null,ex=curEi>=0?slotAt(curEi):null;
+        const curSi=wkEx?wkEx.sets.findIndex(x=>!x.done):-1;
+        const cs=wkEx?wkEx.sets[curSi]:null;
+        const dispName=wkEx?.swappedTo?.name||ex?.name||"";
+        const dispCue=wkEx?.swappedTo?.cue||ex?.cue||"";
+        const inc=(wkEx?.swappedTo?.inc??ex?.inc)||5;
+        const prevLift=wkEx?(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(x=>x.done&&(x.weight>0||x.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(x=>x.reps)};}}return null;})():null;
+        const goal=(!prevLift||workout.isDeload||!ex?.rr)?null:(()=>{const top=ex.rr[1],bot=ex.rr[0];const reps=prevLift.reps||[];if(!reps.length)return null;const allTop=reps.every(r=>r>=top);const best=Math.max(...reps);
+          return allTop?{chip:"ADD WEIGHT",bg:C.p,txt:`You topped the range at ${prevLift.weight}. Today: ${cs?.weight} for ${bot}+ each set.`}
+            :best>=bot?{chip:"ADD A REP",bg:C.t,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Beat one of those sets today.`}
+            :{chip:"MATCH IT",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
+        const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));for(let i=n.exercises.length-1;i>=0;i--){const ss=n.exercises[i].sets;for(let j=ss.length-1;j>=0;j--){if(ss[j].done){ss[j].done=false;return n;}}}return n;});};
+        const anyLogged=exs.some(e=>e.sets.some(x=>x.done));
+        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length}×${rrTxt(sl?.rr)} · ${o.e.sets[0]?.weight||"BW"}`};});
+        return(<>
+        {exs.length>1&&<div style={{display:"flex",gap:4}}>
+          {segs.map(sg=>(<div key={sg.k} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
+            <div style={{height:4,borderRadius:2,background:C.bl,overflow:"hidden"}}><div style={{height:"100%",background:sg.pct>=100?C.g:C.p,width:`${sg.pct}%`}}/></div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase",color:sg.cur?C.p:sg.pct>=100?C.g:C.t3,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",fontFamily:FD}}>{sg.short}</div>
+          </div>))}
+        </div>}
+        {exs.length===0&&(<X style={{padding:"22px 16px",textAlign:"center"}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.t}}>Empty session</div>
+          <div style={{fontSize:12,color:C.t3,marginTop:3}}>Add your first exercise to start logging.</div>
+        </X>)}
+        {allDone&&(<X style={{padding:"26px 20px",textAlign:"center"}}>
+          <div style={{fontSize:28,fontWeight:800,color:C.g,fontFamily:FD,textTransform:"uppercase"}}>Session complete</div>
+          <div style={{fontSize:13,color:C.t2,marginTop:6}}>{exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} sets logged · hit Finish to save.</div>
+          <B style={{marginTop:12}} color={C.g} onClick={()=>setShowFinishConfirm(true)}>Finish workout</B>
+        </X>)}
+        {wkEx&&cs&&(<X style={{padding:16,boxShadow:"0 4px 14px rgba(26,23,20,0.05)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+                <div style={{fontSize:21,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em"}}>{dispName}</div>
+                {ex?.anchor&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.t,color:C.oa,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>ANCHOR</div>}
+                {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SWAPPED</div>}
               </div>
-              <div style={{display:"flex",gap:4,marginLeft:6}}>
-                {swapOpts.length>0&&!anySetsLogged&&<button title="Swap exercise" onClick={()=>setSwapModal({ei,exName:dispName})}
-                  style={{background:C.bl,border:"none",borderRadius:4,padding:"4px 8px",fontSize:12,fontWeight:700,color:C.t2,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>⇄</button>}
-
-              </div>
+              <div style={{fontSize:12,color:C.t3,marginTop:3}}>Set <b style={{color:C.t}}>{curSi+1}</b> of {wkEx.sets.length}{prevLift?<> · last {fmt(prevLift.date)}: <span style={{fontWeight:600,color:C.t2}}>{prevLift.weight>0?prevLift.weight:"BW"} × {prevLift.reps.join("/")}</span></>:null}</div>
             </div>
+            {getSwapOptions(ex,wkEx).length>0&&!wkEx.sets.some(x=>x.done)&&<button title="Swap exercise" onClick={()=>setSwapModal({ei:curEi,exName:dispName})} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:"inherit"}}>⇄</button>}
           </div>
-          {wuSets.length>0&&(<div style={{marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.bl}`}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.t3,marginBottom:3}}>Warm-up</div>
-            {wuSets.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.3:0.7,fontSize:14}}>
-              <span style={{color:C.t3,width:32}}>{wu.l}</span>
-              <span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
-              {!wu.done?<B small outline onClick={()=>dWU(ei,wi,ex.rest)} color={C.t3}>✓</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
+          {goal&&(<div style={{marginTop:10,background:C.pl,borderRadius:8,padding:"9px 11px",display:"flex",gap:9,alignItems:"flex-start"}}>
+            <span style={{flexShrink:0,fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:goal.bg,color:C.oa,borderRadius:4,padding:"3px 7px",marginTop:1,fontFamily:FD}}>{goal.chip}</span>
+            <span style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.45}}>{goal.txt}</span>
+          </div>)}
+          {workout.isDeload&&<div style={{fontSize:11,color:C.t2,fontWeight:600,marginTop:8}}>DELOAD · 50% weight, same reps</div>}
+          {curSi===0&&wkEx.wu.some(w=>!w.done)&&(<div style={{marginTop:10,paddingTop:8,borderTop:`1px dashed ${C.bl}`}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:3,fontFamily:FD,letterSpacing:"0.08em"}}>WARM-UP</div>
+            {wkEx.wu.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.35:0.85,fontSize:14}}>
+              <span style={{color:C.t3,width:32}}>{wu.l}</span><span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
+              {!wu.done?<B small outline onClick={()=>dWU(curEi,wi,ex?.rest)} color={C.t3}>✓</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
             </div>))}
           </div>)}
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 0",fontSize:10,color:C.t3,fontWeight:600}}>
-            <span style={{width:18}}>#</span><span style={{width:68,textAlign:"center"}}>LBS</span><span style={{width:13}}></span><span style={{width:56,textAlign:"center"}}>REPS</span><span style={{width:42,textAlign:"center"}}>RIR</span><span style={{width:44}}></span>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
+            {[{l:`WEIGHT · ${(wkEx.swappedTo?.unit||ex?.unit||"LBS").toUpperCase()}`,v:cs.weight||0,dn:()=>uS(curEi,curSi,"weight",Math.max(0,(Number(cs.weight)||0)-inc)),up:()=>uS(curEi,curSi,"weight",(Number(cs.weight)||0)+inc),vc:C.t},
+              {l:"REPS",v:cs.reps||0,dn:()=>uS(curEi,curSi,"reps",Math.max(0,(Number(cs.reps)||0)-1)),up:()=>uS(curEi,curSi,"reps",(Number(cs.reps)||0)+1),vc:C.p}].map(sp=>(
+              <div key={sp.l} style={{background:C.bg,borderRadius:8,padding:"10px 8px"}}>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:C.t3,textAlign:"center",fontFamily:FD}}>{sp.l}</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+                  <button onClick={sp.dn} style={{width:48,height:48,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:22,fontWeight:700,color:C.t,cursor:"pointer",fontFamily:"inherit"}}>−</button>
+                  <div style={{fontSize:34,fontWeight:800,color:sp.vc,fontFamily:FD,fontVariantNumeric:"tabular-nums"}}>{sp.v}</div>
+                  <button onClick={sp.up} style={{width:48,height:48,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:22,fontWeight:700,color:C.t,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+                </div>
+              </div>))}
           </div>
-          {wkEx.sets.map((s,si)=>{const ghost=s.prefilled&&!s.done;
-          return(<div key={si} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
-            borderTop:si>0?`1px solid ${C.bl}`:"none",opacity:s.done?0.35:1}}>
-            <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
-            <N value={s.weight||""} onChange={v=>uS(ei,si,"weight",Number(v))} placeholder="lbs" style={{width:68,fontSize:16}}/>
-            <span style={{color:C.t3,fontSize:13}}>×</span>
-            <N value={s.reps||""} onChange={v=>uS(ei,si,"reps",Number(v))} placeholder="reps" style={{width:56,fontSize:16,...(ghost?{color:C.t3,fontWeight:500}:{})}}/>
-            <N value={s.rir} onChange={v=>uS(ei,si,"rir",v)} placeholder="RIR" max={5} style={{width:42,fontSize:14,color:ghost?C.t3:C.v}}/>
-            {!s.done?<B small onClick={()=>dS(ei,si,ex.rest)}>Log</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
-          </div>);})}
-        </X>);
-      })}
+          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:C.t3,marginRight:2,fontFamily:FD}}>RIR</span>
+            {[0,1,2,3].map(v=>{const on=String(cs.rir)===String(v);return(<button key={v} onClick={()=>uS(curEi,curSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:6,border:`1px solid ${on?C.p:C.bd}`,background:on?C.p:C.cd,color:on?C.oa:C.t,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FD}}>{v}</button>);})}
+          </div>
+          <div style={{fontSize:12,lineHeight:1.5,color:C.t2,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:9}}>{dispCue}</div>
+        </X>)}
+        {wkEx&&cs&&rt<=0&&(<button onClick={()=>dS(curEi,curSi,ex?.rest)} style={{border:"none",background:C.p,color:C.oa,borderRadius:10,padding:20,fontSize:20,fontWeight:800,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.1em",cursor:"pointer",width:"100%",boxShadow:"0 8px 20px rgba(194,65,12,0.28)"}}>Log set · {cs.weight||0} × {cs.reps||0}</button>)}
+        {anyLogged&&!allDone&&<div onClick={undoLastSet} style={{fontSize:12,color:C.t3,fontWeight:600,textAlign:"center",cursor:"pointer",padding:"2px 0"}}>Undo last set</div>}
+        <div>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",color:C.t3,marginBottom:6,fontFamily:FD}}>UP NEXT</div>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {upNext.map(u=>(<div key={u.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:8,padding:"9px 12px"}}>
+              <span style={{fontSize:13,fontWeight:600,color:C.t2}}>{u.name}</span>
+              <span style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{u.meta}</span>
+            </div>))}
+            <B full outline onClick={()=>setShowAddEx(true)}>+ Add exercise</B>
+          </div>
+        </div>
+        </>);
+      })()}
 
-
-      {(()=>{const plc=getPostLiftCardio(workout.day);if(!plc)return null;
+      {(()=>{const plc=workout.manual?null:getPostLiftCardio(workout.day);if(!plc)return null;
         return(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
@@ -3000,7 +3168,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
             <div style={{fontSize:11,color:C.t3,marginTop:2}}>remaining</div>
           </div>)}
-          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete — use Details for distance/calories/intensity or Quick Log for just time.</div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete · use Details for distance/calories/intensity or Quick Log for just time.</div>)}
           {renderCardioForm()}
         </X>);
       })()}
@@ -3027,7 +3195,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <button onClick={()=>setViewW(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X style={{borderLeft:`3px solid ${C.bd}`}}>
         <div style={{fontSize:17,fontWeight:700,color:C.t}}>{vSess?.name||vData.day}</div>
-        <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} — {vData.dur||"?"}min</div>
+        <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · {vData.dur||"?"}min</div>
       </X>
       {vData.exercises?.map((ex,ei)=>{
         const pe=vSess?.exercises[ei];
@@ -3084,6 +3252,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:13,color:C.t2}}>Keep cardio, mobility, protein, and sleep on track.</div>
           </div>
           {!todayCardioDone?<B small onClick={()=>openCardioLog()}>Log cardio</B>:<span style={{fontSize:13,fontWeight:700,color:C.g}}>Cardio done</span>}
+          <B small outline onClick={startManualW}>Empty session</B>
         </div>
       )}
     </X>
@@ -3091,7 +3260,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     <X style={{padding:10}}>
       <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Week plan</div>
       <div style={{display:"flex",gap:3}}>
-        {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:3,
+        {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:6,
           border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
           fontSize:11,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
       </div>
@@ -3099,7 +3268,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min — hip & spine recovery`}</div></div>
+      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min · hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:600,color:data.mob?.[t]?.skipped?C.t3:C.g}}>{data.mob?.[t]?.skipped?"Skipped":"Done"}{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
           <B small outline onClick={undoMob}>Undo</B></div>
@@ -3110,7 +3279,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {!mobRunning&&!mobDone?(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
-            <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Tonight's sequence — start when ready, or skip today to stop the reminder.</div>
+            <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Tonight's sequence · start when ready, or skip today to stop the reminder.</div>
             {mobExercises.map(ex=>(
               <div key={ex.id} style={{padding:"7px 0",borderBottom:`1px solid ${C.bl}`}}>
                 <div style={{fontSize:13,fontWeight:750,color:C.t}}>{ex.name}</div>
@@ -3150,9 +3319,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               </div>
               {isCurrent&&(
                 <div style={{marginTop:8}}>
+                  {STRETCH_POSES[ex.id]&&(()=>{const P=STRETCH_POSES[ex.id];return(
+                    <div style={{textAlign:"center"}}>
+                      <svg viewBox="0 0 72 56" style={{width:108,height:84}}>
+                        <line x1="4" y1="52" x2="68" y2="52" stroke={C.bd} strokeWidth="2" strokeLinecap="round"/>
+                        {P.prop&&<path d={P.prop} fill={C.bl} stroke="none"/>}
+                        <path d={P.pose} fill="none" stroke={C.t} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        {P.hl&&<path d={P.hl} fill="none" stroke={C.p} strokeWidth="4" strokeLinecap="round"/>}
+                        <circle cx={P.hx} cy={P.hy} r="4.5" fill={C.t}/>
+                      </svg>
+                    </div>);})()}
                   <div style={{textAlign:"center",marginBottom:6}}>
                     <span style={{fontSize:13,fontWeight:700,color:C.v}}>
-                      {ex.sides[stretchSetIdx]} Side — Set {stretchSetIdx+1}/{ex.sets}
+                      {ex.sides[stretchSetIdx]} Side · Set {stretchSetIdx+1}/{ex.sets}
                     </span>
                   </div>
                   {stretchRunning?(
@@ -3162,7 +3341,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                          `${Math.floor(stretchTimeLeft/60)}:${String(stretchTimeLeft%60).padStart(2,"0")}`}
                       </div>
                       <button onClick={skipStretchTimer} style={{marginTop:6,background:"none",border:`1px solid ${C.bd}`,
-                        borderRadius:4,padding:"4px 16px",fontSize:11,fontWeight:600,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
+                        borderRadius:8,padding:"4px 16px",fontSize:11,fontWeight:600,color:C.t3,cursor:"pointer",fontFamily:"inherit"}}>
                         {stretchTimeLeft<=0?"Next":"Skip"}
                       </button>
                     </div>
@@ -3173,7 +3352,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                   )}
                   <div style={{display:"flex",justifyContent:"center",gap:4,marginTop:6}}>
                     {ex.sides.map((side,si)=>(
-                      <div key={si} style={{width:24,height:24,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",
+                      <div key={si} style={{width:24,height:24,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
                         fontSize:10,fontWeight:700,
                         background:stretchDone.includes(`${ei}-${si}`)?C.g:si===stretchSetIdx?C.v:"transparent",
                         color:stretchDone.includes(`${ei}-${si}`)?C.oa:si===stretchSetIdx?C.oa:C.t3,
@@ -3203,16 +3382,64 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <div style={{fontSize:12,color:C.t2}}>All weights cut to 50%. Keep reps the same. Resume full weight next week.</div>
     </X>)}
 
-    {/* ═══ STALL WARNINGS ═══ */}
-    {(()=>{const stalls=getStalls(data.prog,data.wk,data.program);const weekAvg=getWeeklyRecoveryAvg(data.rec);
-      return stalls.length>0?(<X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em",marginBottom:4}}>Strength Drop (2 sessions)</div>
-        {stalls.map(s=>(<div key={s.id} style={{fontSize:12,color:C.t2,marginBottom:3}}>
-          <span style={{fontWeight:600,color:C.t}}>{s.name}</span> dropped {s.drop} lbs → {s.currentWeight} lbs — {weekAvg&&weekAvg>=65?
-            <span style={{color:C.t2}}>Check sleep & food</span>:
-            <span style={{color:C.r}}>Recovery low — reduce cardio first</span>}
-        </div>))}
-      </X>):null;})()}
+    {/* ═══ LIFTS VS PROGRAM · mock 2b card · replaces the stall warning ═══ */}
+    {(()=>{
+      const wkStartD=new Date(PROG.start+"T12:00:00");
+      const weekOf=d=>Math.floor((new Date(d+"T12:00:00")-wkStartD)/6048e5);
+      const nowWk=Math.max(0,Math.min(PROG.weeks-1,weekOf(t)));
+      const isLowerPat=p=>["squat","hinge","leg-curl","calf"].includes(p);
+      const pool={upper:[],lower:[]};
+      Object.values(data.program||{}).forEach(day=>{(day.exercises||[]).forEach(e=>{
+        const pat=exLibById[e.id]?.pattern||e.pattern||"";
+        const g=isLowerPat(pat)?"lower":"upper";
+        if(!pool[g].some(x=>x.id===e.id))pool[g].push(e);
+      });});
+      const picks=(pool[liftTab]||[]).sort((a,b)=>(b.anchor?1:0)-(a.anchor?1:0)||(b.sets||0)-(a.sets||0)).slice(0,3);
+      const shortName=shortLiftName;
+      const rows=picks.map(ex=>{
+        const byWk={};
+        Object.entries(data.wk||{}).forEach(([d,w])=>{const wn=weekOf(d);if(wn<0||wn>nowWk)return;
+          const wex=w.exercises?.find(e=>e.id===ex.id);if(!wex)return;
+          const best=Math.max(0,...(wex.sets||[]).filter(saneSet).map(s=>Number(s.weight)||0));
+          if(best>0)byWk[wn]=Math.max(byWk[wn]||0,best);});
+        const wks=Object.keys(byWk).map(Number).sort((a,b)=>a-b);
+        if(!wks.length)return{name:shortName(ex.name),vals:[],status:"NO LOGS YET",sc:C.t3,stroke:C.t3,pts:"",exp:""};
+        const vals=wks.map(w=>byWk[w]);
+        const inc=ex.inc||5;
+        const expVals=wks.map((w,i)=>ex.anchor?vals[0]+inc*(w-wks[0]):vals[0]);
+        const all=[...vals,...expVals];const mn=Math.min(...all),mx=Math.max(...all),rng=(mx-mn)||1;
+        const px=w=>wks.length>1?(w-wks[0])/(wks[wks.length-1]-wks[0])*120:60;
+        const py=v=>22-((v-mn)/rng)*18;
+        const pts=wks.map((w,i)=>`${px(w).toFixed(1)},${py(vals[i]).toFixed(1)}`).join(" ");
+        const exp=wks.map((w,i)=>`${px(w).toFixed(1)},${py(expVals[i]).toFixed(1)}`).join(" ");
+        const last=vals[vals.length-1],first=vals[0];
+        let trail=1;for(let i=vals.length-1;i>0&&vals[i]<=vals[i-1];i--)trail++;
+        let status,sc,stroke;
+        if(vals.length<2){status="LOGGING";sc=C.t3;stroke=C.p;}
+        else if(last<first&&trail>=3){status=`DOWN · ${trail} WKS`;sc=C.r;stroke=C.r;}
+        else if(last>first){stroke=C.p;sc=C.g;status=ex.anchor?(last>=expVals[expVals.length-1]?`AHEAD · +${inc} NEXT WK`:"ON PACE"):"ON PACE";}
+        else{stroke=C.t2;sc=C.t2;status=`HOLDING · ${trail} WK${trail>1?"S":""}`;}
+        return{name:shortName(ex.name),status,sc,stroke,pts,exp,vals};
+      });
+      return(<X style={{padding:"14px 16px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",color:C.t3,fontFamily:FD}}>LIFTS VS PROGRAM · WK {nowWk+1}</div>
+          <div style={{display:"flex",gap:4}}>
+            {["upper","lower"].map(tb=>{const on=liftTab===tb;return(<button key={tb} onClick={()=>setLiftTab(tb)} style={{border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t3,borderRadius:5,padding:"4px 10px",fontSize:10,fontWeight:800,letterSpacing:"0.08em",cursor:"pointer",minHeight:26,fontFamily:FD,textTransform:"uppercase"}}>{tb}</button>);})}
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10}}>
+          {rows.map(r=>(<div key={r.name} style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:58,fontSize:12,fontWeight:800,letterSpacing:"0.04em",color:C.t,fontFamily:FD}}>{r.name}</div>
+            <svg viewBox="0 0 120 26" style={{flex:1,height:26}}>
+              {r.exp&&<polyline points={r.exp} fill="none" stroke={C.bd} strokeWidth="1" strokeDasharray="3,3"/>}
+              {r.pts&&<polyline points={r.pts} fill="none" stroke={r.stroke} strokeWidth="2" strokeLinecap="round"/>}
+            </svg>
+            <div style={{fontSize:11,fontWeight:700,color:r.sc,whiteSpace:"nowrap",fontFamily:FD}}>{r.status}</div>
+          </div>))}
+        </div>
+        <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:8}}>Solid is your best set each week. Dashed is the program's line. It re-plots after every logged session. On a cut, <b style={{color:C.t}}>holding means keeping muscle</b>. Ember flags a lift only after three stalled weeks.</div>
+      </X>);})()}
 
     {/* ═══ CARDIO ═══ */}
     {(()=>{const cardioToday=data.cardio?.[t];
@@ -3231,16 +3458,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <X style={{borderLeft:`3px solid ${C.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
-            <div style={{fontSize:13,color:C.t2}}>{sess.focus} — {sess.exercises.length} ex — ~{estTime(sess)}m</div></div>
+            <div style={{fontSize:13,color:C.t2}}>{sess.focus} · {sess.exercises.length} ex · ~{estTime(sess)}m</div></div>
           {data.wk[t]&&sel===dn?<div style={{display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
-            <B small outline onClick={undoWorkout}>Undo</B></div>:<B onClick={()=>startW(sel)}>Start workout</B>}
+            <B small outline onClick={undoWorkout}>Undo</B></div>:<div style={{display:"flex",gap:6}}><B outline onClick={startManualW}>Empty</B><B onClick={()=>startW(sel)}>Start workout</B></div>}
         </div>
       </X>
       {hasVariants&&!workout&&(<X style={{padding:8,display:"flex",gap:4,flexWrap:"wrap"}}>
-        <button onClick={()=>setVariant(sel,null)} style={{padding:"6px 10px",borderRadius:4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+        <button onClick={()=>setVariant(sel,null)} style={{padding:"6px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${!activeVariant[sel]?C.p:C.bd}`,background:!activeVariant[sel]?C.pl:"transparent",color:!activeVariant[sel]?C.p:C.t3}}>Standard</button>
-        {Object.entries(hasVariants).map(([k,v])=>(<button key={k} onClick={()=>setVariant(sel,k)} style={{padding:"6px 10px",borderRadius:4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+        {Object.entries(hasVariants).map(([k,v])=>(<button key={k} onClick={()=>setVariant(sel,k)} style={{padding:"6px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${activeVariant[sel]===k?C.p:C.bd}`,background:activeVariant[sel]===k?C.pl:"transparent",color:activeVariant[sel]===k?C.p:C.t3}}>{v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")}</button>))}
       </X>)}
       {sess.warmup&&(<S title="Warm-Up" collapsible defaultOpen={false}>
@@ -3271,10 +3498,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
-                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>ANCHOR</div>}
+                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:8,padding:"1px 5px"}}>ANCHOR</div>}
                 </div>
                 {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{rrTxt(ex.rr)} — {ex.rest?`Rest ${ex.rest}s after this`:"No rest — go straight to paired move"}</div>
+                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{rrTxt(ex.rr)} · {ex.rest?`Rest ${ex.rest}s after this`:"No rest · go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
                   <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
@@ -3292,7 +3519,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             </div>
           </X>);})}
       </S>
-    </>):<X><div style={{textAlign:"center",color:C.t3,padding:14,fontSize:14}}>Rest Day</div></X>}
+    </>):<X style={{padding:14}}><div style={{textAlign:"center",color:C.t3,fontSize:14,marginBottom:10}}>Rest Day</div><B full outline onClick={startManualW}>Start empty session</B></X>}
 
     <S title="Training calendar" collapsible defaultOpen={false}>
     <X style={{padding:10}}>
@@ -3317,13 +3544,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           const isRestDay=["saturday","sunday"].includes(dayName);
           return(
             <div key={dk} onClick={hasWorkout?()=>setViewW([dk,data.wk[dk]]):undefined}
-              style={{padding:"4px 2px",borderRadius:4,cursor:hasWorkout?"pointer":"default",
+              style={{padding:"4px 2px",borderRadius:8,cursor:hasWorkout?"pointer":"default",
                 background:isToday?C.pl:hasWorkout?C.gl:"transparent",
                 border:isToday?`1px solid ${C.p}`:"1px solid transparent",
                 position:"relative",minHeight:28,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
               <span style={{fontSize:12,fontWeight:isToday?700:400,color:isRestDay?C.t3:C.t}}>{d}</span>
-              {hasWorkout&&<div style={{width:5,height:5,borderRadius:3,background:C.g,marginTop:1}}/>}
-              {hasMob&&<div style={{width:5,height:5,borderRadius:3,background:C.v,marginTop:1}}/>}
+              {hasWorkout&&<div style={{width:5,height:5,borderRadius:6,background:C.g,marginTop:1}}/>}
+              {hasMob&&<div style={{width:5,height:5,borderRadius:6,background:C.v,marginTop:1}}/>}
             </div>
           );
         })}
@@ -3341,7 +3568,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
                 <div style={{fontSize:14,fontWeight:600,color:C.t}}>{wSess?.name||w.day}</div>
-                <div style={{fontSize:12,color:C.t2}}>{fmt(d)} — {w.dur||"?"}min — {totalSets} sets</div>
+                <div style={{fontSize:12,color:C.t2}}>{fmt(d)} · {w.dur||"?"}min · {totalSets} sets</div>
               </div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
             </div>
@@ -3380,13 +3607,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           {spOpen&&(<div style={{display:"flex",flexDirection:"column",gap:6}}>
             <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2}}>
               {allProgExs.map(ex=>{const hasData=getProgHistory(data.prog,ex).length>0;return(
-                <button key={ex.progKey||ex.id} onClick={()=>setSpSel(ex.progKey||ex.id)} style={{flexShrink:0,padding:"5px 10px",borderRadius:4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+                <button key={ex.progKey||ex.id} onClick={()=>setSpSel(ex.progKey||ex.id)} style={{flexShrink:0,padding:"5px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
                   border:`1px solid ${spSel===(ex.progKey||ex.id)?C.p:C.bd}`,background:spSel===(ex.progKey||ex.id)?C.pl:"transparent",
                   color:spSel===(ex.progKey||ex.id)?C.p:hasData?C.t2:C.t3,opacity:hasData?1:0.5}}>{ex.name}</button>
               );})}
             </div>
             {spHistory.length<2?(
-              <X style={{padding:14,textAlign:"center"}}><span style={{fontSize:13,color:C.t3}}>No e1RM data yet — log a workout to start tracking</span></X>
+              <X style={{padding:14,textAlign:"center"}}><span style={{fontSize:13,color:C.t3}}>No e1RM data yet · log a workout to start tracking</span></X>
             ):(
               <X style={{padding:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -3480,10 +3707,10 @@ const Nutrition=({data,setData})=>{
   const needText=proRemaining>0
     ?`${proRemaining}g protein left${calRemaining!==null?` · ${calRemaining} cal flex`:""}`
     :calRemaining!==null&&calRemaining>0
-      ?`Protein hit — ${calRemaining} cal flex left`
+      ?`Protein hit · ${calRemaining} cal flex left`
       :calT!==null&&tl.totalCal>calT
-        ?`Protein hit — ${tl.totalCal-calT} cal over, keep next meal lean`
-        :"Protein covered — keep logging simple";
+        ?`Protein hit · ${tl.totalCal-calT} cal over, keep next meal lean`
+        :"Protein covered · keep logging simple";
   const quickMealType=(()=>{const h=new Date().getHours();return h<11?"Breakfast":h<15?"Lunch":h<20?"Dinner":"Snack";})();
   const addQuickMeal=(preset)=>{
     const cal=+(preset?.cal??quickCal)||0, protein=+(preset?.protein??quickPro)||0;
@@ -3513,11 +3740,11 @@ const Nutrition=({data,setData})=>{
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:3,
+            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6,
               color:meal.source==="mfp"?C.g:C.t3,
               background:meal.source==="mfp"?C.gl:"transparent",
             }}>{meal.source==="mfp"?"Sync":meal.source}</span>}
-            {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:4}}>{meal.mealType}</span>}
+            {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:8}}>{meal.mealType}</span>}
           </div>
         </div>
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
@@ -3533,13 +3760,13 @@ const Nutrition=({data,setData})=>{
               <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600}}>{m.l}</div></div>))}
           </div>
         </div>)}
-        <div style={{display:"flex",height:6,borderRadius:3,overflow:"hidden",marginTop:6,marginBottom:2}}>
+        <div style={{display:"flex",height:6,borderRadius:6,overflow:"hidden",marginTop:6,marginBottom:2}}>
           <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.t3}}/><div style={{width:`${fp}%`,background:C.r}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
       {(meal.source==="cronometer"||meal.source==="mfp")?(
-        <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"6px 0"}}>Synced from Cronometer — read-only here; edit in Cronometer.</div>
+        <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"6px 0"}}>Synced from Cronometer · read-only here; edit in Cronometer.</div>
       ):(
       <div style={{display:"flex",gap:6}}>
         <B full outline onClick={()=>setEditing(editing==="macros"?null:"macros")}>Edit Macros</B>
@@ -3563,18 +3790,31 @@ const Nutrition=({data,setData})=>{
         <button onClick={()=>navDate(-1)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>‹</button>
         <span style={{fontSize:13,fontWeight:600,color:isViewingToday?C.p:C.t2,minWidth:80,textAlign:"center"}}>{isViewingToday?"Today":fmt(viewDate)}</span>
         <button onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:"none",color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
-        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE — click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.r:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
+        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE · click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.r:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
       </div>
     </div>
     {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4,letterSpacing:"0.04em"}}>Excluded from TDEE</div>}
+
+    {(()=>{const dn=DINNERS[dw(viewDate)];if(!dn)return null;return(<X style={{padding:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>TONIGHT · {dn.name.toUpperCase()}</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.04em",fontFamily:FD}}>{dn.tag}</div>
+      </div>
+      <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.4}}>{dn.how}</div>
+      <div style={{display:"flex",gap:7,marginTop:9}}>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}>YOUR PLATE</div></div>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}>DANIELLE</div></div>
+      </div>
+      <div style={{fontSize:11,color:C.t3,marginTop:7}}>Saved as a Cronometer recipe. Logging it takes two taps there.</div>
+    </X>);})()}
 
     <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
       <L>What do I need next?</L>
       <div style={{fontSize:18,fontWeight:800,color:C.t,marginBottom:4}}>{needText}</div>
       <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Rough logs are useful. Get calories + protein in, perfect macros can wait.</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:8}}>
-        {[{description:"Protein snack",cal:200,protein:30},{description:"Lean meal",cal:450,protein:50},{description:"Full meal",cal:650,protein:60}].map(p=>(
-          <button key={p.description} onClick={()=>addQuickMeal(p)} style={{padding:"9px 4px",borderRadius:4,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:11,fontWeight:800,fontFamily:"inherit",minHeight:44}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+        {[{description:"Shake: whey + banana",cal:435,protein:52},{description:"Nurri",cal:150,protein:30},{description:"Prepped protein + veg + fruit",cal:420,protein:52},{description:"Greek yogurt",cal:130,protein:18}].map(p=>(
+          <button key={p.description} onClick={()=>addQuickMeal(p)} style={{padding:"9px 4px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:11,fontWeight:800,fontFamily:"inherit",minHeight:44}}>
             {p.description}<br/><span style={{color:C.t3,fontWeight:700}}>{p.cal} cal · {p.protein}g</span>
           </button>
         ))}
@@ -3601,7 +3841,7 @@ const Nutrition=({data,setData})=>{
             const isView=d===viewDate;
             const isFuture=d>td();
             const logged=dc>0;
-            return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:3,
+            return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:6,
               background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
               <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
               <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.r:C.g):isFuture?C.t3:C.r}}>
@@ -3611,7 +3851,7 @@ const Nutrition=({data,setData})=>{
           })}
         </div>
         {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
-          <div style={{fontSize:10,fontWeight:600,color:C.t3,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active — ~1.5 lbs expected this week</div>
+          <div style={{fontSize:10,fontWeight:600,color:C.t3,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active · ~1.5 lbs expected this week</div>
         )}
       </X>
     </S>
@@ -3624,7 +3864,7 @@ const Nutrition=({data,setData})=>{
       </div>
       <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.r:C.p} h={7}/>
       </>):(<>
-      <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend — log your food, protein first</div>
+      <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend · log your food, protein first</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
         <div style={{fontSize:26,fontWeight:700,color:tl.totalProtein>=proT?C.g:C.p}}>{tl.totalProtein}g</div>
         <div style={{fontSize:13,color:C.t3}}>/ {proT}g protein floor</div>
@@ -3640,12 +3880,12 @@ const Nutrition=({data,setData})=>{
         <span style={{fontWeight:600,color:viewDayType==="travel"?C.t2:calT===null?C.t2:C.t2}}>{calT===null?"Social Weekend":viewDayType==="travel"?"Travel Day":viewDayType==="wednesday"?"Wednesday (Fast)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {tl.meals?.length>0&&tl.meals.every(m=>!m.source||m.source==="mfp"||m.source==="cronometer")&&(
-            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:3,background:C.gl,color:C.g}}>Cronometer</span>
+            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6,background:C.gl,color:C.g}}>Cronometer</span>
           )}
           <span>{calT} cal · {proT}g pro target</span>
         </div>
       </div>
-      {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:4,fontSize:11,color:C.r,fontWeight:600}}>
+      {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:8,fontSize:11,color:C.r,fontWeight:600}}>
         Fat at {viewFatPct}% of calories (target: 20-25%). Watch cooking oil, cheese, and sauces.
       </div>)}
     </X>
@@ -3668,7 +3908,7 @@ const Nutrition=({data,setData})=>{
           <div style={{fontSize:11,color:C.t2}}>
             <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?`±${nutTDEE.tdee-nutTDEE.tdeeLow}`:""}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.r}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
           </div>
-          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:C.oa,border:"none",borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
+          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:C.oa,border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
         </div>
       </S>
     )}
@@ -3728,7 +3968,7 @@ const Nutrition=({data,setData})=>{
       </div>
       <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={8}/>
       <div style={{display:"flex",gap:6,marginTop:8}}>
-        {[12,24,36].map(oz=>(
+        {[24,32,64].map(oz=>(
           <button key={oz} onClick={()=>addWater(oz)} style={{
             flex:1,padding:"10px 4px",borderRadius:6,fontSize:15,fontWeight:700,cursor:"pointer",
             background:"transparent",border:`1px solid ${C.bd}`,color:C.t,fontFamily:"inherit",minHeight:44,
@@ -3739,7 +3979,7 @@ const Nutrition=({data,setData})=>{
         const entries=Object.entries(data.water||{}).filter(([d])=>d!==viewDate).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
         const avg=entries.length?Math.round(entries.reduce((s,[_,v])=>s+v,0)/entries.length):0;
         return(<div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:6}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days — avg {avg} oz</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days · avg {avg} oz</div>
           {entries.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
             <span style={{fontSize:12,color:C.t2}}>{fmt(d)}</span>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -3757,11 +3997,11 @@ const Nutrition=({data,setData})=>{
       if(meals.length===0)return null;
       const mtCal=meals.reduce((s,m)=>s+(m.cal||0),0);
       return(
-        <S key={mt} title={`${mt} (${meals.length}) — ${mtCal} cal`}>
+        <S key={mt} title={`${mt} (${meals.length}) · ${mtCal} cal`}>
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:4,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
+                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:8,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
               </div>
                 <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} cal · {m.protein}g protein{m.fiber?` · ${m.fiber}g fiber`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>
@@ -3794,12 +4034,12 @@ const Weight=({data,setData})=>{
     </div>
 
     <X style={{borderLeft:`3px solid ${C.bd}`}}>
-      <L>{todayLogged?"Logged today":"Fast log — "+fmt(t)}</L>
+      <L>{todayLogged?"Logged today":"Fast log · "+fmt(t)}</L>
       {todayLogged?(
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
             <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{Math.round(data.wt[t])}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
-            <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:4,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+            <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
           </div>
           {nw!==""&&<div style={{display:"flex",gap:6,marginTop:10}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:20,fontWeight:800}}/><B onClick={add}>Update</B></div>}
         </div>
@@ -3994,7 +4234,7 @@ const Settings=({data,setData,syncFailures={}})=>{
         <div style={{fontSize:11,fontWeight:800,color:C.r,marginBottom:4}}>Cloud sync errors this session</div>
         {failedTables.map(tb=>(
           <div key={tb} style={{fontSize:11,color:C.t2,padding:"2px 0",fontFamily:"monospace",wordBreak:"break-word"}}>
-            <b style={{color:C.t}}>{tb}</b> ×{syncFailures[tb]?.n||1} — {syncFailures[tb]?.msg||"unknown"}
+            <b style={{color:C.t}}>{tb}</b> ×{syncFailures[tb]?.n||1} · {syncFailures[tb]?.msg||"unknown"}
           </div>
         ))}
         <div style={{fontSize:11,color:C.t3,marginTop:4}}>A message naming a missing column means a migration in /supabase/ hasn't been run yet.</div>
@@ -4042,7 +4282,7 @@ const Settings=({data,setData,syncFailures={}})=>{
                 saveNotificationSettings(nextNotifications);
                 const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                 setData(nd);sv(nd);svSB.settings(nd.settings);
-              }} style={{padding:"6px 16px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              }} style={{padding:"6px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                 border:`1px solid ${(data.settings.notifications||{}).enabled?C.g:C.bd}`,
                 background:(data.settings.notifications||{}).enabled?C.gl:"transparent",
                 color:(data.settings.notifications||{}).enabled?C.g:C.t3}}>
@@ -4061,7 +4301,7 @@ const Settings=({data,setData,syncFailures={}})=>{
                       saveNotificationSettings(nextNotifications);
                       const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                       setData(nd);sv(nd);svSB.settings(nd.settings);
-                    }} style={{padding:"3px 10px",borderRadius:3,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                    }} style={{padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                       border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:"transparent",color:on?C.g:C.t3}}>
                       {on?"On":"Off"}
                     </button>
@@ -4091,11 +4331,11 @@ const Settings=({data,setData,syncFailures={}})=>{
       <div style={{marginTop:8,padding:8,background:C.pl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.p}`}}>
         <div style={{fontWeight:700,marginBottom:4,color:C.p}}>Steps + Weight Shortcuts:</div>
         Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:3,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
         </span>
         Weight: use latest Body Mass, convert to pounds, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:3,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
         </span>
       </div>
@@ -4111,13 +4351,13 @@ const Settings=({data,setData,syncFailures={}})=>{
         <button onClick={toggleTravel} style={{padding:"8px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
           background:isTravel?C.pl:"transparent",border:`1px solid ${isTravel?C.p:C.bd}`,color:isTravel?C.p:C.t3}}>{isTravel?"ON":"OFF"}</button>
       </div>
-      {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:4}}>
+      {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:8}}>
         <div style={{fontSize:11,fontWeight:700,color:C.t,marginBottom:4}}>Travel Protocol</div>
         <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>
           • Hydrate aggressively: 20-32 oz water + electrolytes before bed<br/>
           • Take magnesium glycinate regardless of time<br/>
           • Skip melatonin if drinking<br/>
-          • Wake at 6 AM — get sunlight immediately<br/>
+          • Wake at 6 AM · get sunlight immediately<br/>
           • Prioritize protein when eating. Light movement &gt; nothing<br/>
           • Don't nap past 1 PM. Normal bedtime that night.
         </div>
@@ -4128,7 +4368,7 @@ const Settings=({data,setData,syncFailures={}})=>{
     {(()=>{
       const tc=data.tdeeCal||{};
       const saveCal=(patch)=>{const nd={...data,tdeeCal:{...tc,...patch,answered:true}};setData(nd);sv(nd);};
-      const btn=(active)=>({padding:"7px 10px",borderRadius:4,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+      const btn=(active)=>({padding:"7px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
         background:active?C.pl:"transparent",border:`1px solid ${active?C.p:C.bd}`,color:active?C.p:C.t3});
       return(
       <X style={{borderLeft:`3px solid ${C.bd}`}}>
@@ -4153,11 +4393,11 @@ const Settings=({data,setData,syncFailures={}})=>{
           <button style={btn(tc.fastSlips===false)} onClick={()=>saveCal({fastSlips:false})}>Holds</button>
           <button style={btn(tc.fastSlips===true)} onClick={()=>saveCal({fastSlips:true})}>Sometimes slips</button>
         </div>
-        {tc.answered&&<div style={{fontSize:11,color:C.g,marginTop:8}}>Calibrated — the TDEE estimate now uses these answers.</div>}
+        {tc.answered&&<div style={{fontSize:11,color:C.g,marginTop:8}}>Calibrated · the TDEE estimate now uses these answers.</div>}
       </X>);
     })()}
 
-    {/* ═══ BODY COMP — buried per 2026-07-11 decisions ═══ */}
+    {/* ═══ BODY COMP · buried per 2026-07-11 decisions ═══ */}
     <S title="Photos & measurements" collapsible defaultOpen={false}>
     <X>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
@@ -4172,7 +4412,7 @@ const Settings=({data,setData,syncFailures={}})=>{
             const daysSince=lastPhoto?Math.round((new Date()-new Date(lastPhoto+"T12:00:00"))/864e5):null;
             return(<div style={{fontSize:12,color:C.t2}}>
               {lastPhoto?`Last: ${fmt(lastPhoto)} (${daysSince}d ago)`:"No photos logged yet"}
-              {daysSince&&daysSince>=14?<span style={{color:C.t,fontWeight:600}}> — time for new photos</span>:null}
+              {daysSince&&daysSince>=14?<span style={{color:C.t,fontWeight:600}}> · time for new photos</span>:null}
             </div>);
           })()}
         </div>
@@ -4274,7 +4514,7 @@ const Settings=({data,setData,syncFailures={}})=>{
 const ToastStack=({toasts})=>{
   if(!toasts.length)return null;
   return(<div style={{position:"fixed",bottom:70,left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:6,maxWidth:440,width:"90%"}}>
-    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:t.type==="error"?C.r:C.v,color:C.oa,padding:"10px 16px",borderRadius:4,fontSize:13,fontWeight:600,boxShadow:C.sh2,animation:"toastIn .3s ease"}}>{t.message}</div>))}
+    {toasts.map(t=>(<div key={t.id} style={{background:t.type==="success"?C.g:t.type==="error"?C.r:C.v,color:C.oa,padding:"10px 16px",borderRadius:8,fontSize:13,fontWeight:600,boxShadow:C.sh2,animation:"toastIn .3s ease"}}>{t.message}</div>))}
   </div>);
 };
 
@@ -4297,7 +4537,7 @@ const resolveMode=(data,t,workout)=>{
   return"neutral";
 };
 
-// Rule-based auto-regulation from Oura recovery — no AI call. Accept mutates
+// Rule-based auto-regulation from Oura recovery · no AI call. Accept mutates
 // TODAY'S session plan only (applied at startW), never the stored program.
 const getAutoregProposal=(rec)=>{
   const score=rec?.recoveryScore;
@@ -4339,6 +4579,48 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     if(addToast&&type!=="dismissed")addToast(type==="minusOneSet"?"Today: −1 set on non-anchor accessories":"Today: mobility session instead","success");
   };
 
+  const dayNameToday=dayParam()||["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date().getDay()];
+  const isFastDay=dayNameToday==="wednesday";
+  const [fastNow,setFastNow]=useState(Date.now());
+  useEffect(()=>{if(!isFastDay)return;const iv=setInterval(()=>setFastNow(Date.now()),30000);return()=>clearInterval(iv);},[isFastDay]);
+  const ly=(data.lytes||{})[t]||{na:0,k:0,mg:0};
+  const addLyte=(na,k,mg)=>setData(prev=>{const cur=(prev.lytes||{})[t]||{na:0,k:0,mg:0};const nl={na:(cur.na||0)+na,k:(cur.k||0)+k,mg:(cur.mg||0)+mg};const nd={...prev,lytes:{...(prev.lytes||{}),[t]:nl}};sv(nd);svSB.lytes(t,nl);return nd;});
+  const lyBtn={border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"9px 4px",minHeight:54,cursor:"pointer",fontFamily:FD,fontSize:12,fontWeight:800,lineHeight:1.3,textAlign:"center"};
+  const fastCard=isFastDay?(()=>{
+    const start=(()=>{const d=new Date(t+"T20:00:00");d.setDate(d.getDate()-1);return d.getTime();})();
+    const el=Math.max(0,fastNow-start);
+    const hrs=Math.floor(el/3600000),mins=Math.floor((el%3600000)/60000);
+    const pct=Math.min(100,Math.round(el/(36*3600000)*100));
+    const LY=[{k:"na",l:"SODIUM",target:5000},{k:"k",l:"POTASSIUM",target:3500},{k:"mg",l:"MAGNESIUM",target:400}];
+    return(<X style={{padding:16}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>FASTED FOR</div>
+        <div style={{fontSize:52,fontWeight:800,color:C.p,fontFamily:FD,lineHeight:1.05,fontVariantNumeric:"tabular-nums"}}>{hrs}:{String(mins).padStart(2,"0")}</div>
+        <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:2}}>Tue dinner to Thu breakfast. 36 hours, zero calories.</div>
+        <div style={{height:6,borderRadius:3,background:C.bl,overflow:"hidden",marginTop:10}}><div style={{height:"100%",background:C.p,width:`${pct}%`}}/></div>
+        <div style={{display:"flex",gap:5,marginTop:8}}>
+          {[{h:12,l:"KETOSIS"},{h:16,l:"DEEP FAST"},{h:24,l:"FULL DAY"},{h:36,l:"REFEED"}].map(m=>{const hit=hrs>=m.h;return(<div key={m.h} style={{flex:1,borderRadius:6,padding:"6px 2px",background:hit?C.gl:C.bg,border:`1px solid ${hit?C.g:C.bd}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:hit?C.g:C.t3,fontFamily:FD}}>{m.h}h</div>
+            <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.05em",color:hit?C.g:C.t3,fontFamily:FD}}>{m.l}</div>
+          </div>);})}
+        </div>
+      </div>
+      <div style={{marginTop:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>ELECTROLYTES</div>
+          <div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD,letterSpacing:"0.04em"}}>ZERO CALORIES, SO SALT IS THE JOB</div>
+        </div>
+        {LY.map(x=>{const v=ly[x.k]||0;const full=v>=x.target;return(<div key={x.k} style={{marginTop:7}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,color:C.t2,marginBottom:3}}><span style={{fontFamily:FD,letterSpacing:"0.06em"}}>{x.l}</span><span style={{color:full?C.g:C.t,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{v.toLocaleString()} / {x.target.toLocaleString()} mg</span></div>
+          <Br v={v} max={x.target} color={full?C.g:C.p} h={6}/>
+        </div>);})}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:10}}>
+          <button onClick={()=>addLyte(810,400,50)} style={lyBtn}>RE-LYTE<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>810 · 400 · 50</span></button>
+          <button onClick={()=>addLyte(1150,0,0)} style={lyBtn}>½ TSP SALT<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>+1150 SODIUM</span></button>
+          <button onClick={()=>addLyte(0,0,120)} style={lyBtn}>MG GLYC.<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>+120 MAGNESIUM</span></button>
+        </div>
+      </div>
+    </X>);})():null;
   const ModeChip=({m})=>(
     <button onClick={()=>setOverride(m===mode?null:m)} style={{border:"none",borderBottom:`2px solid ${m===mode?C.p:"transparent"}`,background:"transparent",color:m===mode?C.t:C.t3,padding:"5px 8px",fontSize:11,fontWeight:700,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>{MODE_LABELS[m]}</button>
   );
@@ -4357,6 +4639,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
   // ── MORNING: full-screen scale pad, ~10 seconds ──
   if(mode==="morning")return(<div style={{display:"flex",flexDirection:"column",gap:10,minHeight:"70vh"}}>
     {header}
+    {fastCard}
     <X style={{padding:24,textAlign:"center",borderLeft:`4px solid ${C.bd}`}}>
       <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Morning weigh-in</div>
       {yesterdayWt&&<div style={{fontSize:13,color:C.t3,marginTop:4,opacity:0.6}}>yesterday {yesterdayWt.toFixed(1)}</div>}
@@ -4367,7 +4650,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:13,fontWeight:700,color:C.t}}>Water <span style={{color:C.p,fontWeight:800}}>{waterToday}</span><span style={{color:C.t3}}> / {st.water} oz</span></div>
-        <div style={{display:"flex",gap:6}}>{[8,12,16].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{background:"transparent",border:`1px solid ${C.bd}`,color:C.t,borderRadius:3,padding:"7px 10px",fontSize:12,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>+{oz}</button>)}</div>
+        <div style={{display:"flex",gap:6}}>{[24,32,64].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{background:"transparent",border:`1px solid ${C.bd}`,color:C.t,borderRadius:6,padding:"7px 10px",fontSize:12,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>+{oz}</button>)}</div>
       </div>
     </X>
   </div>);
@@ -4377,21 +4660,22 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     const nonAnchor=(sess?.exercises||[]).filter(e=>!e.anchor).length;
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
       {header}
+    {fastCard}
       <X style={{padding:12,borderLeft:`4px solid ${rec?.recoveryScore!=null?(rec.recoveryScore>=60?C.g:rec.recoveryScore>=40?C.bd:C.r):C.bd}`}}>
         <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Recovery{rec?.source==="oura"?" · Oura":""}</div>
         {rec?.recoveryScore!=null?(
           <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{rec.recoveryScore}%{rec.hrv?` · HRV ${rec.hrv}`:""}{rec.rhr?` · RHR ${rec.rhr}`:""}{rec.sleepHours?` · ${rec.sleepHours}h sleep`:""}</div>
         ):<div style={{fontSize:13,color:C.t3,marginTop:2}}>No recovery data yet today.</div>}
         {autoreg&&!adj&&(
-          <div style={{marginTop:10,padding:10,borderRadius:4,background:C.bg,border:`1px solid ${C.bd}`}}>
-            <div style={{fontSize:12,fontWeight:800,color:C.t}}>Recovery {autoreg.score}% — adjust today?</div>
+          <div style={{marginTop:10,padding:10,borderRadius:8,background:C.bg,border:`1px solid ${C.bd}`}}>
+            <div style={{fontSize:12,fontWeight:800,color:C.t}}>Recovery {autoreg.score}% · adjust today?</div>
             {autoreg.proposals.map(p=>(
               <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8}}>
                 <span style={{fontSize:13,fontWeight:700,color:C.t}}>{p.label}</span>
                 <B small onClick={()=>decideAutoreg(p.id)}>Accept</B>
               </div>
             ))}
-            <button onClick={()=>decideAutoreg("dismissed")} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,padding:0}}>Dismiss — run as planned</button>
+            <button onClick={()=>decideAutoreg("dismissed")} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,padding:0}}>Dismiss · run as planned</button>
           </div>
         )}
         {adj&&adj.type!=="dismissed"&&(
@@ -4412,7 +4696,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
           <B full style={{marginTop:12}} onClick={()=>setTab("training")}>{workout?"Resume session":data.wk?.[t]?"View in Train":"Start session"}</B>
         </X>
       ):(
-        <X style={{padding:16}}><div style={{fontSize:14,fontWeight:700,color:C.t}}>Rest day — no lift scheduled.</div>
+        <X style={{padding:16}}><div style={{fontSize:14,fontWeight:700,color:C.t}}>Rest day · no lift scheduled.</div>
         <B full outline style={{marginTop:10}} onClick={()=>setTab("training")}>Open Train anyway</B></X>
       )}
       <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
@@ -4426,6 +4710,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     const stretchDone=!!(data.mob?.[t]?.done||data.mob?.[t]===true);
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
       {header}
+    {fastCard}
       <X style={{padding:14,borderLeft:`4px solid ${C.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
@@ -4447,23 +4732,51 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     </div>);
   }
 
-  // ── NEUTRAL: compact home ──
+  // ── NEUTRAL: full home. One NOW card, loop strip, water, trend. ──
+  const nowAction=(()=>{
+    const weightLogged=!!data.wt?.[t];
+    const nutLogged=!!(data.nut?.[t]?.meals?.length);
+    const liftPlanned=!!sess,liftDone=!!data.wk?.[t];
+    const cardioDone=!!data.cardio?.[t]?.done;
+    const closed=!!data.habits?.[t];
+    const na=!weightLogged?{label:"Log weight",ov:"morning",hint:"Morning scale anchors the cut."}
+      :!nutLogged?{label:"Log first meal",tab:"nutrition",hint:"Protein floor first. Rough logs count."}
+      :(liftPlanned&&!liftDone)?{label:"Start session",tab:"training",hint:sess.name}
+      :!cardioDone?{label:"Log cardio",tab:"training",hint:"Zone 2 or a walk keeps the deficit honest."}
+      :!closed?{label:"Close the day",ov:"closeout",hint:"Habits, then done."}
+      :{label:"Day closed",ov:"closeout",hint:"Everything is logged. Go live your life."};
+    return {...na,loops:[{l:"SCALE",ok:weightLogged},{l:"FOOD",ok:nutLogged},{l:"LIFT",ok:!liftPlanned||liftDone},{l:"CARDIO",ok:cardioDone},{l:"CLOSE",ok:closed}]};
+  })();
   return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
     {header}
+    {fastCard}
+    <X style={{padding:16,boxShadow:C.sh}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>NOW</div>
+      <div style={{fontSize:22,fontWeight:800,color:C.t,marginTop:3,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.02em"}}>{nowAction.label}</div>
+      <div style={{fontSize:13,color:C.t2,marginTop:2}}>{nowAction.hint}</div>
+      <button onClick={()=>nowAction.tab?setTab(nowAction.tab):setOverride(nowAction.ov)} style={{marginTop:12,width:"100%",border:"none",borderRadius:9,background:C.p,color:C.oa,padding:"15px 16px",fontSize:16,fontWeight:800,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.06em",boxShadow:C.sh2,cursor:"pointer",minHeight:52}}>{nowAction.label}</button>
+    </X>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
+      {nowAction.loops.map(x=>(
+        <div key={x.l} style={{textAlign:"center",padding:"9px 2px",borderRadius:8,background:C.cd,border:`1px solid ${C.bd}`}}>
+          <div style={{fontSize:15,fontWeight:800,color:x.ok?C.g:C.t3}}>{x.ok?"✓":"○"}</div>
+          <div style={{fontSize:9,fontWeight:800,color:C.t3,fontFamily:FD,letterSpacing:"0.08em"}}>{x.l}</div>
+        </div>
+      ))}
+    </div>
+    <X style={{padding:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
+        <div style={{fontSize:11,fontWeight:800,color:C.t3,fontFamily:FD,letterSpacing:"0.1em"}}>WATER</div>
+        <div style={{fontSize:20,fontWeight:800,color:waterToday>=st.water?C.g:C.p,fontFamily:FD}}>{waterToday}<span style={{fontSize:13,color:C.t3,fontWeight:700}}> / {st.water} oz</span></div>
+      </div>
+      <Br v={waterToday} max={st.water} color={waterToday>=st.water?C.g:C.p} h={7}/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:9}}>
+        {[{oz:24,l:"SMALL BOTTLE"},{oz:32,l:"BIG BOTTLE"},{oz:64,l:"JUG"}].map(b=><button key={b.oz} onClick={()=>addWater(b.oz)} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:58,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:21,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,marginTop:3}}>{b.l}</span></button>)}
+      </div>
+    </X>
     {trend?<WeightTrendCard trend={trend} compact/>:(
       <X style={{padding:14}}><div style={{fontSize:13,color:C.t3}}>Log a couple of weigh-ins to see your trend.</div></X>
     )}
-    <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Water <span style={{color:C.p,fontWeight:800}}>{waterToday}</span><span style={{color:C.t3}}> / {st.water} oz</span></div>
-        <div style={{display:"flex",gap:6}}>{[8,12,16].map(oz=><button key={oz} onClick={()=>addWater(oz)} style={{background:"transparent",border:`1px solid ${C.bd}`,color:C.t,borderRadius:3,padding:"7px 10px",fontSize:12,fontWeight:800,fontFamily:"inherit",cursor:"pointer"}}>+{oz}</button>)}</div>
-      </div>
-    </X>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-      <B outline onClick={()=>setOverride("morning")}>Weigh in</B>
-      <B outline onClick={()=>setOverride("session")}>Start session</B>
-      <B outline onClick={()=>setOverride("closeout")}>Closeout</B>
-    </div>
     <X style={{padding:"9px 12px"}}>
       <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
         <b style={{color:C.t3,fontSize:11}}>Allergies</b>{" "}
@@ -4536,7 +4849,7 @@ window.App = function App(){
   },[]);
   useEffect(()=>onSyncFailure((table,first)=>{
     setSyncFailures({...syncHealth.failures});
-    if(first)addToast(`Sync failed: ${table} — not backed up`,"error");
+    if(first)addToast(`Sync failed: ${table} · not backed up`,"error");
   }),[addToast]);
 
   useEffect(()=>{
@@ -4604,9 +4917,7 @@ window.App = function App(){
     const meta=document.querySelector('meta[name="theme-color"]');
     const apply=()=>{try{if(meta)meta.setAttribute("content",getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());}catch{}};
     apply();
-    const mq=window.matchMedia("(prefers-color-scheme: dark)");
-    mq.addEventListener?.("change",apply);
-    return()=>mq.removeEventListener?.("change",apply);
+    return()=>{};
   },[]);
 
   useEffect(()=>{
