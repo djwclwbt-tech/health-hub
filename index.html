@@ -4260,7 +4260,25 @@ const Settings=({data,setData,syncFailures={}})=>{
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
     trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
+  const [editTargets,setEditTargets]=useState(false);
+  const [showProgress,setShowProgress]=useState(false);
   const isTravel=!!(data.travelDays||{})[t];
+  const lastPhotoDate=(()=>{const e=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[0]||null;})();
+  const lastPhotoLine=lastPhotoDate?`Last photos ${fmt(lastPhotoDate)}`:"No photos yet · first set is due";
+  const integrations=(()=>{
+    const lastNut=Object.keys(data.nut||{}).sort().reverse()[0]||null;
+    const lastRecRow=Object.entries(data.rec||{}).filter(([_,v])=>v&&v.recoveryScore!=null).sort((a,b)=>b[0].localeCompare(a[0]))[0]||null;
+    const lastSteps=Object.keys(data.steps||{}).sort().reverse()[0]||null;
+    const daysAgo=d=>d?Math.round((new Date(t+"T12:00:00")-new Date(d+"T12:00:00"))/864e5):null;
+    const pushOn=typeof Notification!=="undefined"&&Notification.permission==="granted"&&(data.settings.notifications||{}).enabled;
+    return[
+      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"NO DATA"},
+      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"NO DATA"},
+      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"NO DATA"},
+      syncOk?{name:"Supabase sync",dot:C.g,status:"ALL WRITES OK"}:{name:"Supabase sync",dot:C.r,status:`${failedTables[0].toUpperCase()} · MIGRATION`},
+      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"REST TIMERS ON":"OFF"},
+    ];
+  })();
 
   const toggleTravel=()=>{
     const newVal=!isTravel;
@@ -4271,6 +4289,7 @@ const Settings=({data,setData,syncFailures={}})=>{
   const [bcLoading,setBcLoading]=useState(false);
   const [bcResult,setBcResult]=useState(null);
   const [showBcHistory,setShowBcHistory]=useState(false);
+  if(showProgress)return(<ProgressView data={data} setData={setData} onBack={()=>setShowProgress(false)}/>);
 
   const analyzeBodyComp=async(e)=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -4314,14 +4333,41 @@ const Settings=({data,setData,syncFailures={}})=>{
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+      <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Setup</div>
       <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
         style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
         <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
-        {syncOk?"Sync ok":`Sync failing: ${failedTables.join(", ")}`}
+        {syncOk?"Sync ok":"Sync failing"}
       </div>
     </div>
+    <X style={{padding:"14px 16px"}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TARGETS & DAY TYPES</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
+        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"TRAIN CAL"},{v:`${f.protein||200}g`,l:"PROTEIN"},{v:f.water||128,l:"WATER OZ"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"STEPS"},{v:"0",l:"WED FAST",ember:true},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"SAT/SUN"}].map(x=>(
+          <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:x.ember?C.pl:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
+            <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:x.ember?C.p:C.t}}>{x.v}</div>
+            <div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.06em",fontFamily:FD,color:x.ember?C.p:C.t3}}>{x.l}</div>
+          </button>))}
+      </div>
+      <div style={{fontSize:11,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
+    </X>
+    <div onClick={()=>setShowProgress(true)} style={{background:C.cd,border:`1px solid ${C.p}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+      <div>
+        <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>PROGRESS</div>
+        <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:3}}>Photos · measurements · weekly AI analysis</div>
+        <div style={{fontSize:11.5,color:C.t3,marginTop:2}}>{lastPhotoLine}</div>
+      </div>
+      <div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD}}>→</div>
+    </div>
+    <X style={{padding:"6px 0"}}>
+      {integrations.map((r,i)=>(
+        <div key={r.name} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:i<integrations.length-1?`1px solid ${C.bg}`:"none"}}>
+          <span style={{width:8,height:8,borderRadius:4,background:r.dot,flexShrink:0}}/>
+          <span style={{fontSize:13,fontWeight:600,color:C.t,flex:1}}>{r.name}</span>
+          <span style={{fontSize:11,fontWeight:700,fontFamily:FD,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
+        </div>))}
+    </X>
     {!syncOk&&(
       <X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.r,marginBottom:4}}>Cloud sync errors this session</div>
@@ -4334,7 +4380,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </X>
     )}
 
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
+    {editTargets&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
@@ -4352,7 +4398,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:4}}>Weekend splits Sat +100 / Sun −100 around the average.</div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
-    </X>
+    </X>}
 
     {/* ═══ NOTIFICATIONS ═══ */}
     <S title="Notifications">
