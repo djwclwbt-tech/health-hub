@@ -4666,18 +4666,39 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
         {rec?.recoveryScore!=null?(
           <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{rec.recoveryScore}%{rec.hrv?` · HRV ${rec.hrv}`:""}{rec.rhr?` · RHR ${rec.rhr}`:""}{rec.sleepHours?` · ${rec.sleepHours}h sleep`:""}</div>
         ):<div style={{fontSize:13,color:C.t3,marginTop:2}}>No recovery data yet today.</div>}
-        {autoreg&&!adj&&(
-          <div style={{marginTop:10,padding:10,borderRadius:8,background:C.bg,border:`1px solid ${C.bd}`}}>
-            <div style={{fontSize:12,fontWeight:800,color:C.t}}>Recovery {autoreg.score}% · adjust today?</div>
-            {autoreg.proposals.map(p=>(
-              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8}}>
-                <span style={{fontSize:13,fontWeight:700,color:C.t}}>{p.label}</span>
-                <B small onClick={()=>decideAutoreg(p.id)}>Accept</B>
+        {autoreg&&!adj&&(()=>{
+          const accs=(sess?.exercises||[]).filter(e=>!e.anchor);
+          const anchors=(sess?.exercises||[]).filter(e=>e.anchor);
+          const before=(sess?.exercises||[]).reduce((s,e)=>s+e.sets,0);
+          const after=before-accs.length;
+          const names=accs.map(e=>shortLiftName(e.name).toLowerCase()).join(", ");
+          const mob=autoreg.score<40;
+          return(
+          <div style={{marginTop:10,padding:16,borderRadius:12,background:C.cd,border:`1px solid ${C.p}`,boxShadow:"0 6px 18px rgba(194,65,12,0.10)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>{mob?"RECOVERY UNDER 40 · PROPOSAL":"RECOVERY UNDER 60 · PROPOSAL"}</div>
+            {mob?(<React.Fragment>
+              <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Swap today's session for the 12 minute mobility routine and a walk.</div>
+              <div style={{fontSize:11.5,color:C.t3,marginTop:4,lineHeight:1.5}}>Recovery is deep in the red. Lifting waits one day. The program is untouched.</div>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>decideAutoreg("mobilitySwap")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the swap</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
               </div>
-            ))}
-            <button onClick={()=>decideAutoreg("dismissed")} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,padding:0}}>Dismiss · run as planned</button>
-          </div>
-        )}
+            </React.Fragment>):(<React.Fragment>
+              <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Drop 1 set from each accessory{names?`: ${names}`:""}.{anchors.length?` ${anchors.map(e=>shortLiftName(e.name)).join(" and ")} stays as written.`:""}</div>
+              <div style={{fontSize:11.5,color:C.t3,marginTop:4,lineHeight:1.5}}>{before} sets become {after}. Same weights, same goals. Today only. The program is untouched.</div>
+              {accs.length>0&&<div style={{display:"flex",flexDirection:"column",gap:5,marginTop:10}}>
+                {(sess?.exercises||[]).map(e=>{const rr=e.rr||[8,12];return(
+                  <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,background:C.bg,borderRadius:8,padding:"8px 10px"}}>
+                    <span style={{fontSize:12.5,fontWeight:600,color:C.t}}>{e.name}{e.anchor?<span style={{fontSize:9,fontWeight:800,fontFamily:FD,background:C.t,color:C.cd,borderRadius:3,padding:"2px 5px",marginLeft:5}}>ANCHOR</span>:null}</span>
+                    <span style={{fontSize:12,fontWeight:700,fontFamily:FD,color:C.t3,whiteSpace:"nowrap"}}>{e.anchor?`${e.sets} × ${rr[0]}${rr[1]>rr[0]?"-"+rr[1]:""}`:<React.Fragment><s style={{opacity:0.5}}>{e.sets}</s> {e.sets-1} × {rr[0]}{rr[1]>rr[0]?"-"+rr[1]:""}</React.Fragment>}</span>
+                  </div>);})}
+              </div>}
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>decideAutoreg("minusOneSet")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the cut</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
+              </div>
+            </React.Fragment>)}
+          </div>);})()}
         {adj&&adj.type!=="dismissed"&&(
           <div style={{marginTop:8,fontSize:12,fontWeight:700,color:C.p}}>{adj.type==="minusOneSet"?`Accepted: −1 set on ${nonAnchor} non-anchor accessories (today only)`:"Accepted: mobility session today"}</div>
         )}
