@@ -321,7 +321,7 @@ const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:
   reminders:{enabled:false,weighIn:"08:00",closeout:"20:30"}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},travelDays:{},tdeeExclude:{},autoregLog:{},tdeeCal:null,socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
+const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},photoSlots:{},travelDays:{},tdeeExclude:{},autoregLog:{},tdeeCal:null,socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
 // ═══ SUPABASE CLIENT ═══
 const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
@@ -1351,7 +1351,7 @@ const WeeklyConsistencyCard=({summary})=>{
 // CUT TRAJECTORY card · mock 1g. Dotted raw weigh-ins, solid EWMA trend (ember),
 // dashed projection to PROG.targetWeight at the current getTrend() rate, goal line,
 // checkpoint marker, pace verdict. Same getTrend() engine · presentation only.
-const WeightTrendCard=({trend,compact=false})=>{
+const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   if(!trend)return null;
   const goal=PROG.targetWeight,rate=trend.rate,pts=trend.points,lastP=pts[pts.length-1],cur=lastP.v;
   const wkNum=Math.max(1,Math.min(PROG.weeks,Math.floor((new Date(td()+"T12:00:00")-new Date(PROG.start+"T12:00:00"))/6048e5)+1));
@@ -1407,7 +1407,7 @@ const WeightTrendCard=({trend,compact=false})=>{
       {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>CHECKPOINT {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · GOAL {goal}</span></div>}
       {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD,letterSpacing:"0.04em"}}><span>{rate>0?"+":""}{rate.toFixed(1)} LB/WK</span><span>{toGo.toFixed(1)} LBS TO {goal}</span><span>GOAL BY {projLabel}</span></div>}
       {!compact&&<div style={{display:"flex",gap:7,marginTop:10}}>
-        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],[projLabel,"GOAL BY"]].map(([v,l])=>(
+        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],tdee?[Math.round(tdee).toLocaleString(),"TDEE EST"]:[projLabel,"GOAL BY"]].map(([v,l])=>(
           <div key={l} style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
             <div style={{fontSize:18,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div>
@@ -4026,6 +4026,7 @@ const Weight=({data,setData})=>{
   const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
+  const yesterdayWt=(()=>{const e=Object.entries(data.wt||{}).filter(([d])=>d<t).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[1]||null;})();
   const add=()=>{if(!nw)return;const v=Number(nw);const nd={...data,wt:{...data.wt,[t]:v}};setData(nd);sv(nd);svSB.weight(t,v);setNw("");};
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div>
@@ -4033,25 +4034,24 @@ const Weight=({data,setData})=>{
       <div style={{fontSize:13,color:C.t3}}>Log the number, then watch the trend.</div>
     </div>
 
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
-      <L>{todayLogged?"Logged today":"Fast log · "+fmt(t)}</L>
-      {todayLogged?(
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-            <div><span style={{fontSize:34,fontWeight:850,color:C.t}}>{Math.round(data.wt[t])}</span><span style={{fontSize:14,color:C.t3}}> lbs</span></div>
-            <button onClick={()=>setNw(String(data.wt[t]))} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t2,borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
-          </div>
-          {nw!==""&&<div style={{display:"flex",gap:6,marginTop:10}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:20,fontWeight:800}}/><B onClick={add}>Update</B></div>}
-        </div>
-      ):(
-        <div>
-          <div style={{fontSize:13,color:C.t2,marginBottom:8}}>Log before food/water if possible. This anchors the weekly cut call.</div>
-          <div style={{display:"flex",gap:6}}><N value={nw} onChange={setNw} placeholder="185.0" style={{flex:1,fontSize:22,fontWeight:800}}/><B onClick={add}>Log</B></div>
-        </div>
-      )}
+    <X style={{padding:"18px 16px",textAlign:"center",boxShadow:C.sh2}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>{todayLogged?`LOGGED ${data.wt[t].toFixed(1)} · LOG AGAIN TO CORRECT`:`TODAY${yesterdayWt?` · YESTERDAY ${yesterdayWt.toFixed(1)}`:""}`}</div>
+      <div style={{fontSize:58,fontWeight:800,fontFamily:FD,lineHeight:1,marginTop:6,color:nw?C.t:C.t3,fontVariantNumeric:"tabular-nums"}}>{nw||(yesterdayWt?yesterdayWt.toFixed(1):"185.0")}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:12}}>
+        {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k=>(
+          <button key={k} onClick={()=>{
+            if(k==="⌫"){setNw(nw.slice(0,-1));return;}
+            if(k==="."&&nw.includes("."))return;
+            if(nw.replace(".","").length>=4)return;
+            setNw(nw+k);
+          }} style={{minHeight:48,border:`1px solid ${C.bd}`,borderRadius:8,background:C.bg,fontSize:k==="⌫"?17:19,fontWeight:700,color:k==="⌫"?C.t3:C.t,cursor:"pointer",fontFamily:"'Barlow',sans-serif"}}>{k}</button>
+        ))}
+      </div>
+      <button onClick={add} disabled={!nw||!(Number(nw)>80&&Number(nw)<500)} style={{width:"100%",marginTop:8,minHeight:52,border:"none",borderRadius:9,background:C.p,opacity:!nw||!(Number(nw)>80&&Number(nw)<500)?0.4:1,color:C.oa,fontFamily:FD,fontSize:17,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.08em",cursor:"pointer"}}>{nw?`Log ${nw}`:"Log weight"}</button>
+      <div style={{fontSize:11,color:C.t3,marginTop:8}}>type it like the scale shows it</div>
     </X>
 
-    <WeightTrendCard trend={wTrend}/>
+    <WeightTrendCard trend={wTrend} tdee={wtTDEE&&wtTDEE.tdee}/>
 
     {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
       <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em"}}>Cut pace</div>
@@ -4158,6 +4158,99 @@ const CloseoutPanel=({data,setData})=>{
   </div>);
 };
 
+// ═══ PROGRESS · photos, measurements, weekly AI analysis (mock 6c) ═══
+const ProgressView=({data,setData,onBack})=>{
+  const t=td();
+  const fileRef=useRef(null);
+  const [pendingSlot,setPendingSlot]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState("");
+  const slots=data.photoSlots||{};
+  const SLOTS=["front","side","back"];
+  const daysAgo=d=>d?Math.round((new Date(t+"T12:00:00")-new Date(d+"T12:00:00"))/864e5):null;
+  const takePhoto=(slot)=>{setPendingSlot(slot);setErr("");if(fileRef.current)fileRef.current.click();};
+  const onFile=async(e)=>{
+    const file=e.target.files?.[0];if(!file||!pendingSlot)return;
+    setLoading(true);
+    try{
+      const reader=new FileReader();
+      const base64=await new Promise((resolve)=>{reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);});
+      const [header,dataStr]=base64.split(",");
+      const mediaType=header.match(/data:(.*?);/)?.[1]||"image/jpeg";
+      const prevEntries=Object.entries(data.bodyComp||{}).filter(([d,v])=>d!==t&&v&&typeof v==="object"&&v.analysis).sort((a,b)=>b[0].localeCompare(a[0]));
+      const prev=prevEntries[0];
+      const context={currentWeight:data.wt[t]||Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]))[0]?.[1]};
+      if(prev){context.previousAssessment=prev[1].analysis;context.previousDate=prev[0];}
+      const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json","x-sync-token":data.settings?.syncToken||""},body:JSON.stringify({image:{mediaType,data:dataStr},context})});
+      const result=await resp.json();
+      if(resp.ok){
+        const nd={...data,bodyComp:{...data.bodyComp,[t]:{photoTaken:true,analysis:result}},photoSlots:{...slots,[pendingSlot]:t}};
+        setData(nd);sv(nd);svSB.bodyComp(t,{analysis:result});
+      }else setErr(result.error||"Analysis failed");
+    }catch(e2){setErr(e2.message);}
+    setLoading(false);setPendingSlot(null);if(fileRef.current)fileRef.current.value="";
+  };
+  const baseMeas=(()=>{const e=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>a[0].localeCompare(b[0]));return e.find(([d])=>d>=PROG.start)||e[0]||null;})();
+  const curMeas=(()=>{const e=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]||null;})();
+  const arm=m=>m?((m.armL&&m.armR)?(m.armL+m.armR)/2:(m.armL||m.armR||null)):null;
+  const MEAS=[{l:"WAIST",cur:curMeas?.[1]?.waist,base:baseMeas?.[1]?.waist,goodDown:true},{l:"CHEST",cur:curMeas?.[1]?.chest,base:baseMeas?.[1]?.chest,goodDown:false},{l:"ARM",cur:arm(curMeas?.[1]),base:arm(baseMeas?.[1]),goodDown:false}];
+  const measLine=(()=>{
+    const w=MEAS[0],a=MEAS[2];
+    if(w.cur==null||w.base==null)return "Log measurements every 2 weeks to see the trend.";
+    const wd=w.cur-w.base;const ad=a.cur!=null&&a.base!=null?a.cur-a.base:null;
+    if(wd<0&&(ad==null||ad>=-0.2))return "Waist down, arm holding. Fat is leaving. Muscle is not.";
+    if(wd<0)return "Waist down. Watch the arm number, protein protects it.";
+    return "Waist is holding. The trend chart decides, not one tape day.";
+  })();
+  const shortDate=d=>fmt(d).toUpperCase().replace(/^[A-Z]+, /,"");
+  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+    <button onClick={onBack} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:0,fontFamily:"inherit"}}>← Setup</button>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+      <div>
+        <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Progress</div>
+        <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:3}}>Week {wkn(t)} of {PROG.weeks} · photos every 2 weeks</div>
+      </div>
+      <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
+    </div>
+    <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{display:"none"}}/>
+    {err&&<div style={{fontSize:12,color:C.r}}>{err}</div>}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
+      {SLOTS.map(s=>{const d=slots[s];const due=!d||daysAgo(d)>=14;return(
+        <button key={s} onClick={()=>takePhoto(s)} style={{aspectRatio:"3/4",border:due?`1px dashed ${C.p}`:"none",background:due?C.pl:C.bl,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
+          <span style={{fontSize:15,fontWeight:800,fontFamily:FD,color:due?C.p:C.t3}}>{due?"DUE":s.toUpperCase()}</span>
+          <span style={{fontSize:10,fontWeight:700,fontFamily:FD,color:due?C.p:C.t3}}>{due?(d?"RETAKE":"TODAY"):shortDate(d)}</span>
+        </button>);})}
+    </div>
+    <X style={{padding:"14px 16px"}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>MEASUREMENTS{baseMeas?` · VS ${shortDate(baseMeas[0])}`:""}</div>
+      {curMeas?(<React.Fragment>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
+          {MEAS.map(m=>{const d=m.cur!=null&&m.base!=null?m.cur-m.base:null;const good=d!=null&&(m.goodDown?d<0:d>0);return(
+            <div key={m.l} style={{background:C.bg,borderRadius:8,padding:"9px 6px",textAlign:"center"}}>
+              <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:C.t}}>{m.cur!=null?`${m.cur.toFixed(1)}"`:"○"}</div>
+              <div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.06em",fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
+            </div>);})}
+        </div>
+        <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>{measLine}</div>
+      </React.Fragment>):(<div style={{fontSize:12,color:C.t3,marginTop:8}}>No measurements yet. Log the first set below.</div>)}
+      <S title="Update measurements" collapsible defaultOpen={false}>
+        {(()=>{
+          const cur=data.bodyMeas&&data.bodyMeas[t]||{};
+          const fields=[{k:"chest",l:"Chest"},{k:"waist",l:"Waist"},{k:"armL",l:"Left Arm"},{k:"armR",l:"Right Arm"},{k:"thighL",l:"Left Thigh"},{k:"thighR",l:"Right Thigh"}];
+          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),[k]:v?parseFloat(v):null}}};setData(nd);sv(nd);};
+          return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {fields.map(fd=>(<div key={fd.k}><L>{fd.l}</L><N value={cur[fd.k]||""} onChange={v=>saveMeas(fd.k,v)} placeholder="in"/></div>))}
+          </div>);
+        })()}
+      </S>
+    </X>
+    <X style={{padding:"14px 16px"}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>WEEK {wkn(t)} AI ANALYSIS</div>
+      <AnalysisSection data={data}/>
+    </X>
+  </div>);
+};
+
 // ═══ SETTINGS ═══
 const Settings=({data,setData,syncFailures={}})=>{
   const failedTables=Object.keys(syncFailures);
@@ -4167,7 +4260,25 @@ const Settings=({data,setData,syncFailures={}})=>{
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
     trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
+  const [editTargets,setEditTargets]=useState(false);
+  const [showProgress,setShowProgress]=useState(false);
   const isTravel=!!(data.travelDays||{})[t];
+  const lastPhotoDate=(()=>{const e=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[0]||null;})();
+  const lastPhotoLine=lastPhotoDate?`Last photos ${fmt(lastPhotoDate)}`:"No photos yet · first set is due";
+  const integrations=(()=>{
+    const lastNut=Object.keys(data.nut||{}).sort().reverse()[0]||null;
+    const lastRecRow=Object.entries(data.rec||{}).filter(([_,v])=>v&&v.recoveryScore!=null).sort((a,b)=>b[0].localeCompare(a[0]))[0]||null;
+    const lastSteps=Object.keys(data.steps||{}).sort().reverse()[0]||null;
+    const daysAgo=d=>d?Math.round((new Date(t+"T12:00:00")-new Date(d+"T12:00:00"))/864e5):null;
+    const pushOn=typeof Notification!=="undefined"&&Notification.permission==="granted"&&(data.settings.notifications||{}).enabled;
+    return[
+      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"NO DATA"},
+      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"NO DATA"},
+      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"NO DATA"},
+      syncOk?{name:"Supabase sync",dot:C.g,status:"ALL WRITES OK"}:{name:"Supabase sync",dot:C.r,status:`${failedTables[0].toUpperCase()} · MIGRATION`},
+      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"REST TIMERS ON":"OFF"},
+    ];
+  })();
 
   const toggleTravel=()=>{
     const newVal=!isTravel;
@@ -4178,6 +4289,7 @@ const Settings=({data,setData,syncFailures={}})=>{
   const [bcLoading,setBcLoading]=useState(false);
   const [bcResult,setBcResult]=useState(null);
   const [showBcHistory,setShowBcHistory]=useState(false);
+  if(showProgress)return(<ProgressView data={data} setData={setData} onBack={()=>setShowProgress(false)}/>);
 
   const analyzeBodyComp=async(e)=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -4221,14 +4333,41 @@ const Settings=({data,setData,syncFailures={}})=>{
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Settings</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+      <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Setup</div>
       <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
         style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
         <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
-        {syncOk?"Sync ok":`Sync failing: ${failedTables.join(", ")}`}
+        {syncOk?"Sync ok":"Sync failing"}
       </div>
     </div>
+    <X style={{padding:"14px 16px"}}>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TARGETS & DAY TYPES</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
+        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"TRAIN CAL"},{v:`${f.protein||200}g`,l:"PROTEIN"},{v:f.water||128,l:"WATER OZ"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"STEPS"},{v:"0",l:"WED FAST",ember:true},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"SAT/SUN"}].map(x=>(
+          <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:x.ember?C.pl:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
+            <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:x.ember?C.p:C.t}}>{x.v}</div>
+            <div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.06em",fontFamily:FD,color:x.ember?C.p:C.t3}}>{x.l}</div>
+          </button>))}
+      </div>
+      <div style={{fontSize:11,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
+    </X>
+    <div onClick={()=>setShowProgress(true)} style={{background:C.cd,border:`1px solid ${C.p}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+      <div>
+        <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>PROGRESS</div>
+        <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:3}}>Photos · measurements · weekly AI analysis</div>
+        <div style={{fontSize:11.5,color:C.t3,marginTop:2}}>{lastPhotoLine}</div>
+      </div>
+      <div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD}}>→</div>
+    </div>
+    <X style={{padding:"6px 0"}}>
+      {integrations.map((r,i)=>(
+        <div key={r.name} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:i<integrations.length-1?`1px solid ${C.bg}`:"none"}}>
+          <span style={{width:8,height:8,borderRadius:4,background:r.dot,flexShrink:0}}/>
+          <span style={{fontSize:13,fontWeight:600,color:C.t,flex:1}}>{r.name}</span>
+          <span style={{fontSize:11,fontWeight:700,fontFamily:FD,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
+        </div>))}
+    </X>
     {!syncOk&&(
       <X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.r,marginBottom:4}}>Cloud sync errors this session</div>
@@ -4241,7 +4380,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </X>
     )}
 
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
+    {editTargets&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
@@ -4259,7 +4398,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:4}}>Weekend splits Sat +100 / Sun −100 around the average.</div>
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
-    </X>
+    </X>}
 
     {/* ═══ NOTIFICATIONS ═══ */}
     <S title="Notifications">
@@ -4666,18 +4805,39 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
         {rec?.recoveryScore!=null?(
           <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{rec.recoveryScore}%{rec.hrv?` · HRV ${rec.hrv}`:""}{rec.rhr?` · RHR ${rec.rhr}`:""}{rec.sleepHours?` · ${rec.sleepHours}h sleep`:""}</div>
         ):<div style={{fontSize:13,color:C.t3,marginTop:2}}>No recovery data yet today.</div>}
-        {autoreg&&!adj&&(
-          <div style={{marginTop:10,padding:10,borderRadius:8,background:C.bg,border:`1px solid ${C.bd}`}}>
-            <div style={{fontSize:12,fontWeight:800,color:C.t}}>Recovery {autoreg.score}% · adjust today?</div>
-            {autoreg.proposals.map(p=>(
-              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8}}>
-                <span style={{fontSize:13,fontWeight:700,color:C.t}}>{p.label}</span>
-                <B small onClick={()=>decideAutoreg(p.id)}>Accept</B>
+        {autoreg&&!adj&&(()=>{
+          const accs=(sess?.exercises||[]).filter(e=>!e.anchor);
+          const anchors=(sess?.exercises||[]).filter(e=>e.anchor);
+          const before=(sess?.exercises||[]).reduce((s,e)=>s+e.sets,0);
+          const after=before-accs.length;
+          const names=accs.map(e=>shortLiftName(e.name).toLowerCase()).join(", ");
+          const mob=autoreg.score<40;
+          return(
+          <div style={{marginTop:10,padding:16,borderRadius:12,background:C.cd,border:`1px solid ${C.p}`,boxShadow:"0 6px 18px rgba(194,65,12,0.10)"}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>{mob?"RECOVERY UNDER 40 · PROPOSAL":"RECOVERY UNDER 60 · PROPOSAL"}</div>
+            {mob?(<React.Fragment>
+              <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Swap today's session for the 12 minute mobility routine and a walk.</div>
+              <div style={{fontSize:11.5,color:C.t3,marginTop:4,lineHeight:1.5}}>Recovery is deep in the red. Lifting waits one day. The program is untouched.</div>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>decideAutoreg("mobilitySwap")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the swap</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
               </div>
-            ))}
-            <button onClick={()=>decideAutoreg("dismissed")} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginTop:8,padding:0}}>Dismiss · run as planned</button>
-          </div>
-        )}
+            </React.Fragment>):(<React.Fragment>
+              <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Drop 1 set from each accessory{names?`: ${names}`:""}.{anchors.length?` ${anchors.map(e=>shortLiftName(e.name)).join(" and ")} stays as written.`:""}</div>
+              <div style={{fontSize:11.5,color:C.t3,marginTop:4,lineHeight:1.5}}>{before} sets become {after}. Same weights, same goals. Today only. The program is untouched.</div>
+              {accs.length>0&&<div style={{display:"flex",flexDirection:"column",gap:5,marginTop:10}}>
+                {(sess?.exercises||[]).map(e=>{const rr=e.rr||[8,12];return(
+                  <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,background:C.bg,borderRadius:8,padding:"8px 10px"}}>
+                    <span style={{fontSize:12.5,fontWeight:600,color:C.t}}>{e.name}{e.anchor?<span style={{fontSize:9,fontWeight:800,fontFamily:FD,background:C.t,color:C.cd,borderRadius:3,padding:"2px 5px",marginLeft:5}}>ANCHOR</span>:null}</span>
+                    <span style={{fontSize:12,fontWeight:700,fontFamily:FD,color:C.t3,whiteSpace:"nowrap"}}>{e.anchor?`${e.sets} × ${rr[0]}${rr[1]>rr[0]?"-"+rr[1]:""}`:<React.Fragment><s style={{opacity:0.5}}>{e.sets}</s> {e.sets-1} × {rr[0]}{rr[1]>rr[0]?"-"+rr[1]:""}</React.Fragment>}</span>
+                  </div>);})}
+              </div>}
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>decideAutoreg("minusOneSet")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the cut</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
+              </div>
+            </React.Fragment>)}
+          </div>);})()}
         {adj&&adj.type!=="dismissed"&&(
           <div style={{marginTop:8,fontSize:12,fontWeight:700,color:C.p}}>{adj.type==="minusOneSet"?`Accepted: −1 set on ${nonAnchor} non-anchor accessories (today only)`:"Accepted: mobility session today"}</div>
         )}
@@ -4703,31 +4863,120 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     </div>);
   }
 
-  // ── CLOSEOUT: stretch, clean day, metrics, tomorrow ──
+  // ── CLOSEOUT: habit chips, tonight's numbers, honest Oura, weekly readout (mocks 2d+3c) ──
   if(mode==="closeout"){
     const tomorrow=(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()+1);return lds(d);})();
     const tmrSess=data.program?.[dw(tomorrow)];
     const stretchDone=!!(data.mob?.[t]?.done||data.mob?.[t]===true);
+    const h=data.habits?.[t]||{};
+    const HABIT_LABELS={alcohol:"No alcohol",cannabis:"No cannabis",screensOff:"Screens off",bedBy1030:"Bed by 10:30",supplements:"Supplements",sunlight:"Sunlight",readBeforeBed:"Read in bed"};
+    const held=SYSTEM_HABITS.filter(x=>h[x.field]===x.target).length;
+    const toggleHabit=(x)=>{
+      const nh={...h,[x.field]:h[x.field]===x.target?null:x.target};
+      const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
+    };
+    const streak=(()=>{let n=0;for(let i=1;i<60;i++){const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-i);const hd=data.habits?.[lds(d)];if(hd&&SYSTEM_HABITS.every(x=>hd[x.field]===x.target))n++;else break;}return n+(held===7?1:0);})();
+    const closed=!!data.debrief?.[t];
+    const closeDay=()=>{const nd={...data,debrief:{...data.debrief,[t]:true}};setData(nd);sv(nd);svSB.debrief(t);};
+    const st2=data.settings||DEFAULTS;
+    const nutT=data.nut?.[t];const calNow=Math.round(nutT?.totalCal||0);const proNow=Math.round(nutT?.totalProtein||0);
+    const stepsNow=data.steps?.[t]||0;
+    const calTarget=getDayCalTarget(t,st2,data.travelDays,data.socialWeekend);const proTarget=st2.protein||200;const stepsTarget=cutStepsTarget(st2);
+    const lastRec=(()=>{const e=Object.entries(data.rec||{}).filter(([_,v])=>v&&v.recoveryScore!=null).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]||null;})();
+    const recStale=!lastRec||lastRec[0]<t;
+    const rv=lastRec?lastRec[1]:null;
+    const week=(()=>{
+      const days=[];for(let i=6;i>=0;i--){const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-i);days.push(lds(d));}
+      const liftPlanned=days.filter(ds=>{const s=data.program?.[dw(ds)];return s&&(s.exercises||[]).length>0;}).length;
+      const liftDone=days.filter(ds=>data.wk?.[ds]).length;
+      const proDays=days.filter(ds=>Math.round(data.nut?.[ds]?.totalProtein||0)>=proTarget).length;
+      const weighs=days.filter(ds=>data.wt?.[ds]!=null).length;
+      const stepMisses=days.filter(ds=>(data.steps?.[ds]||0)>0&&(data.steps?.[ds]||0)<stepsTarget).map(ds=>dw(ds).slice(0,3));
+      return{liftPlanned,liftDone,proDays,weighs,stepMisses};
+    })();
+    const wkTrend=trend?`${trend.rate>0?"+":""}${trend.rate} lb/wk`:null;
+    const verdict=(()=>{
+      const pace=trend?(trend.rate<-0.4?`A ${Math.abs(trend.rate).toFixed(1)} lb/wk drop`:trend.rate<=0?"Weight is holding":"Weight ticked up"):"Not enough weigh-ins yet";
+      const lift=week.liftDone>=week.liftPlanned&&week.liftPlanned>0?"with every lift logged":week.liftDone>0?`with ${week.liftDone} of ${week.liftPlanned} lifts in`:"";
+      const leak=week.stepMisses.length?"Steps are the leak.":week.proDays<5?"Protein is the leak.":"No leaks this week.";
+      return `${pace} ${lift}. ${leak}`.replace(/\s+/g," ").trim();
+    })();
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
       {header}
     {fastCard}
-      <X style={{padding:14,borderLeft:`4px solid ${C.bd}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:15,fontWeight:800,color:C.t}}>Evening stretch</div>
-            <div style={{fontSize:12,color:C.t3}}>{stretchDone?"Done for today ✓":"Hips first. ~12 minutes."}</div>
-          </div>
-          {!stretchDone&&<B small onClick={()=>setTab("training")}>Start</B>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+        <div>
+          <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Close the day</div>
+          <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:3}}>{fmt(t)}{stretchDone?" · stretch done ✓":""}</div>
         </div>
+        {streak>0&&<div style={{textAlign:"right"}}><div style={{fontSize:22,fontWeight:800,color:C.g,fontFamily:FD,lineHeight:1}}>{streak}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:C.t3,fontFamily:FD}}>CLEAN-DAY STREAK</div></div>}
+      </div>
+      <X style={{padding:16,boxShadow:C.sh2}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>CLEAN DAY · {held}/7</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>tap what held</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:11}}>
+          {SYSTEM_HABITS.map(x=>{const on=h[x.field]===x.target;return(
+            <button key={x.field} onClick={()=>toggleHabit(x)} style={{minHeight:44,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t3,fontFamily:FD,fontSize:13,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":"○"}</span></button>
+          );})}
+        </div>
+        <button onClick={closeDay} disabled={closed||held<6} style={{marginTop:12,width:"100%",border:"none",background:closed?C.g:held>=6?C.p:C.bl,color:closed||held>=6?C.oa:C.t3,borderRadius:9,padding:15,fontFamily:FD,fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.08em",cursor:closed||held<6?"default":"pointer"}}>{closed?"Day closed ✓":held>=6?"Close the day":`${held}/7 · tap what held`}</button>
       </X>
-      <X style={{padding:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:8}}>Close the day</div>
-        <CloseoutPanel data={data} setData={setData}/>
+      <X style={{padding:16}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TONIGHT'S NUMBERS</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
+          {[{v:stepsNow?`${(stepsNow/1000).toFixed(1)}k`:"○",l:"STEPS",ok:stepsNow>=stepsTarget},
+            {v:calNow?calNow.toLocaleString():"○",l:"CAL",ok:calNow>0&&(calTarget==null||calNow<=calTarget)},
+            {v:proNow?`${proNow}g`:"○",l:"PROTEIN",ok:proNow>=proTarget}].map(x=>(
+            <div key={x.l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
+              <div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{x.v}</div>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:x.ok?C.g:C.t3,fontFamily:FD}}>{x.l}{x.ok?" ✓":""}</div>
+            </div>))}
+        </div>
+        <div style={{fontSize:11.5,color:C.t3,marginTop:9}}>Cronometer and HAE fill these overnight. Type only what is missing.</div>
+        <S title="Manual entry" collapsible defaultOpen={false}><CloseoutPanel data={data} setData={setData}/></S>
       </X>
-      <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.t3}}>Tomorrow</div>
-        <div style={{fontSize:14,fontWeight:800,color:C.t,marginTop:2}}>{tmrSess?tmrSess.name:"Rest / unstructured"}{trend?` · trend ${trend.rate>0?"+":""}${trend.rate} lb/wk`:""}</div>
+      <X style={{padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>RECOVERY · OURA</div>
+          {recStale&&lastRec?<div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>LAST WORN {fmt(lastRec[0]).toUpperCase()}</div>:null}
+        </div>
+        {rv?(<React.Fragment>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:7,marginTop:10,opacity:recStale?0.55:1}}>
+            {[[rv.recoveryScore!=null?`${rv.recoveryScore}%`:"○","RECOVERY"],[rv.hrv?Math.round(rv.hrv):"○","HRV"],[rv.rhr?Math.round(rv.rhr):"○","RHR"],[rv.sleepHours?`${Math.floor(rv.sleepHours)}:${String(Math.round((rv.sleepHours%1)*60)).padStart(2,"0")}`:"○","SLEEP"]].map(([v,l])=>(
+              <div key={l} style={{background:C.bg,borderRadius:8,padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:19,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div></div>))}
+          </div>
+          {recStale&&<div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>The ring is off. The numbers dim and pause. Nothing breaks. Wear it tonight and tomorrow's session adjusts to recovery again.</div>}
+        </React.Fragment>):(<div style={{fontSize:12,color:C.t3,marginTop:8}}>No recovery data yet.</div>)}
       </X>
+      <X style={{padding:16}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>WEEK {wkn(t)} · WHAT THE LOG SAYS</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+          {[
+            {ok:week.liftPlanned>0&&week.liftDone>=week.liftPlanned,txt:`Lifts ${week.liftDone}/${week.liftPlanned||0} logged this week`},
+            {ok:week.proDays>=5,txt:`Protein floor hit ${week.proDays} of 7 days`},
+            {ok:week.weighs>=5,txt:`Weigh-ins ${week.weighs}/7${wkTrend?` · trend ${wkTrend}`:""}`},
+            {ok:week.stepMisses.length===0,txt:week.stepMisses.length?`Steps under ${Math.round(stepsTarget/1000)}k ${week.stepMisses.join(" & ")}`:"Steps target held all week"},
+          ].map((x,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:9}}>
+              <span style={{flexShrink:0,width:20,fontSize:14,fontWeight:800,fontFamily:FD,color:x.ok?C.g:C.t3,textAlign:"center"}}>{x.ok?"✓":"○"}</span>
+              <span style={{fontSize:12.5,fontWeight:600,color:x.ok?C.t:C.t3,flex:1}}>{x.txt}</span>
+            </div>))}
+        </div>
+        <div style={{marginTop:11,background:C.pl,borderRadius:8,padding:"10px 12px",fontSize:12.5,lineHeight:1.5,fontWeight:600,color:C.t}}>{verdict}</div>
+      </X>
+      <X style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TOMORROW</div>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginTop:3}}>{tmrSess?tmrSess.name:"Rest day · steps + protein floor"}</div>
+        </div>
+        <div style={{fontSize:13,fontWeight:800,color:C.p,fontFamily:FD,textTransform:"uppercase"}}>{dw(tomorrow).slice(0,3)}</div>
+      </X>
+      {!stretchDone&&<X style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Evening stretch · ~12 min</div>
+        <B small onClick={()=>setTab("training")}>Start</B>
+      </X>}
       <button onClick={()=>setShowClassic(true)} style={{background:"none",border:"none",color:C.t3,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Full dashboard</button>
     </div>);
   }
