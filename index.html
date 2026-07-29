@@ -299,17 +299,25 @@ const NOTIF_SETTINGS_KEY="dhub6_notification_settings";
 const ld=()=>{try{return JSON.parse(localStorage.getItem(SK))}catch{return null}};
 
 // ═══ SYNC HEALTH ═══
-// Every failed write is loud: logged, counted, and toasted once per table per session.
+// HTTP failures (schema/auth) are loud: logged, counted, toasted once per
+// table per session. Network blips (request never left the phone: iOS
+// backgrounding, dead spots) are transient: recorded quietly, retried, and
+// cleared the moment a later write to that table succeeds.
 const syncHealth={failures:{},listeners:new Set()};
-const reportSyncFailure=(table,status,body)=>{
+const reportSyncFailure=(table,status,body,transient=false)=>{
   console.error(`[SB] Sync failed: ${table}`,status,body);
   const first=!syncHealth.failures[table];
   const prev=syncHealth.failures[table]||{n:0};
   // Keep the server's actual error text so Setup can show WHY, not just that.
   let msg=String(body||"").slice(0,200);
   try{const j=JSON.parse(body);msg=j.message||j.error||msg;}catch{}
-  syncHealth.failures[table]={n:prev.n+1,msg:`${status||"network"}: ${msg}`};
+  syncHealth.failures[table]={n:prev.n+1,msg:`${status||"network"}: ${msg}`,transient:transient&&(prev.transient??true)};
   syncHealth.listeners.forEach(l=>{try{l(table,first);}catch{}});
+};
+const reportSyncSuccess=(table)=>{
+  if(!syncHealth.failures[table])return;
+  delete syncHealth.failures[table];
+  syncHealth.listeners.forEach(l=>{try{l(table,false);}catch{}});
 };
 const onSyncFailure=(l)=>{syncHealth.listeners.add(l);return()=>syncHealth.listeners.delete(l);};
 
@@ -330,13 +338,17 @@ const sbh={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Be
 
 const sb={
   async upsert(table,data,conflict="date"){
+    const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
+    const send=()=>fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify(data)});
     try{
-      const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
-      const r=await fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
-        body:JSON.stringify(data)});
-      if(!r.ok)reportSyncFailure(table,r.status,await r.text().catch(()=>""));
-      return r.ok;
-    }catch(e){reportSyncFailure(table,0,String(e));return false;}
+      let r;
+      try{r=await send();}
+      catch(e){await new Promise(res=>setTimeout(res,1500));r=await send();} // one retry on a dropped request
+      if(r.ok){reportSyncSuccess(table);return true;}
+      reportSyncFailure(table,r.status,await r.text().catch(()=>""));
+      return false;
+    }catch(e){reportSyncFailure(table,0,String(e),true);return false;}
   },
   async select(table,order="date",dir="desc",limit=500){
     try{
@@ -3047,6 +3059,15 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </div>
         <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
         {s.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{s.warmup.note}</div>}
+        {/mobility/i.test(s.name||"")&&mobExercises.map((m,i)=>(
+          <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"5px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
+            <div style={{marginRight:8}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</div>
+              <div style={{fontSize:11,color:C.t3,marginTop:1}}>{m.cue}</div>
+            </div>
+            <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap",fontFamily:FD,fontWeight:700}}>{m.sets}×{m.dur}s{m.sides?` · ${m.sides.map(x=>x[0]).join("/")}`:""}</span>
+          </div>
+        ))}
         {s.warmup.moves.map((m,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
             <span style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</span>
@@ -3062,12 +3083,25 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
       {(()=>{ // ═══ SET DECK · mock 3a · one set at a time ═══
         const exs=workout.exercises;
-        const curEi=exs.findIndex(e=>e.sets.some(x=>!x.done));
+        // Supersets: rest:0 chains an exercise to the next one (1A → 1B). Sets
+        // inside a group interleave round-robin (A1, B1, A2, B2 …) so the pair
+        // actually alternates; the last member's rest runs the timer.
+        const restOf=i=>slotAt(i)?.rest;
+        const groups=(()=>{const g=[];for(let i=0;i<exs.length;){const grp=[i];while(restOf(grp[grp.length-1])===0&&i+1<exs.length){i++;grp.push(i);}i++;g.push(grp);}return g;})();
+        let curEi=-1,curSi0=-1;
+        for(const grp of groups){
+          if(curEi>=0)break;
+          const maxSets=Math.max(...grp.map(m=>exs[m].sets.length));
+          for(let si=0;si<maxSets&&curEi<0;si++)for(const m of grp){const st=exs[m].sets[si];if(st&&!st.done){curEi=m;curSi0=si;break;}}
+        }
+        const curGrp=curEi>=0?groups.find(g=>g.includes(curEi)):null;
+        const ssMates=curGrp&&curGrp.length>1?curGrp.filter(m=>m!==curEi).map(m=>exs[m].swappedTo?.name||slotAt(m)?.name).filter(Boolean):[];
+        const ssLetter=curGrp&&curGrp.length>1?String.fromCharCode(65+curGrp.indexOf(curEi)):null;
         const allDone=exs.length>0&&curEi<0;
         const segs=exs.map((e,i)=>{const done=e.sets.filter(x=>x.done).length;
           return{k:i,short:shortLiftName(e.swappedTo?.name||slotAt(i)?.name||""),pct:Math.round(done/Math.max(1,e.sets.length)*100),cur:i===curEi};});
         const wkEx=curEi>=0?exs[curEi]:null,ex=curEi>=0?slotAt(curEi):null;
-        const curSi=wkEx?wkEx.sets.findIndex(x=>!x.done):-1;
+        const curSi=curSi0;
         const cs=wkEx?wkEx.sets[curSi]:null;
         const dispName=wkEx?.swappedTo?.name||ex?.name||"";
         const dispCue=wkEx?.swappedTo?.cue||ex?.cue||"";
@@ -3102,9 +3136,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
                 <div style={{fontSize:21,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em"}}>{dispName}</div>
                 {ex?.anchor&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.t,color:C.oa,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>ANCHOR</div>}
+                {ssLetter&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.pl,color:C.p,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SUPERSET {ssLetter}</div>}
                 {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SWAPPED</div>}
               </div>
               <div style={{fontSize:12,color:C.t3,marginTop:3}}>Set <b style={{color:C.t}}>{curSi+1}</b> of {wkEx.sets.length}{prevLift?<> · last {fmt(prevLift.date)}: <span style={{fontWeight:600,color:C.t2}}>{prevLift.weight>0?prevLift.weight:"BW"} × {prevLift.reps.join("/")}</span></>:null}</div>
+              {ssMates.length>0&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{restOf(curEi)===0?`No rest · straight to ${ssMates[0]}`:`Rest after this · then back to ${ssMates[0]}`}</div>}
             </div>
             {getSwapOptions(ex,wkEx).length>0&&!wkEx.sets.some(x=>x.done)&&<button title="Swap exercise" onClick={()=>setSwapModal({ei:curEi,exName:dispName})} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:"inherit"}}>⇄</button>}
           </div>
@@ -4254,7 +4290,9 @@ const ProgressView=({data,setData,onBack})=>{
 // ═══ SETTINGS ═══
 const Settings=({data,setData,syncFailures={}})=>{
   const failedTables=Object.keys(syncFailures);
-  const syncOk=failedTables.length===0;
+  const hardTables=failedTables.filter(tb=>!syncFailures[tb]?.transient);
+  const blipTables=failedTables.filter(tb=>syncFailures[tb]?.transient);
+  const syncOk=hardTables.length===0;
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
@@ -4275,7 +4313,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"NO DATA"},
       {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"NO DATA"},
       {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"NO DATA"},
-      syncOk?{name:"Supabase sync",dot:C.g,status:"ALL WRITES OK"}:{name:"Supabase sync",dot:C.r,status:`${failedTables[0].toUpperCase()} · MIGRATION`},
+      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} DROPPED, RETRYING`:"ALL WRITES OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0].toUpperCase()} · MIGRATION`},
       {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"REST TIMERS ON":"OFF"},
     ];
   })();
@@ -4371,13 +4409,18 @@ const Settings=({data,setData,syncFailures={}})=>{
     {!syncOk&&(
       <X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.r,marginBottom:4}}>Cloud sync errors this session</div>
-        {failedTables.map(tb=>(
+        {hardTables.map(tb=>(
           <div key={tb} style={{fontSize:11,color:C.t2,padding:"2px 0",fontFamily:"monospace",wordBreak:"break-word"}}>
             <b style={{color:C.t}}>{tb}</b> ×{syncFailures[tb]?.n||1} · {syncFailures[tb]?.msg||"unknown"}
           </div>
         ))}
         <div style={{fontSize:11,color:C.t3,marginTop:4}}>A message naming a missing column means a migration in /supabase/ hasn't been run yet.</div>
       </X>
+    )}
+    {blipTables.length>0&&(
+      <div style={{fontSize:11,color:C.t3,padding:"0 2px"}}>
+        Dropped requests this session (auto-retried, cleared on the next successful write): {blipTables.map(tb=>`${tb} ×${syncFailures[tb]?.n||1}`).join(" · ")}
+      </div>
     )}
 
     {editTargets&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
@@ -5098,7 +5141,8 @@ window.App = function App(){
   },[]);
   useEffect(()=>onSyncFailure((table,first)=>{
     setSyncFailures({...syncHealth.failures});
-    if(first)addToast(`Sync failed: ${table} · not backed up`,"error");
+    const f=syncHealth.failures[table];
+    if(first&&f&&!f.transient)addToast(`Sync failed: ${table} · not backed up`,"error");
   }),[addToast]);
 
   useEffect(()=>{
@@ -5173,6 +5217,19 @@ window.App = function App(){
     sv(data);
     if(sbLoaded)syncToSB(data);
   },[data,sbLoaded]);
+
+  // Self-heal dropped requests: when connectivity returns or the app comes
+  // back to the foreground with recorded failures, push a full sync.
+  const dataRef=useRef(data);
+  useEffect(()=>{dataRef.current=data;},[data]);
+  useEffect(()=>{
+    if(!sbLoaded)return;
+    const kick=()=>syncToSB(dataRef.current);
+    const vis=()=>{if(document.visibilityState==="visible"&&Object.keys(syncHealth.failures).length)kick();};
+    window.addEventListener("online",kick);
+    document.addEventListener("visibilitychange",vis);
+    return()=>{window.removeEventListener("online",kick);document.removeEventListener("visibilitychange",vis);};
+  },[sbLoaded]);
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Barlow',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
