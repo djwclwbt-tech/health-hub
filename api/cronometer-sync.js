@@ -8,7 +8,8 @@
  *   GET /api/cronometer-sync                  → sync yesterday + today
  *   GET /api/cronometer-sync?date=2026-04-11  → sync a specific date
  *
- * Called by Vercel cron (hourly) and can be triggered manually.
+ * Called by Vercel cron 3x daily (3am / 1pm / 8pm Chicago) and can be
+ * triggered manually with ?secret= when CRONOMETER_SYNC_SECRET is set.
  *
  * Environment variables:
  *   CRONOMETER_USERNAME   – Cronometer account email

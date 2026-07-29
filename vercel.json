@@ -8,7 +8,9 @@
   "crons": [
     { "path": "/api/oura-sync",        "schedule": "0 14 * * *" },
     { "path": "/api/oura-sync",        "schedule": "0 4 * * *"  },
-    { "path": "/api/cronometer-sync",  "schedule": "0 8 * * *"  }
+    { "path": "/api/cronometer-sync",  "schedule": "0 8 * * *"  },
+    { "path": "/api/cronometer-sync",  "schedule": "0 18 * * *" },
+    { "path": "/api/cronometer-sync",  "schedule": "0 1 * * *"  }
   ],
   "headers": [
     {
