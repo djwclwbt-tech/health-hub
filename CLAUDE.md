@@ -53,7 +53,7 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 `getTrend()` (EWMA-smoothed OLS slope over the last 14 calendar days, lbs/week to 1 decimal) is the **only** trend formula. Every surface consumes it; do not add another.
 
 ## Sync health
-`sb.upsert` failures are loud: console.error + one toast per table per session + a red dot on Setup. If the dot is red, a Supabase column/table is missing — check `/supabase/` for a pending migration.
+`sb.upsert` distinguishes two failure classes. **HTTP errors** (schema/auth) are loud: console.error + one toast per table per session + a red dot on Setup — a red dot means a Supabase column/table is missing; check `/supabase/` for a pending migration. **Network blips** (request never left the phone) are transient: retried once after 1.5s, listed quietly on Setup as "dropped requests", never toasted, and cleared by the next successful write to that table. A full re-sync fires on `online` and on returning to the foreground with recorded failures.
 
 ## Settings (User-Customizable)
 Stored in `data.settings`: `calories` (default 1790), `protein` (200), `water` (128), `steps` (15000), `sleep` (7.5), `fiber` (30), `trainingCal` (2000), `wednesdayCal` (900), `weekendCal` (1800; app renders Sat +100 / Sun −100), `syncToken`, `notifyToken`, `customHabits`, `reminders` (dormant).
