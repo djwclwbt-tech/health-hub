@@ -4248,7 +4248,7 @@ const ProgressView=({data,setData,onBack})=>{
       </div>
       <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
     </div>
-    <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{display:"none"}}/>
+    <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:"none"}}/>
     {err&&<div style={{fontSize:12,color:C.r}}>{err}</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
       {SLOTS.map(s=>{const d=slots[s];const due=!d||daysAgo(d)>=14;return(
@@ -4598,7 +4598,7 @@ const Settings=({data,setData,syncFailures={}})=>{
             </div>);
           })()}
         </div>
-        <input ref={bcFileRef} type="file" accept="image/*" capture="environment" onChange={analyzeBodyComp} style={{display:"none"}}/>
+        <input ref={bcFileRef} type="file" accept="image/*" onChange={analyzeBodyComp} style={{display:"none"}}/>
         {bcLoading?<span style={{fontSize:12,color:C.p,fontWeight:600}}>Analyzing...</span>
           :<B small onClick={()=>bcFileRef.current?.click()}>Upload Photo</B>}
       </div>
