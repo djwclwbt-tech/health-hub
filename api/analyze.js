@@ -7,10 +7,8 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const syncToken = process.env.SYNC_TOKEN;
-  if (!syncToken) return res.status(500).json({ error: 'SYNC_TOKEN not configured' });
-  if (req.headers['x-sync-token'] !== syncToken) return res.status(401).json({ error: 'Unauthorized — set your Sync Token in Setup' });
-
+  // Deliberately unauthenticated (owner decision 2026-07-31): the AI features
+  // are part of the platform and must work with zero setup. See SECURITY.md.
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
