@@ -22,6 +22,12 @@ the missing control is RLS.
   `OURA_SYNC_SECRET` / `CRONOMETER_SYNC_SECRET` env vars are set.
 - `/api/push-schedule` accepts any push job unless `NOTIFY_TOKEN` is set
   (added 2026-07-11 — set the env var to activate the check).
+- `/api/analyze` and `/api/bodycomp` (Claude API spend) are deliberately
+  unauthenticated — owner decision 2026-07-31: the AI features are part of
+  the platform and must work with zero setup. A `SYNC_TOKEN` gate added
+  during 2026-07 hardening was removed for this reason. Exposure is bounded
+  by the unlisted deployment URL and the 60s function cap; revisit if the
+  Anthropic bill shows traffic that isn't yours.
 
 ## Future fix path (when hardening is picked up)
 1. Enable restrictive RLS on every table; move all client access behind a
