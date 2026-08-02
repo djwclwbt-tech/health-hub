@@ -369,55 +369,6 @@ const sb={
   }
 };
 
-// Sync entire data object TO supabase (debounced, non-blocking)
-let syncTimer=null;
-const syncToSB=async(d)=>{
-  if(syncTimer)clearTimeout(syncTimer);
-  syncTimer=setTimeout(async()=>{
-    try{
-      for(const[date,value]of Object.entries(d.wt||{})){await sb.upsert("weight",{date,value});}
-      for(const[date,value]of Object.entries(d.steps||{})){await sb.upsert("steps",{date,value:Math.round(value)});}
-      for(const[date,oz]of Object.entries(d.water||{})){
-        const n=Math.round(Number(oz)||0);
-        if(n>0)await sb.upsert("water",{date,oz:n});
-        else await sb.deleteRow("water","date",date);
-      }
-      for(const[date,r]of Object.entries(d.rec||{})){
-        await sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
-          respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
-          strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null});
-      }
-      for(const[date,h]of Object.entries(d.habits||{})){
-        if(!h)continue;
-        await sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
-          sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements,custom:h.custom||null});
-      }
-      for(const[date,w]of Object.entries(d.wk||{})){
-        await sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null});
-      }
-      for(const[date,n]of Object.entries(d.nut||{})){
-        await sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
-          total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0});
-      }
-      for(const[exId,p]of Object.entries(d.prog||{})){
-        await sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
-          last_date:p.lastDate||null,progressed:p.progressed||false,pr:p.pr||null,e1rm_history:p.e1rmHistory||null},"exercise_id");
-      }
-      for(const[date,v]of Object.entries(d.mob||{})){const dur=v&&typeof v==="object"?v.dur:null;await sb.upsert("mobility",{date,completed:true,duration_secs:dur||null});}
-      for(const[date]of Object.entries(d.stp||{})){await sb.upsert("stepper",{date,completed:true});}
-      for(const[date]of Object.entries(d.debrief||{})){await sb.upsert("debrief",{date,completed:true});}
-      for(const[date,c]of Object.entries(d.cardio||{})){await svSB.cardio(date,c);}
-      for(const[date,b]of Object.entries(d.bodyComp||{})){if(!b)continue;const rec=typeof b==="object"?b:{};
-        await sb.upsert("body_comp",{date,photo_taken:true,analysis:rec.analysis||null});}
-      for(const[date,v]of Object.entries(d.travelDays||{})){if(v)await sb.upsert("travel_days",{date,active:true});}
-      for(const[date,v]of Object.entries(d.tdeeExclude||{})){if(v)await sb.upsert("tdee_exclude",{date,active:true});}
-      if(d.settings)await sb.upsert("settings",{id:"user",...d.settings},"id");
-      if(d.program)await sb.upsert("program",{id:"user",data:d.program},"id");
-      console.log("[SB] Full sync complete");
-    }catch(e){console.error("[SB] Sync error:",e);}
-  },2000);
-};
-
 const svSB={
   weight:(date,value)=>sb.upsert("weight",{date,value}),
   steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
@@ -2252,7 +2203,8 @@ const Dashboard=({data,setData,setTab})=>{
           const vals={};measFields.forEach(f=>{if(measF[f.k])vals[f.k]=parseFloat(measF[f.k]);});
           if(!Object.keys(vals).length)return;
           const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),...vals}}};
-          setData(nd);sv(nd);syncToSB(nd);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
+          // Body measurements are local-only until a targeted Supabase table/helper exists.
+          setData(nd);sv(nd);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
         };
         return(
           <X style={{padding:10}}>
@@ -5079,58 +5031,12 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
   </div>);
 };
 
-// ═══ APPLY PROGRAM UPDATES ═══
-const applyProgramUpdates=async(currentData)=>{
-  const applied=[];
-  try{
-    const rows=await sb.select("program_updates","created_at","asc",50);
-    const pending=rows.filter(r=>!r.applied);
-    if(!pending.length)return{data:currentData,applied:[]};
-    const nd=JSON.parse(JSON.stringify(currentData));
-    for(const row of pending){
-      let c=row.payload;
-      if(typeof c==="string"){try{c=JSON.parse(c);}catch{console.error("[update] bad payload JSON, skipping",row.id);continue;}}
-      if(!c||typeof c!=="object"){console.error("[update] empty payload, skipping",row.id);continue;}
-      try{
-        if(c.type==="settings"&&c.field){
-          const old=nd.settings[c.field];
-          nd.settings={...nd.settings,[c.field]:c.value};
-          applied.push(`${c.field}: ${old||"unset"} → ${c.value}`);
-        }else if(c.type==="exercise"){
-          if(c.action==="update"&&c.exerciseId){
-            for(const day of Object.values(nd.program)){
-              const ex=day.exercises?.find(e=>e.id===c.exerciseId);
-              if(ex&&c.fields){Object.assign(ex,c.fields);applied.push(`Updated ${ex.name}: ${Object.keys(c.fields).join(", ")}`);}
-            }
-          }else if(c.action==="swap"&&c.oldExerciseId&&c.newExercise){
-            for(const day of Object.values(nd.program)){
-              const idx=day.exercises?.findIndex(e=>e.id===c.oldExerciseId);
-              if(idx>=0){const oldName=day.exercises[idx].name;day.exercises[idx]=c.newExercise;applied.push(`Swapped ${oldName} → ${c.newExercise.name}`);}
-            }
-          }else if(c.action==="add"&&c.day&&c.exercise){
-            if(nd.program[c.day]){nd.program[c.day].exercises.push(c.exercise);applied.push(`Added ${c.exercise.name} to ${c.day}`);}
-          }else if(c.action==="remove"&&c.day&&c.exerciseId){
-            if(nd.program[c.day]){
-              const idx=nd.program[c.day].exercises.findIndex(e=>e.id===c.exerciseId);
-              if(idx>=0){const name=nd.program[c.day].exercises[idx].name;nd.program[c.day].exercises.splice(idx,1);applied.push(`Removed ${name} from ${c.day}`);}
-            }
-          }
-        }
-        // Mark applied in Supabase
-        await fetch(`${SB_URL}/rest/v1/program_updates?id=eq.${row.id}`,{method:"PATCH",headers:{...sbh,"Prefer":"return=minimal"},body:JSON.stringify({applied:true})});
-      }catch(e){console.error("[update] Failed to apply:",e);}
-    }
-    return{data:nd,applied};
-  }catch(e){console.error("[update] Error fetching updates:",e);return{data:currentData,applied:[]};}
-};
-
 // ═══ APP ═══
 window.App = function App(){
   const [tab,setTab]=useState("dashboard");
   const [data,setData]=useState(()=>{const raw=ld();return seedHistorical(raw?migrate(raw):bl());});
   const [workout,setWorkoutRaw]=useState(()=>{try{const w=localStorage.getItem("dhub6_workout");return w?JSON.parse(w):null;}catch{return null;}});
   const setWorkout=(v)=>{setWorkoutRaw(prev=>{const next=typeof v==="function"?v(prev):v;try{if(next)localStorage.setItem("dhub6_workout",JSON.stringify(next));else localStorage.removeItem("dhub6_workout");}catch{}return next;});};
-  const [sbLoaded,setSbLoaded]=useState(false);
   const [syncStatus,setSyncStatus]=useState("");
   const [toasts,setToasts]=useState([]);
   const [syncFailures,setSyncFailures]=useState({});
@@ -5177,9 +5083,7 @@ window.App = function App(){
           const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
           const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
           if(localHasData&&sbEmpty){
-            setSyncStatus("Migrating local data...");
-            await syncToSB(final);
-            setSyncStatus("Migration complete");
+            setSyncStatus("Local data loaded · migration requires approved maintenance");
             setTimeout(()=>setSyncStatus(""),3000);
           }
         }else{
@@ -5188,18 +5092,14 @@ window.App = function App(){
       }else{
         finalData=data;
       }
-      // Apply pending program updates from Supabase queue
-      const{data:updated,applied}=await applyProgramUpdates(finalData);
+      // Browser boot is read-only: pending program updates and migrations require approved maintenance.
+      const updated=finalData;
       backfillData(updated);repairDeloadProgression(updated);
-      // Block v2 runs last so its weight fixes win over history replays of the bad logs
-      const v2Changed=applyBlockV2(updated);
+      // Block v2 and progression pruning normalize local render state only; they must not write on view.
+      applyBlockV2(updated);
       const pruned=pruneProgression(updated);
       setData(updated);sv(updated);
-      if(v2Changed){svSB.settings(updated.settings);svSB.program(updated.program);}
-      Object.entries(updated.prog).forEach(([exId,p])=>{if(p.currentWeight)svSB.progression(exId,p);});
-      applied.forEach(msg=>addToast(msg,"success"));
-      if(pruned)addToast(`Cleaned ${pruned} orphaned lift record${pruned===1?"":"s"} (archived by cleanup migration)`,"success");
-      setSbLoaded(true);
+      if(pruned)console.log(`[prune] Local-only cleanup removed ${pruned} orphaned lift record${pruned===1?"":"s"}`);
     })();
     // Register service worker for notifications
     if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(async r=>{await r.update();if(r.waiting)r.waiting.postMessage({type:'SKIP_WAITING'});}).catch(()=>{});}
@@ -5215,21 +5115,11 @@ window.App = function App(){
 
   useEffect(()=>{
     sv(data);
-    if(sbLoaded)syncToSB(data);
-  },[data,sbLoaded]);
+  },[data]);
 
-  // Self-heal dropped requests: when connectivity returns or the app comes
-  // back to the foreground with recorded failures, push a full sync.
-  const dataRef=useRef(data);
-  useEffect(()=>{dataRef.current=data;},[data]);
-  useEffect(()=>{
-    if(!sbLoaded)return;
-    const kick=()=>syncToSB(dataRef.current);
-    const vis=()=>{if(document.visibilityState==="visible"&&Object.keys(syncHealth.failures).length)kick();};
-    window.addEventListener("online",kick);
-    document.addEventListener("visibilitychange",vis);
-    return()=>{window.removeEventListener("online",kick);document.removeEventListener("visibilitychange",vis);};
-  },[sbLoaded]);
+  // Browser self-heal must not perform full-object writes on foreground/online.
+  // Failed targeted writes remain visible in Setup via syncFailures; retry happens
+  // through the next explicit user action for that table.
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Barlow',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
