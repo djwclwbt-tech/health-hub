@@ -56,21 +56,36 @@ const PROG = {
   checkpoint:{week:4,date:"2026-08-02"},startWeight:192,targetWeight:180,
   mobility:{
     _default:[
-      {id:"hip-flexor",name:"Kneeling Hip Flexor Stretch",dur:90,sets:2,sides:["Left","Right"],
-       notes:"Most important one. Squeeze the down-knee glute hard the whole time.",
-       cue:"Half-kneel with one knee down. Squeeze the glute of the down leg hard and shift your hips forward until you feel it down the front of that hip. Stay tall through your chest, don't arch your low back."},
-      {id:"hip-90-90",name:"Hip 90/90",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Internal and external rotation · feeds squat depth",
-       cue:"Sit with both legs bent at 90°, front shin across your body. Keep your chest tall and hinge forward over the front shin until the outside of that hip lights up. Swivel your knees to switch sides."},
-      {id:"pigeon",name:"Pigeon Stretch",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Figure-4 on your back if pigeon bothers your knee or back.",
-       cue:"Front shin flat on the floor, back leg straight behind you. Square your hips, then lean your chest forward over the shin. You should feel it deep in the glute, never in the knee."},
-      {id:"psoas-release",name:"Supine Psoas Release",dur:90,sets:2,sides:["Left","Right"],
-       notes:"Left side priority. 90 seconds minimum per side.",
-       cue:"Lie on your back near the edge of the bed and let one leg hang off. Hug the other knee to your chest and let the hanging leg go completely loose. Breathe slow and feel the front of the hip let go."},
-      {id:"spinal-twist",name:"Supine Spinal Twist",dur:60,sets:2,sides:["Left","Right"],
-       notes:"Decompresses the low back after loading.",
-       cue:"On your back, pull one knee across your body toward the floor. Keep both shoulders flat on the ground and turn your head the other way. Let the low back unwind into it."},
+      {id:"reset-breathing-open",name:"90/90 Breathing",dur:60,sets:1,sides:["Reset"],
+       notes:"Start here. Downshift before mobility work.",
+       cue:"Lie on your back with feet on a wall or chair, knees bent. Ribs down, pelvis heavy, five slow breaths into the low back."},
+      {id:"glute-bridge",name:"Glute Bridge",dur:75,sets:2,sides:["Set 1","Set 2"],
+       notes:"Stability before stretching. Stop if your low back takes over.",
+       cue:"Feet even, ribs down. Drive through heels, squeeze glutes for three seconds at the top, lower with control."},
+      {id:"bird-dog",name:"Bird Dog",dur:90,sets:2,sides:["Set 1","Set 2"],
+       notes:"Slow eight reps per side. No hip rotation.",
+       cue:"Brace lightly, reach long through opposite arm and leg, pause, then return without shifting your hips."},
+      {id:"side-plank",name:"Side Plank",dur:30,sets:4,sides:["Right 1","Left 1","Right 2","Left 2"],
+       notes:"If left side feels less stable, add one extra left set after the routine.",
+       cue:"Elbow under shoulder, ribs stacked over pelvis. Stay long; do not twist or sag."},
+      {id:"couch-stretch",name:"Couch Stretch",dur:60,sets:1,sides:["Right"],
+       notes:"Gentle hip-flexor opening. Do not arch the low back.",
+       cue:"Back knee near wall or bench, glute squeezed, ribs stacked. Ease forward only until the front of the hip opens."},
+      {id:"couch-stretch",name:"Couch Stretch",dur:90,sets:1,sides:["Left"],
+       notes:"Left side priority for the psoas/SI chain.",
+       cue:"Back knee near wall or bench, glute squeezed, ribs stacked. Keep the stretch in the front of the hip, not the low back."},
+      {id:"hip-90-90",name:"90/90 Switches",dur:60,sets:1,sides:["Flow"],
+       notes:"Controlled rotation, not max range.",
+       cue:"Sit tall with both knees bent. Rotate side to side slowly, keeping the movement smooth and quiet."},
+      {id:"pigeon",name:"Pigeon / Figure-4",dur:60,sets:1,sides:["Right"],
+       notes:"Use figure-4 on your back if pigeon bothers your knee or back.",
+       cue:"Find the glute/hip stretch only. No nerve pull, no hamstring tug, no forcing range."},
+      {id:"pigeon",name:"Pigeon / Figure-4",dur:90,sets:1,sides:["Left"],
+       notes:"Left side priority. Gentle only.",
+       cue:"Find the glute/hip stretch only. No nerve pull, no hamstring tug, no forcing range."},
+      {id:"reset-breathing-close",name:"90/90 Breathing",dur:60,sets:1,sides:["Close"],
+       notes:"Finish loose. Do not add extra hamstring stretching.",
+       cue:"Ribs down, pelvis heavy, five slow breaths. Let the low back settle before sleep."},
     ],
   },
   days:{
@@ -3268,8 +3283,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
             <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Tonight's sequence · start when ready, or skip today to stop the reminder.</div>
-            {mobExercises.map(ex=>(
-              <div key={ex.id} style={{padding:"7px 0",borderBottom:`1px solid ${C.bl}`}}>
+            {mobExercises.map((ex,i)=>(
+              <div key={`${ex.id}-${i}`} style={{padding:"7px 0",borderBottom:`1px solid ${C.bl}`}}>
                 <div style={{fontSize:13,fontWeight:750,color:C.t}}>{ex.name}</div>
                 <div style={{fontSize:11,color:C.t3}}>{ex.sets}×{ex.dur}s · {ex.sides.join(" / ")}</div>
                 <div style={{fontSize:11,color:C.t2,marginTop:2}}>{ex.cue}</div>
@@ -3294,7 +3309,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             const isCurrent=ei===stretchExIdx;
             const exDoneSets=ex.sides.filter((_,si)=>stretchDone.includes(`${ei}-${si}`)).length;
             const exComplete=exDoneSets===ex.sets;
-            return(<X key={ex.id} style={{padding:isCurrent?12:8,
+            return(<X key={`${ex.id}-${ei}`} style={{padding:isCurrent?12:8,
               borderLeft:`3px solid ${exComplete?C.g:isCurrent?C.v:C.bd}`,
               opacity:exComplete?0.5:1}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -3319,7 +3334,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                     </div>);})()}
                   <div style={{textAlign:"center",marginBottom:6}}>
                     <span style={{fontSize:13,fontWeight:700,color:C.v}}>
-                      {ex.sides[stretchSetIdx]} Side · Set {stretchSetIdx+1}/{ex.sets}
+                      {ex.sides[stretchSetIdx]} · Step {stretchSetIdx+1}/{ex.sets}
                     </span>
                   </div>
                   {stretchRunning?(
