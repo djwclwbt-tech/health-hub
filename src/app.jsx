@@ -1,262 +1,6 @@
 const { useState, useEffect, useRef, useCallback } = React;
-
-// ═══ PROGRAM ═══
-const PROG = {
-  name:"Summer Cut v2",weeks:8,deload:4,start:"2026-07-06",end:"2026-08-30",
-  checkpoint:{week:4,date:"2026-08-02"},startWeight:192,targetWeight:180,
-  mobility:{
-    _default:[
-      {id:"reset-breathing-open",name:"90/90 Breathing",dur:60,sets:1,sides:["Reset"],
-       notes:"Start here. Downshift before mobility work.",
-       cue:"Lie on your back with feet on a wall or chair, knees bent. Ribs down, pelvis heavy, five slow breaths into the low back."},
-      {id:"glute-bridge",name:"Glute Bridge",dur:75,sets:2,sides:["Set 1","Set 2"],
-       notes:"Stability before stretching. Stop if your low back takes over.",
-       cue:"Feet even, ribs down. Drive through heels, squeeze glutes for three seconds at the top, lower with control."},
-      {id:"side-plank",name:"Side Plank",dur:30,sets:4,sides:["Right 1","Left 1","Right 2","Left 2"],
-       notes:"If left side feels less stable, add one extra left set after the routine.",
-       cue:"Elbow under shoulder, ribs stacked over pelvis. Stay long; do not twist or sag."},
-      {id:"bird-dog",name:"Bird Dog",dur:90,sets:2,sides:["Set 1","Set 2"],
-       notes:"Slow eight reps per side. No hip rotation.",
-       cue:"Brace lightly, reach long through opposite arm and leg, pause, then return without shifting your hips."},
-      {id:"couch-stretch",name:"Couch / Half-Kneeling Psoas Stretch",dur:60,sets:1,sides:["Right"],
-       notes:"Gentle hip-flexor opening after stability work. Use half-kneeling if couch setup irritates the back.",
-       cue:"Back knee near wall or bench, glute squeezed, ribs stacked. Ease forward only until the front of the hip opens."},
-      {id:"couch-stretch",name:"Couch / Half-Kneeling Psoas Stretch",dur:90,sets:1,sides:["Left"],
-       notes:"Left side priority for the psoas/SI chain. Stop if it turns into low-back pressure.",
-       cue:"Back knee near wall or bench, glute squeezed, ribs stacked. Keep the stretch in the front of the hip, not the low back."},
-      {id:"hip-90-90",name:"90/90 Switches",dur:60,sets:1,sides:["Flow"],
-       notes:"Controlled rotation, not max range.",
-       cue:"Sit tall with both knees bent. Rotate side to side slowly, keeping the movement smooth and quiet."},
-      {id:"figure-4",name:"Figure-4 / Pigeon",dur:60,sets:1,sides:["Right"],
-       notes:"Figure-4 is the default. Only use pigeon if it does not tug the knee, hamstring, or SI area.",
-       cue:"Find the glute/hip stretch only. No nerve pull, no hamstring tug, no forcing range."},
-      {id:"figure-4",name:"Figure-4 / Pigeon",dur:90,sets:1,sides:["Left"],
-       notes:"Left side priority. Gentle only; this is not a max-ROM drill.",
-       cue:"Find the glute/hip stretch only. No nerve pull, no hamstring tug, no forcing range."},
-      {id:"reset-breathing-close",name:"90/90 Breathing",dur:60,sets:1,sides:["Close"],
-       notes:"Finish loose. Do not add extra hamstring stretching.",
-       cue:"Ribs down, pelvis heavy, five slow breaths. Let the low back settle before sleep."},
-    ],
-  },
-  days:{
-    monday:{name:"Upper A · Strength",focus:"Strength",reps:"5-8",
-      warmup:{cardio:"5 min bike",moves:[
-        {name:"Band Pull-Aparts",rx:"15 reps"},
-        {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
-      ],ramp:"1-2 ramp-up sets on your first press"},
-      exercises:[
-        {id:"flat-bench",name:"Barbell Flat Bench",sets:3,rr:[5,8],rest:150,sw:175,inc:5,unit:"lbs",anchor:true,notes:"Anchor · progresses +5/wk when all sets hit",cue:"Pinch your shoulder blades like you're holding a pencil between them, push the floor with your feet. Feel the chest stretch at the bottom, then squeeze it to press up"},
-        {id:"seated-row",name:"Seated Row Machine",sets:2,rr:[5,8],rest:120,sw:160,inc:5,unit:"lbs",notes:"1s squeeze",cue:"Hands are hooks. Pull with your elbows and feel the middle of your back do the work, hold the squeeze one second"},
-        {id:"smith-ohp",name:"Smith OHP",sets:2,rr:[5,8],rest:120,sw:85,inc:5,unit:"lbs",notes:"Brace hard",cue:"Squeeze your butt and belly into one solid pillar. Press straight up and feel your shoulders, not your arms, carry it"},
-        {id:"lat-pulldown",name:"Lat Pulldown",sets:2,rr:[5,8],rest:120,sw:145,inc:5,unit:"lbs",notes:"Full stretch",cue:"Pull your elbows down into your back pockets, chest tall. Feel the muscles under your armpits do the pulling"},
-        {id:"cable-fly",name:"Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Hug a barrel. Deep stretch across the chest when your arms are wide, squeeze the middle of your chest as your hands meet"},
-      ]},
-    tuesday:{name:"Lower A · Strength",focus:"Strength",reps:"5-8",
-      warmup:{cardio:"5 min bike (easy pace)",moves:[
-        {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
-        {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
-        {name:"QL Side Stretch",rx:"20s per side"},
-      ],ramp:"1-2 ramp-up sets on your first exercise"},
-      exercises:[
-        {id:"deadlift",name:"Deadlift (BB)",sets:3,rr:[5,5],rest:180,sw:235,inc:10,unit:"lbs",anchor:true,notes:"Anchor · fixed 3×5, progresses +10/wk when reps hold",cue:"Wedge in, big breath, push the floor away. The bar stays on your legs the whole way"},
-        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:120,sw:360,inc:10,unit:"lbs",notes:"Full depth",cue:"All the way down, drive through your whole foot. Feel your thighs load at the bottom"},
-        {id:"lying-leg-curl",name:"Lying Leg Curl",sets:2,rr:[5,8],rest:90,sw:130,inc:5,unit:"lbs",notes:"3s eccentric",cue:"Pull your heels to your butt and squeeze the back of your thighs. Lower slow, three counts"},
-        {id:"standing-calf",name:"Standing Calf Raise",sets:2,rr:[5,8],rest:90,sw:290,inc:10,unit:"lbs",notes:"2s pause top",cue:"Full stretch at the bottom, then drive up onto your big toe and hold the top for two"},
-      ]},
-    wednesday:{name:"Mobility + Arms",focus:"Core",reps:"10-15",
-      warmup:{cardio:"5 min bike",note:"Mobility block first, then arms.",moves:[]},
-      exercises:[
-        {id:"incline-db-curl",name:"Incline DB Curl",sets:2,rr:[10,12],rest:0,sw:15,inc:2.5,unit:"lbs",notes:"Superset 1A · then OH rope extension",cue:"Let your arms hang all the way back and feel the biceps stretch. Curl without swinging"},
-        {id:"oh-tricep-ext",name:"Overhead Tricep Extension",sets:2,rr:[10,12],rest:60,sw:40,inc:5,unit:"lbs",notes:"Superset 1B · rest 60s after this",cue:"Elbows tight by your head. Feel the back of your arms stretch deep, then squeeze to lock out"},
-        {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",sets:2,rr:[10,12],rest:0,sw:30,inc:5,unit:"lbs",notes:"Superset 2A · then tricep pushdown",cue:"Thumbs up, elbows pinned to your sides. Squeeze at the top and feel the outside of your arms"},
-        {id:"tricep-pushdown",name:"Tricep Pushdown",sets:2,rr:[10,12],rest:60,sw:50,inc:5,unit:"lbs",notes:"Superset 2B · rest 60s after this",cue:"Pin your elbows to your ribs. Squeeze the back of your arms hard at the bottom, let it up slow"},
-        {id:"reverse-curl",name:"Reverse Curl",sets:2,rr:[12,15],rest:0,sw:40,inc:5,unit:"lbs",notes:"Superset 3A · then wrist curl",cue:"Knuckles up, curl slow. Feel the burn along the top of your forearms"},
-        {id:"wrist-curl",name:"Wrist Curl",sets:2,rr:[12,15],rest:45,sw:20,inc:5,unit:"lbs",notes:"Superset 3B · rest 45s after this",cue:"Let the bar roll to your fingertips, curl it back up and squeeze your forearms"},
-      ]},
-    thursday:{name:"Upper B · Hypertrophy",focus:"Hypertrophy",reps:"10-12",
-      warmup:{cardio:"5 min bike",moves:[
-        {name:"Band Pull-Aparts",rx:"15 reps"},
-        {name:"Shoulder Halos (light KB/plate, 10-15 lbs)",rx:"8 per direction"},
-      ],ramp:"1-2 ramp-up sets on your first press"},
-      exercises:[
-        {id:"db-incline-press",name:"DB Incline Press",sets:2,rr:[10,12],rest:90,sw:40,inc:5,unit:"lbs/hand",notes:"30-45° bench",cue:"Feel the top of your chest stretch at the bottom. Drive the dumbbells up and in, then squeeze"},
-        {id:"overhand-cable-row",name:"Overhand Cable Row",sets:2,rr:[10,12],rest:90,sw:110,inc:5,unit:"lbs",notes:"1s pause",cue:"Knuckles up, pull to your ribs. Pause and feel your upper back pinch for one second"},
-        {id:"lateral-raise",name:"Cable Lateral Raise",sets:2,rr:[10,12],rest:60,sw:12.5,inc:2.5,unit:"lbs",notes:"Lead w/ elbows",cue:"Lead with your elbows, like pouring water from a pitcher. Feel the side of your shoulders float the weight"},
-        {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",sets:2,rr:[12,15],rest:60,sw:15,inc:2.5,unit:"lbs/side",notes:"Finisher, RIR 2",cue:"Sweep low to high and feel the top of your chest. Squeeze where your hands meet"},
-        {id:"reverse-fly",name:"Reverse Fly",sets:2,rr:[10,12],rest:60,sw:25,inc:5,unit:"lbs",notes:"Rear delts",cue:"Lead with your elbows and pinch your shoulder blades. Feel the back of your shoulders, not your arms"},
-      ]},
-    friday:{name:"Lower B · Hypertrophy",focus:"Hypertrophy",reps:"10-12",
-      warmup:{cardio:"5 min bike (easy pace)",moves:[
-        {name:"Dead Bugs",rx:"10 per side, slow and controlled"},
-        {name:"Half-Kneeling Psoas Stretch",rx:"30s per side, extra round on left"},
-        {name:"QL Side Stretch",rx:"20s per side"},
-      ],ramp:"1-2 ramp-up sets on your first exercise"},
-      exercises:[
-        {id:"leg-press",name:"Leg Press",sets:2,rr:[5,8],rest:120,sw:450,inc:10,unit:"lbs",anchor:true,notes:"Squat replacement while SI/psoas symptoms are active or unknown · progress only when both sets hit 8 clean",cue:"Brace, ribs down, pelvis quiet. Lower only as deep as you can without butt-wink, SI pinch, or hip-flexor grab; drive through your whole foot"},
-        {id:"rdl",name:"Romanian Deadlift",sets:2,rr:[8,10],rest:90,sw:125,inc:10,unit:"lbs",notes:"Feel hamstrings",cue:"Push your hips back like you're closing a car door with your butt. The bar slides on your legs, feel the hamstrings stretch"},
-        {id:"leg-extension",name:"Leg Extension",sets:2,rr:[10,12],rest:60,sw:120,inc:5,unit:"lbs",notes:"Full squeeze",cue:"Kick to full lockout and squeeze the front of your thigh hard for one second"},
-        {id:"bulgarian-split-squat",name:"Bulgarian Split Squat (DB)",sets:2,rr:[10,12],rest:90,sw:25,inc:5,unit:"lbs/hand",notes:"Each leg",cue:"Back foot up, drop the back knee straight down. Drive up through the front heel and feel that glute"},
-        {id:"seated-calf",name:"Seated Calf Raise",sets:2,rr:[10,12],rest:60,sw:90,inc:5,unit:"lbs",notes:"Slow full ROM",cue:"Targets soleus, full stretch at bottom, slow 2s up"},
-      ]},
-  },
-  variants:{},
-};
-const WU=w=>{if(!w||w<=0)return[];const s=[];
-  if(w>=95)s.push({w:Math.round(w*.5/5)*5,r:10,l:"50%"});
-  if(w>=135)s.push({w:Math.round(w*.7/5)*5,r:5,l:"70%"});
-  if(w>=155)s.push({w:Math.round(w*.85/5)*5,r:3,l:"85%"});return s;};
-
-// Progression is tracked by lift + rep range so strength and hypertrophy slots don't corrupt each other.
-const repTrack=rr=>(rr&&rr.length===2)?`${rr[0]}-${rr[1]}`:"default";
-const rrTxt=rr=>(rr&&rr.length===2)?(rr[0]===rr[1]?String(rr[0]):rr.join("-")):"";
-const progKey=(ex,slot)=>ex?.progKey||`${ex?.id}__${repTrack((slot||ex)?.rr)}`;
-const legacyAmbiguousIds=new Set(["leg-press","rdl","lying-leg-curl"]);
-const saneSet=s=>s&&s.done&&Number(s.reps)>0&&(Number(s.weight)>0||s.weight===0);
-const sameRepTrack=(a,b)=>repTrack(a)===repTrack(b);
-
-const WED_SUPERSETS={
-  "incline-db-curl":"1A · pair with Overhead Tricep Extension",
-  "oh-tricep-ext":"1B · rest 60s after this",
-  "cable-hammer-curl":"2A · pair with Tricep Pushdown",
-  "tricep-pushdown":"2B · rest 60s after this",
-  "reverse-curl":"3A · pair with Wrist Curl",
-  "wrist-curl":"3B · rest 45s after this",
-};
-const supersetLabel=(day,ex)=>day==="wednesday"?WED_SUPERSETS[ex?.id]:null;
-
-const EXERCISE_LIBRARY=[
-  // Chest fly / pre-exhaust
-  {id:"cable-fly",name:"Cable Fly",pattern:"chest-fly",region:"chest",sw:15,unit:"lbs/side",inc:2.5,cue:"Slight forward lean, feel deep chest stretch, squeeze at center"},
-  {id:"low-high-cable-fly",name:"Low-to-High Cable Fly",pattern:"chest-fly",region:"upper chest",sw:15,unit:"lbs/side",inc:2.5,cue:"Drive from low to high, feel upper chest, squeeze at top"},
-  {id:"pec-deck",name:"Pec Deck",pattern:"chest-fly",region:"chest",sw:60,unit:"lbs",inc:5,cue:"Soft elbows, bring pads together with chest, slow return"},
-  {id:"db-fly",name:"DB Fly",pattern:"chest-fly",region:"chest",sw:15,unit:"lbs/hand",inc:2.5,cue:"Small elbow bend, deep stretch, stop before shoulder strain"},
-  // Chest press
-  {id:"flat-bench",name:"Barbell Flat Bench",pattern:"chest-press",region:"chest",sw:175,unit:"lbs",inc:5,cue:"Retract scapula, feet driven into floor, touch and press"},
-  {id:"converging-chest-press",name:"Converging Chest Press",pattern:"chest-press",region:"chest",sw:140,unit:"lbs",inc:5,cue:"Squeeze chest hard at peak contraction, controlled eccentric"},
-  {id:"smith-flat-bench",name:"Smith Flat Bench",pattern:"chest-press",region:"chest",sw:135,unit:"lbs",inc:5,cue:"Retract scapula, drive through chest not shoulders"},
-  {id:"smith-incline",name:"Smith Incline Press",pattern:"chest-press",region:"upper chest",sw:105,unit:"lbs",inc:5,cue:"Feel upper chest stretch at bottom, squeeze at top"},
-  {id:"db-incline-press",name:"DB Incline Press",pattern:"chest-press",region:"upper chest",sw:40,unit:"lbs/hand",inc:5,cue:"30-45° bench, stretch under control, drive up and in"},
-  {id:"machine-chest-press",name:"Machine Chest Press",pattern:"chest-press",region:"chest",sw:100,unit:"lbs",inc:5,cue:"Set handles mid-chest, pause lightly, press without shrugging"},
-  // Rows / pulldowns
-  {id:"seated-row",name:"Seated Row Machine",pattern:"horizontal-pull",region:"mid-back",sw:160,unit:"lbs",inc:5,cue:"Pull elbows past torso, squeeze mid-back hard"},
-  {id:"overhand-cable-row",name:"Overhand Cable Row",pattern:"horizontal-pull",region:"upper back",sw:110,unit:"lbs",inc:5,cue:"Overhand grip hits upper back, pause and squeeze"},
-  {id:"dumbbell-row",name:"DB Row",pattern:"horizontal-pull",region:"lats",sw:60,unit:"lbs/hand",inc:5,cue:"Row to hip, elbow close, full stretch at bottom"},
-  {id:"chest-supported-row",name:"Chest-Supported Row",pattern:"horizontal-pull",region:"mid-back",sw:70,unit:"lbs",inc:5,cue:"Chest pinned, pull elbows back, no body English"},
-  {id:"lat-pulldown",name:"Lat Pulldown",pattern:"vertical-pull",region:"lats",sw:145,unit:"lbs",inc:5,cue:"Drive elbows down to hips, feel lats stretch at top"},
-  {id:"close-grip-pulldown",name:"Close-Grip Pulldown",pattern:"vertical-pull",region:"lats",sw:130,unit:"lbs",inc:5,cue:"Squeeze lats hard at bottom, full stretch at top"},
-  {id:"pull-ups",name:"Pull-ups",pattern:"vertical-pull",region:"lats",sw:0,unit:"BW",inc:0,cue:"Full hang, drive elbows down, chest tall"},
-  // Shoulders
-  {id:"smith-ohp",name:"Smith OHP",pattern:"vertical-press",region:"shoulders",sw:85,unit:"lbs",inc:5,cue:"Brace core tight, press straight overhead not forward"},
-  {id:"db-shoulder-press",name:"DB Shoulder Press",pattern:"vertical-press",region:"shoulders",sw:35,unit:"lbs/hand",inc:2.5,cue:"Press straight overhead, ribs down, control the bottom"},
-  {id:"machine-shoulder-press",name:"Machine Shoulder Press",pattern:"vertical-press",region:"shoulders",sw:70,unit:"lbs",inc:5,cue:"Seat low enough to press from chin height, don't shrug"},
-  {id:"lateral-raise",name:"Cable Lateral Raise",pattern:"lateral-delt",region:"side delts",sw:12.5,unit:"lbs",inc:2.5,cue:"Elbows above wrists, pour water out of a pitcher"},
-  {id:"db-lateral-raise",name:"DB Lateral Raise",pattern:"lateral-delt",region:"side delts",sw:15,unit:"lbs/hand",inc:2.5,cue:"Lead with elbows, slight forward lean, stop at shoulder height"},
-  {id:"reverse-fly",name:"Reverse Fly",pattern:"rear-delt",region:"rear delts",sw:25,unit:"lbs",inc:5,cue:"Pinch shoulder blades, lead with elbows not hands"},
-  {id:"face-pull",name:"Face Pull",pattern:"rear-delt",region:"rear delts",sw:40,unit:"lbs",inc:5,cue:"Pull to forehead, elbows high, rotate thumbs back"},
-  // Quads / squat patterns
-  {id:"back-squat",name:"Back Squat (BB)",pattern:"squat",region:"quads",sw:135,unit:"lbs",inc:10,cue:"Brace hard, sit between your legs, drive up out of the hole"},
-  {id:"front-squat",name:"Front Squat (BB)",pattern:"squat",region:"quads",sw:135,unit:"lbs",inc:5,cue:"Elbows up, sit between legs, drive out of hole"},
-  {id:"hack-squat",name:"Hack Squat",pattern:"squat",region:"quads",sw:180,unit:"lbs",inc:10,cue:"Knees track over toes, stay upright through core"},
-  {id:"leg-press",name:"Leg Press",pattern:"squat",region:"quads",sw:300,unit:"lbs",inc:10,cue:"Full depth, drive through whole foot not just toes"},
-  {id:"goblet-squat",name:"Goblet Squat (DB)",pattern:"squat",region:"quads",sw:50,unit:"lbs",inc:5,cue:"Elbows inside knees, chest up, sit into hips"},
-  {id:"leg-extension",name:"Leg Extension",pattern:"knee-extension",region:"quads",sw:70,unit:"lbs",inc:5,cue:"Lock out at top, squeeze quad hard, slow eccentric"},
-  // Hip hinge / hamstrings
-  {id:"deadlift",name:"Deadlift (BB)",pattern:"hinge",region:"posterior chain",sw:235,unit:"lbs",inc:10,cue:"Wedge in, brace hard, push the floor away · bar stays close"},
-  {id:"rdl",name:"Romanian Deadlift",pattern:"hinge",region:"hamstrings",sw:125,unit:"lbs",inc:10,cue:"Push hips back like closing a car door, bar stays on legs"},
-  {id:"sldl",name:"Stiff-Leg Deadlift",pattern:"hinge",region:"hamstrings",sw:95,unit:"lbs",inc:10,cue:"Slight knee bend, hinge at hips, feel hamstring stretch"},
-  {id:"cable-pull-through",name:"Cable Pull-Through",pattern:"hinge",region:"glutes/hamstrings",sw:70,unit:"lbs",inc:5,cue:"Push hips back, squeeze glutes at top, arms are hooks"},
-  {id:"lying-leg-curl",name:"Lying Leg Curl",pattern:"leg-curl",region:"hamstrings",sw:90,unit:"lbs",inc:5,cue:"Drive heels toward glutes, squeeze hamstrings at peak"},
-  {id:"seated-leg-curl",name:"Seated Leg Curl",pattern:"leg-curl",region:"hamstrings",sw:90,unit:"lbs",inc:5,cue:"Pin hips down, curl smoothly, slow negative"},
-  // Calves / arms
-  {id:"standing-calf",name:"Standing Calf Raise",pattern:"calf",region:"calves",sw:180,unit:"lbs",inc:10,cue:"Full stretch at bottom, drive up on big toe"},
-  {id:"seated-calf",name:"Seated Calf Raise",pattern:"calf",region:"calves",sw:90,unit:"lbs",inc:5,cue:"Targets soleus, full stretch at bottom, slow 2s up"},
-  {id:"incline-db-curl",name:"Incline DB Curl",pattern:"biceps",region:"biceps",sw:15,unit:"lbs/hand",inc:2.5,cue:"Let arms hang fully stretched, don't swing"},
-  {id:"cable-curl",name:"Cable Curl",pattern:"biceps",region:"biceps",sw:35,unit:"lbs",inc:5,cue:"Keep elbows forward, squeeze at top"},
-  {id:"preacher-curl",name:"Preacher Curl",pattern:"biceps",region:"biceps",sw:40,unit:"lbs",inc:5,cue:"Full stretch at bottom, squeeze hard at top"},
-  {id:"cable-hammer-curl",name:"Cable Hammer Curl (Rope)",pattern:"brachialis",region:"arms",sw:30,unit:"lbs",inc:5,cue:"Neutral grip, keep elbows pinned, squeeze at top"},
-  {id:"db-hammer-curl",name:"DB Hammer Curl",pattern:"brachialis",region:"arms",sw:20,unit:"lbs/hand",inc:2.5,cue:"Thumbs up, no swing, control the negative"},
-  {id:"oh-tricep-ext",name:"Overhead Tricep Extension",pattern:"triceps",region:"triceps",sw:40,unit:"lbs",inc:5,cue:"Keep elbows tight, stretch tricep fully, squeeze at top"},
-  {id:"tricep-pushdown",name:"Tricep Pushdown",pattern:"triceps",region:"triceps",sw:50,unit:"lbs",inc:5,cue:"Pin elbows at sides, squeeze at bottom, control eccentric"},
-  {id:"reverse-curl",name:"Reverse Curl",pattern:"forearms",region:"forearms",sw:40,unit:"lbs",inc:5,cue:"Overhand grip, slow controlled curl, feel forearms burn"},
-  {id:"wrist-curl",name:"Wrist Curl",pattern:"forearms",region:"forearms",sw:20,unit:"lbs",inc:5,cue:"Let bar roll to fingertips, curl back up, squeeze forearms"},
-];
-const exLibById=Object.fromEntries(EXERCISE_LIBRARY.map(e=>[e.id,e]));
-// Short display names for strips/charts: drop filler words, keep the lift word.
-const SHORT_FILLER=new Set(["barbell","db","bb","machine","smith","seated","lying","standing","cable","(bb)","(db)"]);
-const shortLiftName=n=>{const ws=(n||"").replace(/[()]/g,"").split(" ").filter(w=>!SHORT_FILLER.has(w.toLowerCase()));return(ws[ws.length-1]||n||"").toUpperCase().slice(0,8);};
-// Stick-figure pose diagrams for the guided stretch (mock 6e) · 72×56 viewBox,
-// hl = the ember-highlighted segment where you should feel it.
-const STRETCH_POSES={
-  "hip-flexor":{pose:"M10,38 L24,50 L36,38 L52,40 L54,52 M36,38 L36,18 M36,22 L46,34",hl:"M24,50 L36,38",hx:36,hy:11},
-  "hip-90-90":{pose:"M30,44 L16,48 L10,40 M30,44 L44,48 L52,42 M30,44 L40,22",hl:"M30,44 L16,48",hx:43,hy:16},
-  "pigeon":{pose:"M8,50 L30,46 L46,50 L32,52 M30,46 L42,22 M42,24 L54,46",hl:"M30,46 L46,50",hx:44,hy:15},
-  "psoas-release":{prop:"M6,34 h34 v18 h-34 z",pose:"M10,30 L36,30 M36,30 L46,44 L48,52 M28,30 L34,18",hl:"M36,30 L46,44",hx:8,hy:26},
-  "spinal-twist":{pose:"M10,50 L50,50 M34,50 L28,36 L18,40",hl:"M28,36 L18,40",hx:54,hy:46},
-};
-const weightCap=ex=>{
-  const p=(exLibById[ex?.id]?.pattern||ex?.pattern||"");
-  const unit=ex?.unit||exLibById[ex?.id]?.unit||"";
-  if(unit==="BW")return 0;
-  if(["chest-fly","lateral-delt","rear-delt"].includes(p))return unit.includes("side")||unit.includes("hand")?60:120;
-  if(["biceps","brachialis","triceps","forearms"].includes(p))return unit.includes("hand")?70:120;
-  if(["chest-press"].includes(p))return unit.includes("hand")?100:350;
-  if(["horizontal-pull","vertical-pull"].includes(p))return unit.includes("hand")?120:300;
-  if(["vertical-press"].includes(p))return unit.includes("hand")?100:200;
-  if(["leg-curl","knee-extension"].includes(p))return 220;
-  if(["calf"].includes(p))return 450;
-  if(["squat"].includes(p))return ex?.id==="leg-press"?700:405;
-  if(["hinge"].includes(p))return 405;
-  return 350;
-};
-const saneWeight=(ex,w)=>w==null||Number(w)<=weightCap(ex);
-const cutStepsTarget=(settings)=>Math.max(Number(settings?.steps)||DEFAULTS.steps,DEFAULTS.steps);
-const CUT_HOLD_PROGRESSION=true;
-const matchingProgKeys=(ex)=>{
-  if(!ex?.id)return[];
-  const keys=[ex.id];
-  if(ex.progKey)keys.unshift(ex.progKey);
-  if(ex.rr)keys.unshift(progKey(ex,ex));
-  return [...new Set(keys)];
-};
-const getProgEntry=(prog,ex)=>matchingProgKeys(ex).map(k=>prog?.[k]).find(Boolean)||null;
-const getProgHistory=(prog,ex)=>matchingProgKeys(ex).flatMap(k=>prog?.[k]?.e1rmHistory||[]);
-const getProgPr=(prog,ex)=>matchingProgKeys(ex).map(k=>prog?.[k]?.pr).filter(Boolean).sort((a,b)=>(b.e1rm||0)-(a.e1rm||0))[0]||null;
-const relatedPatterns={
-  "chest-press":["chest-press"],"chest-fly":["chest-fly","chest-press"],
-  "horizontal-pull":["horizontal-pull","vertical-pull"],"vertical-pull":["vertical-pull","horizontal-pull"],
-  "vertical-press":["vertical-press"],"lateral-delt":["lateral-delt","rear-delt"],"rear-delt":["rear-delt","horizontal-pull"],
-  "squat":["squat","knee-extension"],"knee-extension":["knee-extension","squat"],"hinge":["hinge","leg-curl"],"leg-curl":["leg-curl","hinge"],
-  "calf":["calf"],"biceps":["biceps","brachialis"],"brachialis":["brachialis","biceps"],"triceps":["triceps"],"forearms":["forearms","brachialis"]
-};
-
-// Dinner rotation from the Jul 6 cut plan. Shared dinners, two plate sizes.
-const DINNERS={
-  monday:{name:"Sheet-pan salmon",tag:"FISH 1/3",how:"Salmon, baby potatoes, broccoli. One pan, 425°F, about 18 minutes.",you:"~720 · 48g",dani:"~480 · 32g"},
-  tuesday:{name:"Salsa chicken bowls",tag:"PREPPED, ZERO COOK",how:"Reheat salsa chicken, microwave rice, quick peppers. Fage crema on top.",you:"~650 · 55g",dani:"~430 · 35g"},
-  wednesday:{name:"Fast day",tag:"36 H FAST",how:"You fast until Thursday breakfast. Danielle eats normally: rotisserie chicken, microwave rice, bagged salad.",you:"0",dani:"~430 · 35g"},
-  thursday:{name:"Air fryer shrimp or cod",tag:"FISH 2/3",how:"Frozen shrimp or cod, air fryer 8 to 10 minutes, rice, asparagus.",you:"~620 · 58g",dani:"~400 · 36g"},
-  friday:{name:"Taco bowls",tag:"ONE SKILLET",how:"Ground turkey, taco seasoning, rice, peppers, Fage crema, salsa.",you:"~680 · 52g",dani:"~450 · 33g"},
-  saturday:{name:"Grill night",tag:"COOK TOGETHER · FISH 3/3",how:"Steak or salmon, baked potato, big salad. The one real cooking night.",you:"~750 · 55g",dani:"~520 · 36g"},
-  sunday:{name:"Prep-day dinner",tag:"WHILE PREP RUNS",how:"Extra salsa chicken bowls, or shrimp stir-fry with frozen veg.",you:"~600 · 50g",dani:"~430 · 32g"},
-};
-
-const CARDIO_PRESETS=[
-  {type:"stairs",label:"Stairs",duration:20,intensity:"zone2"},
-  {type:"incline-walk",label:"Incline Walk",duration:20,intensity:"zone2"},
-  {type:"peloton",label:"Peloton",duration:35,intensity:"zone2"},
-  {type:"walk",label:"Walk",duration:30,intensity:"easy"},
-  {type:"bike",label:"Bike",duration:30,intensity:"zone2"},
-  {type:"rowing",label:"Row",duration:15,intensity:"hard"},
-];
-const CARDIO_TYPES=["peloton","bike","walk","incline-walk","stairs","rowing","other"];
-const cardioLabel=t=>(CARDIO_PRESETS.find(p=>p.type===t)?.label||String(t||"cardio").replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()));
-const intensityLabel=i=>({easy:"Easy",zone2:"Zone 2",tempo:"Tempo",hard:"Hard",hiit:"HIIT"}[i]||i||"Zone 2");
-const cardioSummary=c=>{
-  if(!c)return"";
-  const parts=[cardioLabel(c.type),c.duration?`${c.duration}m`:null,intensityLabel(c.intensity)].filter(Boolean);
-  const metrics=[c.distance?`${c.distance} mi`:null,c.calories?`${c.calories} cal`:null].filter(Boolean);
-  return `${parts.join(" · ")}${metrics.length?` · ${metrics.join(" · ")}`:""}`;
-};
+import {PROG, WU, repTrack, rrTxt, progKey, legacyAmbiguousIds, saneSet, sameRepTrack, WED_SUPERSETS, supersetLabel, EXERCISE_LIBRARY, exLibById, SHORT_FILLER, shortLiftName, STRETCH_POSES, weightCap, saneWeight, cutStepsTarget, CUT_HOLD_PROGRESSION, matchingProgKeys, getProgEntry, getProgHistory, getProgPr, relatedPatterns, DINNERS, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, DEFAULTS, bl, migrate, SEED_DATA, seedHistorical, lds, td, yd, dw, fmt, wkn, estTime, fmtElapsed, getDayType, getWeekMonday, isSocialWeekendActive, SOCIAL_CAL, getDayCalTarget, getDayProTarget, PROTEIN_CHECKPOINTS, getWeeklyRecoveryAvg, getAutoregulation, getConsecutiveRedDays, e1rm, calcVolume, completedSets, nextWeightFromSets, BACKFILL_VERSION, backfillData, pruneProgression, repairDeloadProgression, BLOCK_V2_SEEDS, BLOCK_V2_WEIGHT_FIXES, applyBlockV2, getStalls, getTrend, getTopProteinMeals, getInsights, getCutRetentionScore, calcEWMA, median, calcAdaptiveTDEE, getDailyCutAdherence, getWeeklyCutSummary, getWeeklyConsistency, getTonightCloseout, getWeeklyCutRecommendation, BARBELL_IDS, PLATES, plateMath, resolveMode, getAutoregProposal, resolveWeight, lastSessionSets, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, applyChanges, SETTINGS_FIELDS, exerciseReport, sumMeals} from "../lib/engine.mjs";
+import { makeClient, toRow, loadAll } from "../lib/supabase.mjs";
 
 const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
@@ -287,77 +31,31 @@ const reportSyncSuccess=(table)=>{
 const onSyncFailure=(l)=>{syncHealth.listeners.add(l);return()=>syncHealth.listeners.delete(l);};
 
 const sv=d=>{try{localStorage.setItem(SK,JSON.stringify(d))}catch(e){reportSyncFailure("localStorage",0,String(e));}};
-const DEFAULTS={calories:1790,protein:200,water:128,steps:15000,sleep:7.5,fiber:30,trainingCal:2000,wednesdayCal:900,weekendCal:1800,customHabits:[],
-  notifications:{enabled:false,restTimer:true,timers:true,sound:true,vibrate:true},
-  // Dormant: reminder system removed 2026-07-11 (rest timer is the only
-  // notification). Preferences kept for a future server-push implementation.
-  reminders:{enabled:false,weighIn:"08:00",closeout:"20:30"}};
 const getNotificationSettings=(fallback=DEFAULTS.notifications)=>{try{return {...DEFAULTS.notifications,...fallback,...(JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY))||{})};}catch{return {...DEFAULTS.notifications,...fallback};}};
 const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify({...DEFAULTS.notifications,...settings}));}catch{}};
-const bl=()=>({wk:{},nut:{},wt:{},rec:{},prog:{},steps:{},mob:{},stp:{},debrief:{},habits:{},water:{},cardio:{},bodyComp:{},bodyMeas:{},photoSlots:{},travelDays:{},tdeeExclude:{},autoregLog:{},tdeeCal:null,socialWeekend:{active:false,weekOf:null},settings:{...DEFAULTS},program:JSON.parse(JSON.stringify(PROG.days))});
 
-// ═══ SUPABASE CLIENT ═══
-const SB_URL="https://wszumxewqxkggtevfubb.supabase.co";
-const SB_KEY="sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-const sbh={"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
-
-const sb={
-  async upsert(table,data,conflict="date"){
-    const q=conflict?`?on_conflict=${encodeURIComponent(conflict)}`:"";
-    const send=()=>fetch(`${SB_URL}/rest/v1/${table}${q}`,{method:"POST",headers:{...sbh,"Prefer":"resolution=merge-duplicates"},
-      body:JSON.stringify(data)});
-    try{
-      let r;
-      try{r=await send();}
-      catch(e){await new Promise(res=>setTimeout(res,1500));r=await send();} // one retry on a dropped request
-      if(r.ok){reportSyncSuccess(table);return true;}
-      reportSyncFailure(table,r.status,await r.text().catch(()=>""));
-      return false;
-    }catch(e){reportSyncFailure(table,0,String(e),true);return false;}
-  },
-  async select(table,order="date",dir="desc",limit=500){
-    try{
-      const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=${order}.${dir}&limit=${limit}`,{headers:sbh});
-      return r.ok?await r.json():[];
-    }catch{return[];}
-  },
-  async deleteRow(table,col,val){
-    try{
-      await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`,{method:"DELETE",headers:sbh});
-    }catch{}
-  },
-  async deleteAll(table){
-    try{
-      await fetch(`${SB_URL}/rest/v1/${table}?id=gt.0`,{method:"DELETE",headers:{...sbh,"Prefer":""}});
-      await fetch(`${SB_URL}/rest/v1/${table}?date=gt.2000-01-01`,{method:"DELETE",headers:{...sbh,"Prefer":""}});
-    }catch{}
-  }
-};
-
+// ═══ SUPABASE CLIENT · column mapping lives in lib/supabase.mjs (shared with the Coach) ═══
+const sb=makeClient({onFailure:reportSyncFailure,onSuccess:reportSyncSuccess});
 const svSB={
-  weight:(date,value)=>sb.upsert("weight",{date,value}),
-  steps:(date,value)=>sb.upsert("steps",{date,value:Math.round(value)}),
-  water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?sb.upsert("water",{date,oz:n}):sb.deleteRow("water","date",date);},
-  lytes:(date,l)=>sb.upsert("lytes",{date,na:Math.round(l.na||0),k:Math.round(l.k||0),mg:Math.round(l.mg||0)}),
-  recovery:(date,r)=>sb.upsert("recovery",{date,recovery_score:r.recoveryScore||null,hrv:r.hrv||null,rhr:r.rhr||null,
-    respiratory_rate:r.respiratoryRate||null,sleep_hours:r.sleepHours||null,sleep_performance:r.sleepPerformance||null,
-    strain:r.strain||null,wake_time:r.wakeTime||null,notes:r.notes||null}),
-  habits:(date,h)=>sb.upsert("habits",{date,alcohol:h.alcohol,cannabis:h.cannabis,screens_off:h.screensOff,
-    sunlight:h.sunlight,bed_by_1030:h.bedBy1030,read_before_bed:h.readBeforeBed,supplements:h.supplements,custom:h.custom||null}),
-  workout:(date,w)=>sb.upsert("workouts",{date,day_name:w.day,exercises:w.exercises||[],duration_min:w.dur||null}),
-  nutrition:(date,n)=>sb.upsert("nutrition",{date,meals:n.meals||[],total_cal:n.totalCal||0,total_protein:n.totalProtein||0,
-    total_carbs:n.totalCarbs||0,total_fat:n.totalFat||0,total_fiber:n.totalFiber||0}),
-  progression:(exId,p)=>sb.upsert("progression",{exercise_id:exId,current_weight:p.currentWeight,last_reps:p.lastReps||null,
-    last_date:p.lastDate||null,progressed:p.progressed||false,pr:p.pr||null,e1rm_history:p.e1rmHistory||null},"exercise_id"),
-  debrief:(date)=>sb.upsert("debrief",{date,completed:true}),
-  mobility:(date,durSecs)=>sb.upsert("mobility",{date,completed:true,duration_secs:durSecs||null}),
-  stepper:(date)=>sb.upsert("stepper",{date,completed:true}),
-  cardio:(date,c)=>sb.upsert("cardio",{date,type:c.type||"peloton",duration_min:c.duration||null,intensity:c.intensity||"zone2",distance_mi:c.distance||null,calories:c.calories||null,notes:c.notes||null,done:true}),
-  bodyComp:(date,b)=>sb.upsert("body_comp",{date,photo_taken:true,analysis:b?.analysis||null}),
-  travelDay:(date,active)=>active?sb.upsert("travel_days",{date,active:true}):sb.deleteRow("travel_days","date",date),
-  tdeeExclude:(date,active)=>active?sb.upsert("tdee_exclude",{date,active:true}):sb.deleteRow("tdee_exclude","date",date),
-  settings:(s)=>sb.upsert("settings",{id:"user",...s},"id"),
-  program:(p)=>sb.upsert("program",{id:"user",data:p},"id"),
+  weight:(date,value)=>sb.upsert("weight",toRow.weight(date,value)),
+  steps:(date,value)=>sb.upsert("steps",toRow.steps(date,value)),
+  water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?sb.upsert("water",toRow.water(date,n)):sb.deleteRow("water","date",date);},
+  lytes:(date,l)=>sb.upsert("lytes",toRow.lytes(date,l)),
+  recovery:(date,r)=>sb.upsert("recovery",toRow.recovery(date,r)),
+  habits:(date,h)=>sb.upsert("habits",toRow.habits(date,h)),
+  workout:(date,w)=>sb.upsert("workouts",toRow.workout(date,w)),
+  nutrition:(date,n)=>sb.upsert("nutrition",toRow.nutrition(date,n)),
+  progression:(exId,p)=>sb.upsert("progression",toRow.progression(exId,p),"exercise_id"),
+  debrief:(date)=>sb.upsert("debrief",toRow.debrief(date)),
+  mobility:(date,durSecs)=>sb.upsert("mobility",toRow.mobility(date,durSecs)),
+  stepper:(date)=>sb.upsert("stepper",toRow.stepper(date)),
+  cardio:(date,c)=>sb.upsert("cardio",toRow.cardio(date,c)),
+  bodyComp:(date,b)=>sb.upsert("body_comp",toRow.bodyComp(date,b)),
+  bodyMeas:(date,m)=>sb.upsert("body_measurements",toRow.bodyMeas(date,m)),
+  travelDay:(date,active)=>active?sb.upsert("travel_days",toRow.travelDay(date)):sb.deleteRow("travel_days","date",date),
+  tdeeExclude:(date,active)=>active?sb.upsert("tdee_exclude",toRow.tdeeExclude(date)):sb.deleteRow("tdee_exclude","date",date),
+  settings:(s)=>sb.upsert("settings",toRow.settings(s),"id"),
+  program:(p)=>sb.upsert("program",toRow.program(p),"id"),
   delWeight:(date)=>sb.deleteRow("weight","date",date),
   delStepper:(date)=>sb.deleteRow("stepper","date",date),
   delCardio:(date)=>sb.deleteRow("cardio","date",date),
@@ -365,673 +63,11 @@ const svSB={
   delMobility:(date)=>sb.deleteRow("mobility","date",date),
   delWater:(date)=>sb.deleteRow("water","date",date),
 };
-
 const loadFromSB=async()=>{
-  try{
-    const [wt,steps,water,rec,habits,wk,nut,prog,mob,stp,debrief,cardio,bodyComp,travel,tdeeExcludeRows,settingsRows,programRows]=await Promise.all([
-      sb.select("weight"),sb.select("steps"),sb.select("water"),sb.select("recovery"),
-      sb.select("habits"),sb.select("workouts"),sb.select("nutrition"),
-      sb.select("progression","exercise_id","asc"),
-      sb.select("mobility"),sb.select("stepper"),sb.select("debrief"),
-      sb.select("cardio"),sb.select("body_comp"),sb.select("travel_days"),
-      sb.select("tdee_exclude"),
-      sb.select("settings","id","asc",1),sb.select("program","id","asc",1),
-    ]);
-    const d=bl();
-    wt.forEach(r=>{d.wt[r.date]=Number(r.value);});
-    steps.forEach(r=>{d.steps[r.date]=r.value;});
-    water.forEach(r=>{const oz=Math.round(Number(r.oz)||0);if(oz>0)d.water[r.date]=oz;});
-    rec.forEach(r=>{d.rec[r.date]={recoveryScore:r.recovery_score,hrv:r.hrv,rhr:r.rhr,
-      respiratoryRate:r.respiratory_rate,sleepHours:r.sleep_hours,sleepPerformance:r.sleep_performance,
-      sleepLight:r.sleeplight,sleepDeep:r.sleepdeep,sleepRem:r.sleeprem,
-      strain:r.strain,wakeTime:r.wake_time,notes:r.notes,source:r.source};});
-    habits.forEach(r=>{d.habits[r.date]={alcohol:r.alcohol,cannabis:r.cannabis,screensOff:r.screens_off,
-      sunlight:r.sunlight,bedBy1030:r.bed_by_1030,readBeforeBed:r.read_before_bed,supplements:r.supplements,custom:r.custom||null};});
-    wk.forEach(r=>{d.wk[r.date]={day:r.day_name,exercises:r.exercises,dur:r.duration_min};});
-    nut.forEach(r=>{d.nut[r.date]={meals:r.meals,totalCal:r.total_cal,totalProtein:r.total_protein,
-      totalCarbs:r.total_carbs,totalFat:r.total_fat,totalFiber:r.total_fiber};});
-    prog.forEach(r=>{d.prog[r.exercise_id]={currentWeight:Number(r.current_weight),lastReps:r.last_reps,
-      lastDate:r.last_date,progressed:r.progressed,pr:r.pr||null,e1rmHistory:r.e1rm_history||[],exerciseId:r.exercise_id?.split("__")[0]||r.exercise_id};});
-    mob.forEach(r=>{d.mob[r.date]={done:true,dur:r.duration_secs||null};});
-    stp.forEach(r=>{d.stp[r.date]=true;});
-    debrief.forEach(r=>{d.debrief[r.date]=true;});
-    cardio.forEach(r=>{d.cardio[r.date]={type:r.type||"peloton",duration:r.duration_min||null,intensity:r.intensity||"zone2",distance:r.distance_mi||null,calories:r.calories||null,notes:r.notes||"",done:true};});
-    bodyComp.forEach(r=>{
-      if(!r.analysis){d.bodyComp[r.date]=true;return;}
-      if(typeof r.analysis==="string"){
-        try{d.bodyComp[r.date]={photoTaken:true,analysis:JSON.parse(r.analysis)};}
-        catch{console.warn("[SB] bad body_comp.analysis JSON for",r.date);d.bodyComp[r.date]=true;}
-      }else{d.bodyComp[r.date]={photoTaken:true,analysis:r.analysis};}
-    });
-    travel.forEach(r=>{if(r.active)d.travelDays[r.date]=true;});
-    tdeeExcludeRows.forEach(r=>{if(r.active)d.tdeeExclude[r.date]=true;});
-    if(settingsRows.length>0){const s=settingsRows[0];const prevSettings=d.settings||{};d.settings={...DEFAULTS,...prevSettings,calories:s.calories,protein:s.protein,water:s.water,steps:s.steps,sleep:s.sleep,fiber:s.fiber,trainingCal:s.trainingCal||s.training_cal||DEFAULTS.trainingCal,wednesdayCal:s.wednesdayCal||s.wednesday_cal||DEFAULTS.wednesdayCal,weekendCal:s.weekendCal||s.weekend_cal||DEFAULTS.weekendCal,notifications:getNotificationSettings(prevSettings.notifications)};}
-    if(programRows.length>0){
-      const raw=programRows[0].data;
-      const parsed=typeof raw==="string"?(()=>{try{return JSON.parse(raw);}catch{return null;}})():raw;
-      if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed)){
-        const progExIds=Object.values(PROG.days).flatMap(dy=>(dy&&dy.exercises||[]).map(e=>e.id)).sort().join(",");
-        const sbExIds=Object.values(parsed).flatMap(dy=>(dy&&dy.exercises||[]).map(e=>e.id)).sort().join(",");
-        d.program=progExIds===sbExIds?parsed:JSON.parse(JSON.stringify(PROG.days));
-      }
-    }
-    return d;
-  }catch(e){console.error("[SB] Load error:",e);const empty=bl();empty.__loadError=e.message||String(e);return empty;}
+  try{const d=await loadAll(sb);d.settings={...d.settings,notifications:getNotificationSettings(d.settings?.notifications)};return d;}
+  catch(e){console.error("[SB] Load error:",e);const empty=bl();empty.__loadError=e.message||String(e);return empty;}
 };
 
-const migrate=(d)=>{const b=bl();const rawMob=d.mob||{};const mob={};
-  for(const[date,v]of Object.entries(rawMob)){mob[date]=v===true?{done:true,dur:null}:v;}
-  return{...b,...d,
-  wk:d.wk||d.workoutLog||{},nut:d.nut||d.nutritionLog||{},wt:d.wt||d.weightLog||{},
-  rec:d.rec||d.recoveryLog||{},steps:d.steps||{},prog:d.prog||d.progressionState||{},
-  mob,stp:d.stp||{},debrief:d.debrief||{},habits:d.habits||{},water:d.water||{},
-  cardio:d.cardio||{},bodyComp:d.bodyComp||{},travelDays:d.travelDays||{},
-  settings:{...DEFAULTS,...(d.settings||{})},program:d.program||JSON.parse(JSON.stringify(PROG.days))};};
-
-// Historical data seed for TDEE bootstrap
-const SEED_DATA=[
-  {date:"2026-03-09",cal:1986,protein:172,carbs:152,fat:55,weight:188.7},
-  {date:"2026-03-10",cal:1844,protein:176,carbs:175,fat:49,weight:188.2},
-  {date:"2026-03-11",cal:2119,protein:200,carbs:231,fat:52,weight:188.5},
-  {date:"2026-03-12",cal:2358,protein:208,carbs:229,fat:65,weight:186.5},
-  {date:"2026-03-13",cal:2602,protein:217,carbs:213,fat:107,weight:185.0},
-  {date:"2026-03-14",cal:2809,protein:212,carbs:215,fat:157,weight:181.4},
-  {date:"2026-03-15",cal:3000,protein:180,carbs:0,fat:0,weight:182.8},
-];
-const seedHistorical=(d)=>{
-  for(const s of SEED_DATA){
-    if(!d.wt[s.date])d.wt[s.date]=s.weight;
-    if(!d.nut[s.date]||!d.nut[s.date].totalCal){
-      d.nut[s.date]={meals:[{description:"MFP Import",cal:s.cal,protein:s.protein,carbs:s.carbs,fat:s.fat,fiber:0,source:"import"}],
-        totalCal:s.cal,totalProtein:s.protein,totalCarbs:s.carbs,totalFat:s.fat,totalFiber:0};
-    }
-  }
-  return d;
-};
-
-const lds=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const td=()=>lds(new Date());
-const yd=()=>{const d=new Date();d.setDate(d.getDate()-1);return lds(d)};
-const dw=s=>["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][new Date(s+"T12:00:00").getDay()];
-const fmt=s=>new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-const wkn=s=>{const a=new Date(PROG.start+"T12:00:00"),b=new Date(s+"T12:00:00");return Math.max(1,Math.floor((b-a)/6048e5)+1);};
-const estTime=(sess)=>{if(!sess)return"";
-  const wu=5+(sess.warmup?.moves?.length||0)*1+(sess.warmup?.ramp?3:0);
-  const wuSets=(sess.exercises||[]).reduce((t,ex)=>t+(WU(ex.sw).length||0)*0.75,0);
-  const work=(sess.exercises||[]).reduce((t,ex)=>t+ex.sets*0.5+(ex.sets-1)*(ex.rest/60),0);
-  const stretch=(PROG.mobility?._default||PROG.mobility?.[Object.keys(PROG.mobility)[0]]||[]).reduce((t,s)=>t+((s.dur||60)*(s.sets||2))/60,0);
-  return Math.round(wu+wuSets+work+stretch);
-};
-
-const fmtElapsed=(secs)=>{
-  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60;
-  if(h>0)return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-  return `${m}:${String(s).padStart(2,"0")}`;
-};
-
-// ═══ DAY-TYPE HELPERS ═══
-const getDayType=(dateStr,travelDays)=>{
-  if(travelDays?.[dateStr])return"travel";
-  const day=dw(dateStr);
-  if(day==="wednesday")return"wednesday";
-  if(["monday","tuesday","thursday","friday"].includes(day))return"training";
-  return"weekend";
-};
-// ═══ SOCIAL WEEKEND ═══
-const getWeekMonday=(dateStr)=>{
-  const d=new Date(dateStr+"T12:00:00");const dow=d.getDay();
-  const diff=dow===0?-6:1-dow;d.setDate(d.getDate()+diff);return lds(d);
-};
-const isSocialWeekendActive=(dateStr,socialWeekend)=>{
-  if(!socialWeekend?.active)return false;
-  return getWeekMonday(dateStr)===socialWeekend.weekOf;
-};
-const SOCIAL_CAL={monday:1700,tuesday:1700,wednesday:800,thursday:1700};
-
-const getDayCalTarget=(dateStr,settings,travelDays,socialWeekend)=>{
-  const dt=getDayType(dateStr,travelDays);
-  if(dt==="travel")return settings?.trainingCal||2000;
-  const sw=isSocialWeekendActive(dateStr,socialWeekend);
-  if(sw){
-    const day=dw(dateStr);
-    if(["friday","saturday","sunday"].includes(day))return null;
-    return SOCIAL_CAL[day]||1700;
-  }
-  if(dt==="wednesday")return settings?.wednesdayCal||900;
-  if(dt==="training")return settings?.trainingCal||2000;
-  // weekendCal is the Sat/Sun average · Saturday runs +100, Sunday -100 (e.g. 1800 avg → 1900/1700)
-  const wknd=settings?.weekendCal||1800;
-  return dw(dateStr)==="saturday"?wknd+100:wknd-100;
-};
-const getDayProTarget=(dateStr,settings,travelDays,socialWeekend)=>{
-  const dt=getDayType(dateStr,travelDays);
-  if(dt==="travel")return settings?.protein||200;
-  const sw=isSocialWeekendActive(dateStr,socialWeekend);
-  if(sw&&["friday","saturday","sunday"].includes(dw(dateStr)))return 180;
-  if(dt==="wednesday")return 150;
-  if(dt==="training")return settings?.protein||200;
-  if(["saturday","sunday"].includes(dw(dateStr)))return 180;
-  return 150;
-};
-const PROTEIN_CHECKPOINTS=[
-  {label:"Post-Workout Shake",target:50,time:"~7 AM"},
-  {label:"After Meal 1",target:110,time:"~1 PM"},
-  {label:"After Meal 2",target:170,time:"~5 PM"},
-  {label:"End of Day",target:200,time:"~7:30 PM"},
-];
-
-// ═══ AUTOREGULATION ═══
-const getWeeklyRecoveryAvg=(rec)=>{
-  const now=new Date();const entries=[];
-  for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);
-    const ds=lds(d);
-    if(rec[ds]?.recoveryScore)entries.push(rec[ds].recoveryScore);}
-  return entries.length>=3?Math.round(entries.reduce((a,b)=>a+b,0)/entries.length):null;
-};
-const getAutoregulation=(avgRec)=>{
-  if(avgRec===null)return null;
-  if(avgRec>=70)return{level:"green",msg:"Run full plan. Progress only if earned.",action:"All lifts as planned. Keep cardio steady; no extra stress chasing PRs."};
-  if(avgRec>=55)return{level:"yellow",msg:"Recovery dipping. Reduce cardio stress first.",action:"Keep lifting. Drop to 1 Peloton session and check sleep/food before changing calories."};
-  return{level:"red",msg:"Recovery low. Protect lifting and pull back cardio.",action:"Skip Peloton/stairmaster. Use minimum effective lifting only until recovery rebounds."};
-};
-const getConsecutiveRedDays=(rec)=>{
-  let count=0;const now=new Date();
-  for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()-i);
-    const ds=lds(d);
-    if(rec[ds]?.recoveryScore&&rec[ds].recoveryScore<34)count++;else break;}
-  return count;
-};
-
-// ═══ VOLUME & E1RM ═══
-const e1rm=(w,r)=>r<=0||w<=0?0:r===1?w:Math.round(w*(1+r/30));
-const calcVolume=(exercises)=>exercises.reduce((t,ex)=>t+ex.sets.filter(s=>s.done).reduce((s,set)=>s+(set.weight||0)*set.reps,0),0);
-
-const completedSets=sets=>(sets||[]).filter(saneSet);
-const nextWeightFromSets=(sets,pe)=>{const cs=completedSets(sets);if(!cs.length)return null;const rr=pe?.rr;const matching=rr?cs.filter(s=>Number(s.reps)>=rr[0]&&Number(s.reps)<=rr[1]):cs;if(!matching.length)return null;const cw=Number(matching[0].weight);const hit=rr&&pe?.inc>0&&matching.length>=(pe.sets||1)&&matching.every(s=>Number(s.reps)>=rr[1]);return hit?cw+pe.inc:cw;};
-
-const BACKFILL_VERSION=2;
-const backfillData=(d)=>{
-  Object.entries(d.wk||{}).forEach(([date,w])=>{if(!w.volume&&w.exercises){try{w.volume=calcVolume(w.exercises);}catch(e){}}});
-  // History replay is a versioned one-shot. It previously ran on every load and
-  // paired logged exercises to program exercises BY SLOT INDEX, so any program
-  // mutation (swap/add/remove/reorder) wrote historical sets into the wrong lift.
-  if((d.backfillVersion||0)>=BACKFILL_VERSION)return d;
-  if(d.prog["seated-leg-curl"]&&!d.prog["lying-leg-curl"]){d.prog["lying-leg-curl"]=d.prog["seated-leg-curl"];delete d.prog["seated-leg-curl"];}
-  const allDays={...PROG.days,...(d.program||{})};
-  const byProgKey={},byId={};
-  Object.values(allDays).forEach(day=>(day.exercises||[]).forEach(pe=>{
-    const k=progKey(pe,pe);if(!byProgKey[k])byProgKey[k]=pe;if(!byId[pe.id])byId[pe.id]=pe;}));
-  Object.entries(d.wk||{}).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,w])=>{
-    if(!w.exercises)return;
-    w.exercises.forEach(ex=>{
-      // Identity pairing only: progKey, else exercise id. Unknown -> skip, never guess.
-      const pe=(ex.progKey&&byProgKey[ex.progKey])||(ex.id&&byId[ex.id])||null;
-      if(!pe||!ex.sets)return;
-      const key=ex.progKey||progKey(pe,pe);
-      const cs=completedSets(ex.sets);if(!cs.length)return;
-      const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]);
-      const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);if(newE1rm<=0)return;
-      const nextWeight=nextWeightFromSets(ex.sets,pe);
-      if(!d.prog[key])d.prog[key]={currentWeight:nextWeight??bestSet.weight,lastReps:cs.map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};
-      if(!d.prog[key].e1rmHistory)d.prog[key].e1rmHistory=[];
-      if(!d.prog[key].e1rmHistory.some(h=>h.date===date))d.prog[key].e1rmHistory.push({date,e1rm:newE1rm});
-      d.prog[key].e1rmHistory=d.prog[key].e1rmHistory.slice(-12);
-      if(nextWeight!=null&&date>=(d.prog[key].lastDate||"")){d.prog[key].currentWeight=nextWeight;d.prog[key].lastReps=cs.map(s=>s.reps);d.prog[key].lastDate=date;d.prog[key].progressed=nextWeight>Number(cs[0].weight);}
-      if(!d.prog[key].pr||newE1rm>d.prog[key].pr.e1rm){d.prog[key].pr={name:pe.name,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date};}
-    });
-  });
-  d.backfillVersion=BACKFILL_VERSION;
-  return d;
-};
-
-// Prune orphaned/fossil progression records. Runs every boot (cheap filter) so
-// rows the cleanup migration removed server-side can't be resurrected from a
-// stale local copy or vice versa. Keeps: current id__rr keys; plain legacy IDs
-// of current non-ambiguous exercises that hold real reps (the gw() fallback
-// reads those); anything logged during the current block (protects history of
-// exercises swapped out mid-block).
-const pruneProgression=(d)=>{
-  const days=d.program||PROG.days;
-  const currentKeys=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>progKey(pe,pe))));
-  const currentIds=new Set(Object.values(days).flatMap(day=>(day.exercises||[]).map(pe=>pe.id)));
-  const removed=[];
-  for(const[key,p]of Object.entries(d.prog||{})){
-    if(currentKeys.has(key))continue;
-    if(p?.lastDate&&p.lastDate>=PROG.start)continue;
-    const isPlain=!key.includes("__");
-    const hasRealReps=(p?.lastReps||[]).some(r=>Number(r)>0);
-    if(isPlain&&currentIds.has(key)&&!legacyAmbiguousIds.has(key)&&hasRealReps)continue;
-    removed.push(key);delete d.prog[key];
-  }
-  if(removed.length)console.log(`[prune] Removed ${removed.length} orphaned progression records:`,removed.join(", "));
-  return removed.length;
-};
-
-const repairDeloadProgression=(d)=>{
-  const allDays={...PROG.days,...(d.program||{})};
-  const allEx=Object.values(allDays).flatMap(day=>day.exercises||[]);
-  for(const pe of allEx){
-    const key=progKey(pe,pe);
-    const dates=Object.entries(d.wk||{}).filter(([date])=>wkn(date)!==PROG.deload).sort((a,b)=>b[0].localeCompare(a[0]));
-    for(const[date,w]of dates){
-      const wex=w.exercises?.find(e=>e.progKey===key)||w.exercises?.find(e=>e.id===pe.id&&completedSets(e.sets).some(s=>Number(s.reps)>=pe.rr[0]&&Number(s.reps)<=pe.rr[1]));
-      if(!wex)continue;
-      const correctWeight=nextWeightFromSets(wex.sets,pe);if(correctWeight==null)continue;
-      if(d.prog[key]?.currentWeight&&d.prog[key].currentWeight<correctWeight*0.75){d.prog[key].currentWeight=correctWeight;}
-      else if(!d.prog[key]){d.prog[key]={currentWeight:correctWeight,lastReps:completedSets(wex.sets).map(s=>s.reps),lastDate:date,progressed:false,exerciseId:pe.id,repRange:pe.rr,name:pe.name};}
-      break;
-    }
-  }
-  return d;
-};
-
-// ═══ BLOCK V2 MIGRATION (Summer Cut v2, 2026-07-06) ═══
-const BLOCK_V2_SEEDS={
-  "flat-bench__5-8":{currentWeight:175,exerciseId:"flat-bench",repRange:[5,8],name:"Barbell Flat Bench"},
-  "deadlift__5-5":{currentWeight:235,exerciseId:"deadlift",repRange:[5,5],name:"Deadlift (BB)"},
-  "back-squat__5-8":{currentWeight:135,exerciseId:"back-squat",repRange:[5,8],name:"Back Squat (BB)"},
-};
-// Known logging errors in the prog store · each fails the sanity cap for its movement
-const BLOCK_V2_WEIGHT_FIXES={"reverse-curl":40,"cable-hammer-curl":35,"db-incline-press":45};
-const applyBlockV2=(d)=>{
-  let changed=false;
-  // Stored program predates this block (anchor lifts missing) → replace with the v2 days.
-  // Old prog entries (front-squat, converging-chest-press, ...) are kept for history.
-  const ids=new Set(Object.values(d.program||{}).flatMap(day=>(day.exercises||[]).map(e=>e.id)));
-  if(!ids.has("flat-bench")||!ids.has("deadlift")||!ids.has("back-squat")){
-    d.program=JSON.parse(JSON.stringify(PROG.days));changed=true;
-  }
-  for(const[key,seed]of Object.entries(BLOCK_V2_SEEDS)){
-    if(!getProgEntry(d.prog,{id:seed.exerciseId,rr:seed.repRange})){
-      d.prog[key]={...seed,lastReps:[],lastDate:null,progressed:false,pr:null,e1rmHistory:[]};changed=true;
-    }
-  }
-  for(const[key,p]of Object.entries(d.prog||{})){
-    const baseId=p?.exerciseId||key.split("__")[0];
-    const fix=BLOCK_V2_WEIGHT_FIXES[baseId];
-    if(fix!=null&&p?.currentWeight!=null&&!saneWeight(exLibById[baseId],p.currentWeight)){
-      p.currentWeight=fix;changed=true;
-    }
-  }
-  // One-time settings move to the v2 targets; only touches values still at their v1 defaults
-  // so later manual adjustments are never clobbered.
-  if(!d.blockV2SettingsApplied){
-    const remap={calories:[1800,1790],trainingCal:[1800,2000],weekendCal:[1700,1800]};
-    for(const[k,[oldV,newV]]of Object.entries(remap)){
-      if(d.settings?.[k]==null||d.settings[k]===oldV){d.settings={...d.settings,[k]:newV};changed=true;}
-    }
-    d.blockV2SettingsApplied=true;changed=true;
-  }
-  return changed;
-};
-
-// ═══ STALL DETECTION ═══
-const getStalls=(prog,wk,programDays)=>{
-  // Cut mode: flag when weight DROPS on same lift for 2 consecutive sessions
-  const days=programDays||PROG.days;
-  const stalls=[];
-  const programExIds=new Set(Object.values(days).flatMap(d=>d&&d.exercises||[]).map(e=>e.id));
-  Object.entries(prog).forEach(([id,p])=>{
-    if(!p.lastDate)return;
-    const baseId=p.exerciseId||id.split("__")[0];
-    if(!programExIds.has(baseId))return;
-    const sessions=Object.entries(wk)
-      .filter(([_,w])=>w.exercises?.some(e=>e.id===baseId||e.progKey===id))
-      .map(([d,w])=>{const ex=w.exercises.find(e=>e.id===baseId||e.progKey===id);const cs=ex?.sets?.filter(s=>s.done&&s.weight>0)||[];return cs.length?{date:d,weight:Math.max(...cs.map(s=>s.weight))}:null;})
-      .filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date));
-    if(sessions.length<3)return;
-    // Check if last 2 sessions both dropped weight vs the session before them
-    const baseline=sessions[2].weight;
-    if(sessions[0].weight<baseline&&sessions[1].weight<baseline){
-      const exDef=Object.values(days).flatMap(d=>d&&d.exercises||[]).find(e=>e.id===baseId);
-      const drop=baseline-sessions[0].weight;
-      stalls.push({id,name:exDef?.name||p.name||baseId,weeks:2,currentWeight:sessions[0].weight,drop});
-    }
-  });
-  return stalls;
-};
-
-// ═══ WEIGHT TREND · the one shared engine ═══
-// EWMA-smoothed OLS slope over the last 14 calendar days, in lbs/week to one
-// decimal. Every trend surface consumes this; do not add another formula.
-const getTrend=(wt,today=td())=>{
-  const start=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-13);return lds(d);})();
-  const entries=Object.entries(wt||{}).filter(([dt,v])=>v!=null&&dt>=start&&dt<=today).sort((a,b)=>a[0].localeCompare(b[0]));
-  const n=entries.length;
-  if(n<2)return null;
-  const smoothed=calcEWMA(entries.map(([,v])=>Number(v)),0.3);
-  const base=new Date(entries[0][0]+"T12:00:00");
-  const xs=entries.map(([dt])=>(new Date(dt+"T12:00:00")-base)/864e5);
-  const mx=xs.reduce((s,v)=>s+v,0)/n,my=smoothed.reduce((s,v)=>s+v,0)/n;
-  let num=0,den=0;for(let i=0;i<n;i++){num+=(xs[i]-mx)*(smoothed[i]-my);den+=(xs[i]-mx)**2;}
-  const rate=+((den?num/den:0)*7).toFixed(1);
-  const direction=rate<=-0.1?"down":rate>=0.1?"up":"flat";
-  const message=direction==="down"?`Down ${Math.abs(rate)} lb/wk`:direction==="up"?`Up ${rate} lb/wk`:"Holding steady";
-  const weekAgo=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-6);return lds(d);})();
-  const weighIns7=entries.filter(([dt])=>dt>=weekAgo).length;
-  return{rate,direction,message,n,weighIns7,
-    current:Math.round(entries[n-1][1]),
-    points:entries.map(([dt,v],i)=>({d:dt.slice(5),v:+smoothed[i].toFixed(1),raw:v}))};
-};
-
-// ═══ DATA INTELLIGENCE ═══
-const getTopProteinMeals=(data,limit=5)=>{
-  const map={};
-  for(const[d,n] of Object.entries(data.nut||{})){
-    for(const m of(n.meals||[])){
-      if(!m.description||(m.cal||0)<50)continue;
-      const k=m.description.toLowerCase().trim();
-      if(!map[k])map[k]={desc:m.description,tp:0,tc:0,n:0};
-      map[k].tp+=(m.protein||0);map[k].tc+=(m.cal||0);map[k].n++;
-    }
-  }
-  return Object.values(map).filter(m=>m.tp/m.n>=20)
-    .map(m=>({desc:m.desc,pro:Math.round(m.tp/m.n),cal:Math.round(m.tc/m.n),n:m.n}))
-    .sort((a,b)=>b.pro-a.pro).slice(0,limit);
-};
-
-const getInsights=(data)=>{
-  const ins=[];
-  const dates=Object.keys(data.nut||{}).sort().reverse().slice(0,30);
-  let pH=0,pD=0;
-  for(const d of dates){
-    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
-    const p=data.nut[d]?.totalProtein||0;
-    if(p>0){pD++;if(p>=pt)pH++;}
-  }
-  if(pD>=5){const r=Math.round(pH/pD*100);
-    ins.push({type:r>=70?"win":"gap",text:`Protein target hit ${r}% of tracked days (${pH}/${pD})`});}
-  const sr=[];
-  for(const[d,r] of Object.entries(data.rec||{})){
-    if(r.sleepHours&&r.recoveryScore)sr.push({s:r.sleepHours,r:r.recoveryScore});}
-  if(sr.length>=7){
-    const gs=sr.filter(x=>x.s>=7.5),ps=sr.filter(x=>x.s<7);
-    if(gs.length>=3&&ps.length>=3){
-      const ga=Math.round(gs.reduce((s,d)=>s+d.r,0)/gs.length);
-      const pa=Math.round(ps.reduce((s,d)=>s+d.r,0)/ps.length);
-      if(ga-pa>=5)ins.push({type:"insight",text:`7.5h+ sleep averages ${ga}% recovery vs ${pa}% on <7h nights`});
-    }
-  }
-  let cH=0,cD=0;
-  for(const d of dates){
-    const ct=getDayCalTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
-    if(!ct)continue;
-    const c=data.nut[d]?.totalCal||0;
-    if(c>0){cD++;if(Math.abs(c-ct)<=ct*0.1)cH++;}
-  }
-  if(cD>=5){const r=Math.round(cH/cD*100);
-    ins.push({type:r>=60?"win":"gap",text:`Calories within 10% of target ${r}% of days`});}
-  const recWkPairs=Object.entries(data.rec||{}).filter(([d,r])=>r.recoveryScore&&data.wk[d]).map(([d,r])=>{
-    const wk=data.wk[d];const progDay=wk.exercises?wk.exercises.filter(ex=>ex.sets&&ex.sets.some(s=>s.done)).length:0;
-    return{rec:r.recoveryScore,trained:progDay>0,volume:wk.volume||0};
-  });
-  if(recWkPairs.length>=3){
-    const highRec=recWkPairs.filter(p=>p.rec>=55);
-    const lowRec=recWkPairs.filter(p=>p.rec<55);
-    const highVol=highRec.length?Math.round(highRec.reduce((s,p)=>s+p.volume,0)/highRec.length):0;
-    const lowVol=lowRec.length?Math.round(lowRec.reduce((s,p)=>s+p.volume,0)/lowRec.length):0;
-    if(highVol>0&&lowVol>0){
-      const pct=Math.round((highVol-lowVol)/lowVol*100);
-      ins.push({type:pct>10?"win":"insight",text:`High recovery days (55+): ${highVol.toLocaleString()} lbs avg volume vs ${lowVol.toLocaleString()} lbs on low days (${pct>0?"+":""}${pct}%)`});
-    }
-  }
-  return ins.slice(0,4);
-};
-
-const getCutRetentionScore=(data)=>{
-  const planStart=PROG.start;
-  const wEntries=Object.entries(data.wt||{}).filter(([d])=>d>=planStart).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(wEntries.length<3)return null;
-  const mid=Math.floor(wEntries.length/2);
-  const firstHalf=wEntries.slice(0,mid),secondHalf=wEntries.slice(mid);
-  if(secondHalf.length<1||firstHalf.length<1)return null;
-  const rAvg=secondHalf.reduce((s,[_,v])=>s+v,0)/secondHalf.length;
-  const oAvg=firstHalf.reduce((s,[_,v])=>s+v,0)/firstHalf.length;
-  const weeks=Math.max(1,(new Date(wEntries[wEntries.length-1][0])-new Date(wEntries[0][0]))/6048e5);
-  const wkChange=Math.abs(rAvg-oAvg)/weeks;
-  const wScore=wkChange<=0.5?100:wkChange<=1?85:wkChange<=1.5?65:wkChange<=2?45:20;
-  const progEntries=Object.values(data.prog||{});
-  const totalL=progEntries.length;
-  const heldL=progEntries.filter(p=>p.lastDate).length;
-  const lScore=totalL>0?Math.round(heldL/totalL*100):50;
-  const nutDates=Object.keys(data.nut||{}).filter(d=>d>=planStart).sort();
-  let pH=0,pDays=0;
-  for(const d of nutDates){
-    const pt=getDayProTarget(d,data.settings||DEFAULTS,data.travelDays,data.socialWeekend);
-    const p=data.nut[d]?.totalProtein||0;
-    if(p>0){pDays++;if(p>=pt)pH++;}
-  }
-  const pScore=pDays>0?Math.round(pH/pDays*100):50;
-  const total=Math.round(wScore*0.4+lScore*0.4+pScore*0.2);
-  return{score:total,weight:{score:wScore,change:+((rAvg-oAvg)/weeks).toFixed(1)},
-    lifts:{score:lScore,held:heldL,total:totalL},protein:{score:pScore,hit:pH,days:pDays}};
-};
-
-const calcEWMA=(values,alpha=0.1)=>{
-  if(!values.length)return[];
-  const result=[values[0]];
-  for(let i=1;i<values.length;i++)result.push(alpha*values[i]+(1-alpha)*result[i-1]);
-  return result;
-};
-
-const median=(a)=>{if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};
-
-// Imputed TDEE: anchor on weight trend, classify each day (full / partial /
-// unlogged), impute the gaps, report a range whose width scales with how much
-// of the window is imputed vs measured. Calibration (data.tdeeCal) tightens
-// the unlogged-day assumptions.
-const calcAdaptiveTDEE=(wt,nut,settings,travelDays,tdeeExclude={},tdeeCal=null)=>{
-  const planStart=PROG.start;
-  const today=td();
-  const cal=tdeeCal&&tdeeCal.answered?tdeeCal:null;
-  // Median full dinner per DAY (Cronometer tags each item "Dinner", so sum per date first)
-  const dinnerByDay={};
-  Object.entries(nut||{}).forEach(([dt,n])=>{(n?.meals||[]).forEach(m=>{if(/dinner/i.test(m?.mealType||"")){const c=Number(m.cal)||0;if(c>0)dinnerByDay[dt]=(dinnerByDay[dt]||0)+c;}});});
-  const medDinner=Math.round(median(Object.values(dinnerByDay).filter(v=>v>150))||650);
-  const listDays=(a,b)=>{const out=[];const d=new Date(a+"T12:00:00");const end=new Date(b+"T12:00:00");while(d<=end){out.push(lds(d));d.setDate(d.getDate()+1);}return out;};
-  const shiftDay=(s,n)=>{const d=new Date(s+"T12:00:00");d.setDate(d.getDate()+n);return lds(d);};
-
-  const estimate=(startD,endD)=>{
-    if(endD<startD)return null;
-    const nutDates=Object.keys(nut||{}).filter(dt=>dt>=startD&&dt<=endD&&(nut[dt]?.totalCal||0)>0).sort();
-    if(nutDates.length<5)return null;
-    const days=listDays(nutDates[0],nutDates[nutDates.length-1]).filter(dt=>!tdeeExclude[dt]&&dt<=today);
-    const fullCals=[];const classified=[];
-    for(const dt of days){
-      const target=getDayCalTarget(dt,settings,travelDays,null)||1800;
-      const t=nut[dt]?.totalCal||0;
-      if(t>=Math.max(800,target*0.6)){classified.push({dt,cls:"full",t});fullCals.push(t);}
-      else if(t>0)classified.push({dt,cls:"partial",t});
-      else classified.push({dt,cls:"unlogged",t:0});
-    }
-    if(fullCals.length<5)return null;
-    const medFull=median(fullCals);
-    const vals=classified.map(({dt,cls,t})=>{
-      if(cls==="full")return t;
-      if(cls==="partial")return t+medDinner;
-      const wd=new Date(dt+"T12:00:00").getDay();
-      if(cal&&(cal.unloggedIs==="blowup"||(cal.unloggedIs==="mixed"&&(wd===5||wd===6))))return cal.socialCal||3000;
-      if(cal&&cal.fastSlips&&wd===3)return settings?.trainingCal||1800;
-      return medFull;
-    });
-    const nFull=fullCals.length,nPart=classified.filter(c=>c.cls==="partial").length,nUn=classified.length-nFull-nPart;
-    const imputedShare=classified.length?(nPart*0.5+nUn)/classified.length:0;
-    const avgCal=Math.round(vals.reduce((s,v)=>s+v,0)/vals.length);
-    const wDates=Object.keys(wt||{}).filter(dt=>dt>=days[0]&&dt<=days[days.length-1]&&wt[dt]!=null).sort();
-    if(wDates.length<3)return null;
-    const weights=wDates.map(dt=>wt[dt]);
-    const trendW=calcEWMA(weights,0.1);
-    const spanDays=Math.max(1,(new Date(wDates[wDates.length-1]+"T12:00:00")-new Date(wDates[0]+"T12:00:00"))/864e5);
-    const weeklyChange=(trendW[trendW.length-1]-trendW[0])/spanDays*7;
-    const tdeeRaw=Math.round(avgCal-(weeklyChange*3500/7));
-    const tdee=Math.max(Math.round(avgCal*0.5),Math.min(Math.round(avgCal*1.5),tdeeRaw));
-    return{tdee,avgCalories:avgCal,weeklyChange,imputedShare,nFull,nPart,nUn,
-      trendWeight:+trendW[trendW.length-1].toFixed(1),
-      trendWeights:wDates.map((dt,i)=>({d:dt,v:+trendW[i].toFixed(1),raw:weights[i]}))};
-  };
-
-  const cur=estimate(planStart,today);
-  const hist=estimate("2000-01-01",shiftDay(planStart,-1));
-  if(!cur&&!hist)return{daysUsed:0,historyDays:0,daysNeeded:7,phase:"collecting"};
-
-  let source="current",base=cur,historyWeight=0;
-  const curFull=cur?cur.nFull:0,histFull=hist?hist.nFull:0;
-  if(hist&&(!cur||curFull<7)){
-    source="history";base=hist;historyWeight=1;
-  }else if(hist&&cur){
-    const currentWeight=Math.min(1,curFull/21);
-    historyWeight=1-currentWeight;
-    source=historyWeight>0.15?"blended":"current";
-    base={...cur,tdee:Math.round(hist.tdee*historyWeight+cur.tdee*currentWeight)};
-  }
-
-  const imputedShare=base.imputedShare??0;
-  const half=Math.round(120+imputedShare*430);
-  const confidence=Math.min(95,Math.round(((curFull*5)+(histFull?Math.min(35,histFull*1.5):0))*(1-0.35*imputedShare)));
-  const calT=getDayCalTarget(today,settings,travelDays,null);
-  const deficit=base.tdee-calT;
-  return{tdee:base.tdee,tdeeLow:base.tdee-half,tdeeHigh:base.tdee+half,imputedShare:+imputedShare.toFixed(2),calibrated:!!cal,
-    confidence,avgCalories:base.avgCalories,weeklyChange:+base.weeklyChange.toFixed(2),
-    daysUsed:curFull,historyDays:histFull,historyTDEE:hist?.tdee,historyWeight:+historyWeight.toFixed(2),source,
-    phase:curFull<7?(hist?"seeded":"collecting"):confidence<60?"early":"confident",
-    deficit,trendWeight:base.trendWeight,trendWeights:(cur||hist).trendWeights};
-};
-
-const getDailyCutAdherence=(data,date,settings=data.settings||DEFAULTS)=>{
-  const nut=data.nut?.[date]||{};
-  const calT=getDayCalTarget(date,settings,data.travelDays,data.socialWeekend);
-  const proT=getDayProTarget(date,settings,data.travelDays,data.socialWeekend);
-  const cal=nut.totalCal||0,pro=nut.totalProtein||0;
-  const logged=cal>0||pro>0||(nut.meals||[]).length>0;
-  return{date,logged,calTarget:calT,proteinTarget:proT,calories:cal,protein:pro,
-    calorieHit:calT===null?logged:(logged&&Math.abs(cal-calT)<=calT*0.12),
-    proteinHit:logged&&pro>=proT*0.9,
-    weightLogged:data.wt?.[date]!=null,
-    workoutDone:!!data.wk?.[date],
-    cardioDone:!!data.cardio?.[date]?.done};
-};
-
-const getWeeklyCutSummary=(data,today=td())=>{
-  const settings=data.settings||DEFAULTS;
-  const dates=[];for(let i=6;i>=0;i--){const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-i);dates.push(lds(d));}
-  const adherence=dates.map(d=>getDailyCutAdherence(data,d,settings));
-  const loggedDays=adherence.filter(a=>a.logged).length;
-  const proteinHits=adherence.filter(a=>a.proteinHit).length;
-  const calorieHits=adherence.filter(a=>a.calorieHit).length;
-  const weightDays=adherence.filter(a=>a.weightLogged).length;
-  const plannedTraining=dates.filter(d=>!!data.program?.[dw(d)]);
-  const trainingDone=plannedTraining.filter(d=>!!data.wk?.[d]).length;
-  const cardioDone=adherence.filter(a=>a.cardioDone).length;
-  const trend=getTrend(data.wt,today);
-  const weightTrend=trend===null
-    ?{label:"Missing",status:"unknown",weeklyChange:null,days:0}
-    :{label:trend.rate<-1.5?"Dropping fast":trend.rate<-0.25?"Dropping":trend.rate<=0.25?"Flat":"Up",
-      status:trend.rate<-1.5?"fast":trend.rate<-0.25?"onPace":trend.rate<=0.25?"flat":"up",
-      weeklyChange:trend.rate,days:trend.n};
-  const recValues=dates.map(d=>data.rec?.[d]?.recoveryScore).filter(v=>v!=null);
-  const recoveryAvg=recValues.length>=3?Math.round(recValues.reduce((s,v)=>s+v,0)/recValues.length):getWeeklyRecoveryAvg(data.rec||{});
-  const tdee=calcAdaptiveTDEE(data.wt||{},data.nut||{},settings,data.travelDays,data.tdeeExclude||{},data.tdeeCal);
-  return{dates,adherence,loggedDays,proteinHits,calorieHits,weightDays,
-    nutritionAdherence:loggedDays?Math.round(((proteinHits+calorieHits)/(loggedDays*2))*100):0,
-    proteinRate:loggedDays?Math.round(proteinHits/loggedDays*100):0,
-    calorieRate:loggedDays?Math.round(calorieHits/loggedDays*100):0,
-    weightTrend,recoveryAvg,recoveryDays:recValues.length,trainingDone,plannedTraining:plannedTraining.length,
-    cardioDone,tdee,stalls:getStalls(data.prog||{},data.wk||{},data.program||PROG.days)};
-};
-
-const getWeeklyConsistency=(data,today=td(),pre=null)=>{
-  const dates=[];for(let i=6;i>=0;i--){const d=new Date(today+"T12:00:00");d.setDate(d.getDate()-i);dates.push(lds(d));}
-  const cut=pre||getWeeklyCutSummary(data,today);
-  const days=dates.map(d=>{
-    const liftPlanned=!!data.program?.[dw(d)];
-    const liftDone=!!data.wk?.[d];
-    const cardio=data.cardio?.[d];
-    const cardioDone=!!cardio?.done;
-    const cardioMinutes=Math.round(Number(cardio?.duration||0));
-    const weightLogged=data.wt?.[d]!=null;
-    return{date:d,label:["S","M","T","W","T","F","S"][new Date(d+"T12:00:00").getDay()],weightLogged,liftPlanned,liftDone,cardioDone,cardioMinutes};
-  });
-  const liftsPlanned=days.filter(d=>d.liftPlanned).length;
-  const liftsDone=days.filter(d=>d.liftDone).length;
-  const cardioSessions=days.filter(d=>d.cardioDone).length;
-  const cardioMinutes=days.reduce((s,d)=>s+d.cardioMinutes,0);
-  const weightDays=days.filter(d=>d.weightLogged).length;
-  const winDays=days.filter(d=>d.weightLogged||d.liftDone||d.cardioDone).length;
-  const trend=cut.weightTrend.weeklyChange==null?"Need 2+ weigh-ins":`${cut.weightTrend.weeklyChange>0?"+":""}${cut.weightTrend.weeklyChange} lb/wk`;
-  const tone=liftsPlanned&&liftsDone>=liftsPlanned&&cardioSessions>=2&&weightDays>=5?"great":winDays>=5?"good":winDays>=3?"building":"start";
-  const message=tone==="great"?"Week is on rails":tone==="good"?"Wins are stacking":tone==="building"?"Keep collecting wins":"One win starts the week";
-  return{days,liftsDone,liftsPlanned,cardioSessions,cardioMinutes,weightDays,winDays,trend,tone,message};
-};
-
-const getTonightCloseout=(data,date=td())=>{
-  const settings=data.settings||DEFAULTS;
-  const a=getDailyCutAdherence(data,date,settings);
-  const steps=data.steps?.[date]||0;
-  const stepsTarget=cutStepsTarget(settings);
-  const rec=data.rec?.[date]?.recoveryScore??null;
-  const cardioDone=!!data.cardio?.[date]?.done;
-  const workoutDone=!!data.wk?.[date];
-  const sess=typeof getSess==="function"?getSess(dw(date),null):null;
-  const tomorrow=new Date(date+"T12:00:00");tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr=lds(tomorrow);
-  const tomorrowType=getDayType(tomorrowStr,data.travelDays||{});
-  const proteinLeft=Math.max(0,(a.proteinTarget||0)-(a.protein||0));
-  const caloriesLeft=a.calTarget===null?null:(a.calTarget||0)-(a.calories||0);
-  const foodOk=a.logged&&a.proteinHit&&(a.calTarget===null||a.calorieHit);
-  const stepsOk=steps>=stepsTarget;
-  const liftOk=!sess||workoutDone;
-  const recoveryRisk=rec!=null&&rec<55;
-  let tomorrowMode="Normal cut day";
-  let action="Close habits, then stop adding friction.";
-  let tone="good";
-  if(!a.logged){tomorrowMode="Data-first morning";action="Log food before changing any target.";tone="warn";}
-  else if(proteinLeft>25){tomorrowMode="Protein-first day";action=`Get ${proteinLeft}g protein before bed or make tomorrow protein-first.`;tone="warn";}
-  else if(caloriesLeft!=null&&caloriesLeft<-150){tomorrowMode="Tighten food";action="No target change. Keep tomorrow cleaner and hit protein early.";tone="warn";}
-  else if(recoveryRisk){tomorrowMode="Recovery-biased";action="Reduce cardio/stress before cutting food. Protect lifting.";tone="bad";}
-  else if(!cardioDone){tomorrowMode="Cardio catch-up";action="Do planned Zone 2 tomorrow; don't cut calories to compensate.";tone="warn";}
-  else if(!stepsOk){tomorrowMode="Steps bias";action=`Finish steps if practical; otherwise make tomorrow a ${Math.round(stepsTarget/1000)}k step day.`;tone="warn";}
-  else if(!liftOk){tomorrowMode="Training priority";action="Lift is the priority before adding extra cardio.";tone="warn";}
-  return{tomorrow:tomorrowStr,tomorrowMode,action,tone,foodOk,proteinLeft,caloriesLeft,steps,stepsTarget,stepsOk,cardioDone,liftOk,habitsLogged:!!data.habits?.[date],recovery:rec};
-};
-
-const getWeeklyCutRecommendation=(data,today=td(),pre=null)=>{
-  const s=pre||getWeeklyCutSummary(data,today);
-  const deload=wkn(today)===PROG.deload;
-  const adherencePoor=s.loggedDays<4||s.weightDays<3||s.nutritionAdherence<60;
-  const lowRecovery=s.recoveryAvg!=null&&s.recoveryAvg<55;
-  const veryLowRecovery=s.recoveryAvg!=null&&s.recoveryAvg<45;
-  const stalls=s.stalls.length;
-  let rec;
-  if(deload){
-    rec={key:"deload",action:"Run this as a recovery-biased deload week.",why:"Program cycle says deload, so completion, sleep, mobility, and easy Zone 2 matter more than forcing more deficit.",confidence:s.loggedDays>=3||s.recoveryDays>=3?"Medium":"Low"};
-  }else if(adherencePoor){
-    rec={key:"adherence",action:"Tighten logging and hit protein before changing targets.",why:`Only ${s.loggedDays}/7 days have nutrition logs and ${s.weightDays}/7 have weigh-ins. The app needs better inputs before recommending calorie/cardio changes.`,confidence:s.loggedDays>=3||s.weightDays>=3?"Medium":"Low"};
-  }else if(veryLowRecovery){
-    rec={key:"recover",action:"Reduce cardio/stress first; keep food targets steady.",why:`Weekly recovery is ${s.recoveryAvg}%. Protect lifting and sleep before cutting calories further.`,confidence:s.recoveryDays>=3?"High":"Medium"};
-  }else if(lowRecovery&&s.weightTrend.status!=="flat"){
-    rec={key:"stress",action:"Keep calories steady and make cardio easier this week.",why:`Weight is ${s.weightTrend.label.toLowerCase()} while recovery averages ${s.recoveryAvg}%, so the safer lever is stress/cardio, not less food.`,confidence:s.recoveryDays>=3&&s.weightTrend.days>=4?"High":"Medium"};
-  }else if(s.weightTrend.status==="fast"){
-    rec={key:"too-fast",action:"Stay fed around training; do not add more deficit.",why:`Trend is about ${Math.abs(s.weightTrend.weeklyChange).toFixed(1)} lb/week down. That is fast enough to threaten recovery/performance on a cut.`,confidence:s.weightTrend.days>=4?"Medium":"Low"};
-  }else if(s.weightTrend.status==="flat"||s.weightTrend.status==="up"){
-    rec={key:"adjust",action:"Adjust one lever only: add 10–15 min Zone 2 twice this week or trim ~100 calories on rest days.",why:`Adherence is ${s.nutritionAdherence}% and weight is ${s.weightTrend.label.toLowerCase()}, so one small lever is enough. Targets stay unchanged until you choose it.`,confidence:s.weightTrend.days>=4&&s.tdee.phase!=="collecting"?"High":"Medium"};
-  }else if(stalls>=2){
-    rec={key:"training",action:"Hold the deficit steady and prioritize sleep/carbs around lifting.",why:`${stalls} lifts are showing stalls/drops. Preserve training output before making the cut more aggressive.`,confidence:"Medium"};
-  }else{
-    rec={key:"stay",action:"Stay the course this week.",why:`Weight trend, nutrition adherence (${s.nutritionAdherence}%), and recovery are good enough. Do not change multiple levers.`,confidence:s.weightTrend.days>=4&&s.loggedDays>=5?"High":"Medium"};
-  }
-  return{...rec,summary:s,signals:[
-    {label:"Weight",value:s.weightTrend.weeklyChange==null?s.weightTrend.label:`${s.weightTrend.weeklyChange>0?"+":""}${s.weightTrend.weeklyChange} lb/wk`,tone:s.weightTrend.status==="onPace"?"good":s.weightTrend.status==="fast"||s.weightTrend.status==="flat"||s.weightTrend.status==="up"?"warn":"muted"},
-    {label:"Nutrition adherence",value:s.loggedDays===0?"—":`${s.nutritionAdherence}%`,tone:s.loggedDays===0?"muted":s.nutritionAdherence>=70?"good":s.nutritionAdherence>=60?"warn":"bad"},
-    {label:"Recovery",value:s.recoveryAvg==null?"Missing":`${s.recoveryAvg}%`,tone:s.recoveryAvg==null?"muted":s.recoveryAvg>=65?"good":s.recoveryAvg>=55?"warn":"bad"},
-    {label:"Training",value:s.plannedTraining?`${s.trainingDone}/${s.plannedTraining}`:"Rest",tone:s.plannedTraining&&s.trainingDone<s.plannedTraining?"warn":"good"},
-    {label:"Cardio",value:`${s.cardioDone}/7`,tone:s.cardioDone>=2?"good":s.cardioDone>=1?"warn":"muted"}
-  ]};
-};
-
-// Iron & Ember tokens · values live in the :root CSS block; accent is the ONLY
-// brand color (old violet v/vl now aliases of accent). red/green = semantic
-// only; there is no amber tier · mid states render graphite (t2/t3).
-// oa = text on accent surfaces.
 const FD="'Barlow Condensed','Barlow',sans-serif";
 const C={bg:"var(--bg)",cd:"var(--surface)",bd:"var(--line)",bl:"var(--line)",
   p:"var(--accent)",pl:"var(--accent-soft)",g:"var(--good)",gl:"var(--good-soft)",r:"var(--danger)",rl:"var(--danger-soft)",
@@ -1077,11 +113,6 @@ const waterOps=(setData,date)=>({
   reset:()=>setData(prev=>{const water={...(prev.water||{})};delete water[date];const nd={...prev,water};sv(nd);svSB.delWater(date);return nd;}),
 });
 const WATER_PRESETS=[{oz:24,l:"SMALL BOTTLE"},{oz:32,l:"BIG BOTTLE"},{oz:64,l:"JUG"}];
-
-// ═══ PLATES ═══
-const BARBELL_IDS=new Set(["flat-bench","deadlift","rdl","back-squat","front-squat","sldl"]);
-const PLATES=[45,35,25,10,5,2.5];
-const plateMath=(total,bar=45)=>{let side=(Number(total)-bar)/2;if(!(side>=0))return null;const out=[];for(const p of PLATES){while(side>=p-1e-9){out.push(p);side-=p;}}return{perSide:out,leftover:+side.toFixed(1)};};
 
 // ═══ BASE COMPONENTS ═══
 const N=({value,onChange,placeholder,style={},min=0,max})=>{
@@ -2252,8 +1283,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
           const vals={};measFields.forEach(f=>{if(measF[f.k])vals[f.k]=parseFloat(measF[f.k]);});
           if(!Object.keys(vals).length)return;
           const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),...vals}}};
-          // Body measurements are local-only until a targeted Supabase table/helper exists.
-          setData(nd);sv(nd);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
+          setData(nd);sv(nd);svSB.bodyMeas(t,nd.bodyMeas[t]);setShowMeasForm(false);setMeasF({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
         };
         return(
           <X style={{padding:10}}>
@@ -2467,13 +1497,7 @@ const EditableNum=({value,onCommit,color,fontSize=34,min=0,label})=>{
 
 // ═══ EXERCISE HISTORY SHEET · last sessions + e1RM line, tap any lift name ═══
 const ExerciseHistory=({data,ex,progKeyStr,onClose})=>{
-  const sessions=Object.entries(data.wk||{}).sort((a,b)=>b[0].localeCompare(a[0])).map(([d,w])=>{
-    const wex=w.exercises?.find(e=>(progKeyStr&&e.progKey===progKeyStr)||e.id===ex.id);if(!wex)return null;
-    const cs=(wex.sets||[]).filter(saneSet);if(!cs.length)return null;
-    const best=cs.reduce((b,x)=>e1rm(Number(x.weight)||0,x.reps)>e1rm(Number(b.weight)||0,b.reps)?x:b,cs[0]);
-    return{date:d,sets:cs,e1rm:e1rm(Number(best.weight)||0,best.reps),vol:cs.reduce((t,x)=>t+(Number(x.weight)||0)*x.reps,0)};
-  }).filter(Boolean);
-  const pr=getProgPr(data.prog,{...ex,progKey:progKeyStr});
+  const {sessions,pr}=exerciseReport(data,ex,progKeyStr);
   const hist=sessions.slice(0,12).reverse();
   const W=320,H=90,padL=6,padR=6,padT=10,padB=16;
   const vals=hist.map(h=>h.e1rm);const mn=Math.min(...vals),mx=Math.max(...vals),rng=(mx-mn)||1;
@@ -2579,91 +1603,21 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   // sessOf gives the renderer/finisher a session-shaped object either way.
   const sessOf=w=>w?.manual?{name:"Manual Session",focus:"Ad-hoc · add exercises as you go",exercises:[]}:getSess(w.day,w.variant);
 
-  const gw=(exOrId,def,slot=null)=>{
-    const ex=typeof exOrId==="string"?{id:exOrId,sw:def,rr:slot?.rr}:exOrId;
-    const key=progKey(ex,slot||ex);
-    const p=data.prog[key]?.currentWeight;
-    if(p!=null&&saneWeight(ex,p))return p;
-    const dates=Object.keys(data.wk).sort().reverse();
-    for(const d of dates){
-      const w=data.wk[d];
-      const wex=w.exercises?.find(e=>e.progKey===key);
-      if(wex){const next=nextWeightFromSets(wex.sets,slot||ex);if(next!=null&&saneWeight(ex,next))return next;}
-    }
-    const targetRr=(slot?.rr||ex.rr);
-    for(const d of dates){
-      const w=data.wk[d];
-      const wex=w.exercises?.find(e=>e.id===ex.id);
-      if(wex){const ds=wex.sets?.filter(s=>saneSet(s)&&(!targetRr||Number(s.reps)>=targetRr[0]&&Number(s.reps)<=targetRr[1]));if(ds?.length&&saneWeight(ex,ds[0].weight)){const hitTop=targetRr&&(slot?.inc??ex.inc)>0&&ds.length>=((slot||ex).sets||1)&&ds.every(s=>Number(s.reps)>=targetRr[1]);return hitTop?Number(ds[0].weight)+(slot?.inc??ex.inc):ds[0].weight;}}
-    }
-    if(!legacyAmbiguousIds.has(ex.id)){
-      const lp=data.prog[ex.id];
-      const legacy=lp?.currentWeight;
-      const legacyHasReps=(lp?.lastReps||[]).some(r=>Number(r)>0);
-      if(legacyHasReps&&legacy!=null&&saneWeight(ex,legacy))return legacy;
-    }
-    return def;
-  };
+  const gw=(exOrId,def,slot=null)=>resolveWeight(data,exOrId,def,slot);
 
-  const getSwapOptions=(slotEx,currentEx)=>{
-    const base=exLibById[currentEx.id]||exLibById[slotEx.id]||slotEx;
-    const pats=relatedPatterns[base.pattern]||[base.pattern].filter(Boolean);
-    const used=new Set((workout?.exercises||[]).map(e=>e.id));
-    return EXERCISE_LIBRARY
-      .filter(opt=>opt.id!==currentEx.id&&pats.includes(opt.pattern)&&!used.has(opt.id))
-      .map(opt=>{
-        const key=progKey(opt,slotEx);
-        const hasHistory=data.prog[key]?.currentWeight!=null||data.prog[opt.id]?.currentWeight!=null||Object.values(data.wk||{}).some(w=>w.exercises?.some(e=>e.progKey===key||e.id===opt.id));
-        const score=(opt.pattern===base.pattern?40:20)+(opt.region===base.region?10:0)+(hasHistory?8:0);
-        return {...opt,sets:slotEx.sets,rr:slotEx.rr,rest:slotEx.rest,notes:slotEx.notes,progKey:key,recommended:score>=48,score};
-      })
-      .sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
-  };
+  const getSwapOptions=(slotEx,currentEx)=>swapOptions(data,workout,slotEx,currentEx);
 
   const isDeload=wkn(t)===PROG.deload;
-  // Last session's completed sets for an exercise · feeds one-tap prefill.
-  const lastSessionSets=(key,id)=>{
-    const dates=Object.keys(data.wk||{}).sort().reverse();
-    for(const dt of dates){
-      const wex=data.wk[dt]?.exercises?.find(e=>(key&&e.progKey===key)||(id&&e.id===id));
-      if(wex?.sets?.some(saneSet))return wex.sets.filter(saneSet);
-    }
-    return null;
-  };
+
   const startW=(day=sel)=>{const startVariant=activeVariant[day]||null;const startSess=getSess(day,startVariant);if(!startSess)return;
-    // Accepted auto-regulation mutates TODAY'S plan only: −1 set on each
-    // non-anchor accessory. The stored program is never touched.
-    const autoregToday=data.autoregLog?.[t]?.type==="minusOneSet";
-    setWorkout({day,variant:startVariant,exercises:startSess.exercises.map(ex=>{
-      const key=progKey(ex,ex);const cw=gw(ex,ex.sw,ex);const wt=isDeload?Math.round(cw*0.5/5)*5:cw;
-      const effSets=autoregToday&&!ex.anchor?Math.max(1,ex.sets-1):ex.sets;
-      ex={...ex,sets:effSets};
-      const last=lastSessionSets(key,ex.id);
-      return{id:ex.id,progKey:key,
-      wu:WU(wt).map(w=>({...w,done:false})),
-      // Prefill reps with last session's per-set value (fallback: top of rep
-      // range) and RIR with last session's. Prefilled-unconfirmed sets render
-      // lighter; tapping Log logs the prefill, typing overrides it.
-      sets:Array.from({length:ex.sets},(_,si)=>({weight:wt,
-        reps:Number(last?.[si]?.reps)>0?Number(last[si].reps):(ex.rr?.[1]||0),
-        rir:last?.[si]?.rir??"",
-        prefilled:true,done:false})),
-    };}),start:Date.now(),isDeload});setWuDone(false);};
+    setWorkout(buildSession(data,day,startSess,{date:t,variant:startVariant}));setWuDone(false);};
 
   // Manual workout: start empty, add exercises from the library mid-session.
   // Weights come from gw() (progression + history), rest timers work as normal.
   const startManualW=()=>{setWorkout({day:sel,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);};
   const addManualEx=(opt)=>{
-    const slot={id:opt.id,name:opt.name,sets:3,rr:[8,12],rest:90,sw:opt.sw,inc:opt.inc,unit:opt.unit,cue:opt.cue,pattern:opt.pattern,region:opt.region};
-    const key=progKey(slot,slot);
-    const cw=gw({...slot,progKey:key},slot.sw,slot);
-    const wt=workout?.isDeload?Math.round(cw*0.5/5)*5:cw;
-    const last=lastSessionSets(key,slot.id);
-    setWorkout(p=>({...p,exercises:[...p.exercises,{id:slot.id,progKey:key,slot,
-      wu:p.exercises.length===0?WU(wt).map(w=>({...w,done:false})):[],
-      sets:Array.from({length:slot.sets},(_,si)=>({weight:wt,
-        reps:Number(last?.[si]?.reps)>0?Number(last[si].reps):slot.rr[1],
-        rir:last?.[si]?.rir??"",prefilled:true,done:false}))}]}));
+    const slot=manualSlot(opt);
+    setWorkout(p=>({...p,exercises:[...p.exercises,buildExerciseEntry(data,slot,{isDeload:!!p.isDeload,withWarmup:p.exercises.length===0,extra:{slot}})]}));
     setShowAddEx(false);
   };
 
@@ -2820,40 +1774,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
 
   const finishWorkout=()=>{
-    if(!workout)return;const nd={...data};const prs=[];
-    nd.wk={...nd.wk,[t]:{day:workout.day,variant:workout.variant||null,manual:workout.manual||false,exercises:workout.exercises,dur:Math.round((Date.now()-workout.start)/6e4)}};
+    if(!workout)return;
     const s=sessOf(workout);
-    workout.exercises.forEach((ex,i)=>{const pe=s?.exercises?.[i]||ex.slot;if(!pe)return;
-      const active=ex.swappedTo?{...ex.swappedTo,sets:pe.sets,rr:pe.rr,rest:pe.rest}:pe;
-      const aid=ex.progKey||progKey(active,pe);
-      const ainc=active.inc??pe.inc;
-      const aname=active.name||pe.name;
-      const asw=active.sw??pe.sw;
-      const cs=ex.sets.filter(saneSet);
-      if(!cs.length)return;
-      const hit=cs.length===pe.sets&&cs.every(s=>Number(s.reps)>=pe.rr[1]);
-      const cw=cs[0].weight>0?cs[0].weight:gw(active,asw,pe);
-      const prevPr=(nd.prog[aid]||{}).pr;const prevHistory=(nd.prog[aid]||{}).e1rmHistory||[];
-      const prevWeight=nd.prog[aid]?.currentWeight||gw(active,asw,pe);
-      // Anchor lifts (big three) progress through the cut; everything else holds and takes rep PRs
-      const isAnchor=!!(pe.anchor||active.anchor);
-      const shouldProgress=(isAnchor||!CUT_HOLD_PROGRESSION)&&!workout.isDeload&&hit&&ainc>0;
-      const newWeight=workout.isDeload?prevWeight:(shouldProgress?cw+ainc:cw);
-      nd.prog={...nd.prog,[aid]:{currentWeight:newWeight,lastReps:cs.map(s=>s.reps),lastDate:t,progressed:shouldProgress,pr:prevPr||null,e1rmHistory:prevHistory,exerciseId:active.id,repRange:pe.rr,name:aname}};
-      if(!workout.isDeload){
-      const bestSet=cs.reduce((best,s)=>e1rm(s.weight||0,s.reps)>e1rm(best.weight||0,best.reps)?s:best,cs[0]||{weight:0,reps:0});
-      const newE1rm=e1rm(bestSet.weight||0,bestSet.reps);
-      if(newE1rm>0){
-        nd.prog[aid].e1rmHistory=[...prevHistory,{date:t,e1rm:newE1rm}].slice(-12);
-        if(!prevPr||newE1rm>prevPr.e1rm){nd.prog[aid].pr={name:aname,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,date:t};if(prevPr)prs.push({name:aname,weight:bestSet.weight,reps:bestSet.reps,e1rm:newE1rm,prev:prevPr.e1rm});}
-      }
-      }
-    });
-    nd.wk[t].volume=calcVolume(workout.exercises);
-    setData(nd);sv(nd);svSB.workout(t,nd.wk[t]);workout.exercises.forEach(ex=>{const aid=ex.progKey;if(aid&&nd.prog[aid])svSB.progression(aid,nd.prog[aid]);});setWorkout(null);clearRestTimer();
-    stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
+    const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,t);
+    setData(nd);sv(nd);svSB.workout(t,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
+    setWorkout(null);clearRestTimer();stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
     haptic([40,60,40]);
-    setSummary({date:t,name:s?.name||"Session",dur:nd.wk[t].dur,sets:workout.exercises.reduce((a,e)=>a+e.sets.filter(saneSet).length,0),exercises:workout.exercises.filter(e=>e.sets.some(saneSet)).length,volume:nd.wk[t].volume,prs,log:nd.wk[t]});
+    setSummary({date:t,name:s?.name||"Session",dur:log.dur,sets:workout.exercises.reduce((a,e)=>a+e.sets.filter(saneSet).length,0),exercises:workout.exercises.filter(e=>e.sets.some(saneSet)).length,volume:log.volume,prs,log});
   };
 
   const cancelWorkout=()=>{
@@ -3058,13 +1985,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         // inside a group interleave round-robin (A1, B1, A2, B2 …) so the pair
         // actually alternates; the last member's rest runs the timer.
         const restOf=i=>slotAt(i)?.rest;
-        const groups=(()=>{const g=[];for(let i=0;i<exs.length;){const grp=[i];while(restOf(grp[grp.length-1])===0&&i+1<exs.length){i++;grp.push(i);}i++;g.push(grp);}return g;})();
-        let curEi=-1,curSi0=-1;
-        for(const grp of groups){
-          if(curEi>=0)break;
-          const maxSets=Math.max(...grp.map(m=>exs[m].sets.length));
-          for(let si=0;si<maxSets&&curEi<0;si++)for(const m of grp){const st=exs[m].sets[si];if(st&&!st.done){curEi=m;curSi0=si;break;}}
-        }
+        const {groups,curEi,curSi:curSi0}=sessionCursor(exs,restOf);
         const curGrp=curEi>=0?groups.find(g=>g.includes(curEi)):null;
         const ssMates=curGrp&&curGrp.length>1?curGrp.filter(m=>m!==curEi).map(m=>exs[m].swappedTo?.name||slotAt(m)?.name).filter(Boolean):[];
         const ssLetter=curGrp&&curGrp.length>1?String.fromCharCode(65+curGrp.indexOf(curEi)):null;
@@ -3657,8 +2578,7 @@ const Nutrition=({data,setData})=>{
   const waterGoal=st.water||128;
   const navDate=(dir)=>{const d=new Date(viewDate+"T12:00:00");d.setDate(d.getDate()+dir);const ds=lds(d);if(ds<=t)setViewDate(ds);};
 
-  const rc=ms=>({meals:ms,totalCal:ms.reduce((s,m)=>s+(m.cal||0),0),totalProtein:ms.reduce((s,m)=>s+(m.protein||0),0),
-    totalCarbs:ms.reduce((s,m)=>s+(m.carbs||0),0),totalFat:ms.reduce((s,m)=>s+(m.fat||0),0),totalFiber:ms.reduce((s,m)=>s+(m.fiber||0),0)});
+  const rc=sumMeals;
   const rm=i=>{const nl=rc(tl.meals.filter((_,j)=>j!==i));const nd={...data,nut:{...data.nut,[viewDate]:nl}};setData(nd);sv(nd);svSB.nutrition(viewDate,nl);setSelM(null);};
   const {add:addWater,reset:resetWater}=waterOps(setData,viewDate);
 
@@ -4187,7 +3107,7 @@ const ProgressView=({data,setData,onBack})=>{
         {(()=>{
           const cur=data.bodyMeas&&data.bodyMeas[t]||{};
           const fields=[{k:"chest",l:"Chest"},{k:"waist",l:"Waist"},{k:"armL",l:"Left Arm"},{k:"armR",l:"Right Arm"},{k:"thighL",l:"Left Thigh"},{k:"thighR",l:"Right Thigh"}];
-          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),[k]:v?parseFloat(v):null}}};setData(nd);sv(nd);};
+          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),[k]:v?parseFloat(v):null}}};setData(nd);sv(nd);svSB.bodyMeas(t,nd.bodyMeas[t]);};
           return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {fields.map(fd=>(<div key={fd.k}><L>{fd.l}</L><N value={cur[fd.k]||""} onChange={v=>saveMeas(fd.k,v)} placeholder="in"/></div>))}
           </div>);
@@ -4473,6 +3393,20 @@ const Settings=({data,setData,syncFailures={}})=>{
       </X>);
     })()}
 
+    {(data.coachLog||[]).length>0&&(
+      <S title="Coach changes" collapsible defaultOpen={false}>
+        <X style={{padding:"4px 12px"}}>
+          {(data.coachLog||[]).slice(0,12).map((c,i)=>(
+            <div key={c.id||i} style={{padding:"8px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
+                <span style={{fontSize:13,fontWeight:700,color:c.applied?C.t:C.r}}>{c.summary||`${c.type}${c.action?` · ${c.action}`:""}`}</span>
+                <span style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>{c.at?fmt(String(c.at).slice(0,10)).toUpperCase():""}</span>
+              </div>
+              {c.reason&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.reason}</div>}
+            </div>))}
+        </X>
+      </S>
+    )}
     <X>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Data</div>
       <div style={{display:"flex",gap:6}}>
@@ -4516,29 +3450,6 @@ const ToastStack=({toasts,dismiss})=>{
 const clockParam=()=>{try{const v=new URLSearchParams(location.search).get("clock");const m=v&&v.match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]+(+m[2])/60:null;}catch{return null;}};
 const dayParam=()=>{try{const v=new URLSearchParams(location.search).get("day");return ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(v)?v:null;}catch{return null;}};
 const nowHM=()=>{const c=clockParam();if(c!=null)return c;const d=new Date();return d.getHours()+d.getMinutes()/60;};
-const resolveMode=(data,t,workout)=>{
-  const hm=nowHM();
-  const dayName=dayParam()||dw(t);
-  const weightLogged=data.wt?.[t]!=null;
-  const isTraining=!!data.program?.[dayName];
-  const liftDone=!!data.wk?.[t];
-  if(workout)return"session";                                   // active workout always wins
-  if(hm>=4.5&&hm<9&&!weightLogged)return"morning";
-  if(isTraining&&!liftDone&&hm<13&&hm>=4.5)return"session";
-  if(hm>=19.5)return"closeout";
-  return"neutral";
-};
-
-// Rule-based auto-regulation from Oura recovery · no AI call. Accept mutates
-// TODAY'S session plan only (applied at startW), never the stored program.
-const getAutoregProposal=(rec)=>{
-  const score=rec?.recoveryScore;
-  if(score==null||score>=60)return null;
-  const proposals=[{id:"minusOneSet",label:"−1 set on non-anchor accessories today"}];
-  if(score<40)proposals.push({id:"mobilitySwap",label:"Swap to mobility session"});
-  return{score,proposals};
-};
-
 const MODE_LABELS={morning:"Morning",session:"Session",closeout:"Closeout",neutral:"Home"};
 
 const Moments=({data,setData,setTab,workout,addToast})=>{
@@ -4553,7 +3464,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
   useEffect(()=>{let dead=false;(async()=>{try{const r=await fetch("/api/allergies");const d=await r.json();if(dead)return;if(r.ok)setAllergies(d);else setAllergyErr(d.error||"unavailable");}catch(e){if(!dead)setAllergyErr("unavailable");}})();return()=>{dead=true};},[]);
   const t=td();
   const dayName=dayParam()||dw(t);
-  const mode=override||resolveMode(data,t,workout);
+  const mode=override||resolveMode(data,t,workout,nowHM(),dayName);
   const trend=getTrend(data.wt,t);
   const rec=data.rec?.[t];
   const sess=data.program?.[dayName];
@@ -4928,7 +3839,7 @@ window.App = function App(){
           // Smart merge: Supabase wins for date-keyed data (external syncs like Oura/Cronometer
           // write directly to Supabase, so it is always authoritative). Local-only dates
           // (offline entries not yet in Supabase) are preserved because sbData won't have that key.
-          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","travelDays","tdeeExclude"]);
+          const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","bodyMeas","lytes","travelDays","tdeeExclude"]);
           Object.keys(sbData).forEach(k=>{
             if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               // For date-keyed data: start with local, then overlay Supabase (Supabase wins)
@@ -4965,6 +3876,16 @@ window.App = function App(){
       const pruned=pruneProgression(updated);
       setData(updated);sv(updated);
       if(pruned)console.log(`[prune] Local-only cleanup removed ${pruned} orphaned lift record${pruned===1?"":"s"}`);
+      // Coach changes (Claude.ai via /api/mcp, or /api/update) are applied server-side;
+      // surface anything new since the last launch, once.
+      try{
+        const log=(updated.coachLog||[]).filter(c=>c.applied&&c.at);
+        const seen=localStorage.getItem("dhub6_coach_seen");
+        if(log.length){
+          if(seen){log.filter(c=>c.at>seen).slice(0,3).forEach(c=>addToast(`Coach · ${c.summary||c.type}${c.reason?` · ${c.reason}`:""}`,"info",{label:"Setup",fn:()=>setTab("settings")}));}
+          localStorage.setItem("dhub6_coach_seen",log[0].at);
+        }
+      }catch{}
     })();
     // Service worker: offline shell + push display. A new build activates on the
     // next launch; mid-session we only offer a reload so a workout is never cut.

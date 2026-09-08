@@ -173,7 +173,9 @@ Use the exercise IDs and settings fields from their Health Hub schema. Only outp
 ```
 
 ## How Updates Flow
-1. External source (Claude.ai, curl, script) POSTs to `/api/update`
-2. Changes are queued in the `program_updates` Supabase table
-3. On next app load, pending changes are read, applied to local state, and marked `applied: true`
-4. User sees a toast notification for each applied change
+1. External source (Claude.ai via `/api/mcp`, curl, script via `/api/update`) sends changes
+2. `applyChanges` (lib/engine.mjs) validates them and `writeProgramChanges` (lib/supabase.mjs) writes the new `settings` / `program` rows immediately, plus one audit row per change in `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`)
+3. The response lists `applied` and `rejected` (unknown field, unknown exercise, duplicate add, missing day)
+4. On next app launch the phone loads the live rows and toasts each unseen change with its reason; Setup → Coach changes lists the history
+
+The Claude.ai path no longer needs the HEALTH_HUB_UPDATE block: connect the Coach connector (see `COACH.md`) and it writes directly.

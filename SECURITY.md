@@ -15,9 +15,10 @@ the page source or repo** — the key is by design a client-side credential;
 the missing control is RLS.
 
 ### 2. Unauthenticated / lightly-authenticated endpoints
-- `/api/mcp` trusts the Supabase key alone for `get_program`; the `update_*`
-  tools write to the `program_updates` queue with no caller auth beyond the
-  Bearer token configured in the Claude.ai integration.
+- `/api/mcp` (the Coach) reads and writes every table with no caller auth by
+  default, because Claude.ai's connector UI offers no static token. Set
+  `MCP_TOKEN` to require `Authorization: Bearer` for non-OAuth clients; the
+  Claude.ai path is protected only by the unlisted URL until OAuth is wired.
 - `/api/oura-sync` and `/api/cronometer-sync` are public unless
   `OURA_SYNC_SECRET` / `CRONOMETER_SYNC_SECRET` env vars are set.
 - `/api/push-schedule` accepts any push job unless `NOTIFY_TOKEN` is set

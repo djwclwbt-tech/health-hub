@@ -1,308 +1,192 @@
+// ═══ COACH MCP · the second delivery vehicle ═══
+// Remote MCP server for Claude.ai (and any MCP client). Every number here comes
+// from lib/engine.mjs, the same brain the phone renders, over the same Supabase
+// mapping (lib/supabase.mjs). Reads are free; writes land in the live tables and
+// leave an audit row in program_updates that the app surfaces on next launch.
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import * as E from "../lib/engine.mjs";
+import { makeClient, loadAll, toRow, writeProgramChanges } from "../lib/supabase.mjs";
 
-// ── Supabase config (same as update.js) ──
-const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
-const SB_KEY = process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-const sbHeaders = {
-  "Content-Type": "application/json",
-  "apikey": SB_KEY,
-  "Authorization": `Bearer ${SB_KEY}`,
-  "Prefer": "resolution=merge-duplicates",
+const client = () => makeClient({ url: process.env.SUPABASE_URL || undefined, key: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || undefined });
+const text = (obj) => ({ content: [{ type: "text", text: typeof obj === "string" ? obj : JSON.stringify(obj, null, 2) }] });
+const fail = (msg) => ({ content: [{ type: "text", text: msg }], isError: true });
+const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD");
+const dayOffset = (n, from = E.td()) => { const d = new Date(from + "T12:00:00"); d.setDate(d.getDate() + n); return E.lds(d); };
+const hmNow = () => { const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })); return d.getHours() + d.getMinutes() / 60; };
+const todayChicago = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+// Full app-shaped data object with the same boot normalization the phone runs.
+const loadData = async () => {
+  const d = await loadAll(client());
+  E.backfillData(d); E.repairDeloadProgression(d); E.applyBlockV2(d); E.pruneProgression(d);
+  return d;
 };
 
-// ── Constants ──
-const SETTINGS_FIELDS = ["calories", "protein", "water", "steps", "sleep", "fiber", "trainingCal", "wednesdayCal", "weekendCal"];
-
-const PROGRAM_SNAPSHOT = {
-  settings: { calories: 1790, protein: 200, water: 128, steps: 15000, sleep: 7.5, fiber: 30, trainingCal: 2000, wednesdayCal: 900, weekendCal: 1800 },
-  days: {
-    monday: {
-      name: "Upper A — Strength", focus: "Strength",
-      exercises: [
-        { id: "flat-bench", name: "Barbell Flat Bench", sets: 3, rr: [5, 8], sw: 175, unit: "lbs", anchor: true },
-        { id: "seated-row", name: "Seated Row Machine", sets: 2, rr: [5, 8], sw: 160, unit: "lbs" },
-        { id: "smith-ohp", name: "Smith OHP", sets: 2, rr: [5, 8], sw: 85, unit: "lbs" },
-        { id: "lat-pulldown", name: "Lat Pulldown", sets: 2, rr: [5, 8], sw: 145, unit: "lbs" },
-        { id: "cable-fly", name: "Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
-      ]
-    },
-    tuesday: {
-      name: "Lower A — Strength", focus: "Strength",
-      exercises: [
-        { id: "deadlift", name: "Deadlift (BB)", sets: 3, rr: [5, 5], sw: 235, unit: "lbs", anchor: true },
-        { id: "leg-press", name: "Leg Press", sets: 2, rr: [5, 8], sw: 360, unit: "lbs" },
-        { id: "lying-leg-curl", name: "Lying Leg Curl", sets: 2, rr: [5, 8], sw: 130, unit: "lbs" },
-        { id: "standing-calf", name: "Standing Calf Raise", sets: 2, rr: [5, 8], sw: 290, unit: "lbs" },
-      ]
-    },
-    wednesday: {
-      name: "Mobility + Arms", focus: "Core",
-      exercises: [
-        { id: "incline-db-curl", name: "Incline DB Curl", sets: 2, rr: [10, 12], sw: 15, unit: "lbs" },
-        { id: "oh-tricep-ext", name: "Overhead Tricep Extension", sets: 2, rr: [10, 12], sw: 40, unit: "lbs" },
-        { id: "cable-hammer-curl", name: "Cable Hammer Curl (Rope)", sets: 2, rr: [10, 12], sw: 30, unit: "lbs" },
-        { id: "tricep-pushdown", name: "Tricep Pushdown", sets: 2, rr: [10, 12], sw: 50, unit: "lbs" },
-        { id: "reverse-curl", name: "Reverse Curl", sets: 2, rr: [12, 15], sw: 40, unit: "lbs" },
-        { id: "wrist-curl", name: "Wrist Curl", sets: 2, rr: [12, 15], sw: 20, unit: "lbs" },
-      ]
-    },
-    thursday: {
-      name: "Upper B — Hypertrophy", focus: "Hypertrophy",
-      exercises: [
-        { id: "db-incline-press", name: "DB Incline Press", sets: 2, rr: [10, 12], sw: 40, unit: "lbs/hand" },
-        { id: "overhand-cable-row", name: "Overhand Cable Row", sets: 2, rr: [10, 12], sw: 110, unit: "lbs" },
-        { id: "lateral-raise", name: "Cable Lateral Raise", sets: 2, rr: [10, 12], sw: 12.5, unit: "lbs" },
-        { id: "low-high-cable-fly", name: "Low-to-High Cable Fly", sets: 2, rr: [12, 15], sw: 15, unit: "lbs/side" },
-        { id: "reverse-fly", name: "Reverse Fly", sets: 2, rr: [10, 12], sw: 25, unit: "lbs" },
-      ]
-    },
-    friday: {
-      name: "Lower B — Hypertrophy", focus: "Hypertrophy",
-      exercises: [
-        { id: "back-squat", name: "Back Squat (BB)", sets: 3, rr: [5, 8], sw: 135, unit: "lbs", anchor: true },
-        { id: "rdl", name: "Romanian Deadlift", sets: 2, rr: [8, 10], sw: 125, unit: "lbs" },
-        { id: "leg-extension", name: "Leg Extension", sets: 2, rr: [10, 12], sw: 120, unit: "lbs" },
-        { id: "bulgarian-split-squat", name: "Bulgarian Split Squat (DB)", sets: 2, rr: [10, 12], sw: 25, unit: "lbs/hand" },
-        { id: "seated-calf", name: "Seated Calf Raise", sets: 2, rr: [10, 12], sw: 90, unit: "lbs" },
-      ]
-    }
+const snapshot = (d, t) => {
+  const st = d.settings || E.DEFAULTS;
+  const summary = E.getWeeklyCutSummary(d, t);
+  const rec = d.rec?.[t];
+  const week = [];
+  for (let i = 6; i >= 0; i--) {
+    const k = dayOffset(-i, t);
+    week.push({ date: k, day: E.dw(k), weight: d.wt?.[k] ?? null, cal: d.nut?.[k]?.totalCal ?? null, protein: d.nut?.[k]?.totalProtein ?? null,
+      calTarget: E.getDayCalTarget(k, st, d.travelDays, d.socialWeekend), proteinTarget: E.getDayProTarget(k, st, d.travelDays, d.socialWeekend),
+      steps: d.steps?.[k] ?? null, water: d.water?.[k] ?? null, recovery: d.rec?.[k]?.recoveryScore ?? null, sleep: d.rec?.[k]?.sleepHours ?? null,
+      lift: d.wk?.[k] ? { day: d.wk[k].day, dur: d.wk[k].dur, volume: d.wk[k].volume } : null, cardio: d.cardio?.[k] ? E.cardioSummary(d.cardio[k]) : null,
+      cleanDay: !!d.habits?.[k] && ["alcohol", "cannabis", "screensOff", "bedBy1030", "supplements", "sunlight", "readBeforeBed"].every(f => d.habits[k][f] === (f === "alcohol" || f === "cannabis" ? false : true)) });
   }
+  const last = (obj, pred = v => v != null) => Object.keys(obj || {}).filter(k => pred(obj[k])).sort().reverse()[0] || null;
+  return {
+    date: t, weekday: E.dw(t), programWeek: `${E.wkn(t)}/${E.PROG.weeks}`, deloadWeek: E.wkn(t) === E.PROG.deload, block: { name: E.PROG.name, version: E.PROG.version, start: E.PROG.start, end: E.PROG.end, startWeight: E.PROG.startWeight, targetWeight: E.PROG.targetWeight },
+    mode: E.resolveMode(d, t, null, hmNow(), E.dw(t)),
+    today: { dayType: E.getDayType(t, d.travelDays), calTarget: E.getDayCalTarget(t, st, d.travelDays, d.socialWeekend), proteinTarget: E.getDayProTarget(t, st, d.travelDays, d.socialWeekend),
+      session: d.program?.[E.dw(t)] ? { name: d.program[E.dw(t)].name, exercises: d.program[E.dw(t)].exercises.length, logged: !!d.wk?.[t] } : null,
+      weight: d.wt?.[t] ?? null, nutrition: d.nut?.[t] ? { cal: d.nut[t].totalCal, protein: d.nut[t].totalProtein, meals: (d.nut[t].meals || []).length } : null,
+      steps: d.steps?.[t] ?? null, water: d.water?.[t] ?? null, recovery: rec || null, autoregulation: { proposal: E.getAutoregProposal(rec), decision: d.autoregLog?.[t] || null } },
+    trend: E.getTrend(d.wt, t), tdee: summary.tdee, weekly: { ...summary, adherence: undefined }, recommendation: (({ summary: _s, ...r }) => r)(E.getWeeklyCutRecommendation(d, t, summary)),
+    consistency: E.getWeeklyConsistency(d, t, summary), closeout: E.getTonightCloseout(d, t), stalls: summary.stalls, insights: E.getInsights(d), retention: E.getCutRetentionScore(d),
+    last7: week, integrations: { cronometerLast: last(d.nut, n => (n?.totalCal || 0) > 0), ouraLast: last(d.rec, r => r?.recoveryScore != null), stepsLast: last(d.steps), weightLast: last(d.wt), lastPhotos: last(d.bodyComp), lastMeasurements: last(d.bodyMeas) },
+    settings: st, coachLog: (d.coachLog || []).slice(0, 10),
+  };
 };
 
-// ── Supabase write ──
-async function pushChange(change, reason) {
-  const row = {
-    type: change.type,
-    action: change.action || null,
-    payload: JSON.stringify(change),
-    reason: reason || null,
-    applied: false,
-  };
-  const r = await fetch(`${SB_URL}/rest/v1/program_updates`, {
-    method: "POST",
-    headers: sbHeaders,
-    body: JSON.stringify(row),
-  });
-  if (!r.ok) throw new Error(`Supabase error: ${await r.text()}`);
-  return true;
-}
-
-// ── Exercise field schemas ──
-const exerciseSchema = z.object({
-  id: z.string(), name: z.string(), sets: z.number(),
-  rr: z.array(z.number()), rest: z.number().optional(),
-  sw: z.number(), inc: z.number().optional(),
-  unit: z.string(), notes: z.string().optional(), cue: z.string().optional(),
-});
-
-const exerciseFieldsSchema = z.object({
-  name: z.string().optional(), sets: z.number().optional(),
-  rr: z.array(z.number()).optional(), rest: z.number().optional(),
-  sw: z.number().optional(), inc: z.number().optional(),
-  unit: z.string().optional(), notes: z.string().optional(), cue: z.string().optional(),
-});
-
-// ── MCP Handler (Web API Request → Response) ──
 const mcpHandler = createMcpHandler(
   (server) => {
-    server.registerTool(
-      "get_program",
-      {
-        title: "Get Program",
-        description: "View the current workout program structure — all days, exercises, IDs, weights, settings, and live progression data (currentWeight, lastReps, lastDate, progressed, PR). Call this before making changes so you know what exists.",
-        inputSchema: z.object({}),
-      },
-      async () => {
-        // Read live state from Supabase: the app mirrors its settings and
-        // program to the `settings`/`program` tables on every change.
-        // PROGRAM_SNAPSHOT is a fallback only (empty tables / fetch failure).
-        const sbGet = async (path) => {
-          try {
-            const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
-              headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-            });
-            return res.ok ? await res.json() : null;
-          } catch { return null; }
-        };
+    server.registerTool("get_snapshot", {
+      title: "Get coaching snapshot",
+      description: "Everything the phone computes, in one call: today's mode and targets, weight trend (EWMA/OLS, lbs/wk), adaptive TDEE, weekly adherence and the rule-based recommendation, tonight's closeout, auto-regulation proposal, stalls, last 7 days table, integration freshness, recent coach changes. Call this first in any coaching conversation.",
+      inputSchema: z.object({ date: DATE.optional().describe("Defaults to today in America/Chicago") }),
+    }, async ({ date }) => { try { const d = await loadData(); return text(snapshot(d, date || todayChicago())); } catch (e) { return fail(`snapshot failed: ${e.message}`); } });
 
-        const [settingsRows, programRows, progressionRows] = await Promise.all([
-          sbGet(`settings?id=eq.user&select=*&limit=1`),
-          sbGet(`program?id=eq.user&select=*&limit=1`),
-          sbGet(`progression?select=*`),
-        ]);
+    server.registerTool("get_program", {
+      title: "Get program",
+      description: "Current block: days, exercises (id, sets, rep range, rest, increment, anchor flag, cue) with the resolved working weight the app will load next session, progression rows (current weight, last reps/date, PR, e1RM history) and settings. Use exercise ids from here for update_exercise / get_exercise.",
+      inputSchema: z.object({}),
+    }, async () => {
+      try {
+        const d = await loadData();
+        const days = Object.fromEntries(Object.entries(d.program || {}).map(([dn, day]) => [dn, { name: day.name, focus: day.focus, warmup: day.warmup, exercises: (day.exercises || []).map(ex => {
+          const key = E.progKey(ex, ex); return { ...ex, progKey: key, workingWeight: E.resolveWeight(d, { ...ex, progKey: key }, ex.sw, ex), progression: d.prog?.[key] || null }; }) }]));
+        return text({ source: "live", block: { name: E.PROG.name, version: E.PROG.version }, settings: d.settings, days, mobility: E.PROG.mobility, library: E.EXERCISE_LIBRARY.map(e => ({ id: e.id, name: e.name, pattern: e.pattern, region: e.region, unit: e.unit })) });
+      } catch (e) { return fail(`get_program failed: ${e.message}`); }
+    });
 
-        const liveSettings = settingsRows?.[0] || null;
-        const liveProgram = programRows?.[0]?.data || null;
+    server.registerTool("get_history", {
+      title: "Get history",
+      description: "Raw daily rows for one store between two dates (inclusive). kinds: workouts (full set logs), nutrition (meals + totals), weight, recovery (Oura), steps, water, cardio, habits, measurements, photos (AI body-comp analyses), mobility.",
+      inputSchema: z.object({ kind: z.enum(["workouts", "nutrition", "weight", "recovery", "steps", "water", "cardio", "habits", "measurements", "photos", "mobility"]), from: DATE.optional().describe("Default: 28 days ago"), to: DATE.optional().describe("Default: today"), limit: z.number().int().min(1).max(400).optional() }),
+    }, async ({ kind, from, to, limit = 120 }) => {
+      try {
+        const d = await loadData();
+        const store = { workouts: d.wk, nutrition: d.nut, weight: d.wt, recovery: d.rec, steps: d.steps, water: d.water, cardio: d.cardio, habits: d.habits, measurements: d.bodyMeas, photos: d.bodyComp, mobility: d.mob }[kind] || {};
+        const t = to || todayChicago(); const f = from || dayOffset(-28, t);
+        const rows = Object.entries(store).filter(([k]) => k >= f && k <= t).sort((a, b) => b[0].localeCompare(a[0])).slice(0, limit).map(([date, v]) => ({ date, ...(typeof v === "object" && v !== null ? v : { value: v }) }));
+        return text({ kind, from: f, to: t, count: rows.length, rows });
+      } catch (e) { return fail(`get_history failed: ${e.message}`); }
+    });
 
-        const settings = liveSettings
-          ? Object.fromEntries(SETTINGS_FIELDS.map((f) => {
-              const snake = f.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-              const v = liveSettings[f] ?? liveSettings[snake] ?? PROGRAM_SNAPSHOT.settings[f];
-              return [f, v];
-            }))
-          : PROGRAM_SNAPSHOT.settings;
+    server.registerTool("get_exercise", {
+      title: "Get exercise",
+      description: "One lift in depth: every logged session (sets, e1RM, volume), PR, current working weight, and plan-safe substitutions ranked by fit. exerciseId from get_program.",
+      inputSchema: z.object({ exerciseId: z.string() }),
+    }, async ({ exerciseId }) => {
+      try {
+        const d = await loadData();
+        const slot = Object.values(d.program || {}).flatMap(day => day.exercises || []).find(e => e.id === exerciseId) || E.exLibById[exerciseId];
+        if (!slot) return fail(`Unknown exercise ${exerciseId}. Use ids from get_program or the library.`);
+        const key = E.progKey(slot, slot);
+        const report = E.exerciseReport(d, slot, key);
+        const swaps = E.swapOptions(d, null, slot, slot).slice(0, 6).map(o => ({ id: o.id, name: o.name, region: o.region, recommended: o.recommended, startWeight: E.resolveWeight(d, { ...o, progKey: o.progKey }, o.sw, slot) }));
+        return text({ ...report, slot, swaps });
+      } catch (e) { return fail(`get_exercise failed: ${e.message}`); }
+    });
 
-        const days = liveProgram || PROGRAM_SNAPSHOT.days;
+    // ── writes ─────────────────────────────────────────────────────────────
+    server.registerTool("update_settings", {
+      title: "Update settings",
+      description: "Change one target and apply it immediately: calories, protein (g), water (oz), steps, sleep (h), fiber (g), trainingCal (Mon/Tue/Thu/Fri), wednesdayCal (fast day), weekendCal (Sat/Sun average; app renders Sat +100 / Sun −100). The phone picks it up on next launch and shows a toast with your reason.",
+      inputSchema: z.object({ field: z.enum(E.SETTINGS_FIELDS), value: z.number(), reason: z.string().describe("One sentence the athlete will read") }),
+    }, async ({ field, value, reason }) => {
+      try { const r = await writeProgramChanges(client(), E.applyChanges, [{ type: "settings", field, value }], { reason }); return r.rejected.length ? fail(r.rejected[0].error) : text({ ok: true, applied: r.applied, settings: r.settings }); }
+      catch (e) { return fail(`update_settings failed: ${e.message}`); }
+    });
 
-        const progression = {};
-        for (const r of progressionRows || []) {
-          progression[r.exercise_id] = {
-            currentWeight: r.current_weight,
-            lastReps: r.last_reps,
-            lastDate: r.last_date,
-            progressed: r.progressed,
-            pr: r.pr,
-          };
-        }
+    const exerciseSchema = z.object({ id: z.string(), name: z.string(), sets: z.number().int().min(1).max(6), rr: z.tuple([z.number().int(), z.number().int()]), rest: z.number().int().optional(), sw: z.number(), inc: z.number().optional(), unit: z.string(), notes: z.string().optional(), cue: z.string().optional(), anchor: z.boolean().optional() });
+    server.registerTool("update_exercise", {
+      title: "Update exercise",
+      description: "Edit the program and apply it immediately. actions: update (fields on an existing exercise: sets, rr, rest, sw, inc, notes, cue), swap (replace exerciseId with newExercise; the slot keeps its anchor flag unless newExercise sets one), add (day + exercise), remove (day + exerciseId). Progression is keyed by lift + rep range, so changing rr starts a fresh progression track for that lift.",
+      inputSchema: z.object({ action: z.enum(["update", "swap", "add", "remove"]), day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday"]).optional(), exerciseId: z.string().optional(),
+        fields: exerciseSchema.partial().omit({ id: true }).optional(), newExercise: exerciseSchema.optional(), exercise: exerciseSchema.optional(), reason: z.string() }),
+    }, async (a) => {
+      const change = a.action === "update" ? { type: "exercise", action: "update", exerciseId: a.exerciseId, fields: a.fields }
+        : a.action === "swap" ? { type: "exercise", action: "swap", oldExerciseId: a.exerciseId, newExercise: a.newExercise }
+        : a.action === "add" ? { type: "exercise", action: "add", day: a.day, exercise: a.exercise }
+        : { type: "exercise", action: "remove", day: a.day, exerciseId: a.exerciseId };
+      try { const r = await writeProgramChanges(client(), E.applyChanges, [change], { reason: a.reason }); return r.rejected.length ? fail(r.rejected[0].error) : text({ ok: true, applied: r.applied }); }
+      catch (e) { return fail(`update_exercise failed: ${e.message}`); }
+    });
 
-        const result = {
-          source: liveProgram && liveSettings ? "live" : "snapshot",
-          sources: {
-            settings: liveSettings ? "live" : "snapshot",
-            program: liveProgram ? "live" : "snapshot",
-            progression: progressionRows ? "live" : "unavailable",
-          },
-          settings,
-          days,
-          progression,
-        };
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      }
-    );
+    server.registerTool("log_weight", { title: "Log weight", description: "Record a morning weigh-in (lbs).", inputSchema: z.object({ date: DATE.optional(), lbs: z.number().min(80).max(500) }) },
+      async ({ date, lbs }) => { try { const t = date || todayChicago(); await client().upsert("weight", toRow.weight(t, +lbs.toFixed(1))); return text({ ok: true, date: t, lbs }); } catch (e) { return fail(e.message); } });
 
-    server.registerTool(
-      "update_settings",
-      {
-        title: "Update Settings",
-        description: "Update a health/nutrition target. Valid fields: calories, protein (g), water (oz), steps, sleep (hrs), fiber (g), trainingCal (Mon-Fri except Wed), wednesdayCal (fast day), weekendCal. Changes apply on next app load.",
-        inputSchema: z.object({
-          field: z.enum(SETTINGS_FIELDS),
-          value: z.number().describe("New target value"),
-          reason: z.string().describe("Why this change is being made"),
-        }),
-      },
-      async ({ field, value, reason }) => {
-        await pushChange({ type: "settings", field, value }, reason);
-        return {
-          content: [{ type: "text", text: `Done — ${field} updated to ${value}. Change will apply on next app load.` }],
-        };
-      }
-    );
+    server.registerTool("log_meal", { title: "Log meal", description: "Append a meal to a day (source 'coach'; Cronometer syncs never overwrite it). Totals recompute.", inputSchema: z.object({ date: DATE.optional(), description: z.string(), cal: z.number().min(0), protein: z.number().min(0), carbs: z.number().min(0).optional(), fat: z.number().min(0).optional(), fiber: z.number().min(0).optional(), mealType: z.enum(["Breakfast", "Lunch", "Dinner", "Snack"]).optional() }) },
+      async ({ date, description, cal, protein, carbs = 0, fat = 0, fiber = 0, mealType = "Snack" }) => {
+        try { const c = client(); const t = date || todayChicago(); const rows = await c.select("nutrition", "date", "desc", 1, `date=eq.${t}`);
+          const meals = [...(rows[0]?.meals || []), { description, cal, protein, carbs, fat, fiber, mealType, source: "coach" }];
+          const n = E.sumMeals(meals); await c.upsert("nutrition", toRow.nutrition(t, n)); return text({ ok: true, date: t, totals: { cal: n.totalCal, protein: n.totalProtein }, meals: meals.length }); } catch (e) { return fail(e.message); } });
 
-    server.registerTool(
-      "update_exercise",
-      {
-        title: "Update Exercise",
-        description: "Modify the workout program. Actions: 'update' (change fields on existing exercise), 'swap' (replace exercise), 'add' (add to a day), 'remove' (remove from a day). Use get_program first to see current exercise IDs.",
-        inputSchema: z.object({
-          action: z.enum(["add", "remove", "swap", "update"]).describe("What to do"),
-          day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday"]).optional().describe("Day (for add/remove)"),
-          exerciseId: z.string().optional().describe("Exercise ID to modify/remove/swap"),
-          fields: exerciseFieldsSchema.optional().describe("Fields to update (for 'update' action)"),
-          newExercise: exerciseSchema.optional().describe("Replacement exercise (for 'swap' action)"),
-          exercise: exerciseSchema.optional().describe("Exercise to add (for 'add' action)"),
-          reason: z.string().describe("Why this change is being made"),
-        }),
-      },
-      async (args) => {
-        const { action, reason } = args;
-        let change;
+    server.registerTool("log_cardio", { title: "Log cardio", description: "Record the day's cardio session.", inputSchema: z.object({ date: DATE.optional(), type: z.enum(E.CARDIO_TYPES), duration: z.number().min(1), intensity: z.enum(["easy", "zone2", "tempo", "hard", "hiit"]).optional(), distance: z.number().optional(), calories: z.number().optional(), notes: z.string().optional() }) },
+      async ({ date, ...c }) => { try { const t = date || todayChicago(); await client().upsert("cardio", toRow.cardio(t, { intensity: "zone2", ...c })); return text({ ok: true, date: t, summary: E.cardioSummary({ ...c, done: true }) }); } catch (e) { return fail(e.message); } });
 
-        if (action === "update") {
-          if (!args.exerciseId || !args.fields) {
-            return { content: [{ type: "text", text: "Error: 'update' requires exerciseId and fields" }], isError: true };
-          }
-          change = { type: "exercise", action: "update", exerciseId: args.exerciseId, fields: args.fields };
-        } else if (action === "swap") {
-          if (!args.exerciseId || !args.newExercise) {
-            return { content: [{ type: "text", text: "Error: 'swap' requires exerciseId and newExercise" }], isError: true };
-          }
-          change = { type: "exercise", action: "swap", oldExerciseId: args.exerciseId, newExercise: args.newExercise };
-        } else if (action === "add") {
-          if (!args.day || !args.exercise) {
-            return { content: [{ type: "text", text: "Error: 'add' requires day and exercise" }], isError: true };
-          }
-          change = { type: "exercise", action: "add", day: args.day, exercise: args.exercise };
-        } else if (action === "remove") {
-          if (!args.day || !args.exerciseId) {
-            return { content: [{ type: "text", text: "Error: 'remove' requires day and exerciseId" }], isError: true };
-          }
-          change = { type: "exercise", action: "remove", day: args.day, exerciseId: args.exerciseId };
-        } else {
-          return { content: [{ type: "text", text: `Error: unknown action "${action}"` }], isError: true };
-        }
+    server.registerTool("log_steps", { title: "Log steps", description: "Set the day's step count.", inputSchema: z.object({ date: DATE.optional(), steps: z.number().int().min(0) }) },
+      async ({ date, steps }) => { try { const t = date || todayChicago(); await client().upsert("steps", toRow.steps(t, steps)); return text({ ok: true, date: t, steps }); } catch (e) { return fail(e.message); } });
 
-        await pushChange(change, reason);
-        return {
-          content: [{ type: "text", text: `Done — exercise ${action} applied. Change will appear on next app load.` }],
-        };
-      }
-    );
+    server.registerTool("log_water", { title: "Log water", description: "Set the day's water total in oz (or add to it).", inputSchema: z.object({ date: DATE.optional(), oz: z.number().min(0), add: z.boolean().optional().describe("true = add oz to the existing total") }) },
+      async ({ date, oz, add }) => { try { const c = client(); const t = date || todayChicago(); let total = oz; if (add) { const rows = await c.select("water", "date", "desc", 1, `date=eq.${t}`); total = (Number(rows[0]?.oz) || 0) + oz; } await c.upsert("water", toRow.water(t, total)); return text({ ok: true, date: t, oz: Math.round(total) }); } catch (e) { return fail(e.message); } });
+
+    server.registerTool("log_habits", { title: "Log habits", description: "Mark the evening clean-day habits. cleanDay:true sets all seven; otherwise pass the individual booleans (alcohol/cannabis true means consumed).", inputSchema: z.object({ date: DATE.optional(), cleanDay: z.boolean().optional(), alcohol: z.boolean().optional(), cannabis: z.boolean().optional(), screensOff: z.boolean().optional(), sunlight: z.boolean().optional(), bedBy1030: z.boolean().optional(), readBeforeBed: z.boolean().optional(), supplements: z.boolean().optional() }) },
+      async ({ date, cleanDay, ...h }) => { try { const t = date || todayChicago(); const c = client(); const rows = await c.select("habits", "date", "desc", 1, `date=eq.${t}`); const cur = rows[0] ? { alcohol: rows[0].alcohol, cannabis: rows[0].cannabis, screensOff: rows[0].screens_off, sunlight: rows[0].sunlight, bedBy1030: rows[0].bed_by_1030, readBeforeBed: rows[0].read_before_bed, supplements: rows[0].supplements, custom: rows[0].custom } : {};
+        const next = cleanDay ? { ...cur, alcohol: false, cannabis: false, screensOff: true, sunlight: true, bedBy1030: true, readBeforeBed: true, supplements: true } : { ...cur, ...h };
+        await c.upsert("habits", toRow.habits(t, next)); return text({ ok: true, date: t, habits: next }); } catch (e) { return fail(e.message); } });
+
+    server.registerTool("log_measurements", { title: "Log measurements", description: "Tape measurements in inches for a day.", inputSchema: z.object({ date: DATE.optional(), chest: z.number().optional(), waist: z.number().optional(), armL: z.number().optional(), armR: z.number().optional(), thighL: z.number().optional(), thighR: z.number().optional() }) },
+      async ({ date, ...m }) => { try { const t = date || todayChicago(); const c = client(); const rows = await c.select("body_measurements", "date", "desc", 1, `date=eq.${t}`); const cur = rows[0] ? { chest: rows[0].chest, waist: rows[0].waist, armL: rows[0].arm_l, armR: rows[0].arm_r, thighL: rows[0].thigh_l, thighR: rows[0].thigh_r } : {}; const next = { ...cur, ...m }; await c.upsert("body_measurements", toRow.bodyMeas(t, next)); return text({ ok: true, date: t, measurements: next }); } catch (e) { return fail(e.message); } });
+
+    server.registerTool("set_travel_day", { title: "Set travel day", description: "Flag or clear a travel day (training-day calorie target, travel protocol in Setup).", inputSchema: z.object({ date: DATE.optional(), active: z.boolean() }) },
+      async ({ date, active }) => { try { const t = date || todayChicago(); const c = client(); if (active) await c.upsert("travel_days", toRow.travelDay(t)); else await c.deleteRow("travel_days", "date", t); return text({ ok: true, date: t, active }); } catch (e) { return fail(e.message); } });
+
+    server.registerTool("log_note", { title: "Log coach note", description: "Leave a dated note for the athlete (shows under Setup → Coach changes and in get_snapshot.coachLog). Use it for decisions, context, and what to watch next week.", inputSchema: z.object({ note: z.string().min(1).max(600) }) },
+      async ({ note }) => { try { await client().upsert("program_updates", toRow.programUpdate({ type: "note" }, { reason: note, source: "coach", applied: true, summary: "Coach note" }), null); return text({ ok: true }); } catch (e) { return fail(e.message); } });
   },
   {},
-  {
-    basePath: "/api",
-    disableSse: true,
-    maxDuration: 60,
-    verboseLogs: true,
-  }
+  { basePath: "/api", disableSse: true, maxDuration: 60, verboseLogs: false },
 );
 
-// ── Vercel adapter: convert Express-like (req, res) to Web API (Request → Response) ──
+// ── Vercel adapter: Express-like (req, res) → Web API (Request → Response) ──
 export default async function handler(req, res) {
   try {
-    // Build the full URL
+    // Optional shared secret for non-OAuth clients. Claude.ai's connector UI has
+    // no place for a static token, so this stays unset for that path (see SECURITY.md).
+    const secret = process.env.MCP_TOKEN;
+    if (secret && req.headers.authorization !== `Bearer ${secret}`) { res.status(401).json({ error: "Unauthorized" }); return; }
     const proto = req.headers["x-forwarded-proto"] || "https";
     const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
     const url = new URL(req.url, `${proto}://${host}`);
-
-    // Build Web API Request from Vercel's Express-like request
     const headers = new Headers();
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
-    }
-
+    for (const [key, value] of Object.entries(req.headers)) if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
     const hasBody = req.method !== "GET" && req.method !== "HEAD";
-    const webRequest = new Request(url.toString(), {
-      method: req.method,
-      headers,
-      body: hasBody ? JSON.stringify(req.body) : undefined,
-      duplex: hasBody ? "half" : undefined,
-    });
-
-    // Call mcp-handler
+    const webRequest = new Request(url.toString(), { method: req.method, headers, body: hasBody ? (typeof req.body === "string" ? req.body : JSON.stringify(req.body)) : undefined, duplex: hasBody ? "half" : undefined });
     const webResponse = await mcpHandler(webRequest);
-
-    // Convert Web API Response back to Vercel's Express-like response
     res.status(webResponse.status);
-    for (const [key, value] of webResponse.headers.entries()) {
-      res.setHeader(key, value);
-    }
-
-    // Handle streaming (SSE) vs regular responses
+    for (const [key, value] of webResponse.headers.entries()) res.setHeader(key, value);
     const contentType = webResponse.headers.get("content-type") || "";
     if (contentType.includes("text/event-stream") && webResponse.body) {
-      // Stream SSE response
-      const reader = webResponse.body.getReader();
-      const decoder = new TextDecoder();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          res.write(decoder.decode(value, { stream: true }));
-        }
-      } finally {
-        res.end();
-      }
-    } else {
-      const body = await webResponse.text();
-      res.end(body);
-    }
+      const reader = webResponse.body.getReader(); const decoder = new TextDecoder();
+      try { while (true) { const { done, value } = await reader.read(); if (done) break; res.write(decoder.decode(value, { stream: true })); } } finally { res.end(); }
+    } else res.end(await webResponse.text());
   } catch (err) {
     console.error("MCP handler error:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: err.message });
-    }
+    if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 }
