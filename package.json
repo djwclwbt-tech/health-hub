@@ -3,8 +3,9 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "npm run build && for f in api/*.js; do node --check \"$f\" || exit 1; done && node --check app.js && echo 'build + api syntax OK'",
-    "serve": "npx http-server -p 8080 -c-1 ."
+    "check": "npm run build && npm test && for f in api/*.js; do node --check \"$f\" || exit 1; done && node --check app.js && echo 'build + tests + api syntax OK'",
+    "serve": "npx http-server -p 8080 -c-1 .",
+    "test": "node --test --test-force-exit test/*.test.mjs"
   },
   "dependencies": {
     "@vercel/functions": "^3.5.1",

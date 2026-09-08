@@ -18,7 +18,8 @@ const stamp = new Date().toISOString().slice(0, 10);
 await build({
   entryPoints: [src],
   outfile: out,
-  bundle: false,
+  bundle: true,
+  format: 'iife',
   minify: true,
   charset: 'utf8',
   target: ['es2020', 'safari15', 'chrome90'],

@@ -1,7 +1,12 @@
 # Health Hub - Development Guide
 
 ## Overview
-Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. The whole UI is one React file, `src/app.jsx`, compiled by esbuild into `app.js` (no bundler, no framework, one command).
+Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. It is one product with two delivery vehicles over one engine: the **app** (`src/app.jsx` → `app.js`) and the **Coach** (`/api/mcp`, a remote MCP server for Claude.ai). See `COACH.md`.
+
+## The engine (read this first)
+- `lib/engine.mjs` — every rule and number: program (`PROG`, versioned), exercise library, progression (`resolveWeight`, `buildSession`, `applyWorkout`, `swapOptions`, `sessionCursor`), analytics (`getTrend`, `calcAdaptiveTDEE`, `getWeeklyCutSummary`, `getWeeklyCutRecommendation`, `getTonightCloseout`, `getAutoregProposal`, stalls, insights), targets (`getDayCalTarget`…), `resolveMode`, plates, and `applyChanges` (the Coach's write path). Pure and isomorphic: no window, no fetch. **Put logic here, not in components or API routes.**
+- `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once.
+- `test/*.test.mjs` — `npm test`. Engine, mapping and API routes (network mocked). Add a test when you change a rule.
 
 ## Tech Stack
 - **Frontend**: React 18 (vendored UMD in `/vendor`), JSX in `src/app.jsx` compiled to `app.js` by `npm run build` (esbuild, minified, es2020). Fonts self-hosted in `/fonts`.
@@ -21,8 +26,8 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `scripts/build.mjs` — the build.
 - `api/analyze.js` — Weekly health analysis endpoint
 - `api/bodycomp.js` — Body-composition photo analysis
-- `api/update.js` — Program update endpoint (curl/script, Bearer UPDATE_TOKEN)
-- `api/mcp.js` — Remote MCP server (Claude.ai integration)
+- `api/update.js` — Program update endpoint (curl/script, Bearer UPDATE_TOKEN); applies changes to the live rows via the engine
+- `api/mcp.js` — The Coach: remote MCP server (Claude.ai). Tools: get_snapshot, get_program, get_history, get_exercise, update_settings, update_exercise, log_* writes, set_travel_day, log_note. Optional `MCP_TOKEN` bearer for non-OAuth clients.
 - `api/oura-sync.js` — Oura recovery sync (cron 2x daily)
 - `api/cronometer-sync.js` — Cronometer nutrition sync (cron nightly; source of truth for food)
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
@@ -59,12 +64,15 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 - `steps`, `water`, `habits`, `mob`, `stp`, `debrief`, `cardio` — daily stores (keyed by date)
 - `prog` — Exercise progression, keyed by `exerciseId__repRange` (legacy plain-id rows kept only where the fallback reads them; orphans pruned on boot)
 - `autoregLog` — Accepted/dismissed auto-regulation decisions (keyed by date; local)
-- `bodyComp`, `bodyMeas`, `travelDays`, `tdeeExclude`, `settings`, `program`
+- `bodyComp`, `bodyMeas` (synced to `body_measurements`), `travelDays`, `tdeeExclude`, `settings`, `program`, `programVersion`, `coachLog` (read-only mirror of `program_updates`)
 - `backfillVersion` — history-replay one-shot marker
 - `dhub6_workout`, `dhub6_rest_timer`, `dhub6_mob_active`, `dhub6_variant`, `dhub6_notification_settings` — sibling localStorage keys for in-flight session state
 
 ## Weight trend
-`getTrend()` (EWMA-smoothed OLS slope over the last 14 calendar days, lbs/week to 1 decimal) is the **only** trend formula. Every surface consumes it; do not add another.
+`slopePerWeek()` (EWMA 0.3 + OLS slope) is the **only** slope; `getTrend()` applies it to the last 14 days, `calcAdaptiveTDEE` to its estimate window. Do not add another.
+
+## Program versioning
+`PROG.version` in `lib/engine.mjs` names the block. The stored `program` row (coach edits: swap/add/remove/update) is kept only while its `version` matches; a different version resets to the code's days. **Bump `PROG.version` whenever you edit `PROG.days`.**
 
 ## Sync health
 `sb.upsert` distinguishes two failure classes. **HTTP errors** (schema/auth) are loud: console.error + one toast per table per session + a red dot on Setup — a red dot means a Supabase column/table is missing; check `/supabase/` for a pending migration. **Network blips** (request never left the phone) are transient: retried once after 1.5s, listed quietly on Setup as "dropped requests", never toasted, and cleared by the next successful write to that table. A full re-sync fires on `online` and on returning to the foreground with recorded failures.
@@ -85,14 +93,14 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 
 Payload format: see `api/schema.md`. Change types: `settings` field/value, `exercise` update/swap/add/remove. Always include a `reason`; the app applies pending updates on next load (toast).
 
-## Claude.ai MCP Integration
-`/api/mcp` exposes `get_program`, `update_settings`, `update_exercise`. `get_program` reads **live state** from the Supabase `settings`/`program`/`progression` tables (the app mirrors them on every change) and tags the response `source:"live"`; a hardcoded snapshot is the fallback only. Updates flow through the `program_updates` queue and apply on next app load.
+## Claude.ai MCP Integration (the Coach)
+`/api/mcp` is the second delivery vehicle; see `COACH.md` for the tool contract and the Claude.ai project instructions. Reads run the engine over `loadAll()`. Writes go straight to the live tables; settings/program changes are applied server-side by `writeProgramChanges` and logged to `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`), which the app toasts on next launch and lists under Setup → Coach changes. There is no client-side apply step anymore.
 
 ## Environment variables (Vercel)
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
 
 ## Checks
-`npm run check` — builds `app.js` and syntax-checks it plus every `/api/*.js`. There is no test suite; verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test`, and syntax-checks every `/api/*.js`. There is no test suite; verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message
