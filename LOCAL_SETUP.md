@@ -23,12 +23,15 @@ Vercel secrets stay in Vercel. Local `.env.local` and `.vercel/` are ignored by 
 ```bash
 cd ~/health-hub
 git pull
-# edit files
-git status
-git add <files>
+npm install          # first time, or when package.json changed
+# edit src/app.jsx (UI) or index.html (shell/CSS) or api/*.js
+npm run check        # rebuilds app.js and syntax-checks the API
+git add src/app.jsx app.js <other files>
 git commit -m "Describe change"
 git push
 ```
+
+`app.js` is generated from `src/app.jsx`; commit both. CI rebuilds it on `claude/**` pushes if you forget.
 
 Vercel auto-deploys pushes to `main`.
 

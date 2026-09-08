@@ -1,17 +1,24 @@
 # Health Hub - Development Guide
 
 ## Overview
-Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. It runs as a monolithic `index.html` with React 18 via CDN (no build process).
+Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. The whole UI is one React file, `src/app.jsx`, compiled by esbuild into `app.js` (no bundler, no framework, one command).
 
 ## Tech Stack
-- **Frontend**: React 18 (CDN, Babel in-browser transpilation)
+- **Frontend**: React 18 (vendored UMD in `/vendor`), JSX in `src/app.jsx` compiled to `app.js` by `npm run build` (esbuild, minified, es2020). Fonts self-hosted in `/fonts`.
 - **Backend**: Vercel Serverless Functions in `/api/`
 - **Database**: Supabase PostgreSQL (cloud sync; migrations in `/supabase/`)
 - **Local Storage**: Browser localStorage for offline-first functionality
 - **AI**: Claude API (`AI_MODEL` env, default `claude-sonnet-4-6`) for weekly analysis and body-comp photo analysis
 
+## Build (the one step)
+`npm run build` compiles `src/app.jsx` → `app.js` and stamps a build id shown at the bottom of Setup. **Commit `app.js` with every source change.** The `claude/**` auto-merge workflow runs `npm run check` and commits a rebuilt `app.js` if you forgot, so a stale build cannot ship, but do not rely on it. Never edit `app.js` by hand. In-browser Babel is gone; a phone renders in ~100 ms instead of several seconds.
+
 ## Architecture
-- `index.html` — Complete SPA (~4,500 lines, all components inline)
+- `src/app.jsx` — Complete SPA (~5,000 lines, all components inline). Source of truth for the UI.
+- `app.js` — Build output of the above (committed).
+- `index.html` — Thin shell: `:root` color tokens, `@font-face`, base CSS + animations, boot skeleton, script tags.
+- `vendor/` — React + ReactDOM UMD (copied from node_modules by the build). `fonts/` — Barlow woff2 (OFL).
+- `scripts/build.mjs` — the build.
 - `api/analyze.js` — Weekly health analysis endpoint
 - `api/bodycomp.js` — Body-composition photo analysis
 - `api/update.js` — Program update endpoint (curl/script, Bearer UPDATE_TOKEN)
@@ -21,7 +28,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
 - `api/push-schedule.js` — Server web push for rest timers (VAPID + optional NOTIFY_TOKEN)
 - `api/allergies.js` — Austin pollen/mold counts
-- `sw.js` — Service worker (offline cache + push display)
+- `sw.js` — Service worker: network-first (2.5 s timeout, cache fallback) for `/`, `/index.html`, `/app.js`; cache-first for `/vendor`, `/fonts`, icons; push display; notification tap deep-links to a tab
 - `supabase/*.sql` — Database migrations (run in Supabase SQL editor)
 - `manifest.json` — PWA manifest
 
@@ -34,8 +41,14 @@ The Home tab resolves a **mode** from the clock and today's state (test with `?c
 
 Tabs: Home (moments) / Train / Food / Scale / Setup. The Habits tab is gone — habit logging is the one-tap "Mark clean day" in the closeout surface. Food is a quick-log (calories+protein, three presets); Cronometer-synced meals are read-only in-app.
 
+## Navigation & overlay rules
+- Tabs are **keep-alive**: `TabPane` mounts a tab on first visit and hides it afterwards, so stretch/cardio/rest timers survive tab switches. Window scroll is saved/restored per tab.
+- Every overlay uses `Sheet` (bottom sheet) or `ConfirmModal`; both render through `Portal` to `document.body` and register with `useBackClose`, so the Android/browser back button closes them. Sub-views (workout log, meal detail, Progress, classic dashboard) call `useBackClose` too. Never add a raw `position:fixed` overlay inside a tab, and never call `confirm()`.
+- Rest timer is a fixed bar above the tab bar (portaled, visible on every tab); the top mini bar shows set count and rest countdown when off the Train tab.
+- Train deck: tap the lift name for history (last sessions + e1RM line), tap the big number to type it, PLATES on barbell lifts, haptics on log, Screen Wake Lock while a session is open, post-workout summary sheet with volume/duration/new e1RM records.
+
 ## Visual system: Iron & Ember
-All colors are CSS custom properties in the single `:root` block in `index.html`. **Light mode only** — dark mode was removed on purpose; do not add a `prefers-color-scheme` block back. **Never hardcode a hex outside `:root`.** The JS `C` object maps token names to `var(--…)`. Warm paper bg, graphite ink, one ember accent (`--accent #C2410C`, actions only); olive = earned, deep red = destructive/broken only, and there is deliberately **no amber/warning tier** — mid states render graphite (`t2`/`t3`). Type: Barlow (UI) + Barlow Condensed (display/numerals/buttons, uppercase). Tabular numerals globally; radii 6 (inputs) / 8-9 (buttons) / 10-12 (cards). Copy rules: active voice, short sentences, no em dashes, no semicolons in prose, middots only between data values, empty numerics render "○".
+All colors are CSS custom properties in the single `:root` block in `index.html` (also `--on-accent-line`, `--on-accent-dim`, `--accent-glow` for text/lines on ember or ink surfaces). **Light mode only** — dark mode was removed on purpose; do not add a `prefers-color-scheme` block back. **Never hardcode a hex outside `:root`.** The JS `C` object maps token names to `var(--…)`. Warm paper bg, graphite ink, one ember accent (`--accent #C2410C`, actions only); olive = earned, deep red = destructive/broken only, and there is deliberately **no amber/warning tier** — mid states render graphite (`t2`/`t3`). Type: Barlow (UI) + Barlow Condensed (display/numerals/buttons, uppercase). Tabular numerals globally; radii 6 (inputs) / 8-9 (buttons) / 10-12 (cards). Copy rules: active voice, short sentences, no em dashes, no semicolons in prose, middots only between data values, empty numerics render "○".
 
 ## Data Structure
 All data is stored in localStorage under key `dhub6` and synced to Supabase:
@@ -48,6 +61,7 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 - `autoregLog` — Accepted/dismissed auto-regulation decisions (keyed by date; local)
 - `bodyComp`, `bodyMeas`, `travelDays`, `tdeeExclude`, `settings`, `program`
 - `backfillVersion` — history-replay one-shot marker
+- `dhub6_workout`, `dhub6_rest_timer`, `dhub6_mob_active`, `dhub6_variant`, `dhub6_notification_settings` — sibling localStorage keys for in-flight session state
 
 ## Weight trend
 `getTrend()` (EWMA-smoothed OLS slope over the last 14 calendar days, lbs/week to 1 decimal) is the **only** trend formula. Every surface consumes it; do not add another.
@@ -78,13 +92,13 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
 
 ## Checks
-`npm run check` — syntax-checks every `/api/*.js`. There is no build step or test suite; verify UI changes by loading the app (use `?clock=` to simulate times).
+`npm run check` — builds `app.js` and syntax-checks it plus every `/api/*.js`. There is no test suite; verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
-1. Commit with a clear message
+1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message
 2. Push to a feature branch
 3. Create a PR
-4. Note: `.github/workflows/auto-merge-claude.yml` auto-merges `claude/**` branches
+4. Note: `.github/workflows/auto-merge-claude.yml` rebuilds `app.js` if stale, then auto-merges `claude/**` branches (every push there is a production deploy)
 
 ## Security
 See `SECURITY.md` — hardening is documented and deliberately deferred.

@@ -2,12 +2,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "for f in api/*.js; do node --check \"$f\" || exit 1; done && echo 'api syntax OK'"
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && for f in api/*.js; do node --check \"$f\" || exit 1; done && node --check app.js && echo 'build + api syntax OK'",
+    "serve": "npx http-server -p 8080 -c-1 ."
   },
   "dependencies": {
     "@vercel/functions": "^3.5.1",
     "mcp-handler": "^1.0.5",
     "web-push": "^3.6.7",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
