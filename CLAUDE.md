@@ -100,7 +100,7 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test`, and syntax-checks every `/api/*.js`. There is no test suite; verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (42 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message
