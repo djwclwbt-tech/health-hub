@@ -67,7 +67,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (process.env.NOTIFY_TOKEN && req.headers['x-notify-token'] !== process.env.NOTIFY_TOKEN) {
+  if (!process.env.NOTIFY_TOKEN) return res.status(503).json({ error: 'NOTIFY_TOKEN required' });
+  if (req.headers['x-notify-token'] !== process.env.NOTIFY_TOKEN) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   if (!configureWebPush()) return res.status(500).json({ error: 'VAPID keys not configured' });
