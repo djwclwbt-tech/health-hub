@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import {PROG, WU, repTrack, rrTxt, progKey, legacyAmbiguousIds, saneSet, sameRepTrack, WED_SUPERSETS, supersetLabel, EXERCISE_LIBRARY, exLibById, SHORT_FILLER, shortLiftName, STRETCH_POSES, weightCap, saneWeight, cutStepsTarget, CUT_HOLD_PROGRESSION, matchingProgKeys, getProgEntry, getProgHistory, getProgPr, relatedPatterns, DINNERS, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, DEFAULTS, bl, migrate, SEED_DATA, seedHistorical, lds, td, yd, dw, fmt, wkn, estTime, fmtElapsed, getDayType, getWeekMonday, isSocialWeekendActive, SOCIAL_CAL, getDayCalTarget, getDayProTarget, PROTEIN_CHECKPOINTS, getWeeklyRecoveryAvg, getAutoregulation, getConsecutiveRedDays, e1rm, calcVolume, completedSets, nextWeightFromSets, BACKFILL_VERSION, backfillData, pruneProgression, repairDeloadProgression, BLOCK_V2_SEEDS, BLOCK_V2_WEIGHT_FIXES, applyBlockV2, getStalls, getTrend, getTopProteinMeals, getInsights, getCutRetentionScore, calcEWMA, median, calcAdaptiveTDEE, getDailyCutAdherence, getWeeklyCutSummary, getWeeklyConsistency, getTonightCloseout, getWeeklyCutRecommendation, BARBELL_IDS, PLATES, plateMath, resolveMode, getAutoregProposal, resolveWeight, lastSessionSets, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, applyChanges, SETTINGS_FIELDS, exerciseReport, sumMeals} from "../lib/engine.mjs";
+import {PROG, WU, repTrack, rrTxt, progKey, legacyAmbiguousIds, saneSet, sameRepTrack, WED_SUPERSETS, supersetLabel, EXERCISE_LIBRARY, exLibById, SHORT_FILLER, shortLiftName, STRETCH_POSES, weightCap, saneWeight, cutStepsTarget, CUT_HOLD_PROGRESSION, matchingProgKeys, getProgEntry, getProgHistory, getProgPr, relatedPatterns, DINNERS, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, DEFAULTS, bl, migrate, SEED_DATA, seedHistorical, lds, td, yd, dw, fmt, wkn, estTime, fmtElapsed, getDayType, getWeekMonday, isSocialWeekendActive, SOCIAL_CAL, getDayCalTarget, getDayProTarget, PROTEIN_CHECKPOINTS, getWeeklyRecoveryAvg, getAutoregulation, getConsecutiveRedDays, e1rm, calcVolume, completedSets, nextWeightFromSets, BACKFILL_VERSION, backfillData, pruneProgression, repairDeloadProgression, BLOCK_V2_SEEDS, BLOCK_V2_WEIGHT_FIXES, applyBlockV2, getStalls, getTrend, getTopProteinMeals, getInsights, getCutRetentionScore, calcEWMA, median, calcAdaptiveTDEE, getDailyCutAdherence, getWeeklyCutSummary, getWeeklyConsistency, getTonightCloseout, getWeeklyCutRecommendation, BARBELL_IDS, PLATES, plateMath, resolveMode, getAutoregProposal, resolveWeight, lastSessionSets, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, mergeProgression, applyWorkout, applyChanges, SETTINGS_FIELDS, exerciseReport, sumMeals} from "../lib/engine.mjs";
 import { makeClient, toRow, loadAll } from "../lib/supabase.mjs";
 
 const SK="dhub6";
@@ -36,32 +36,52 @@ const saveNotificationSettings=(settings)=>{try{localStorage.setItem(NOTIF_SETTI
 
 // ═══ SUPABASE CLIENT · column mapping lives in lib/supabase.mjs (shared with the Coach) ═══
 const sb=makeClient({onFailure:reportSyncFailure,onSuccess:reportSyncSuccess});
+const SB_OUTBOX_KEY="dhub6_sb_outbox";
+const readOutbox=()=>{try{return JSON.parse(localStorage.getItem(SB_OUTBOX_KEY)||"[]")}catch{return[]}};
+const writeOutbox=(items)=>{try{localStorage.setItem(SB_OUTBOX_KEY,JSON.stringify(items.slice(-200)))}catch{}};
+const enqueueOutbox=(job)=>{
+  const key=JSON.stringify([job.op,job.table,job.conflict||"",job.col||"",job.val??"",job.data?.date??job.data?.exercise_id??job.data?.id??""]);
+  const items=readOutbox().filter(j=>JSON.stringify([j.op,j.table,j.conflict||"",j.col||"",j.val??"",j.data?.date??j.data?.exercise_id??j.data?.id??""])!==key);
+  items.push({...job,queuedAt:Date.now()});writeOutbox(items);
+};
+const trackedUpsert=(table,data,conflict="date")=>sb.upsert(table,data,conflict).then(ok=>{if(!ok&&syncHealth.failures[table]?.transient)enqueueOutbox({op:"upsert",table,data,conflict});return ok;});
+const trackedDelete=(table,col,val)=>sb.deleteRow(table,col,val).then(ok=>{if(!ok)enqueueOutbox({op:"delete",table,col,val});return ok;});
+const flushOutbox=async()=>{
+  const items=readOutbox();if(!items.length)return;
+  const keep=[];
+  for(const job of items){
+    const ok=job.op==="delete"?await sb.deleteRow(job.table,job.col,job.val):await sb.upsert(job.table,job.data,job.conflict||"date");
+    if(!ok&&syncHealth.failures[job.table]?.transient)keep.push(job);
+    if(!ok&&!syncHealth.failures[job.table]?.transient)keep.push(job); // keep hard failures visible until schema/auth is fixed.
+  }
+  writeOutbox(keep);
+};
 const svSB={
-  weight:(date,value)=>sb.upsert("weight",toRow.weight(date,value)),
-  steps:(date,value)=>sb.upsert("steps",toRow.steps(date,value)),
-  water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?sb.upsert("water",toRow.water(date,n)):sb.deleteRow("water","date",date);},
-  lytes:(date,l)=>sb.upsert("lytes",toRow.lytes(date,l)),
-  recovery:(date,r)=>sb.upsert("recovery",toRow.recovery(date,r)),
-  habits:(date,h)=>sb.upsert("habits",toRow.habits(date,h)),
-  workout:(date,w)=>sb.upsert("workouts",toRow.workout(date,w)),
-  nutrition:(date,n)=>sb.upsert("nutrition",toRow.nutrition(date,n)),
-  progression:(exId,p)=>sb.upsert("progression",toRow.progression(exId,p),"exercise_id"),
-  debrief:(date)=>sb.upsert("debrief",toRow.debrief(date)),
-  mobility:(date,durSecs)=>sb.upsert("mobility",toRow.mobility(date,durSecs)),
-  stepper:(date)=>sb.upsert("stepper",toRow.stepper(date)),
-  cardio:(date,c)=>sb.upsert("cardio",toRow.cardio(date,c)),
-  bodyComp:(date,b)=>sb.upsert("body_comp",toRow.bodyComp(date,b)),
-  bodyMeas:(date,m)=>sb.upsert("body_measurements",toRow.bodyMeas(date,m)),
-  travelDay:(date,active)=>active?sb.upsert("travel_days",toRow.travelDay(date)):sb.deleteRow("travel_days","date",date),
-  tdeeExclude:(date,active)=>active?sb.upsert("tdee_exclude",toRow.tdeeExclude(date)):sb.deleteRow("tdee_exclude","date",date),
-  settings:(s)=>sb.upsert("settings",toRow.settings(s),"id"),
-  program:(p)=>sb.upsert("program",toRow.program(p),"id"),
-  delWeight:(date)=>sb.deleteRow("weight","date",date),
-  delStepper:(date)=>sb.deleteRow("stepper","date",date),
-  delCardio:(date)=>sb.deleteRow("cardio","date",date),
-  delWorkout:(date)=>sb.deleteRow("workouts","date",date),
-  delMobility:(date)=>sb.deleteRow("mobility","date",date),
-  delWater:(date)=>sb.deleteRow("water","date",date),
+  weight:(date,value)=>trackedUpsert("weight",toRow.weight(date,value)),
+  steps:(date,value)=>trackedUpsert("steps",toRow.steps(date,value)),
+  water:(date,oz)=>{const n=Math.round(Number(oz)||0);return n>0?trackedUpsert("water",toRow.water(date,n)):trackedDelete("water","date",date);},
+  lytes:(date,l)=>trackedUpsert("lytes",toRow.lytes(date,l)),
+  recovery:(date,r)=>trackedUpsert("recovery",toRow.recovery(date,r)),
+  habits:(date,h)=>trackedUpsert("habits",toRow.habits(date,h)),
+  workout:(date,w)=>trackedUpsert("workouts",toRow.workout(date,w)),
+  nutrition:(date,n)=>trackedUpsert("nutrition",toRow.nutrition(date,n)),
+  progression:(exId,p)=>trackedUpsert("progression",toRow.progression(exId,p),"exercise_id"),
+  debrief:(date)=>trackedUpsert("debrief",toRow.debrief(date)),
+  mobility:(date,durSecs)=>trackedUpsert("mobility",toRow.mobility(date,durSecs)),
+  stepper:(date)=>trackedUpsert("stepper",toRow.stepper(date)),
+  cardio:(date,c)=>trackedUpsert("cardio",toRow.cardio(date,c)),
+  bodyComp:(date,b)=>trackedUpsert("body_comp",toRow.bodyComp(date,b)),
+  bodyMeas:(date,m)=>trackedUpsert("body_measurements",toRow.bodyMeas(date,m)),
+  travelDay:(date,active)=>active?trackedUpsert("travel_days",toRow.travelDay(date)):trackedDelete("travel_days","date",date),
+  tdeeExclude:(date,active)=>active?trackedUpsert("tdee_exclude",toRow.tdeeExclude(date)):trackedDelete("tdee_exclude","date",date),
+  settings:(s)=>trackedUpsert("settings",toRow.settings(s),"id"),
+  program:(p)=>trackedUpsert("program",toRow.program(p),"id"),
+  delWeight:(date)=>trackedDelete("weight","date",date),
+  delStepper:(date)=>trackedDelete("stepper","date",date),
+  delCardio:(date)=>trackedDelete("cardio","date",date),
+  delWorkout:(date)=>trackedDelete("workouts","date",date),
+  delMobility:(date)=>trackedDelete("mobility","date",date),
+  delWater:(date)=>trackedDelete("water","date",date),
 };
 const loadFromSB=async()=>{
   try{const d=await loadAll(sb);d.settings={...d.settings,notifications:getNotificationSettings(d.settings?.notifications)};return d;}
@@ -2828,7 +2848,7 @@ const Nutrition=({data,setData})=>{
           const nd={...data,settings:{...st,
             calories:Math.round(newCal),
             trainingCal:Math.round((st.trainingCal||DEFAULTS.trainingCal)*ratio),
-            wednesdayCal:Math.round((st.wednesdayCal||DEFAULTS.wednesdayCal)*ratio),
+            wednesdayCal:Math.round((st.wednesdayCal??DEFAULTS.wednesdayCal)*ratio),
             weekendCal:Math.round((st.weekendCal||DEFAULTS.weekendCal)*ratio)
           }};
           setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
@@ -3130,7 +3150,7 @@ const Settings=({data,setData,syncFailures={}})=>{
   const t=td();
   const st=data.settings||DEFAULTS;
   const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
-    trainingCal:""+(st.trainingCal||DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal||DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal||DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
+    trainingCal:""+(st.trainingCal??DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal??DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal??DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
   const [editTargets,setEditTargets]=useState(false);
   const [showProgress,setShowProgress]=useState(false);
@@ -3167,7 +3187,7 @@ const Settings=({data,setData,syncFailures={}})=>{
     const nd={...data,settings:{...DEFAULTS,...data.settings,
       calories:+f.calories||DEFAULTS.calories,protein:+f.protein||DEFAULTS.protein,
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
-      trainingCal:+f.trainingCal||DEFAULTS.trainingCal,wednesdayCal:+f.wednesdayCal||DEFAULTS.wednesdayCal,weekendCal:+f.weekendCal||DEFAULTS.weekendCal,
+      trainingCal:Number.isFinite(+f.trainingCal)?+f.trainingCal:DEFAULTS.trainingCal,wednesdayCal:Number.isFinite(+f.wednesdayCal)?+f.wednesdayCal:DEFAULTS.wednesdayCal,weekendCal:Number.isFinite(+f.weekendCal)?+f.weekendCal:DEFAULTS.weekendCal,
       syncToken:f.syncToken||"",notifyToken:f.notifyToken||""}};
     setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
@@ -3845,8 +3865,8 @@ window.App = function App(){
               // For date-keyed data: start with local, then overlay Supabase (Supabase wins)
               final[k]={...merged[k],...sbData[k]};
             }else if(k==="prog"&&typeof sbData[k]==="object"&&sbData[k]!==null){
-              // Progression: local wins (most recent workout actions)
-              final[k]={...sbData[k],...merged[k]};
+              // Progression: freshest row per lift wins, so stale phone state cannot roll back newer cloud workouts.
+              final[k]=mergeProgression(merged[k],sbData[k]);
             }else if(typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               final[k]={...merged[k],...sbData[k]};
             }else if(Array.isArray(sbData[k])&&sbData[k].length>0){
@@ -3906,9 +3926,15 @@ window.App = function App(){
     document.addEventListener("visibilitychange",flush);window.addEventListener("pagehide",flush);
     return()=>{document.removeEventListener("visibilitychange",flush);window.removeEventListener("pagehide",flush);};},[]);
 
-  // Browser self-heal must not perform full-object writes on foreground/online.
-  // Failed targeted writes remain visible in Setup via syncFailures; retry happens
-  // through the next explicit user action for that table.
+  // Retry only row-level writes that failed in a dead spot. Never do full-object foreground writes.
+  useEffect(()=>{
+    const flush=()=>{if(navigator.onLine!==false)flushOutbox();};
+    const onVisible=()=>{if(document.visibilityState==="visible")flush();};
+    flush();
+    window.addEventListener("online",flush);
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{window.removeEventListener("online",flush);document.removeEventListener("visibilitychange",onVisible);};
+  },[]);
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Barlow',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>

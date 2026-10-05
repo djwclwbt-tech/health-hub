@@ -216,3 +216,9 @@ test('push-schedule: reports configuration, validates jobs, enforces NOTIFY_TOKE
   r = res(); await handler(req({ method: 'POST', body: {} }), r); assert.equal(r.statusCode, 401);
   r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: { subscription: {} } }), r); assert.equal(r.statusCode, 500, 'no VAPID keys → 500');
 }));
+
+test('push-schedule: refuses scheduling when NOTIFY_TOKEN is not configured', env({ VAPID_PUBLIC_KEY: 'pk', VAPID_PRIVATE_KEY: 'sk', NOTIFY_TOKEN: null }, async () => {
+  const { default: handler } = await import('../api/push-schedule.js?no-token');
+  const r = res(); await handler(req({ method: 'POST', body: {} }), r);
+  assert.equal(r.statusCode, 503);
+}));

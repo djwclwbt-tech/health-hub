@@ -121,6 +121,33 @@ test('applyWorkout: anchors progress on a full top-of-range session, accessories
   assert.deepEqual(Object.keys(d.prog), ['leg-press__5-8'], 'input data untouched');
 });
 
+test('applyWorkout appends a second same-day session instead of overwriting the first', () => {
+  const monday = PROG.days.monday;
+  const thursday = PROG.days.thursday;
+  const existing = { day: 'monday', variant: null, manual: false, dur: 45, exercises: [{ id: 'flat-bench', sets: sets(175, [8, 8, 7]) }], volume: 175 * 23 };
+  const d = base({ wk: { [TODAY]: existing } });
+  const w = E.buildSession(d, 'thursday', thursday, { date: TODAY, now: 0 });
+  w.exercises[0].sets = sets(70, [8, 8, 8]);
+  const { data: nd, log } = E.applyWorkout(d, w, thursday, TODAY, 30 * 60000);
+  assert.equal(nd.wk[TODAY].day, 'multi');
+  assert.equal(nd.wk[TODAY].sessions.length, 2);
+  assert.equal(nd.wk[TODAY].sessions[0].day, 'monday');
+  assert.equal(nd.wk[TODAY].sessions[1].day, 'thursday');
+  assert.equal(nd.wk[TODAY].exercises.length, existing.exercises.length + w.exercises.length);
+  assert.equal(nd.wk[TODAY].dur, 75);
+  assert.equal(log.sessions.length, 2);
+  assert.equal(monday.exercises[0].id, 'flat-bench', 'fixture sanity');
+});
+
+test('mergeProgression keeps the freshest row per lift instead of blindly trusting local', () => {
+  const local = { 'flat-bench__5-8': { currentWeight: 185, lastDate: '2026-09-01' }, 'deadlift__5-5': { currentWeight: 245, lastDate: '2026-09-08' } };
+  const cloud = { 'flat-bench__5-8': { currentWeight: 200, lastDate: '2026-09-23' }, 'seated-row__5-8': { currentWeight: 160, lastDate: '2026-09-10' } };
+  const merged = E.mergeProgression(local, cloud);
+  assert.equal(merged['flat-bench__5-8'].currentWeight, 200);
+  assert.equal(merged['deadlift__5-5'].currentWeight, 245);
+  assert.equal(merged['seated-row__5-8'].currentWeight, 160);
+});
+
 test('applyWorkout on deload never moves weight or writes PRs', () => {
   const deloadDate = day((PROG.deload - 1) * 7, PROG.start);
   const d = base({ prog: { 'deadlift__5-5': { currentWeight: 245, e1rmHistory: [], pr: null } } });
@@ -186,6 +213,8 @@ test('day targets: training, Wednesday fast, weekend split, travel, social weeke
   const s = { ...DEFAULTS };
   assert.equal(E.getDayCalTarget('2026-09-08', s, {}, null), 2000);       // Tue
   assert.equal(E.getDayCalTarget('2026-09-09', s, {}, null), 900);        // Wed
+  assert.equal(E.getDayCalTarget('2026-09-09', { ...s, wednesdayCal: 0 }, {}, null), 0, 'zero-cal Wednesday is a real fast, not the default');
+  assert.equal(E.getDayProTarget('2026-09-09', { ...s, wednesdayCal: 0 }, {}, null), 0, 'zero-cal Wednesday has no protein floor');
   assert.equal(E.getDayCalTarget('2026-09-12', s, {}, null), 1900);       // Sat
   assert.equal(E.getDayCalTarget('2026-09-13', s, {}, null), 1700);       // Sun
   assert.equal(E.getDayCalTarget('2026-09-13', s, { '2026-09-13': true }, null), 2000, 'travel day');
