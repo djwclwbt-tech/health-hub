@@ -1928,7 +1928,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {swapModal&&<SwapModal exName={swapModal.exName} slot={slotAt(swapModal.ei)} options={getSwapOptions(slotAt(swapModal.ei),workout.exercises[swapModal.ei])} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
       <Sheet open={showAddEx} onClose={()=>setShowAddEx(false)} title="Add exercise" right={<B small outline onClick={()=>setShowAddEx(false)}>Close</B>}>
           {(()=>{const used=new Set(workout.exercises.map(e=>e.id));
-            const groups={};EXERCISE_LIBRARY.filter(o=>!used.has(o.id)).forEach(o=>{(groups[o.region]=groups[o.region]||[]).push(o);});
+            const groups={};EXERCISE_LIBRARY.filter(o=>!o.off&&!used.has(o.id)).forEach(o=>{(groups[o.region]=groups[o.region]||[]).push(o);});
             return Object.entries(groups).map(([rg,opts])=>(<div key={rg} style={{marginBottom:8}}>
               <div style={{fontSize:10,fontWeight:800,color:C.t3,letterSpacing:"0.08em",textTransform:"uppercase",fontFamily:FD,padding:"4px 0"}}>{rg}</div>
               {opts.map(o=>(<button type="button" key={o.id} onClick={()=>addManualEx(o)} style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",minHeight:44,padding:"4px 8px",borderTop:`1px solid ${C.bl}`,border:"none",borderTopStyle:"solid",background:"transparent",cursor:"pointer",textAlign:"left"}}>
