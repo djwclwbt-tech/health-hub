@@ -87,7 +87,7 @@ const seedRows = () => {
   const day = (o) => { const d = new Date('2026-09-08T12:00:00'); d.setDate(d.getDate() + o); return d.toISOString().slice(0, 10); };
   const wt = [], nut = [], rec = [], wk = [], steps = [];
   for (let i = 1; i <= 14; i++) { const k = day(-i); wt.push({ date: k, value: 189 + i * 0.12 }); nut.push({ date: k, meals: [{ description: 'x', cal: 1900, protein: 200, source: 'cronometer' }], total_cal: 1900, total_protein: 200, total_carbs: 150, total_fat: 55, total_fiber: 20 }); rec.push({ date: k, recovery_score: 70, hrv: 45, rhr: 50, sleep_hours: 7.2, source: 'oura' }); steps.push({ date: k, value: 15500 }); }
-  wk.push({ date: day(-1), day_name: 'monday', exercises: [{ id: 'flat-bench', progKey: 'flat-bench__5-8', sets: [{ weight: 175, reps: 8, done: true }, { weight: 175, reps: 8, done: true }, { weight: 175, reps: 8, done: true }] }], duration_min: 50 });
+  wk.push({ date: day(-1), day_name: 'monday', exercises: [{ id: 'machine-chest-press', progKey: 'machine-chest-press__5-8', sets: [{ weight: 175, reps: 8, done: true }, { weight: 175, reps: 8, done: true }, { weight: 175, reps: 8, done: true }] }], duration_min: 50 });
   mockFetch(/\/rest\/v1\/nutrition\?select=\*&order=date\.desc&limit=1&date=eq\./, json([]));
   mockFetch(/\/rest\/v1\/weight\?select/, json(wt)); mockFetch(/\/rest\/v1\/nutrition\?select=\*/, json(nut)); mockFetch(/\/rest\/v1\/recovery\?select/, json(rec)); mockFetch(/\/rest\/v1\/workouts\?select/, json(wk)); mockFetch(/\/rest\/v1\/steps\?select/, json(steps));
   liveRows();
@@ -114,9 +114,9 @@ test('mcp: lists the coach tools and serves a snapshot from the same engine the 
   const prog = await rpc(handler, 'tools/call', { name: 'get_program', arguments: {} }, 4);
   const p = JSON.parse(prog.body.result.content[0].text);
   assert.equal(p.source, 'live'); assert.equal(p.days.monday.exercises[0].workingWeight, 180, 'bench topped last session → 180 next');
-  const ex = await rpc(handler, 'tools/call', { name: 'get_exercise', arguments: { exerciseId: 'flat-bench' } }, 5);
+  const ex = await rpc(handler, 'tools/call', { name: 'get_exercise', arguments: { exerciseId: 'machine-chest-press' } }, 5);
   const x = JSON.parse(ex.body.result.content[0].text);
-  assert.equal(x.sessions.length, 1); assert.ok(x.swaps.length >= 3); assert.ok(x.swaps.every(o => o.id !== 'flat-bench'));
+  assert.equal(x.sessions.length, 1); assert.ok(x.swaps.length >= 3); assert.ok(x.swaps.every(o => o.id !== 'machine-chest-press'));
 }));
 
 test('mcp: writes land in live tables with an audit row, and rejects nonsense', env({ SUPABASE_KEY: 'k', MCP_TOKEN: null }, async () => {
