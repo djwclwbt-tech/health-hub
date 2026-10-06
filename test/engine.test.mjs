@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as E from '../lib/engine.mjs';
 
-const { PROG, DEFAULTS } = E;
+import { OLD_DAYS } from './fixtures/summer-cut-days.mjs';
+const { DEFAULTS } = E;
+const PROG = { ...E.PROG, days: OLD_DAYS };
 const day = (offset, from = '2026-09-08') => { const d = new Date(from + 'T12:00:00'); d.setDate(d.getDate() + offset); return E.lds(d); };
 const TODAY = '2026-09-08'; // a Tuesday inside Summer Cut v2 (week 10 → past deload week 4)
 const slot = (id, day = null) => {
@@ -193,19 +195,19 @@ test('manualSlot gives a library lift a sane 3×8-12 slot', () => {
 
 // ── history repair ──────────────────────────────────────────────────────────
 test('backfillData replays logs by identity once, and pruneProgression drops orphans', () => {
-  const d = base({ wk: { '2026-07-13': { exercises: [{ id: 'flat-bench', progKey: 'flat-bench__5-8', sets: sets(175, [8, 8, 8]) }] } } });
+  const d = base({ wk: { '2026-07-13': { exercises: [{ id: 'machine-chest-press', progKey: 'machine-chest-press__5-8', sets: sets(175, [8, 8, 8]) }] } } });
   E.backfillData(d);
-  assert.equal(d.prog['flat-bench__5-8'].currentWeight, 180);
-  assert.equal(d.prog['flat-bench__5-8'].pr.e1rm, E.e1rm(175, 8));
+  assert.equal(d.prog['machine-chest-press__5-8'].currentWeight, 180);
+  assert.equal(d.prog['machine-chest-press__5-8'].pr.e1rm, E.e1rm(175, 8));
   assert.equal(d.backfillVersion, E.BACKFILL_VERSION);
-  d.prog['flat-bench__5-8'].currentWeight = 999; E.backfillData(d);
-  assert.equal(d.prog['flat-bench__5-8'].currentWeight, 999, 'one-shot: does not rerun');
+  d.prog['machine-chest-press__5-8'].currentWeight = 999; E.backfillData(d);
+  assert.equal(d.prog['machine-chest-press__5-8'].currentWeight, 999, 'one-shot: does not rerun');
   d.prog['ghost-lift__8-12'] = { currentWeight: 50, lastDate: '2026-01-01', lastReps: [10] };
-  d.prog['deadlift'] = { currentWeight: 225, lastReps: [5] };
+  d.prog['seated-row'] = { currentWeight: 225, lastReps: [5] };
   const removed = E.pruneProgression(d);
   assert.equal(removed, 1);
   assert.ok(!d.prog['ghost-lift__8-12']);
-  assert.ok(d.prog['deadlift'], 'legacy row of a current lift with reps survives');
+  assert.ok(d.prog['seated-row'], 'legacy row of a current lift with reps survives');
 });
 
 // ── targets & day types ─────────────────────────────────────────────────────
@@ -336,9 +338,9 @@ test('applyChanges applies settings and exercise edits, rejects nonsense, never 
 });
 
 test('exerciseReport summarizes a lift for coaching', () => {
-  const d = base({ wk: { '2026-09-01': { exercises: [{ id: 'flat-bench', progKey: 'flat-bench__5-8', sets: sets(175, [8, 8, 8]) }] }, '2026-08-25': { exercises: [{ id: 'flat-bench', progKey: 'flat-bench__5-8', sets: sets(170, [8, 8, 7]) }] } } });
+  const d = base({ wk: { '2026-09-01': { exercises: [{ id: 'machine-chest-press', progKey: 'machine-chest-press__5-8', sets: sets(175, [8, 8, 8]) }] }, '2026-08-25': { exercises: [{ id: 'machine-chest-press', progKey: 'machine-chest-press__5-8', sets: sets(170, [8, 8, 7]) }] } } });
   E.backfillData(d);
-  const r = E.exerciseReport(d, slot('flat-bench'), 'flat-bench__5-8');
+  const r = E.exerciseReport(d, E.PROG.days.monday.exercises[0], 'machine-chest-press__5-8');
   assert.equal(r.sessions.length, 2);
   assert.equal(r.sessions[0].date, '2026-09-01');
   assert.equal(r.workingWeight, 180);
