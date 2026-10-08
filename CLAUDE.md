@@ -84,7 +84,8 @@ Stored in `data.settings`: `calories` (default 1790), `protein` (200), `water` (
 When the user agrees to a workout program change or settings adjustment during conversation, push it live using `/api/update` — no code change or deploy needed.
 
 ```bash
-source /home/user/health-hub/.env
+set -a; source /home/dwrzl/health-hub/.env.local; set +a   # or: ./scripts/push-update.sh '<json>'
+HEALTH_HUB_URL=${HEALTH_HUB_URL:-https://health-hub-topaz-sigma.vercel.app}
 curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${UPDATE_TOKEN}" \
@@ -100,13 +101,16 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (42 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (45 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message
 2. Push to a feature branch
 3. Create a PR
 4. Note: `.github/workflows/auto-merge-claude.yml` rebuilds `app.js` if stale, then auto-merges `claude/**` branches (every push there is a production deploy)
+
+## Local workspace (Raspberry Pi, T3 Code)
+This checkout at `/home/dwrzl/health-hub` is the primary place to build and maintain the app. See `LOCAL_SETUP.md`. Secrets live in Vercel; `.env.local` is a gitignored copy (`vercel env pull`). Background and past planning docs live in `docs/` (`docs/coach-system/`, `docs/archive/`); where they disagree with this file, this file wins.
 
 ## Security
 See `SECURITY.md` — hardening is documented and deliberately deferred.
