@@ -346,3 +346,96 @@ test('exerciseReport summarizes a lift for coaching', () => {
   assert.equal(r.workingWeight, 180);
   assert.equal(r.pr.e1rm, E.e1rm(175, 8));
 });
+
+// ── audit fixes ───────────────────────────────────────────────────────────────
+test('td(): a server (no window) reads the day in Austin, not UTC', () => {
+  const evening = new Date('2026-10-07T01:30:00Z'); // Tue Oct 6, 8:30 pm Central
+  assert.equal(typeof window, 'undefined');
+  assert.equal(E.td(evening), '2026-10-06');
+  assert.equal(E.td(new Date('2026-10-07T06:00:00Z')), '2026-10-07');
+  globalThis.window = {}; try { assert.equal(E.td(evening), E.lds(evening), 'browser keeps the phone clock'); } finally { delete globalThis.window; }
+});
+
+test('calcAdaptiveTDEE and getWeeklyRecoveryAvg honor an explicit today', () => {
+  const wt = {}, nut = {};
+  for (let i = 27; i >= 0; i--) { const k = day(-i); wt[k] = 190; nut[k] = { meals: [], totalCal: 2000 }; }
+  const tue = E.calcAdaptiveTDEE(wt, nut, DEFAULTS, {}, {}, null, TODAY);
+  const wed = E.calcAdaptiveTDEE(wt, nut, DEFAULTS, {}, {}, null, day(1));
+  assert.equal(tue.deficit, tue.tdee - 2000, 'Tuesday target');
+  assert.equal(wed.deficit, wed.tdee - 900, 'Wednesday target');
+  const rec = { [day(0)]: { recoveryScore: 80 }, [day(-1)]: { recoveryScore: 70 }, [day(-2)]: { recoveryScore: 60 } };
+  assert.equal(E.getWeeklyRecoveryAvg(rec, TODAY), 70);
+  assert.equal(E.getWeeklyRecoveryAvg(rec, day(30)), null);
+  assert.equal(E.getConsecutiveRedDays({ [TODAY]: { recoveryScore: 20 } }, TODAY), 1);
+});
+
+test('trend and TDEE ignore null, zero and non-numeric weights', () => {
+  const wt = { [day(-2)]: 190, [day(-1)]: 189.8, [TODAY]: 0, [day(-3)]: null, [day(-4)]: '' };
+  const t = E.getTrend(wt, TODAY);
+  assert.equal(t.n, 2); assert.ok(Math.abs(t.rate) < 2, `rate ${t.rate}`);
+  assert.equal(E.okWeight('190'), true); assert.equal(E.okWeight(0), false); assert.equal(E.okWeight(NaN), false); assert.equal(E.okWeight(null), false);
+  const w2 = {}, nut = {};
+  for (let i = 27; i >= 0; i--) { const k = day(-i); w2[k] = i === 3 ? 0 : String(190); nut[k] = { meals: [], totalCal: 2000 }; }
+  const tdee = E.calcAdaptiveTDEE(w2, nut, DEFAULTS, {}, {}, null, TODAY);
+  assert.ok(Number.isFinite(tdee.tdee) && Math.abs(tdee.tdee - 2000) < 50, `tdee ${tdee.tdee}`);
+});
+
+test('getStalls reports a lift once even with a legacy plain-id row', () => {
+  const wk = {}; [['2026-09-25', 100], ['2026-10-02', 95], ['2026-10-06', 95]].forEach(([d, w]) => { wk[d] = { exercises: [{ id: 'seated-calf', sets: [{ done: true, reps: 10, weight: w }] }] }; });
+  const prog = { 'seated-calf__10-12': { lastDate: '2026-10-06', exerciseId: 'seated-calf' }, 'seated-calf': { lastDate: '2026-09-25' } };
+  assert.deepEqual(E.getStalls(prog, wk, E.PROG.days).map(s => s.id), ['seated-calf__10-12']);
+});
+
+test('applyChanges update and swap reach every day that holds the lift', () => {
+  const u = E.applyChanges([{ type: 'exercise', action: 'update', exerciseId: 'seated-calf', fields: { sw: 100 } }], { program: E.PROG.days });
+  assert.deepEqual([u.program.tuesday, u.program.friday].map(d => d.exercises.find(e => e.id === 'seated-calf').sw), [100, 100]);
+  const s = E.applyChanges([{ type: 'exercise', action: 'swap', oldExerciseId: 'seated-calf', newExercise: { id: 'leg-press-calf', name: 'Calf Press', sets: 2, rr: [10, 12] } }], { program: E.PROG.days });
+  assert.ok(['tuesday', 'friday'].every(d => s.program[d].exercises.some(e => e.id === 'leg-press-calf') && !s.program[d].exercises.some(e => e.id === 'seated-calf')));
+  assert.match(s.applied[0], /tuesday, friday/);
+});
+
+test('progression: reps above the range count as topping it; extra sets do not block it', () => {
+  const pe = { rr: [5, 8], inc: 5, sets: 3 };
+  assert.equal(E.nextWeightFromSets(sets(100, [9, 9, 9]), pe), 105, '3×9 on 5-8 progresses');
+  assert.equal(E.hitTopOfRange(sets(100, [8, 8]), [5, 8], 3), false);
+  const anc = { id: 'machine-chest-press', sets: 1, rr: [5, 8], sw: 135, inc: 5, anchor: true };
+  const run = (st) => E.applyWorkout({ prog: {}, wk: {} }, { day: 'monday', start: 0, exercises: [{ id: anc.id, sets: st }] }, { exercises: [anc] }, '2026-10-05', 6e5).data.prog['machine-chest-press__5-8'];
+  assert.equal(run(sets(135, [8, 8])).currentWeight, 140, 'two sets when one was planned still progresses');
+  const str = run([{ done: true, reps: '8', weight: '135' }]);
+  assert.equal(str.currentWeight, 140, 'string weight adds, no "1355"'); assert.equal(str.pr.weight, 135); assert.deepEqual(str.lastReps, [8]);
+});
+
+test('resolveWeight holds an accessory on the cut, like applyWorkout does', () => {
+  const acc = { id: 'pec-deck', sets: 2, rr: [12, 15], sw: 90, inc: 5, unit: 'lbs' };
+  const d = base({ wk: { '2026-10-05': { exercises: [{ id: 'pec-deck', progKey: 'pec-deck__12-15', sets: sets(90, [15, 15]) }] } } });
+  const finished = E.applyWorkout({ prog: {}, wk: {} }, { day: 'monday', start: 0, exercises: [{ id: 'pec-deck', progKey: 'pec-deck__12-15', sets: sets(90, [15, 15]) }] }, { exercises: [acc] }, '2026-10-05', 6e5);
+  assert.equal(E.resolveWeight(d, acc, 90, acc), finished.data.prog['pec-deck__12-15'].currentWeight);
+  assert.equal(E.resolveWeight(d, acc, 90, acc), 90);
+  assert.equal(E.resolveWeight(d, { ...acc, anchor: true }, 90, { ...acc, anchor: true }), 95, 'anchor still progresses');
+});
+
+test('e1rm, calcVolume and bestSetByE1rm coerce strings and skip junk', () => {
+  assert.equal(E.e1rm(200, '1'), 200); assert.equal(E.e1rm('200', 5), E.e1rm(200, 5));
+  assert.equal(E.calcVolume([{ sets: [{ done: true, weight: 100 }, { done: true, weight: '50', reps: '10' }] }]), 500);
+  assert.deepEqual(E.bestSetByE1rm([{ weight: 100, reps: 10 }, { weight: '120', reps: '5' }]), { weight: '120', reps: '5' }); assert.equal(E.bestSetByE1rm([]), null);
+});
+
+test('getCutRetentionScore reads the rate from slopePerWeek', () => {
+  const wt = {}; for (let i = 0; i <= 28; i++) wt[day(i, E.PROG.start)] = 200 - i / 7;
+  const r = E.getCutRetentionScore({ wt, prog: {}, nut: {}, settings: DEFAULTS });
+  assert.equal(r.weight.change, +E.slopePerWeek(Object.entries(wt).sort()).toFixed(1));
+  assert.ok(r.weight.change <= -0.8, `change ${r.weight.change}`);
+});
+
+test('applyBlockV2 no longer seeds summer lifts or remaps settings, keeps the comeback pull-back', () => {
+  const d = { ...E.bl(), programVersion: E.PROG.version, settings: { ...DEFAULTS, calories: 1800 }, prog: { 'pec-deck__12-15': { currentWeight: 110, lastDate: '2026-09-01' } } };
+  E.applyBlockV2(d);
+  assert.deepEqual(Object.keys(d.prog), ['pec-deck__12-15']); assert.equal(d.prog['pec-deck__12-15'].currentWeight, 90);
+  assert.equal(d.settings.calories, 1800);
+  assert.equal(E.BLOCK_V2_SEEDS, undefined); assert.equal(E.sameRepTrack, undefined); assert.equal(E.yd, undefined);
+});
+
+test('buildSession stamps the start date so a session crossing midnight logs to its own day', () => {
+  const sess = { name: 'T', exercises: [{ id: 'leg-press', name: 'Leg Press', sets: 2, rr: [5, 8], sw: 300, inc: 10 }] };
+  assert.equal(E.buildSession(E.bl(), 'Monday', sess, { date: '2026-10-05' }).date, '2026-10-05');
+});

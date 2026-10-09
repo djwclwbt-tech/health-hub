@@ -75,7 +75,7 @@ test('writeProgramChanges applies to live rows, preserves untouched settings, lo
     { type: 'settings', field: 'nope', value: 1 },
   ], { reason: 'test', source: 'coach' });
   assert.equal(r.applied.length, 2); assert.equal(r.rejected.length, 1);
-  const s = c.writes.find(w => w.table === 'settings'); assert.equal(s.data.weekendCal, 1700); assert.equal(s.data.syncToken, 'abc'); assert.equal(s.conflict, 'id');
+  const s = c.writes.find(w => w.table === 'settings'); assert.equal(s.data.weekendCal, 1700); assert.ok(!('syncToken' in s.data), 'token never written back'); assert.equal(s.conflict, 'id');
   const p = c.writes.find(w => w.table === 'program'); assert.ok(p.data.data.thursday.exercises.some(e => e.id === 'face-pull')); assert.equal(p.data.version, E.PROG.version);
   const audits = c.writes.filter(w => w.table === 'program_updates'); assert.equal(audits.length, 3);
   assert.equal(audits[1].data.summary, 'Added Face Pull to thursday'); assert.equal(audits[2].data.applied, false);
@@ -92,4 +92,68 @@ test('makeClient: retries a dropped request once and reports failure classes', a
   assert.equal(await bad.upsert('weight', {}), false); assert.deepEqual(failures.at(-1), ['weight', 400, false]);
   const server = makeClient({ fetchImpl: async () => new Response('nope', { status: 500 }) });
   await assert.rejects(() => server.upsert('weight', {}), /Supabase weight 500/);
+});
+
+// ── audit fixes ───────────────────────────────────────────────────────────────
+const res = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) });
+
+test('loadAll: a failed read is not empty data · keys listed in non-enumerable __failed, sync health untouched', async () => {
+  const failures = [];
+  const fetchImpl = async (u) => {
+    if (u.includes('/settings?')) return res(503, { message: 'down' });
+    if (u.includes('/program?')) throw new Error('offline');
+    if (u.includes('/weight?')) return res(200, [{ date: '2026-10-06', value: 190 }]);
+    return res(200, []);
+  };
+  const d = await loadAll(makeClient({ fetchImpl, onFailure: (t, s, b, tr) => failures.push([t, s, tr]), retryMs: 1 }));
+  assert.deepEqual([...d.__failed].sort(), ['program', 'programVersion', 'settings']);
+  assert.ok(!Object.keys(d).includes('__failed'), 'not enumerable, so a key-merge loop never sees it');
+  assert.equal(JSON.stringify(d).includes('__failed'), false);
+  assert.equal(d.wt['2026-10-06'], 190);
+  assert.deepEqual(failures, [], 'reads never mark sync health; that tracks unsaved writes');
+  const ok = await loadAll(fakeClient({}));
+  assert.deepEqual(ok.__failed, []);
+  // server mode: select throws, loadAll still returns and lists every key
+  const srv = await loadAll(makeClient({ fetchImpl: async () => { throw new Error('ECONNRESET'); } }));
+  assert.ok(srv.__failed.includes('wt') && srv.__failed.includes('coachLog') && srv.__failed.includes('prog'));
+  // a mapper that throws counts as failed too
+  const bad = await loadAll(fakeClient({ program_updates: [null] }));
+  assert.deepEqual(bad.__failed, ['coachLog']);
+});
+
+test('writeProgramChanges refuses to write over defaults when the read failed', async () => {
+  const c = fakeClient({}); c.select = async () => Object.defineProperty([], '__failed', { value: true });
+  await assert.rejects(() => writeProgramChanges(c, E.applyChanges, [{ type: 'settings', field: 'protein', value: 210 }]), /read failed/);
+  assert.equal(c.writes.length, 0);
+});
+
+test('settings tokens never sync: not written, not emitted', () => {
+  const row = toRow.settings({ ...E.DEFAULTS, syncToken: 'abc', notifyToken: 'xyz' });
+  assert.ok(!('syncToken' in row) && !('notifyToken' in row));
+  const d = E.bl(); fromRows.settings([{ id: 'user', calories: 1700, syncToken: 'abc', notifyToken: 'xyz' }], d);
+  assert.ok(!('syncToken' in d.settings) && !('notifyToken' in d.settings), 'no key at all, so a spread cannot wipe the phone token');
+  const local = { syncToken: 'phone' }; assert.equal({ ...local, ...d.settings }.syncToken, 'phone');
+});
+
+test('fromRows.weight skips null, empty and non-positive values', () => {
+  const d = E.bl();
+  fromRows.weight([{ date: 'a', value: null }, { date: 'b', value: '' }, { date: 'c', value: 0 }, { date: 'e', value: 'x' }, { date: 'f', value: '189.4' }], d);
+  assert.deepEqual(d.wt, { f: 189.4 });
+});
+
+test('makeClient: patch/deleteRow/deleteAll report failures instead of throwing or hiding them', async () => {
+  const failures = []; const urls = [];
+  const onFailure = (t, s, b, tr) => failures.push([t, s, tr]);
+  const net = makeClient({ fetchImpl: async () => { throw new Error('offline'); }, onFailure });
+  assert.equal(await net.patch('settings', 'id=eq.user', {}), false);
+  assert.equal(await net.deleteRow('travel_days', 'date', '2026-10-06'), false);
+  assert.equal(await net.deleteAll('weight'), false);
+  assert.deepEqual(failures.map(f => f[0]), ['settings', 'travel_days', 'weight']);
+  const http = makeClient({ fetchImpl: async () => res(400, { message: 'bad' }), onFailure });
+  assert.equal(await http.deleteRow('weight', 'date', 'x'), false); assert.deepEqual(failures.at(-1), ['weight', 400, false]);
+  const good = makeClient({ fetchImpl: async (u) => { urls.push(u); return res(204, null); }, onFailure });
+  for (const t of ['weight', 'progression', 'settings', 'program_updates']) assert.equal(await good.deleteAll(t), true);
+  assert.deepEqual(urls.map(u => u.split('/rest/v1/')[1]), ['weight?date=not.is.null', 'progression?exercise_id=not.is.null', 'settings?id=not.is.null', 'program_updates?id=not.is.null']);
+  const server = makeClient({ fetchImpl: async () => { throw new Error('offline'); } });
+  await assert.rejects(() => server.patch('settings', 'id=eq.user', {}), /offline/);
 });
