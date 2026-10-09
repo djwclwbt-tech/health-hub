@@ -5,7 +5,8 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 
 ## The engine (read this first)
 - `lib/engine.mjs` — every rule and number: program (`PROG`, versioned), exercise library, progression (`resolveWeight`, `buildSession`, `applyWorkout`, `swapOptions`, `sessionCursor`), analytics (`getTrend`, `calcAdaptiveTDEE`, `getWeeklyCutSummary`, `getWeeklyCutRecommendation`, `getTonightCloseout`, `getAutoregProposal`, stalls, insights), targets (`getDayCalTarget`…), `resolveMode`, plates, and `applyChanges` (the Coach's write path). Pure and isomorphic: no window, no fetch. **Put logic here, not in components or API routes.**
-- `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once.
+- `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once. `loadAll` marks tables that failed to load in a hidden `__failed` list; the app keeps the phone's copy for those, so an offline launch never resets settings. Tokens (`syncToken`, `notifyToken`) never go to the cloud.
+- `lib/http.mjs` — shared API plumbing: `preflight` (CORS + method check), `requireToken`, `safeEqual`, `isCron`, `sameOrigin`, `supabaseEnv`. Every `api/*.js` uses it; do not copy auth or CORS code into a route.
 - `test/*.test.mjs` — `npm test`. Engine, mapping and API routes (network mocked). Add a test when you change a rule.
 
 ## Tech Stack
@@ -27,9 +28,10 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/analyze.js` — Weekly health analysis endpoint
 - `api/bodycomp.js` — Body-composition photo analysis
 - `api/update.js` — Program update endpoint (curl/script, Bearer UPDATE_TOKEN); applies changes to the live rows via the engine
-- `api/mcp.js` — The Coach: remote MCP server (Claude.ai). Tools: get_snapshot, get_program, get_history, get_exercise, update_settings, update_exercise, log_* writes, set_travel_day, log_note. Optional `MCP_TOKEN` bearer for non-OAuth clients.
-- `api/oura-sync.js` — Oura recovery sync (cron 2x daily)
-- `api/cronometer-sync.js` — Cronometer nutrition sync (cron nightly; source of truth for food)
+- `api/mcp.js` — The Coach: remote MCP server (Claude.ai). Tools: get_snapshot, get_program, get_history, get_exercise, update_settings, update_exercise, log_* writes, set_travel_day, log_note. When `MCP_TOKEN` is set, callers send it as `Authorization: Bearer …` or `?key=…` (Claude.ai uses the `?key=` connector URL).
+- `api/oura-sync.js` — Oura recovery sync (cron 3x daily, incl. 11:30 UTC morning run)
+- `api/cronometer-sync.js` — Cronometer nutrition sync (cron 3x daily; source of truth for food)
+- Crons are UTC. With `CRON_SECRET` set, only Vercel's `Bearer CRON_SECRET` counts as a cron call.
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
 - `api/push-schedule.js` — Server web push for rest timers (VAPID + optional NOTIFY_TOKEN)
 - `api/allergies.js` — Austin pollen/mold counts
@@ -92,16 +94,16 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
   -d '{"changes":[...],"reason":"..."}'
 ```
 
-Payload format: see `api/schema.md`. Change types: `settings` field/value, `exercise` update/swap/add/remove. Always include a `reason`; the app applies pending updates on next load (toast).
+Payload format: see `api/schema.md`. Change types: `settings` field/value, `exercise` update/swap/add/remove. Always include a `reason`. The change is applied server-side at once; the app shows it as a toast on next launch.
 
 ## Claude.ai MCP Integration (the Coach)
 `/api/mcp` is the second delivery vehicle; see `COACH.md` for the tool contract and the Claude.ai project instructions. Reads run the engine over `loadAll()`. Writes go straight to the live tables; settings/program changes are applied server-side by `writeProgramChanges` and logged to `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`), which the app toasts on next launch and lists under Setup → Coach changes. There is no client-side apply step anymore.
 
 ## Environment variables (Vercel)
-`ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional).
+`ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (cron proof; set it).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (45 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (68 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message

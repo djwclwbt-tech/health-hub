@@ -1,6 +1,6 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import {PROG, WU, repTrack, rrTxt, progKey, legacyAmbiguousIds, saneSet, sameRepTrack, WED_SUPERSETS, supersetLabel, EXERCISE_LIBRARY, exLibById, SHORT_FILLER, shortLiftName, STRETCH_POSES, weightCap, saneWeight, cutStepsTarget, CUT_HOLD_PROGRESSION, matchingProgKeys, getProgEntry, getProgHistory, getProgPr, relatedPatterns, DINNERS, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, DEFAULTS, bl, migrate, SEED_DATA, seedHistorical, lds, td, yd, dw, fmt, wkn, estTime, fmtElapsed, getDayType, getWeekMonday, isSocialWeekendActive, SOCIAL_CAL, getDayCalTarget, getDayProTarget, PROTEIN_CHECKPOINTS, getWeeklyRecoveryAvg, getAutoregulation, getConsecutiveRedDays, e1rm, calcVolume, completedSets, nextWeightFromSets, BACKFILL_VERSION, backfillData, pruneProgression, repairDeloadProgression, BLOCK_V2_SEEDS, BLOCK_V2_WEIGHT_FIXES, applyBlockV2, getStalls, getTrend, getTopProteinMeals, getInsights, getCutRetentionScore, calcEWMA, median, calcAdaptiveTDEE, getDailyCutAdherence, getWeeklyCutSummary, getWeeklyConsistency, getTonightCloseout, getWeeklyCutRecommendation, BARBELL_IDS, PLATES, plateMath, resolveMode, getAutoregProposal, resolveWeight, lastSessionSets, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, mergeProgression, applyWorkout, applyChanges, SETTINGS_FIELDS, exerciseReport, sumMeals} from "../lib/engine.mjs";
-import { makeClient, toRow, loadAll } from "../lib/supabase.mjs";
+import {PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, cutStepsTarget, CUT_HOLD_PROGRESSION, getProgEntry, DINNERS, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, DEFAULTS, bl, migrate, seedHistorical, lds, td, dw, fmt, wkn, estTime, fmtElapsed, getDayType, getWeekMonday, isSocialWeekendActive, getDayCalTarget, getDayProTarget, PROTEIN_CHECKPOINTS, getWeeklyRecoveryAvg, getAutoregulation, getConsecutiveRedDays, e1rm, backfillData, pruneProgression, repairDeloadProgression, applyBlockV2, getStalls, getTrend, getTopProteinMeals, getInsights, getCutRetentionScore, calcAdaptiveTDEE, getWeeklyCutSummary, getWeeklyConsistency, getTonightCloseout, getWeeklyCutRecommendation, BARBELL_IDS, PLATES, plateMath, resolveMode, getAutoregProposal, resolveWeight, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, mergeProgression, applyWorkout, exerciseReport, sumMeals} from "../lib/engine.mjs";
+import { makeClient, toRow, loadAll, LOAD_PLAN, KEYS_OF_TABLE } from "../lib/supabase.mjs";
 
 const SK="dhub6";
 const REST_TIMER_KEY="dhub6_rest_timer";
@@ -126,6 +126,9 @@ const useBackClose=(open,close)=>{
     return release;
   },[open]);
 };
+
+// Today's date key, refreshed every minute, so keep-alive tabs roll over at midnight.
+const useToday=()=>{const [t,setT]=useState(td());useEffect(()=>{const iv=setInterval(()=>setT(td()),60000);return()=>clearInterval(iv);},[]);return t;};
 
 // ═══ WATER · one mutation helper for every surface ═══
 const waterOps=(setData,date)=>({
@@ -369,7 +372,7 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   const toGo=Math.max(0,+(cur-goal).toFixed(1));
   const daysToGoal=rate<-0.05&&cur>goal?(cur-goal)/(-rate)*7:null;
   const projDate=daysToGoal!=null&&daysToGoal<=180?(()=>{const d=new Date(td()+"T12:00:00");d.setDate(d.getDate()+Math.round(daysToGoal));return d;})():null;
-  const projLabel=projDate?projDate.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase():"—";
+  const projLabel=projDate?projDate.toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase():"○";
   const dLbl=ds=>new Date(ds+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
   const dteEnd=(new Date(PROG.end+"T12:00:00")-new Date(td()+"T12:00:00"))/864e5;
   const wtEnd=rate<-0.05&&dteEnd>0?Math.max(goal,+(cur+rate*(dteEnd/7)).toFixed(1)):null;
@@ -767,8 +770,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
   useBackClose(showFullDashboard,()=>setShowFullDashboard(false));
   const [measF,setMeasF]=useState({chest:"",waist:"",armL:"",armR:"",thighL:"",thighR:""});
   const [allergyOpen,setAllergyOpen]=useState(false);
-  const [todayKey,setTodayKey]=useState(td());
-  useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
+  const todayKey=useToday();
 
   const t=todayKey,dn=dw(t),w=wkn(t);
   const sess=data.program[dn],nut=data.nut[t],rec=data.rec[t];
@@ -809,7 +811,6 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
   const redDays=getConsecutiveRedDays(data.rec);
   const fatPct=tCal>0?Math.round(((nut?.totalFat||0)*9/tCal)*100):0;
   const weightTrend=getTrend(data.wt,t);
-  const stalls=analytics.cutSummary.stalls;
 
   const wCh=wts.slice(0,30).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const recCh=Object.entries(data.rec).filter(([_,v])=>v.recoveryScore).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,v])=>({v:v.recoveryScore,d:d.slice(5)}));
@@ -847,7 +848,6 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
   const cardioDone=!!data.cardio?.[t]?.done;
   const habitsLogged=!!data.habits?.[t]&&Object.values(data.habits[t]).some(v=>v!==null&&v!==undefined);
   const proteinPct=Math.min(100,Math.round(tPro/(proT||1)*100));
-  const calPct=calT?Math.min(120,Math.round(tCal/calT*100)):null;
   const cutStatus=(()=>{
     if(ws!=null&&ws<45)return{label:"Recovery-biased day",color:C.r,msg:"Protect lifting. Reduce cardio before cutting food."};
     if(weightTrend?.direction==="flat"&&nutritionLogged)return{label:"Tighten execution",color:C.t,msg:"Hit protein and log cleanly before changing targets."};
@@ -863,7 +863,6 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
     return{label:"Review details",tab:"dashboard",hint:"Core loops are done."};
   })();
   const allergyTop=(allergies?.summary||[]).slice(0,3);
-  const allergyTone=allergyTop.some(x=>/^high|very/i.test(x.level||""))?C.r:allergyTop.some(x=>/^moderate/i.test(x.level||""))?C.t2:C.g;
 
   if(!showFullDashboard)return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -948,7 +947,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
             {l:"Food",ok:tonightCloseout.foodOk,v:tonightCloseout.proteinLeft>0?`${tonightCloseout.proteinLeft}g P left`:"OK"},
             {l:"Steps",ok:tonightCloseout.stepsOk,v:`${Math.round(tonightCloseout.steps/1000)}k/${Math.round(tonightCloseout.stepsTarget/1000)}k`},
             {l:"Cardio",ok:tonightCloseout.cardioDone,v:tonightCloseout.cardioDone?"Done":"Open"},
-            {l:"Recovery",ok:tonightCloseout.recovery==null||tonightCloseout.recovery>=55,v:tonightCloseout.recovery==null?"—":`${tonightCloseout.recovery}%`}
+            {l:"Recovery",ok:tonightCloseout.recovery==null||tonightCloseout.recovery>=55,v:tonightCloseout.recovery==null?"○":`${tonightCloseout.recovery}%`}
           ].map(x=>(
             <div key={x.l} style={{padding:"7px 4px",borderRadius:6,textAlign:"center",background:"transparent",border:`1px solid ${C.bd}`}}>
               <div style={{fontSize:9,fontWeight:850,color:C.t3}}>{x.l}</div>
@@ -980,13 +979,13 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
           <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:allergyOpen?"normal":"nowrap"}}>
             <b style={{color:C.t3,fontSize:11}}>Allergies</b>{" "}
-            {allergyTop.length?allergyTop.map(a=>`${a.name} ${a.level||"—"}`).join(" · "):allergyErr||"Loading…"}
+            {allergyTop.length?allergyTop.map(a=>`${a.name} ${a.level||"○"}`).join(" · "):allergyErr||"Loading…"}
           </div>
           <span style={{fontSize:11,color:C.t3}}>{allergyOpen?"▴":"▾"}</span>
         </div>
         {allergyOpen&&(
           <div style={{fontSize:12,color:C.t2,marginTop:6,lineHeight:1.5}}>
-            {allergyTop.map(a=><div key={a.name}><b style={{color:C.t}}>{a.name}:</b> {a.level||"—"}{a.count?` · ${a.count}`:""}{a.trend?` · ${a.trend}`:""}</div>)}
+            {allergyTop.map(a=><div key={a.name}><b style={{color:C.t}}>{a.name}:</b> {a.level||"○"}{a.count?` · ${a.count}`:""}{a.trend?` · ${a.trend}`:""}</div>)}
             <a href={allergies?.sourceUrl||"https://austinpollen.com/"} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:11,fontWeight:800,color:C.p,textDecoration:"none"}}>{allergies?.source||"AustinPollen.com"}</a>
           </div>
         )}
@@ -1059,7 +1058,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       {autoreg&&(<X style={{padding:10,borderLeft:`3px solid ${autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.bd:C.r}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
           <div style={{fontSize:11,fontWeight:700,color:autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.t2:C.r,letterSpacing:"0.06em"}}>
-            Recovery Gate {weeklyRecAvg!=null?`— ${weeklyRecAvg}% avg`:""}
+            Recovery Gate {weeklyRecAvg!=null?`· ${weeklyRecAvg}% avg`:""}
           </div>
         </div>
         <div style={{fontSize:13,fontWeight:600,color:C.t}}>{autoreg.msg}</div>
@@ -1154,7 +1153,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Weight</span>
-            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?Math.round(lw):"—"}</span>
+            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{lw?Math.round(lw):"○"}</span>
           </div>
           {wc&&<div style={{fontSize:11,fontWeight:600,color:wc<0?C.g:wc>0?C.r:C.t3,marginBottom:4}}>{wc>0?"+":""}{wc} lbs 7d</div>}
           {wCh.length>=2?(
@@ -1171,7 +1170,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         <X style={{padding:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
             <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Steps</span>
-            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"—"}</span>
+            <span style={{fontSize:18,fontWeight:700,color:C.t}}>{steps?steps.toLocaleString():"○"}</span>
           </div>
           <Br v={steps} max={cutStepsTarget(st)} color={steps>=cutStepsTarget(st)?C.g:C.t3} h={6}/>
           <div style={{fontSize:10,color:C.t3,marginTop:3,textAlign:"right"}}>{steps?Math.round(steps/cutStepsTarget(st)*100):0}% of {(cutStepsTarget(st)/1000).toFixed(0)}k</div>
@@ -1248,7 +1247,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
           <div style={{fontSize:20,fontWeight:700,color:ws>=67?C.g:ws>=34?C.t2:ws!=null?C.r:C.t3}}>{ws??"-"}{ws!=null?"%":""}</div>
           <div style={{fontSize:10,fontWeight:600,color:C.t3}}>Recovery{rec?.source?` · ${String(rec.source).toUpperCase()}`:""}</div>
           {rec&&<div style={{fontSize:10,color:C.t3,marginTop:3,lineHeight:1.35}}>
-            {rec.sleepHours?`${rec.sleepHours}h sleep`:"Sleep —"} · {rec.hrv?`${rec.hrv} HRV`:"HRV —"} · {rec.rhr?`${rec.rhr} RHR`:"RHR —"}
+            {rec.sleepHours?`${rec.sleepHours}h sleep`:"Sleep ○"} · {rec.hrv?`${rec.hrv} HRV`:"HRV ○"} · {rec.rhr?`${rec.rhr} RHR`:"RHR ○"}
           </div>}
         </X>
         <X style={{padding:8,textAlign:"center"}}>
@@ -1547,8 +1546,9 @@ const ExerciseHistory=({data,ex,progKeyStr,onClose})=>{
 let restPushWarned=false;
 // ═══ TRAINING ═══
 const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
-  const t=td(),dn=dw(t);
+  const t=useToday(),dn=dw(t);
   const [sel,setSel]=useState(dn);
+  useEffect(()=>{setSel(dn);},[dn]);
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
@@ -1589,7 +1589,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const cardioIvRef=useRef(null);
   const cardioEndRef=useRef(0);
   const getPostLiftCardio=(day)=>{if(day==="monday"||day==="thursday")return{type:"stairs",label:"Stairstepper",duration:20,intensity:"zone2"};if(day==="tuesday"||day==="friday")return{type:"incline-walk",label:"Incline Walk (10-15%)",duration:20,intensity:"zone2"};if(day==="wednesday")return{type:"stairs",label:"Stairstepper (optional)",duration:20,intensity:"zone2"};return null;};
-  const startCardioTimer=(dur)=>{const end=Date.now()+dur*60*1000;cardioEndRef.current=end;setCardioTimerLeft(dur*60);setCardioTimerRunning(true);setCardioTimerDone(false);
+  const startCardioTimer=(dur)=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);const end=Date.now()+dur*60*1000;cardioEndRef.current=end;setCardioTimerLeft(dur*60);setCardioTimerRunning(true);setCardioTimerDone(false);
     cardioIvRef.current=setInterval(()=>{const left=Math.round((cardioEndRef.current-Date.now())/1000);if(left<=0){clearInterval(cardioIvRef.current);setCardioTimerLeft(0);setCardioTimerRunning(false);setCardioTimerDone(true);if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);}else{setCardioTimerLeft(left);}},500);};
   const stopCardioTimer=()=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);setCardioTimerRunning(false);setCardioTimerLeft(0);cardioEndRef.current=0;};
 
@@ -1634,7 +1634,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
 
   // Manual workout: start empty, add exercises from the library mid-session.
   // Weights come from gw() (progression + history), rest timers work as normal.
-  const startManualW=()=>{setWorkout({day:sel,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);};
+  const startManualW=()=>{setWorkout({day:sel,date:t,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);};
   const addManualEx=(opt)=>{
     const slot=manualSlot(opt);
     setWorkout(p=>({...p,exercises:[...p.exercises,buildExerciseEntry(data,slot,{isDeload:!!p.isDeload,withWarmup:p.exercises.length===0,extra:{slot}})]}));
@@ -1791,16 +1791,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     window.addEventListener("focus",onVis);
     return()=>{document.removeEventListener("visibilitychange",onVis);window.removeEventListener("focus",onVis);};
   },[]);
-  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
+  useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(cardioIvRef.current)clearInterval(cardioIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
 
   const finishWorkout=()=>{
     if(!workout)return;
     const s=sessOf(workout);
-    const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,t);
-    setData(nd);sv(nd);svSB.workout(t,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
+    // Log under the day the session started, so a session that crosses midnight
+    // (or is finished from a stale tab) cannot overwrite the next day's workout.
+    const d=workout.date||t;
+    const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,d);
+    setData(nd);sv(nd);svSB.workout(d,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
     setWorkout(null);clearRestTimer();stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
     haptic([40,60,40]);
-    setSummary({date:t,name:s?.name||"Session",dur:log.dur,sets:workout.exercises.reduce((a,e)=>a+e.sets.filter(saneSet).length,0),exercises:workout.exercises.filter(e=>e.sets.some(saneSet)).length,volume:log.volume,prs,log});
+    setSummary({date:d,name:s?.name||"Session",dur:log.dur,sets:workout.exercises.reduce((a,e)=>a+e.sets.filter(saneSet).length,0),exercises:workout.exercises.filter(e=>e.sets.some(saneSet)).length,volume:log.volume,prs,log});
   };
 
   const cancelWorkout=()=>{
@@ -2570,8 +2573,7 @@ const getWeekDates = (dateStr) => {
 };
 
 const Nutrition=({data,setData})=>{
-  const [todayKey,setTodayKey]=useState(td());
-  useEffect(()=>{const iv=setInterval(()=>setTodayKey(td()),60000);return()=>clearInterval(iv);},[]);
+  const todayKey=useToday();
   const t=todayKey,dn=dw(t);
   const [selM,setSelM]=useState(null);
   const [editing,setEditing]=useState(null);
@@ -2604,7 +2606,7 @@ const Nutrition=({data,setData})=>{
 
   const [showTDEEAdjust,setShowTDEEAdjust]=useState(false);
   const [tdeeGoal,setTdeeGoal]=useState("moderate_cut");
-  const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
+  const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data.wt,data.nut,st,data.travelDays,data.tdeeExclude,data.tdeeCal,t]);
 
   const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
   const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
@@ -2748,7 +2750,7 @@ const Nutrition=({data,setData})=>{
               background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
               <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
               <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.r:C.g):isFuture?C.t3:C.r}}>
-                {logged?Math.round(dc/100)*100:isFuture?"—":"0"}
+                {logged?Math.round(dc/100)*100:isFuture?"○":"0"}
               </div>
             </div>);
           })}
@@ -2919,7 +2921,7 @@ const Nutrition=({data,setData})=>{
 
 // ═══ WEIGHT ═══
 const Weight=({data,setData})=>{
-  const [nw,setNw]=useState("");const t=td();
+  const [nw,setNw]=useState("");const t=useToday();
   const [delDate,setDelDate]=useState(null);
   const st=data.settings||DEFAULTS;
   const entries=Object.entries(data.wt).sort((a,b)=>b[0].localeCompare(a[0]));
@@ -2927,7 +2929,7 @@ const Weight=({data,setData})=>{
   const tc=latest&&oldest?Math.round(latest-oldest):null;
   const ch=entries.slice(0,14).reverse().map(([d,v])=>({v,d:d.slice(5)}));
   const wTrend=getTrend(data.wt,t);
-  const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data,st]);
+  const wtTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data.wt,data.nut,st,data.travelDays,data.tdeeExclude,data.tdeeCal,t]);
   const trendWeights=wtTDEE&&wtTDEE.trendWeights?wtTDEE.trendWeights.slice(-14):null;
   const todayLogged=data.wt[t]!=null;
   const yesterdayWt=(()=>{const e=Object.entries(data.wt||{}).filter(([d])=>d<t).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[1]||null;})();
@@ -2951,9 +2953,9 @@ const Weight=({data,setData})=>{
 
     <S title="Scale review" collapsible defaultOpen={false}>
       <div style={{display:"grid",gridTemplateColumns:trendWeights?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:4}}>
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?Math.round(latest):"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Current</div></X>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.t}}>{latest?Math.round(latest):"○"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Current</div></X>
         {trendWeights&&<X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Trend</div></X>}
-        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.r}}>{tc?`${tc>0?"+":""}${tc}`:"—"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Total</div></X>
+        <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:tc&&tc<0?C.g:C.r}}>{tc?`${tc>0?"+":""}${tc}`:"○"}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Total</div></X>
         <X style={{padding:8,textAlign:"center"}}><div style={{fontSize:19,fontWeight:700,color:C.v}}>{entries.length}</div><div style={{fontSize:10,color:C.t3,fontWeight:600}}>Entries</div></X>
       </div>
       {trendWeights&&trendWeights.length>=2?(()=>{
@@ -2971,7 +2973,7 @@ const Weight=({data,setData})=>{
               <span style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em"}}>Weight + Trend</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:10,color:C.t3}}>· raw</span>
-                <span style={{fontSize:10,color:C.g}}>— trend</span>
+                <span style={{fontSize:10,color:C.g}}>· trend</span>
                 <span style={{fontSize:13,fontWeight:700,color:C.g}}>{Math.round(wtTDEE.trendWeight)} lbs</span>
               </div>
             </div>
@@ -3016,7 +3018,7 @@ const SYSTEM_HABITS=[
   {field:"bedBy1030",target:true},{field:"supplements",target:true},{field:"sunlight",target:true},{field:"readBeforeBed",target:true},
 ];
 const CloseoutPanel=({data,setData})=>{
-  const t=td();
+  const t=useToday();
   const tr=data.rec[t]||{};
   const h=data.habits[t]||{};
   const st=data.settings||DEFAULTS;
@@ -3029,9 +3031,13 @@ const CloseoutPanel=({data,setData})=>{
     const nd={...data,habits:{...data.habits,[t]:nh}};setData(nd);sv(nd);svSB.habits(t,nh);
   };
   const saveMetrics=()=>{
-    const rec={...tr,recoveryScore:+f.rs||null,hrv:+f.hrv||null,rhr:+f.rhr||null,sleepHours:+f.sh||null};
+    // A blank box keeps whatever is stored now (an Oura sync may have landed after this panel
+    // opened), so saving steps alone can never null out today's recovery numbers.
+    const keep=(v,cur)=>v===""||v==null?(cur??null):(Number.isFinite(+v)?+v:(cur??null));
+    const rec={...tr,recoveryScore:keep(f.rs,tr.recoveryScore),hrv:keep(f.hrv,tr.hrv),rhr:keep(f.rhr,tr.rhr),sleepHours:keep(f.sh,tr.sleepHours)};
+    const recChanged=["recoveryScore","hrv","rhr","sleepHours"].some(k=>(rec[k]??null)!==(tr[k]??null));
     const nd={...data,rec:{...data.rec,[t]:rec},steps:{...data.steps,...(f.steps?{[t]:+f.steps}:{})},wt:{...data.wt,...(f.wt?{[t]:+f.wt}:{})}};
-    setData(nd);sv(nd);svSB.recovery(t,rec);if(f.steps)svSB.steps(t,+f.steps);if(f.wt)svSB.weight(t,+f.wt);
+    setData(nd);sv(nd);if(recChanged)svSB.recovery(t,rec);if(f.steps)svSB.steps(t,+f.steps);if(f.wt)svSB.weight(t,+f.wt);
     setSaved(true);setTimeout(()=>setSaved(false),1500);
   };
   return(<div>
@@ -3074,8 +3080,9 @@ const ProgressView=({data,setData,onBack})=>{
       const resp=await fetch("/api/bodycomp",{method:"POST",headers:{"Content-Type":"application/json","x-sync-token":data.settings?.syncToken||""},body:JSON.stringify({image:{mediaType,data:dataStr},context})});
       const result=await resp.json();
       if(resp.ok){
-        const nd={...data,bodyComp:{...data.bodyComp,[t]:{photoTaken:true,analysis:result}},photoSlots:{...slots,[pendingSlot]:t}};
-        setData(nd);sv(nd);svSB.bodyComp(t,{analysis:result});
+        // The analysis takes seconds; build on the latest state so entries logged meanwhile survive.
+        setData(p=>{const nd={...p,bodyComp:{...p.bodyComp,[t]:{photoTaken:true,analysis:result}},photoSlots:{...(p.photoSlots||{}),[pendingSlot]:t}};sv(nd);return nd;});
+        svSB.bodyComp(t,{analysis:result});
       }else setErr(result.error||"Analysis failed");
     }catch(e2){setErr(e2.message);}
     setLoading(false);setPendingSlot(null);if(fileRef.current)fileRef.current.value="";
@@ -3434,7 +3441,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:6}}>Download all your health data as a JSON file for backup.</div>
       <S title="Admin data tools" collapsible defaultOpen={false}>
-        {showReset&&<ConfirmModal title="Erase everything?" message="Every table on this phone and in Supabase is wiped. There is no undo. Export first." confirmText="Erase all" confirmColor={C.r} onCancel={()=>setShowReset(false)} onConfirm={async()=>{setShowReset(false);const nd=bl();setData(nd);sv(nd);const tables=["weight","steps","water","recovery","habits","workouts","nutrition","progression","mobility","stepper","debrief","cardio","body_comp","travel_days","settings","program"];for(const t of tables){await sb.deleteAll(t);}}}/>}
+        {showReset&&<ConfirmModal title="Erase everything?" message="Every table on this phone and in Supabase is wiped. There is no undo. Export first." confirmText="Erase all" confirmColor={C.r} onCancel={()=>setShowReset(false)} onConfirm={async()=>{setShowReset(false);const nd=bl();setData(nd);sv(nd);["dhub6_sb_outbox","dhub6_workout","dhub6_variant","dhub6_rest_timer","dhub6_mob_active","dhub6_coach_seen"].forEach(k=>{try{localStorage.removeItem(k);}catch{}});for(const[table]of LOAD_PLAN){await sb.deleteAll(table);}}}/>}
         <button type="button" onClick={()=>setShowReset(true)}
           style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:11,fontFamily:"inherit",marginTop:4,opacity:0.7,padding:"6px 0"}}>
           Reset All Data
@@ -3470,8 +3477,8 @@ const ToastStack=({toasts,dismiss})=>{
 const clockParam=()=>{try{const v=new URLSearchParams(location.search).get("clock");const m=v&&v.match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]+(+m[2])/60:null;}catch{return null;}};
 const dayParam=()=>{try{const v=new URLSearchParams(location.search).get("day");return ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(v)?v:null;}catch{return null;}};
 const nowHM=()=>{const c=clockParam();if(c!=null)return c;const d=new Date();return d.getHours()+d.getMinutes()/60;};
-const MODE_LABELS={morning:"Morning",session:"Session",closeout:"Closeout",neutral:"Home"};
 
+const MODE_LABELS={morning:"Morning",session:"Session",closeout:"Closeout",neutral:"Home"};
 const Moments=({data,setData,setTab,workout,addToast})=>{
   const [nowTick,setNowTick]=useState(0);
   useEffect(()=>{const iv=setInterval(()=>setNowTick(x=>x+1),60000);return()=>clearInterval(iv);},[]);
@@ -3809,7 +3816,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     <X style={{padding:"9px 12px"}}>
       <div style={{fontSize:12,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
         <b style={{color:C.t3,fontSize:11}}>Allergies</b>{" "}
-        {(allergies?.summary||[]).slice(0,3).length?(allergies.summary.slice(0,3).map(a=>`${a.name} ${a.level||"—"}`).join(" · ")):allergyErr||"Loading…"}
+        {(allergies?.summary||[]).slice(0,3).length?(allergies.summary.slice(0,3).map(a=>`${a.name} ${a.level||"○"}`).join(" · ")):allergyErr||"Loading…"}
       </div>
     </X>
     <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",minHeight:40}}>Full dashboard</button>
@@ -3860,7 +3867,13 @@ window.App = function App(){
           // write directly to Supabase, so it is always authoritative). Local-only dates
           // (offline entries not yet in Supabase) are preserved because sbData won't have that key.
           const dateKeyed=new Set(["wt","nut","wk","rec","steps","water","habits","mob","stp","debrief","cardio","bodyComp","bodyMeas","lytes","travelDays","tdeeExclude"]);
+          // A table that failed to load comes back as defaults. Keep this phone's copy for it,
+          // or an offline launch would reset settings and the program to the code defaults.
+          const failed=new Set(sbData.__loadError?Object.keys(sbData):(sbData.__failed||[]));
+          // Keys with no cloud table (socialWeekend…) come back as defaults too; the phone's copy wins.
+          const cloudKeys=new Set(Object.values(KEYS_OF_TABLE).flat());
           Object.keys(sbData).forEach(k=>{
+            if(failed.has(k)||!cloudKeys.has(k))return;
             if(dateKeyed.has(k)&&typeof sbData[k]==="object"&&!Array.isArray(sbData[k])&&sbData[k]!==null){
               // For date-keyed data: start with local, then overlay Supabase (Supabase wins)
               final[k]={...merged[k],...sbData[k]};
@@ -3962,7 +3975,7 @@ class ErrorBoundary extends React.Component{
     const msg=this.state.err&&(this.state.err.message||String(this.state.err))||"Unknown error";
     return React.createElement("div",{style:{padding:20,maxWidth:480,margin:"40px auto",fontFamily:"'Barlow',sans-serif"}},
       React.createElement("h2",{style:{fontSize:18,fontWeight:700,marginBottom:8}},"Something went wrong"),
-      React.createElement("p",{style:{fontSize:14,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe — clear the cache and reload."),
+      React.createElement("p",{style:{fontSize:14,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe. Clear the cache and reload."),
       React.createElement("pre",{style:{fontSize:11,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid var(--line)",color:"var(--danger)"}},msg),
       React.createElement("button",{onClick:()=>{try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch{}setTimeout(()=>location.reload(),300);},
         style:{marginTop:14,padding:"10px 18px",background:"var(--ink)",color:"var(--on-accent)",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.04em"}},"Clear cache & reload")
