@@ -1,7 +1,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
-import { cancelDeviceNotification, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
+import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
 import { useBackClose } from "../core/nav.js";
 import { getNotificationSettings, REST_TIMER_KEY, sv, svSB } from "../core/storage.js";
@@ -163,7 +163,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     if(tr.current)clearInterval(tr.current);
     if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
     tr.current=null;restTimeoutRef.current=null;restEndRef.current=0;restNotifiedRef.current=false;serverPushArmedRef.current=false;
-    try{const saved=JSON.parse(localStorage.getItem(REST_TIMER_KEY));if(saved?.tag)cancelDeviceNotification(saved.tag);localStorage.removeItem(REST_TIMER_KEY);}catch{}
+    try{const saved=JSON.parse(localStorage.getItem(REST_TIMER_KEY));if(saved?.tag){cancelDeviceNotification(saved.tag);cancelServerPush(saved.tag);}localStorage.removeItem(REST_TIMER_KEY);}catch{}
     setRt(0);setRl(0);
   };
 
@@ -186,7 +186,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const tag=`rest-timer-${endTime}`;
     try{if(old?.tag)cancelDeviceNotification(old.tag);}catch{}
     try{localStorage.setItem(REST_TIMER_KEY,JSON.stringify({endTime,total,startedAt:old?.startedAt||Date.now(),tag}));}catch{}
-    scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/"});
+    // The new alert replaces the old one on the server (latest wins), so only one buzzes.
+    // Same opt-in rule as startRestTimer: no push unless rest alerts are on.
+    const ns=getNotificationSettings(data.settings?.notifications);
+    const pushOk=ns.restTimer!==false&&(ns.enabled||(typeof Notification!=="undefined"&&Notification.permission==="granted"));
+    if(pushOk)scheduleServerPush({title:"Rest complete",body:"Next set is ready.",tag,dueAt:endTime,url:"/?tab=training"});
     if(tr.current)clearInterval(tr.current);
     if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);
     armRestTimer(endTime,total);

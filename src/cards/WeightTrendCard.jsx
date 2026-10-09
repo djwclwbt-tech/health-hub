@@ -49,7 +49,7 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
         <text x="2" y={gy(goal)-4} fontFamily={FD} fontSize="10" fontWeight="800" fill={C.g}>GOAL {goal}</text>
         <text x="2" y={Math.max(padT+8,gy(pts[0].v)-6)} fontFamily={FD} fontSize="10" fontWeight="700" fill={C.t3}>{Math.round(pts[0].v)}</text>
         {showCk&&<line x1={gx(ckD)} y1={padT-4} x2={gx(ckD)} y2={H-padB+4} stroke={C.bd} strokeWidth="1"/>}
-        {showCk&&<text x={gx(ckD)+4} y={padT+4} fontFamily={FD} fontSize="9" fontWeight="700" fill={C.t3}>{`CHECKPOINT ${dLbl(PROG.checkpoint.date)} · DELOAD`}</text>}
+        {showCk&&<text x={gx(ckD)+4} y={padT+4} fontFamily={FD} fontSize="9" fontWeight="700" fill={C.t3}>{`CHECKPOINT ${dLbl(PROG.checkpoint.date)}${PROG.checkpoint.week===PROG.deload?" · DELOAD":""}`}</text>}
         <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1.5" strokeDasharray="2,3"/>
         <polyline points={emaLine} fill="none" stroke={C.p} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
         {projY!=null&&<polyline points={`${cx},${cy} ${W-padR},${projY}`} fill="none" stroke={C.p} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.55"/>}

@@ -40,9 +40,9 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/mcp.js` — The Coach: remote MCP server (Claude.ai). Tools: get_snapshot, get_program, get_history, get_exercise, update_settings, update_exercise, log_* writes, set_travel_day, log_note. When `MCP_TOKEN` is set, callers send it as `Authorization: Bearer …` or `?key=…` (Claude.ai uses the `?key=` connector URL).
 - `api/oura-sync.js` — Oura recovery sync (cron 3x daily, incl. 11:30 UTC morning run)
 - `api/cronometer-sync.js` — Cronometer nutrition sync (cron 3x daily; source of truth for food)
-- Crons are UTC. With `CRON_SECRET` set, only Vercel's `Bearer CRON_SECRET` counts as a cron call.
+- Crons are UTC. Only Vercel's `Bearer CRON_SECRET` counts as a cron call; without `CRON_SECRET` crons are refused.
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
-- `api/push-schedule.js` — Server web push for rest timers (VAPID + optional NOTIFY_TOKEN)
+- `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing).
 - `api/allergies.js` — Austin pollen/mold counts
 - `sw.js` — Service worker: network-first (2.5 s timeout, cache fallback) for `/`, `/index.html`, `/app.js`; cache-first for `/vendor`, `/fonts`, icons; push display; notification tap deep-links to a tab
 - `supabase/*.sql` — Database migrations (run in Supabase SQL editor)
@@ -80,9 +80,10 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 - `dhub6_workout`, `dhub6_rest_timer`, `dhub6_mob_active`, `dhub6_variant`, `dhub6_notification_settings` — sibling localStorage keys for in-flight session state
 
 ## Weight trend
-`slopePerWeek()` (EWMA 0.3 + OLS slope) is the **only** slope; `getTrend()` applies it to the last 14 days, `calcAdaptiveTDEE` to its estimate window. Do not add another.
+`slopePerWeek()` (least-squares line through the raw weigh-ins; fitting the EWMA series under-read the rate by ~15%) is the **only** slope; `getTrend()` applies it to the last 14 days, `calcAdaptiveTDEE` to its estimate window. Do not add another.
 
 ## Program versioning
+`PROG.start`/`end`/`weeks`/`deload`/`targetWeight` describe the current block (PF Austin Cut: 2026-10-05 → 11-29, goal 175, no fixed deload). They drive week numbers, the TDEE "current" window and the trajectory card, so update them when a new block starts. Engine tests pin the frozen Summer Cut block themselves.
 `PROG.version` in `lib/engine.mjs` names the block. The stored `program` row (coach edits: swap/add/remove/update) is kept only while its `version` matches; a different version resets to the code's days. **Bump `PROG.version` whenever you edit `PROG.days`.**
 
 ## Sync health
@@ -109,10 +110,10 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `/api/mcp` is the second delivery vehicle; see `COACH.md` for the tool contract and the Claude.ai project instructions. Reads run the engine over `loadAll()`. Writes go straight to the live tables; settings/program changes are applied server-side by `writeProgramChanges` and logged to `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`), which the app toasts on next launch and lists under Setup → Coach changes. There is no client-side apply step anymore.
 
 ## Environment variables (Vercel)
-`ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (cron proof; set it).
+`ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (required: cron proof).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (68 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (72 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message

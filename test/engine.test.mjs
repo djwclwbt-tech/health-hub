@@ -5,6 +5,10 @@ import * as E from '../lib/engine.mjs';
 
 import { OLD_DAYS } from './fixtures/summer-cut-days.mjs';
 const { DEFAULTS } = E;
+// These tests are pinned to the frozen Summer Cut block: its days and its dates
+// (deload week 4 from 2026-07-06). Each test file runs in its own process, so
+// pinning the engine's PROG here cannot leak into other files.
+Object.assign(E.PROG, { start: '2026-07-06', end: '2026-08-30', weeks: 8, deload: 4 });
 const PROG = { ...E.PROG, days: OLD_DAYS };
 const day = (offset, from = '2026-09-08') => { const d = new Date(from + 'T12:00:00'); d.setDate(d.getDate() + offset); return E.lds(d); };
 const TODAY = '2026-09-08'; // a Tuesday inside Summer Cut v2 (week 10 → past deload week 4)
@@ -268,7 +272,7 @@ test('calcAdaptiveTDEE recovers intake plus deficit from a clean history', () =>
   }
   const t = E.calcAdaptiveTDEE(wt, nut, DEFAULTS, {}, {}, null);
   assert.notEqual(t.phase, 'collecting');
-  assert.ok(t.tdee > 2350 && t.tdee < 2650, `tdee ${t.tdee}`);
+  assert.ok(t.tdee > 2470 && t.tdee < 2530, `tdee ${t.tdee} (2000 eaten + 500 deficit)`);
   assert.ok(t.confidence > 50);
   assert.equal(E.calcAdaptiveTDEE({}, {}, DEFAULTS, {}, {}, null).phase, 'collecting');
 });
@@ -438,4 +442,21 @@ test('applyBlockV2 no longer seeds summer lifts or remaps settings, keeps the co
 test('buildSession stamps the start date so a session crossing midnight logs to its own day', () => {
   const sess = { name: 'T', exercises: [{ id: 'leg-press', name: 'Leg Press', sets: 2, rr: [5, 8], sw: 300, inc: 10 }] };
   assert.equal(E.buildSession(E.bl(), 'Monday', sess, { date: '2026-10-05' }).date, '2026-10-05');
+});
+
+test('slopePerWeek reads a steady loss at its true rate (no smoothing lag)', () => {
+  const line = Array.from({ length: 14 }, (_, i) => [day(i - 13), 190 - i / 7]);
+  assert.ok(Math.abs(E.slopePerWeek(line) + 1) < 0.001, `slope ${E.slopePerWeek(line)}`);
+});
+
+test('calcAdaptiveTDEE: an unlogged planned fast day counts as the fast, not a full day', () => {
+  const st = { ...DEFAULTS, wednesdayCal: 0, trainingCal: 2000, calories: 2000, weekendCal: 2000 };
+  const wt = {}, nut = {};
+  for (let i = 27; i >= 0; i--) {
+    const k = day(-i); wt[k] = 190;                                   // weight flat
+    if (E.dw(k) !== 'wednesday') nut[k] = { meals: [{ mealType: 'Dinner', cal: 700 }], totalCal: 2000, totalProtein: 200 };
+  }
+  const t = E.calcAdaptiveTDEE(wt, nut, st, {}, {}, null, TODAY);
+  // Six days at 2000 and one fast day average about 1714 at a flat weight.
+  assert.ok(t.tdee > 1650 && t.tdee < 1800, `tdee ${t.tdee}`);
 });

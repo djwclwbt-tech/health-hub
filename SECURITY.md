@@ -31,10 +31,9 @@ talks to Supabase directly, so this stays the first thing to fix.
   Bearer); refuse (500) when unset. Empty bodies get 401, not a crash.
 - `/api/oura-sync`, `/api/cronometer-sync` run for Vercel cron or with
   `OURA_SYNC_SECRET` / `CRONOMETER_SYNC_SECRET` (`x-sync-secret` or `?secret=`);
-  refuse when the secret is unset. Cron is detected by `CRON_SECRET`: when set,
-  Vercel sends `Authorization: Bearer $CRON_SECRET` on cron calls and only that
-  passes. **Until `CRON_SECRET` is set, the fallback is the `vercel-cron/`
-  User-Agent, which anyone can spoof** (they can trigger a sync, not read data).
+  refuse when the secret is unset. A cron call must carry Vercel's
+  `Authorization: Bearer $CRON_SECRET` (set in production 2026-10-08). Without
+  `CRON_SECRET` every cron call is refused; the `vercel-cron/` User-Agent proves nothing.
   Cronometer's `?debug=1` needs the manual secret, never the cron path.
 - `/api/push-schedule` refuses POSTs (503) unless `NOTIFY_TOKEN` is set and sent
   as `x-notify-token`.

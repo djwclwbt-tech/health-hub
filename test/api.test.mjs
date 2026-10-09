@@ -202,26 +202,26 @@ test('cronometer: a CSV without Day / calories / protein columns fails loudly in
   assert.deepEqual(parseServings('Day,Group,Name,Energy (kcal),Protein (g)\n'), {}, 'header only = no entries, not an error');
 });
 
-test('cronometer-sync: changed CSV → 500, nothing written; ?debug=1 needs the secret, not a cron UA', env({ CRONOMETER_USERNAME: 'u', CRONOMETER_PASSWORD: 'p', CRONOMETER_SYNC_SECRET: 'sec', CRON_SECRET: null, SUPABASE_KEY: 'k' }, async () => {
+test('cronometer-sync: changed CSV → 500, nothing written; ?debug=1 needs the secret, not a cron UA', env({ CRONOMETER_USERNAME: 'u', CRONOMETER_PASSWORD: 'p', CRONOMETER_SYNC_SECRET: 'sec', CRON_SECRET: 'cs', SUPABASE_KEY: 'k' }, async () => {
   const mod = await import('../api/cronometer-sync.js');
   mockFetch('cronometer.com/login/', new Response('<input name="anticsrf" value="abc">', { status: 200 }));
   mockFetch(/cronometer\.com\/login$/, new Response('', { status: 200, headers: { 'set-cookie': 'sesnonce=NONCE; Path=/' } }));
   mockFetch('cronometer.com/cronometer/app', (u, init) => new Response(String(init.body).includes('generateAuthorizationToken') ? '//OK[1,["TOKEN123"],0,7]' : '//OK[1,["42"],0,7]', { status: 200 }));
   mockFetch('cronometer.com/export', new Response('Date,Food,Kcal\n2026-09-08,Bowl,650\n', { status: 200 }));
   mockFetch(/\/rest\/v1\/nutrition/, json([{}], 201));
-  let r = res(); await mod.default(req({ query: { date: '2026-09-08', debug: '1' }, headers: { 'user-agent': 'vercel-cron/1.0' } }), r);
-  assert.equal(r.statusCode, 500); assert.match(r.body.error, /missing expected columns/); assert.equal(r.body.headers, undefined, 'cron UA must not unlock debug');
+  let r = res(); await mod.default(req({ query: { date: '2026-09-08', debug: '1' }, headers: { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer cs' } }), r);
+  assert.equal(r.statusCode, 500); assert.match(r.body.error, /missing expected columns/); assert.equal(r.body.headers, undefined, 'a cron call must not unlock debug');
   assert.equal(supabaseCalls('nutrition').filter(c => c.method === 'POST').length, 0, 'no zero-calorie write');
   r = res(); await mod.default(req({ query: { date: '2026-09-08', debug: '1', secret: 'sec' } }), r);
   assert.equal(r.statusCode, 200); assert.equal(r.body.headers, 'Date,Food,Kcal');
 }));
 
-test('oura-sync: maps readiness + longest sleep session into one recovery row per day', env({ OURA_PAT: 'pat', SUPABASE_ANON_KEY: 'k', CRON_SECRET: null, OURA_SYNC_SECRET: null }, async () => {
+test('oura-sync: maps readiness + longest sleep session into one recovery row per day', env({ OURA_PAT: 'pat', SUPABASE_ANON_KEY: 'k', CRON_SECRET: 'cs', OURA_SYNC_SECRET: null }, async () => {
   const { default: handler } = await import('../api/oura-sync.js');
   mockFetch('daily_readiness', json({ data: [{ day: '2026-09-08', score: 71 }] }));
   mockFetch(/\/v2\/usercollection\/sleep\?/, json({ data: [{ day: '2026-09-08', type: 'long_sleep', total_sleep_duration: 7.2 * 3600, average_hrv: 44, lowest_heart_rate: 49, deep_sleep_duration: 3600, rem_sleep_duration: 5400, light_sleep_duration: 16920, average_breath: 14.5 }, { day: '2026-09-08', type: 'long_sleep', total_sleep_duration: 3600 }, { day: '2026-09-09', type: 'long_sleep', total_sleep_duration: 6 * 3600 }] }));
   mockFetch('/rest/v1/recovery', json([{}], 201));
-  const r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0' } }), r);
+  const r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer cs' } }), r);
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   const rows = supabaseCalls('recovery').map(c => c.body);
   assert.equal(rows.length, 1, 'next-morning session filtered out of the range');
@@ -323,7 +323,7 @@ test('push-schedule: an expired subscription (404/410) comes back as a clear 410
 test('http: safeEqual, cron fallback, supabaseEnv order', env({ CRON_SECRET: null, SUPABASE_KEY: null, SUPABASE_ANON_KEY: 'anon', SUPABASE_URL: null }, async () => {
   const H = await import('../lib/http.mjs');
   assert.equal(H.safeEqual('abc', 'abc'), true); assert.equal(H.safeEqual('abc', 'abcd'), false); assert.equal(H.safeEqual('', ''), false); assert.equal(H.safeEqual(undefined, 'x'), false);
-  assert.equal(H.isCron(req({ headers: { 'user-agent': 'vercel-cron/1.0' } })), true, 'UA fallback while CRON_SECRET is unset');
+  assert.equal(H.isCron(req({ headers: { 'user-agent': 'vercel-cron/1.0' } })), false, 'no CRON_SECRET: fail closed, the UA proves nothing');
   assert.equal(H.supabaseEnv().key, 'anon'); process.env.SUPABASE_KEY = 'main'; assert.equal(H.supabaseEnv().key, 'main', 'SUPABASE_KEY wins'); delete process.env.SUPABASE_KEY;
   assert.match(H.supabaseEnv().url, /^https:\/\/.+\.supabase\.co$/);
   assert.deepEqual(H.queryOf(req({ url: '/api/x?key=1&a=2' })), { key: '1', a: '2' });
@@ -336,4 +336,32 @@ test('http: sameOrigin lets the app page through and refuses other sites', async
   assert.equal(H.sameOrigin(req({ headers: { host, referer: `https://${host}/?tab=progress` } })), true);
   assert.equal(H.sameOrigin(req({ headers: { host, origin: 'https://evil.example' } })), false);
   assert.equal(H.sameOrigin(req({ headers: { host } })), false, 'no Origin/Referer is not same-origin');
+});
+
+test('push-schedule: a skipped or replaced rest alert never sends (latest-wins ledger)', async () => {
+  const { default: webpush } = await import('web-push');
+  const keys = webpush.generateVAPIDKeys();
+  await env({ VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, NOTIFY_TOKEN: 'nt', SUPABASE_KEY: 'k' }, async () => {
+    const { default: handler, scheduleOrSend, stillCurrent } = await import('../api/push-schedule.js');
+    const real = webpush.sendNotification; let sent = 0;
+    webpush.sendNotification = async () => { sent++; return { statusCode: 201 }; };
+    const sub = { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } };
+    try {
+      // cancel: conditional PATCH on (device, tag), so it cannot wipe a newer alert
+      mockFetch('/rest/v1/push_jobs', (u, init) => init.method === 'PATCH' ? new Response(null, { status: 204 }) : json([{ tag: 'rest-timer-2' }]));
+      let r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: { cancel: true, subscription: sub, tag: 'rest-timer-1' } }), r);
+      assert.equal(r.statusCode, 200); assert.equal(r.body.cancelled, true);
+      const patch = supabaseCalls('push_jobs').find(c => c.method === 'PATCH');
+      assert.match(patch.url, /tag=eq\.rest-timer-1/); assert.deepEqual(patch.body, { tag: null });
+      // the ledger now holds rest-timer-2, so rest-timer-1 is stale and stays silent
+      assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-1' }), false);
+      await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-1', dueAt: Date.now() });
+      assert.equal(sent, 0, 'stale job not sent');
+      await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-2', dueAt: Date.now() });
+      assert.equal(sent, 1, 'current job sent');
+      // ledger unreachable: fail open, the alert still sends
+      routes = []; mockFetch('/rest/v1/push_jobs', new Response('down', { status: 503 }));
+      assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-9' }), true);
+    } finally { webpush.sendNotification = real; }
+  })();
 });

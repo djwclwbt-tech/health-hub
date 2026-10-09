@@ -73,4 +73,18 @@ const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",
   }catch{return false;}
 };
 
-export { haptic, isStandalone, ensureNotificationPermission, notifyDevice, scheduleDeviceNotification, cancelDeviceNotification, scheduleServerPush };
+// Clears a booked rest alert on the server (skip, cancel, finish). Never prompts.
+const cancelServerPush=async(tag)=>{
+  try{
+    if(!tag||!("serviceWorker" in navigator)||!("PushManager" in window))return false;
+    const sub=await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+    if(!sub)return false;
+    const notifyToken=ld()?.settings?.notifyToken||"";
+    const r=await fetch("/api/push-schedule",{method:"POST",
+      headers:{"Content-Type":"application/json",...(notifyToken?{"x-notify-token":notifyToken}:{})},
+      body:JSON.stringify({cancel:true,subscription:{endpoint:sub.endpoint},tag})});
+    return r.ok;
+  }catch{return false;}
+};
+
+export { haptic, isStandalone, ensureNotificationPermission, notifyDevice, scheduleDeviceNotification, cancelDeviceNotification, scheduleServerPush, cancelServerPush };
