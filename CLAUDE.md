@@ -4,7 +4,11 @@
 Health Hub is a single-page PWA for personal health and fitness tracking, built for a strength athlete executing a fat-loss cut while preserving muscle and performance. It is one product with two delivery vehicles over one engine: the **app** (`src/app.jsx` → `app.js`) and the **Coach** (`/api/mcp`, a remote MCP server for Claude.ai). See `COACH.md`.
 
 ## The engine (read this first)
-- `lib/engine.mjs` — every rule and number: program (`PROG`, versioned), exercise library, progression (`resolveWeight`, `buildSession`, `applyWorkout`, `swapOptions`, `sessionCursor`), analytics (`getTrend`, `calcAdaptiveTDEE`, `getWeeklyCutSummary`, `getWeeklyCutRecommendation`, `getTonightCloseout`, `getAutoregProposal`, stalls, insights), targets (`getDayCalTarget`…), `resolveMode`, plates, and `applyChanges` (the Coach's write path). Pure and isomorphic: no window, no fetch. **Put logic here, not in components or API routes.**
+- `lib/engine.mjs` — the one public entry for every rule and number. It only re-exports `lib/engine/*.mjs`; always import from `engine.mjs`. Pure and isomorphic: no window, no fetch. **Put logic in the matching module, not in components or API routes.** Imports flow down this list only (no cycles):
+  - `program.mjs` (`PROG`, versioned; library, supersets, poses, dinners, cardio, `DEFAULTS`, plates) · `dates.mjs` (`lds`, `td`, `dw`, `wkn`, formatting) · `state.mjs` (`bl`, `migrate`, seed, `sumMeals`, `progKey`/`repTrack`)
+  - `progression.mjs` — e1RM and set rules, stalls, `resolveWeight`, `buildSession`, `swapOptions`, `sessionCursor`, `applyWorkout`
+  - `analytics.mjs` — targets (`getDayCalTarget`…), `getTrend`, `calcAdaptiveTDEE`, weekly summary/recommendation, closeout, insights, `resolveMode`, `getAutoregProposal`
+  - `migrations.mjs` — boot/one-shot normalizers (`backfillData`, `pruneProgression`, `repairDeloadProgression`, `applyBlockV2`) · `changes.mjs` — `applyChanges`, `exerciseReport` (the Coach's write path)
 - `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once. `loadAll` marks tables that failed to load in a hidden `__failed` list; the app keeps the phone's copy for those, so an offline launch never resets settings. Tokens (`syncToken`, `notifyToken`) never go to the cloud.
 - `lib/http.mjs` — shared API plumbing: `preflight` (CORS + method check), `requireToken`, `safeEqual`, `isCron`, `sameOrigin`, `supabaseEnv`. Every `api/*.js` uses it; do not copy auth or CORS code into a route.
 - `test/*.test.mjs` — `npm test`. Engine, mapping and API routes (network mocked). Add a test when you change a rule.
@@ -20,8 +24,13 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 `npm run build` compiles `src/app.jsx` → `app.js` and stamps a build id shown at the bottom of Setup. **Commit `app.js` with every source change.** The `claude/**` auto-merge workflow runs `npm run check` and commits a rebuilt `app.js` if you forgot, so a stale build cannot ship, but do not rely on it. Never edit `app.js` by hand. In-browser Babel is gone; a phone renders in ~100 ms instead of several seconds.
 
 ## Architecture
-- `src/app.jsx` — Complete SPA (~5,000 lines, all components inline). Source of truth for the UI.
-- `app.js` — Build output of the above (committed).
+- `src/` — the UI, bundled by esbuild from `src/app.jsx` (App shell, error boundary, boot merge). React is a global (vendored UMD); each module starts with `const { useState, … } = React;`.
+  - `src/core/` — `storage.js` (localStorage, sync health, Supabase client, outbox, `svSB`), `theme.js` (`C`, `FD`), `nav.js` (`useBackClose`), `device.js` (haptics, notifications, push), `hooks.js` (`useToday`, `waterOps`).
+  - `src/ui/` — atoms, overlays (`Portal`, `Sheet`, `ConfirmModal`, toasts), shell (tab bar, `TabPane`).
+  - `src/cards/` — shared cards (weight trend, scale pad, plates, Closeout). `src/views/` — Analysis, Progress, classic dashboard.
+  - `src/tabs/` — one file per tab: `Moments` (Home), `Training` (+ `train/`), `Nutrition`, `Weight`, `Settings`.
+  - Module-level state lives in exactly one module. esbuild does not flag undefined names, so a missing import is a runtime crash: load every tab after a move.
+- `app.js` — Build output of `src/` + `lib/` (committed).
 - `index.html` — Thin shell: `:root` color tokens, `@font-face`, base CSS + animations, boot skeleton, script tags.
 - `vendor/` — React + ReactDOM UMD (copied from node_modules by the build). `fonts/` — Barlow woff2 (OFL).
 - `scripts/build.mjs` — the build.
