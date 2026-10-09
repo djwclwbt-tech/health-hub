@@ -460,3 +460,11 @@ test('calcAdaptiveTDEE: an unlogged planned fast day counts as the fast, not a f
   // Six days at 2000 and one fast day average about 1714 at a flat weight.
   assert.ok(t.tdee > 1650 && t.tdee < 1800, `tdee ${t.tdee}`);
 });
+
+test('sessionCursor treats skipped sets as handled', () => {
+  const exs = [{ sets: [{ done: true }, { skipped: true }] }, { sets: [{ skipped: true }, { skipped: true }] }, { sets: [{}] }];
+  const c = E.sessionCursor(exs, () => 90);
+  assert.deepEqual([c.curEi, c.curSi], [2, 0]);
+  exs[2].sets[0].skipped = true;
+  assert.equal(E.sessionCursor(exs, () => 90).curEi, -1);
+});
