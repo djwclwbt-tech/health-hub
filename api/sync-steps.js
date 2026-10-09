@@ -1,36 +1,21 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+// GET|POST /api/sync-steps · Apple Shortcut / Health Auto Export sync · SYNC_TOKEN as ?token=, body.token or Bearer.
+import { makeClient } from '../lib/supabase.mjs';
+import { preflight, requireToken, queryOf, bodyOf, supabaseEnv } from '../lib/http.mjs';
 
-  const syncToken = process.env.SYNC_TOKEN;
-  if (!syncToken) return res.status(500).json({ error: 'SYNC_TOKEN not configured' });
+export default async function handler(req, res) {
+  if (preflight(req, res, 'GET, POST')) return;
+  if (!requireToken(req, res, 'SYNC_TOKEN', { allowQuery: true, allowBody: true })) return;
 
   try {
-    const params = req.method === 'GET' ? req.query : req.body;
-    const authToken = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    const token = params.token || req.query.token || authToken;
+    const params = req.method === 'GET' ? queryOf(req) : bodyOf(req);
     const resolvedDate = params.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
-
-    if (!token || token !== syncToken) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+    const client = makeClient(supabaseEnv());
 
     // Health Auto Export REST payload: {data:{metrics:[{name,units,data:[{date,qty}]}]}}
     // Steps: sums all points per calendar day (HAE can send hourly buckets).
     // Weight (body mass, e.g. Renpho via Apple Health): last reading per day, kg→lbs if needed.
     const haeMetrics = params?.data?.metrics;
     if (Array.isArray(haeMetrics)) {
-      const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
-      const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-      const sbHeaders = { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}`, "Prefer": "resolution=merge-duplicates" };
-      const upsert = async (table, rows) => {
-        const r = await fetch(`${SB_URL}/rest/v1/${table}?on_conflict=date`, { method: "POST", headers: sbHeaders, body: JSON.stringify(rows) });
-        if (!r.ok) throw new Error(`Supabase ${table} error: ${await r.text()}`);
-      };
-
       const stepMetric = haeMetrics.find(m => /step/i.test(m?.name || ''));
       const stepsByDay = {};
       for (const point of stepMetric?.data || []) {
@@ -53,8 +38,8 @@ export default async function handler(req, res) {
       const weightRows = Object.entries(weightByDay).map(([date, value]) => ({ date, value }));
 
       if (!stepRows.length && !weightRows.length) return res.status(400).json({ error: 'No step or weight data points in payload' });
-      if (stepRows.length) await upsert('steps', stepRows);
-      if (weightRows.length) await upsert('weight', weightRows);
+      if (stepRows.length) await client.upsert('steps', stepRows);
+      if (weightRows.length) await client.upsert('weight', weightRows);
       return res.status(200).json({ ok: true, steps: stepRows.length, weight: weightRows.length, syncedSteps: stepRows.slice(-3), syncedWeight: weightRows.slice(-3) });
     }
 
@@ -77,30 +62,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'steps must be a positive number' });
     }
 
-    // Same env fallback chain as update.js/mcp.js — these three previously had
-    // no hardcoded fallback, so a missing env var 500'd every request.
-    const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
-    const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-    const headers = {
-      "Content-Type": "application/json",
-      "apikey": SB_KEY,
-      "Authorization": `Bearer ${SB_KEY}`,
-      "Prefer": "resolution=merge-duplicates",
-    };
-
-    const r = await fetch(`${SB_URL}/rest/v1/steps?on_conflict=date`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ date: resolvedDate, value: stepCount }),
-    });
-
-    if (!r.ok) {
-      const err = await r.text();
-      return res.status(500).json({ error: `Supabase error: ${err}` });
-    }
-
+    await client.upsert('steps', { date: resolvedDate, value: stepCount });
     return res.status(200).json({ ok: true, date: resolvedDate, steps: stepCount });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[sync-steps]', err);
+    return res.status(500).json({ error: 'Sync failed' });
   }
 }

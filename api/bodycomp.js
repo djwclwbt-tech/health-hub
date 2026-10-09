@@ -1,20 +1,17 @@
+import { preflight, requireToken, sameOrigin, bodyOf } from '../lib/http.mjs';
+
 const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-sync-token');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // Deliberately unauthenticated (owner decision 2026-07-31): the AI features
-  // are part of the platform and must work with zero setup. See SECURITY.md.
+  if (preflight(req, res, 'POST', 'Content-Type, x-sync-token')) return;
+  // Spends Anthropic credit: when SYNC_TOKEN is set, an outside caller must send it as
+  // x-sync-token, unless the request comes from the app's own page. See SECURITY.md.
+  if (!sameOrigin(req) && !requireToken(req, res, 'SYNC_TOKEN', { optional: true, header: 'x-sync-token' })) return;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    const { image, context } = req.body;
+    const { image, context } = bodyOf(req);
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
     const systemPrompt = `You are a body composition analyst for a male strength athlete executing a fat-loss cut while preserving muscle. Analyze progress photos with an honest, coach-like eye.
@@ -48,6 +45,7 @@ Return ONLY valid JSON (no markdown, no backticks):
     ];
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
+      signal: AbortSignal.timeout(50000),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,17 +58,20 @@ Return ONLY valid JSON (no markdown, no backticks):
         system: systemPrompt,
         messages: [{ role: 'user', content }],
       }),
-    });
+    }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.message } }) })); // network/timeout → 502 below
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       console.error('[bodycomp] API error:', response.status, data.error?.message);
-      return res.status(response.status).json({ error: 'Analysis unavailable.' });
+      return res.status(502).json({ error: 'Analysis unavailable.' });
     }
 
     const text = data.content?.[0]?.text || '{}';
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+    let parsed;
+    try { parsed = JSON.parse(text.replace(/```json|```/g, '').trim()); } catch {
+      console.error('[bodycomp] Failed to parse analysis:', text.slice(0, 500));
+      return res.status(422).json({ error: 'Analysis unavailable.' });
+    }
 
     return res.status(200).json(parsed);
   } catch (err) {

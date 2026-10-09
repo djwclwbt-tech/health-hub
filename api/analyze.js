@@ -1,19 +1,17 @@
+import { preflight, requireToken, sameOrigin, bodyOf } from '../lib/http.mjs';
+
 const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-sync-token');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // Deliberately unauthenticated (owner decision 2026-07-31): the AI features
-  // are part of the platform and must work with zero setup. See SECURITY.md.
+  if (preflight(req, res, 'POST', 'Content-Type, x-sync-token')) return;
+  // Spends Anthropic credit: when SYNC_TOKEN is set, an outside caller must send it as
+  // x-sync-token, unless the request comes from the app's own page. See SECURITY.md.
+  if (!sameOrigin(req) && !requireToken(req, res, 'SYNC_TOKEN', { optional: true, header: 'x-sync-token' })) return;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    const { range, days, workouts, nutrition, recovery, weight, steps, habits, water, program, targets, bodyComp } = req.body;
+    const { range, days, workouts, nutrition, recovery, weight, steps, habits, water, program, targets, bodyComp } = bodyOf(req);
 
     // Build a compact but data-rich summary for the prompt
     const lines = [];
@@ -86,6 +84,7 @@ export default async function handler(req, res) {
 Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs attention. Base scores strictly on data vs targets. Be direct — do not sugarcoat gaps. No markdown, no explanation, JSON only.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
+      signal: AbortSignal.timeout(50000),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -98,12 +97,12 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
         system: systemPrompt,
         messages: [{ role: 'user', content: dataStr }],
       }),
-    });
+    }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.message } }) })); // network/timeout → 502 below
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       console.error('[analyze] API error:', response.status, data.error?.message);
-      return res.status(response.status).json({ error: 'Analysis unavailable.' });
+      return res.status(502).json({ error: 'Analysis unavailable.' });
     }
 
     const raw = data.content?.[0]?.text || '{}';

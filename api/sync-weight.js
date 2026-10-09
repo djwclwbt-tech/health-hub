@@ -1,22 +1,14 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+// GET|POST /api/sync-weight · Apple Shortcut scale sync · SYNC_TOKEN as ?token=, body.token or Bearer.
+import { makeClient } from '../lib/supabase.mjs';
+import { preflight, requireToken, queryOf, bodyOf, supabaseEnv } from '../lib/http.mjs';
 
-  const syncToken = process.env.SYNC_TOKEN;
-  if (!syncToken) return res.status(500).json({ error: 'SYNC_TOKEN not configured' });
+export default async function handler(req, res) {
+  if (preflight(req, res, 'GET, POST')) return;
+  if (!requireToken(req, res, 'SYNC_TOKEN', { allowQuery: true, allowBody: true })) return;
 
   try {
-    const params = req.method === 'GET' ? req.query : req.body;
-    const authToken = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    const token = params.token || authToken;
+    const params = req.method === 'GET' ? queryOf(req) : bodyOf(req);
     const resolvedDate = params.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
-
-    if (!token || token !== syncToken) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }
@@ -35,30 +27,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'weight must be a positive number in pounds' });
     }
 
-    // Same env fallback chain as update.js/mcp.js — these three previously had
-    // no hardcoded fallback, so a missing env var 500'd every request.
-    const SB_URL = process.env.SUPABASE_URL || "https://wszumxewqxkggtevfubb.supabase.co";
-    const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || "sb_publishable_zeAejuFbdtMfoCHudxW6Cw_TJKtbYSJ";
-    const headers = {
-      "Content-Type": "application/json",
-      "apikey": SB_KEY,
-      "Authorization": `Bearer ${SB_KEY}`,
-      "Prefer": "resolution=merge-duplicates",
-    };
-
-    const r = await fetch(`${SB_URL}/rest/v1/weight?on_conflict=date`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ date: resolvedDate, value: weight }),
-    });
-
-    if (!r.ok) {
-      const err = await r.text();
-      return res.status(500).json({ error: `Supabase error: ${err}` });
-    }
-
+    await makeClient(supabaseEnv()).upsert('weight', { date: resolvedDate, value: weight });
     return res.status(200).json({ ok: true, date: resolvedDate, weight });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[sync-weight]', err);
+    return res.status(500).json({ error: 'Sync failed' });
   }
 }

@@ -156,26 +156,10 @@ Everything else holds weight at 2 sets — rep PRs only.
 ### Friday (Lower B — Squat anchor)
 `back-squat`, `rdl`, `leg-extension`, `bulgarian-split-squat`, `seated-calf`
 
-## Claude.ai Project Instructions
-Paste the following into a Claude.ai Project's custom instructions to enable the "push to app" workflow:
-
-```
-You are also the user's strength coach and nutritionist. When you agree on a concrete change to their program (exercise swap, weight adjustment, calorie target change, etc.), output a JSON code block labeled "HEALTH_HUB_UPDATE" that the user can push to their app:
-
-\`\`\`HEALTH_HUB_UPDATE
-{
-  "changes": [...],
-  "reason": "Brief explanation"
-}
-\`\`\`
-
-Use the exercise IDs and settings fields from their Health Hub schema. Only output this block when the user explicitly agrees to a change.
-```
-
 ## How Updates Flow
 1. External source (Claude.ai via `/api/mcp`, curl, script via `/api/update`) sends changes
 2. `applyChanges` (lib/engine.mjs) validates them and `writeProgramChanges` (lib/supabase.mjs) writes the new `settings` / `program` rows immediately, plus one audit row per change in `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`)
 3. The response lists `applied` and `rejected` (unknown field, unknown exercise, duplicate add, missing day)
 4. On next app launch the phone loads the live rows and toasts each unseen change with its reason; Setup → Coach changes lists the history
 
-The Claude.ai path no longer needs the HEALTH_HUB_UPDATE block: connect the Coach connector (see `COACH.md`) and it writes directly.
+Claude.ai writes through the Coach connector (`/api/mcp`, see `COACH.md`), not this endpoint.

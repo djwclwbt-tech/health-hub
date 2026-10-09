@@ -5,7 +5,8 @@ Personal cut tracker: training, food, scale, recovery. Single-page PWA on Vercel
 ```bash
 npm install        # once
 npm run build      # src/app.jsx → app.js (minified)
-npm run check      # build + syntax-check every api/*.js
+npm test           # engine, mapping and API route tests (network mocked)
+npm run check      # build + npm test + syntax-check every api/*.js
 npm run serve      # http://127.0.0.1:8080 (static shell; /api needs Vercel)
 ```
 
