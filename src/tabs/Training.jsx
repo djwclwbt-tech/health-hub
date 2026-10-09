@@ -517,7 +517,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const ssMates=curGrp&&curGrp.length>1?curGrp.filter(m=>m!==curEi).map(m=>exs[m].swappedTo?.name||slotAt(m)?.name).filter(Boolean):[];
         const ssLetter=curGrp&&curGrp.length>1?String.fromCharCode(65+curGrp.indexOf(curEi)):null;
         const allDone=exs.length>0&&curEi<0;
-        const segs=exs.map((e,i)=>{const done=e.sets.filter(x=>x.done).length;
+        const segs=exs.map((e,i)=>{const done=e.sets.filter(x=>x.done||x.skipped).length;
           return{k:i,short:shortLiftName(e.swappedTo?.name||slotAt(i)?.name||""),pct:Math.round(done/Math.max(1,e.sets.length)*100),cur:i===curEi};});
         const wkEx=curEi>=0?exs[curEi]:null,ex=curEi>=0?slotAt(curEi):null;
         const curSi=curSi0;
@@ -530,9 +530,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           return allTop?{chip:"ADD WEIGHT",bg:C.p,txt:`You topped the range at ${prevLift.weight}. Today: ${cs?.weight} for ${bot}+ each set.`}
             :best>=bot?{chip:"ADD A REP",bg:C.t,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Beat one of those sets today.`}
             :{chip:"MATCH IT",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
-        const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));for(let i=n.exercises.length-1;i>=0;i--){const ss=n.exercises[i].sets;for(let j=ss.length-1;j>=0;j--){if(ss[j].done){ss[j].done=false;return n;}}}return n;});};
-        const anyLogged=exs.some(e=>e.sets.some(x=>x.done));
-        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length} sets · goal ${rrTxt(sl?.rr)} reps · ${o.e.sets[0]?.weight||"BW"}`};});
+        const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));let best=null;n.exercises.forEach(e=>e.sets.forEach(x=>{if((x.done||x.skipped)&&(!best||(x.at||0)>=(best.at||0)))best=x;}));if(best){best.done=false;best.skipped=false;delete best.at;}return n;});};
+        const skipSets=(ei,which)=>{haptic(10);setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const now=Date.now();n.exercises[ei].sets.forEach((x,si)=>{if(!x.done&&!x.skipped&&(which==='all'||si===which)){x.skipped=true;x.at=now;}});return n;});};
+        const unskipEx=(ei)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets.forEach(x=>{if(x.skipped){x.skipped=false;delete x.at;}});return n;});
+        const skippedEx=exs.map((e,i)=>({e,i})).filter(o=>o.e.sets.length&&o.e.sets.every(x=>x.skipped||x.done)&&o.e.sets.some(x=>x.skipped)).map(o=>({k:o.i,name:o.e.swappedTo?.name||slotAt(o.i)?.name}));
+        const anyLogged=exs.some(e=>e.sets.some(x=>x.done||x.skipped));
+        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0&&o.e.sets.some(x=>!x.done&&!x.skipped)).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length} sets · goal ${rrTxt(sl?.rr)} reps · ${o.e.sets[0]?.weight||"BW"}`};});
         return(<>
         {exs.length>1&&<div style={{display:"flex",gap:4}}>
           {segs.map(sg=>(<div key={sg.k} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
@@ -599,13 +602,22 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{fontSize:12,lineHeight:1.5,color:C.t2,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:9}}>{dispCue}</div>
         </X>)}
         {wkEx&&cs&&(<button type="button" onClick={()=>dS(curEi,curSi,ex?.rest)} style={{border:"none",background:C.p,color:C.oa,borderRadius:10,padding:"18px 20px",fontSize:20,fontWeight:800,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.1em",cursor:"pointer",width:"100%",boxShadow:"var(--accent-glow)",minHeight:60}}>Log set · {cs.weight||0} × {cs.reps||0}</button>)}
-        {anyLogged&&!allDone&&<button type="button" onClick={undoLastSet} style={{background:"transparent",border:"none",fontSize:12,color:C.t3,fontWeight:700,textAlign:"center",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:FD,letterSpacing:"0.08em",textTransform:"uppercase"}}>Undo last set</button>}
+        {wkEx&&cs&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <B full outline onClick={()=>skipSets(curEi,curSi)} color={C.t3}>Skip this set</B>
+          <B full outline onClick={()=>skipSets(curEi,'all')} color={C.t3}>Skip exercise</B>
+        </div>)}
+        {anyLogged&&<button type="button" onClick={undoLastSet} style={{background:"transparent",border:"none",fontSize:12,color:C.t3,fontWeight:700,textAlign:"center",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:FD,letterSpacing:"0.08em",textTransform:"uppercase"}}>Undo last set</button>}
         <div>
           <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",color:C.t3,marginBottom:6,fontFamily:FD}}>UP NEXT</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {upNext.map(u=>(<div key={u.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:8,padding:"9px 12px"}}>
               <span style={{fontSize:13,fontWeight:600,color:C.t2}}>{u.name}</span>
-              <span style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{u.meta}</span>
+              <span style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{u.meta}</span>
+                <button type="button" onClick={()=>skipSets(u.k,'all')} aria-label={`Skip ${u.name}`} style={{border:`1px solid ${C.bd}`,background:"transparent",color:C.t3,borderRadius:6,padding:"6px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD,minHeight:32}}>SKIP</button></span>
+            </div>))}
+            {skippedEx.map(u=>(<div key={`s${u.k}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px dashed ${C.bd}`,borderRadius:8,padding:"7px 12px",opacity:0.7}}>
+              <span style={{fontSize:13,color:C.t3,textDecoration:"line-through"}}>{u.name}</span>
+              <button type="button" onClick={()=>unskipEx(u.k)} style={{border:"none",background:"transparent",color:C.p,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD}}>UNDO SKIP</button>
             </div>))}
             <B full outline onClick={()=>setShowAddEx(true)}>+ Add exercise</B>
           </div>
