@@ -13,6 +13,7 @@ import { ConfirmModal, Portal, Sheet } from "../ui/overlay.jsx";
 import { WorkoutTimerBar } from "../ui/shell.jsx";
 
 let restPushWarned=false;
+const AUTO_END_MS=90*6e4;
 // ═══ TRAINING ═══
 const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const t=useToday(),dn=dw(t);
@@ -26,12 +27,14 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const restAudioCtxRef=useRef(null);
   const [showMob,setShowMob]=useState(false);
   const [showCardio,setShowCardio]=useState(false);
-  const [cardioType,setCardioType]=useState("peloton");
-  const [cardioDur,setCardioDur]=useState("35");
+  const [cardioType,setCardioType]=useState("incline-walk");
+  const [cardioDur,setCardioDur]=useState("20");
   const [cardioIntensity,setCardioIntensity]=useState("zone2");
   const [cardioDistance,setCardioDistance]=useState("");
   const [cardioCals,setCardioCals]=useState("");
   const [cardioNotes,setCardioNotes]=useState("");
+  const [cardioHr,setCardioHr]=useState("");
+  const [editW,setEditW]=useState(null);
   const mobEntry=data.mob?.[t];
   const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
   const [mobRunning,setMobRunning]=useState(false);
@@ -119,7 +122,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     const cur=workout?.exercises?.[ei]?.sets?.[si];
     if(!cur||Number(cur.reps)<=0){if(addToast)addToast("Enter reps before logging the set","error");return;}
     haptic(30);
-    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;return n;});
+    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;n.exercises[ei].sets[si].at=Date.now();return n;});
     if(rest>0)startRestTimer(rest);
   };
 
@@ -266,18 +269,40 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   },[]);
   useEffect(()=>()=>{if(mobIvRef.current)clearInterval(mobIvRef.current);if(cardioIvRef.current)clearInterval(cardioIvRef.current);if(stretchIvRef.current)clearInterval(stretchIvRef.current);if(restTimeoutRef.current)clearTimeout(restTimeoutRef.current);},[]);
 
-  const finishWorkout=()=>{
+  const finishWorkout=(opts)=>{
     if(!workout)return;
+    const endAt=typeof opts?.endAt==="number"?opts.endAt:Date.now();
     const s=sessOf(workout);
     // Log under the day the session started, so a session that crosses midnight
     // (or is finished from a stale tab) cannot overwrite the next day's workout.
     const d=workout.date||t;
-    const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,d);
+    const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,d,endAt);
     setData(nd);sv(nd);svSB.workout(d,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
     setWorkout(null);clearRestTimer();stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
     haptic([40,60,40]);
     setSummary({date:d,name:s?.name||"Session",dur:log.dur,sets:workout.exercises.reduce((a,e)=>a+e.sets.filter(saneSet).length,0),exercises:workout.exercises.filter(e=>e.sets.some(saneSet)).length,volume:log.volume,prs,log});
   };
+
+  // Forgot to hit Finish: once 90 min have passed since the start and no set was
+  // logged in the last 15 min, log it automatically. Duration ends at the last
+  // logged set (+2 min), not at whenever the app was reopened.
+  useEffect(()=>{
+    if(!workout?.start)return;
+    const check=()=>{
+      const now=Date.now();
+      if(now-workout.start<AUTO_END_MS)return;
+      const lastAt=Math.max(0,...workout.exercises.flatMap(e=>(e.sets||[]).filter(x=>x.done&&x.at).map(x=>x.at)));
+      if(lastAt&&now-lastAt<15*6e4)return;
+      const anyDone=workout.exercises.some(e=>(e.sets||[]).some(saneSet));
+      if(!anyDone){cancelWorkout();addToast?.("Workout auto-closed after 90 min · nothing was logged","info");return;}
+      const endAt=lastAt?Math.min(now,lastAt+2*6e4):workout.start+AUTO_END_MS;
+      finishWorkout({endAt});
+      addToast?.("Workout auto-ended · tap View to fix anything","info");
+    };
+    check();const iv=setInterval(check,60000);
+    document.addEventListener("visibilitychange",check);
+    return()=>{clearInterval(iv);document.removeEventListener("visibilitychange",check);};
+  },[workout,data]);
 
   const cancelWorkout=()=>{
     setWorkout(null);clearRestTimer();
@@ -288,6 +313,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const undoCardio=()=>{const nd={...data,cardio:{...data.cardio}};delete nd.cardio[t];setData(nd);sv(nd);svSB.delCardio(t);};
   const applyCardioPreset=p=>{setCardioType(p.type);setCardioDur(String(p.duration));setCardioIntensity(p.intensity||"zone2");};
   const openCardioLog=(preset=null)=>{if(preset)applyCardioPreset(preset);setShowCardio(true);};
+  const editCardio=()=>{const c=data.cardio?.[t];if(!c)return;setCardioType(c.type||"incline-walk");setCardioDur(String(c.duration||20));setCardioIntensity(c.intensity||"zone2");
+    setCardioDistance(c.distance?String(c.distance):"");setCardioCals(c.calories?String(c.calories):"");
+    const m=/^Avg HR (\d+)/.exec(c.notes||"");setCardioHr(c.hr?String(c.hr):m?m[1]:"");setCardioNotes((c.notes||"").replace(/^Avg HR \d+( · )?/,""));setShowCardio(true);};
   const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
   const mobExercises=PROG.mobility._default||[];
   const totalStretchSets=mobExercises.reduce((t,ex)=>t+ex.sets,0);
@@ -345,15 +373,17 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     setMobDone(false);setMobRunning(false);setShowMob(false);
     setStretchExIdx(0);setStretchSetIdx(0);setStretchDone([]);setStretchTimeLeft(0);setStretchRunning(false);};
   const logCardio=async(overrides={})=>{
+    const hr=cardioHr?Math.round(+cardioHr):null;
+    const userNotes=cardioNotes.trim().replace(/^Avg HR \d+( · )?/,"");
     const c={type:overrides.type||cardioType,duration:+(overrides.duration??cardioDur)||20,intensity:overrides.intensity||cardioIntensity,
-      distance:cardioDistance?+cardioDistance:null,calories:cardioCals?+cardioCals:null,notes:cardioNotes.trim()||"",done:true};
+      distance:cardioDistance?+cardioDistance:null,calories:cardioCals?+cardioCals:null,hr,notes:[hr?`Avg HR ${hr}`:"",userNotes].filter(Boolean).join(" · "),done:true};
     const nd={...data,cardio:{...data.cardio,[t]:c}};setData(nd);sv(nd);
     const saved=await svSB.cardio(t,c);
     if(!saved)addToast?.("Cardio saved locally only · Supabase cardio table/schema needs migration", "warning");
     setShowCardio(false);
-    setCardioDistance("");setCardioCals("");setCardioNotes("");
+    setCardioDistance("");setCardioCals("");setCardioNotes("");setCardioHr("");
   };
-  const renderCardioForm=()=>showCardio&&!data.cardio?.[t]?.done&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+  const renderCardioForm=()=>showCardio&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
       {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
         padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
@@ -367,6 +397,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
+      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Avg heart rate<N value={cardioHr} onChange={setCardioHr} placeholder="from Watch" max={230}/></label>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
       <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
         <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
@@ -374,16 +405,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </select>
       </label>
     </div>
-    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: HR, incline, class, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: incline, speed, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-      <B small onClick={()=>logCardio()}>Log Cardio</B>
+      <B small onClick={()=>logCardio()}>{data.cardio?.[t]?.done?"Save changes":"Log Cardio"}</B>
       <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
     </div>
   </div>);
 
   const dks=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
   const [viewW,setViewW]=useState(null);
-  useBackClose(!!viewW,()=>setViewW(null));
+  useBackClose(!!viewW,()=>{if(editW)setEditW(null);else setViewW(null);});
   const allWk=Object.entries(data.wk).sort((a,b)=>b[0].localeCompare(a[0]));
   const todayWorkout=data.wk?.[t];
   const todaySess=getSess(dn,activeVariant[dn]);
@@ -621,11 +652,42 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   if(viewW){
     const [vDate,vData]=viewW;
     const vSess=getSess(vData.day,vData.variant);
+    if(editW){
+      const upd=(fn)=>setEditW(p=>{const n=JSON.parse(JSON.stringify(p));fn(n);return n;});
+      const saveEdit=()=>{
+        const w={...editW,dur:+editW.dur||vData.dur||0};w.volume=w.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.done).reduce((b,x)=>b+(+x.weight||0)*(+x.reps||0),0),0);
+        const nd={...data,wk:{...data.wk,[vDate]:w}};setData(nd);sv(nd);svSB.workout(vDate,w);
+        setViewW([vDate,w]);setEditW(null);addToast?.("Workout updated","success");};
+      return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+        <X style={{borderLeft:`3px solid ${C.p}`}}>
+          <div style={{fontSize:17,fontWeight:700,color:C.t}}>Edit · {vSess?.name||vData.day}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}><span style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · Duration (min)</span>
+            <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:80}}/></div>
+        </X>
+        {editW.exercises?.map((ex,ei)=>{const pe=vSess?.exercises[ei];return(<X key={ei} style={{padding:10}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}}>{ex.swappedTo?.name||pe?.name||ex.id}{pe?.rr?<span style={{fontSize:12,color:C.p,fontWeight:700}}> · goal {rrTxt(pe.rr)}</span>:null}</div>
+          {ex.sets?.map((st,si)=>(<div key={si} style={{display:"grid",gridTemplateColumns:"18px 1fr 1fr 70px",gap:6,alignItems:"center",padding:"3px 0"}}>
+            <span style={{fontSize:12,color:C.t3,fontWeight:600}}>{si+1}</span>
+            <N value={String(st.weight??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].weight=v===""?"":+v||v;})} placeholder="lb"/>
+            <N value={String(st.reps??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].reps=v===""?"":+v||v;})} placeholder="reps"/>
+            <button type="button" onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{border:`1px solid ${st.done?C.g:C.bd}`,background:"transparent",color:st.done?C.g:C.t3,borderRadius:6,padding:"8px 4px",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>{st.done?"✓ done":"skipped"}</button>
+          </div>))}
+        </X>);})}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+          <B full outline onClick={()=>setEditW(null)}>Cancel</B>
+          <B full color={C.g} onClick={saveEdit}>Save</B>
+        </div>
+        <div style={{fontSize:11,color:C.t3,textAlign:"center"}}>Edits fix the log. Next session's weights still follow the plan.</div>
+      </div>);
+    }
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-      <button type="button" onClick={()=>setViewW(null)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:"4px 0",minHeight:32}}>← Back</button>
+      <button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:"4px 0",minHeight:32}}>← Back</button>
       <X style={{borderLeft:`3px solid ${C.bd}`}}>
         <div style={{fontSize:17,fontWeight:700,color:C.t}}>{vSess?.name||vData.day}</div>
-        <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · {vData.dur||"?"}min</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · {vData.dur||"?"}min</div>
+          <B small outline onClick={()=>setEditW(JSON.parse(JSON.stringify(vData)))}>Edit</B>
+        </div>
       </X>
       {vData.exercises?.map((ex,ei)=>{
         const pe=vSess?.exercises[ei];
@@ -671,20 +733,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </Sheet>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
-      <div style={{fontSize:11,fontWeight:800,color:todayLiftDone?C.g:todaySess?C.p:C.t3,letterSpacing:"0.06em"}}>{todayLiftDone?"After lift":todaySess?"Before lift":"Recovery day"}</div>
+      {!todayLiftDone&&<div style={{fontSize:11,fontWeight:800,color:todaySess?C.p:C.t3,letterSpacing:"0.06em"}}>{todaySess?"Before lift":"Recovery day"}</div>}
     </div>
 
     <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
       {todayLiftDone?(
         <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div>
-            <div style={{fontSize:16,fontWeight:800,color:C.t}}>Lift complete</div>
-            <div style={{fontSize:13,color:C.t2}}>{todaySess?.name||todayWorkout.day}{todayWorkout.dur?` · ${todayWorkout.dur} min`:""}</div>
-            <div style={{fontSize:12,color:C.t3,marginTop:3}}>{todayCardioPlan&&!todayCardioDone?`Next: ${todayCardioPlan.duration} min ${todayCardioPlan.label} or mark recovery.`:"Next: recovery, food, water, and sleep."}</div>
+            <div style={{fontSize:16,fontWeight:800,color:C.g}}>✓ {todaySess?.name||todayWorkout.day}</div>
+            <div style={{fontSize:13,color:C.t2}}>{todayWorkout.dur?`${todayWorkout.dur} min · `:""}{todayWorkout.exercises?.reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0)||0} sets</div>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-            <B small outline onClick={()=>setViewW([t,todayWorkout])}>Summary</B>
-            {todayCardioPlan&&!todayCardioDone?<B small onClick={()=>openCardioLog(todayCardioPlan)}>Log cardio</B>:null}
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <B small outline onClick={()=>setViewW([t,todayWorkout])}>View / edit</B>
+            <B small outline onClick={undoWorkout}>Undo</B>
           </div>
         </div>
       ):todaySess?(
@@ -872,6 +933,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         else{stroke=C.t2;sc=C.t2;status=`HOLDING · ${trail} WK${trail>1?"S":""}`;}
         return{name:shortName(ex.name),status,sc,stroke,pts,exp,vals};
       });
+      if(!rows.some(r=>(r.vals||[]).length>=2))return null;
       return(<X style={{padding:"14px 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
           <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",color:C.t3,fontFamily:FD}}>LIFTS VS PROGRAM · WK {nowWk+1}</div>
@@ -889,16 +951,16 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <div style={{fontSize:11,fontWeight:700,color:r.sc,whiteSpace:"nowrap",fontFamily:FD}}>{r.status}</div>
           </div>))}
         </div>
-        <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:8}}>Solid is your best set each week. Dashed is the program's line. It re-plots after every logged session. On a cut, <b style={{color:C.t}}>holding means keeping muscle</b>. Ember flags a lift only after three stalled weeks.</div>
+        <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:8}}>Solid = your best set each week. Dashed = the plan. On a cut, <b style={{color:C.t}}>holding is a win</b>.</div>
       </X>);})()}
 
     {/* ═══ CARDIO ═══ */}
     {(()=>{const cardioToday=data.cardio?.[t];
       return(<X style={{padding:10,borderLeft:`3px solid ${cardioToday?.done?C.g:C.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:14,fontWeight:700,color:C.t}}>Cardio</div><div style={{fontSize:12,color:C.t3}}>{cardioToday?.done?cardioSummary(cardioToday):"Log Zone 2, stairs, Peloton, walks, or conditioning"}</div></div>
-          {cardioToday?.done?<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:C.g}}>Done</span><B small outline onClick={undoCardio}>Undo</B></div>
-            :showCardio?null:<B small onClick={()=>openCardioLog()}>Log</B>}
+          <div><div style={{fontSize:14,fontWeight:700,color:cardioToday?.done?C.g:C.t}}>{cardioToday?.done?"✓ Cardio":"Cardio · 20 min steady state"}</div><div style={{fontSize:12,color:C.t3}}>{cardioToday?.done?cardioSummary(cardioToday):(todayCardioPlan?`Today: ${todayCardioPlan.label}`:"Treadmill, stairs, bike or walk")}</div></div>
+          {showCardio?null:cardioToday?.done?<div style={{display:"flex",gap:6,alignItems:"center"}}><B small outline onClick={editCardio}>Edit</B><B small outline onClick={undoCardio}>Undo</B></div>
+            :<B small onClick={()=>openCardioLog(todayCardioPlan||undefined)}>Log</B>}
         </div>
         {renderCardioForm()}
       </X>);
@@ -906,7 +968,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </div>
 
     {(!todayLiftDone&&sel===dn)?null:sess?(<>
-      <X style={{borderLeft:`3px solid ${C.bd}`}}>
+      {!(data.wk[t]&&sel===dn)&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
             <div style={{fontSize:13,color:C.t2}}>{sess.focus} · {sess.exercises.length} ex · ~{estTime(sess)}m</div></div>
@@ -914,7 +976,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <span style={{fontSize:13,fontWeight:600,color:C.g,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2}} onClick={()=>setViewW([t,data.wk[t]])}>Done{data.wk[t].dur?` · ${data.wk[t].dur}m`:""}</span>
             <B small outline onClick={undoWorkout}>Undo</B></div>:<div style={{display:"flex",gap:6}}><B outline onClick={startManualW}>Empty</B><B onClick={()=>startW(sel)}>Start workout</B></div>}
         </div>
-      </X>
+      </X>}
       {hasVariants&&!workout&&(<X style={{padding:8,display:"flex",gap:4,flexWrap:"wrap"}}>
         <button onClick={()=>setVariant(sel,null)} style={{padding:"6px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
           border:`1px solid ${!activeVariant[sel]?C.p:C.bd}`,background:!activeVariant[sel]?C.pl:"transparent",color:!activeVariant[sel]?C.p:C.t3}}>Standard</button>
