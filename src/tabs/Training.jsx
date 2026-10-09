@@ -501,7 +501,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             :{chip:"MATCH IT",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
         const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));for(let i=n.exercises.length-1;i>=0;i--){const ss=n.exercises[i].sets;for(let j=ss.length-1;j>=0;j--){if(ss[j].done){ss[j].done=false;return n;}}}return n;});};
         const anyLogged=exs.some(e=>e.sets.some(x=>x.done));
-        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length}×${rrTxt(sl?.rr)} · ${o.e.sets[0]?.weight||"BW"}`};});
+        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length} sets · goal ${rrTxt(sl?.rr)} reps · ${o.e.sets[0]?.weight||"BW"}`};});
         return(<>
         {exs.length>1&&<div style={{display:"flex",gap:4}}>
           {segs.map(sg=>(<div key={sg.k} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
@@ -527,6 +527,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                 {ssLetter&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.pl,color:C.p,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SUPERSET {ssLetter}</div>}
                 {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SWAPPED</div>}
               </div>
+              {ex?.rr&&<div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD,letterSpacing:"0.03em",marginTop:4}}>GOAL {rrTxt(ex.rr)} REPS</div>}
               <div style={{fontSize:12,color:C.t3,marginTop:3}}>Set <b style={{color:C.t}}>{curSi+1}</b> of {wkEx.sets.length}{prevLift?<> · last {fmt(prevLift.date)}: <span style={{fontWeight:600,color:C.t2}}>{prevLift.weight>0?prevLift.weight:"BW"} × {prevLift.reps.join("/")}</span></>:null}</div>
               {ssMates.length>0&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{restOf(curEi)===0?`No rest · straight to ${ssMates[0]}`:`Rest after this · then back to ${ssMates[0]}`}</div>}
             </div>
@@ -951,7 +952,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
                   {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:8,padding:"1px 5px"}}>ANCHOR</div>}
                 </div>
                 {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:12,color:C.t3}}>{ex.sets}×{rrTxt(ex.rr)} · {ex.rest?`Rest ${ex.rest}s after this`:"No rest · go straight to paired move"}</div>
+                <div style={{fontSize:16,fontWeight:800,color:C.p,fontFamily:FD,letterSpacing:"0.03em",marginTop:2}}>GOAL {rrTxt(ex.rr)} REPS <span style={{fontSize:12,fontWeight:600,color:C.t2,letterSpacing:0}}>· {ex.sets} sets</span></div>
+                <div style={{fontSize:12,color:C.t3}}>{ex.rest?`Rest ${ex.rest}s after this`:"No rest · go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>
                   <span style={{color:C.t2,fontWeight:600}}>Last:</span>{" "}
