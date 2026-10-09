@@ -9,6 +9,10 @@
   "crons": [
     {
       "path": "/api/oura-sync",
+      "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/oura-sync",
       "schedule": "0 14 * * *"
     },
     {

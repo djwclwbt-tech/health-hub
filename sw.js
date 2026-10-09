@@ -36,9 +36,12 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate' || NETWORK_FIRST.has(path)) {
     const key = req.mode === 'navigate' ? '/index.html' : path;
+    // One network fetch. Its copy goes to the cache even when it lands after the
+    // timeout (waitUntil keeps the worker alive), so a slow deploy still reaches the next launch.
+    const net = fetch(req);
+    event.waitUntil(net.then((res) => { if (res.ok) { const clone = res.clone(); return caches.open(CACHE).then((c) => c.put(key, clone)); } }).catch(() => {}));
     event.respondWith(
-      withTimeout(fetch(req), NET_TIMEOUT_MS)
-        .then((res) => { if (res.ok) { const clone = res.clone(); caches.open(CACHE).then((c) => c.put(key, clone)); } return res; })
+      withTimeout(net, NET_TIMEOUT_MS)
         .catch(() => caches.match(key).then((hit) => hit || caches.match('/index.html')))
     );
     return;

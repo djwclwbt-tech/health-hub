@@ -42,10 +42,10 @@ Every write takes a `reason` (or is the note itself). The athlete reads it.
 
 1. Deploy (any push to `claude/**` merges and deploys).
 2. Run `supabase/2026-09-08_coach.sql` once in the Supabase SQL editor.
-3. In Claude.ai → Settings → Connectors → Add custom connector: `https://<your-domain>/api/mcp`, no auth.
+3. In Claude.ai → Settings → Connectors → Add custom connector. URL: `https://<your-domain>/api/mcp?key=<MCP_TOKEN>` (paste the real `MCP_TOKEN` value from Vercel; never commit it). Leave OAuth fields empty.
 4. Create a Project with the instructions below. In each chat, start with `get_snapshot`.
 
-Non-OAuth clients (scripts, other agents) can be gated with the `MCP_TOKEN` env var (`Authorization: Bearer …`). Claude.ai's connector UI has no static-token field, so leave `MCP_TOKEN` unset for that path; the endpoint is otherwise protected only by the unlisted URL (see `SECURITY.md`).
+When `MCP_TOKEN` is set in Vercel, `/api/mcp` refuses (401) any request that does not carry it. Claude.ai's connector can't send headers, so it carries the token in the URL as `?key=`. Scripts and other MCP clients can send `Authorization: Bearer <MCP_TOKEN>` instead. Both are compared in constant time, and the `key` parameter is stripped before the request reaches the MCP router. If you rotate `MCP_TOKEN`, update the connector URL too. With `MCP_TOKEN` unset the endpoint is open (see `SECURITY.md`).
 
 ### Project instructions for the Coach
 

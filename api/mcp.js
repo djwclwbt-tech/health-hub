@@ -7,8 +7,9 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import * as E from "../lib/engine.mjs";
 import { makeClient, loadAll, toRow, writeProgramChanges } from "../lib/supabase.mjs";
+import { requireToken, supabaseEnv } from "../lib/http.mjs";
 
-const client = () => makeClient({ url: process.env.SUPABASE_URL || undefined, key: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || undefined });
+const client = () => makeClient(supabaseEnv());
 const text = (obj) => ({ content: [{ type: "text", text: typeof obj === "string" ? obj : JSON.stringify(obj, null, 2) }] });
 const fail = (msg) => ({ content: [{ type: "text", text: msg }], isError: true });
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD");
@@ -166,13 +167,13 @@ const mcpHandler = createMcpHandler(
 // ── Vercel adapter: Express-like (req, res) → Web API (Request → Response) ──
 export default async function handler(req, res) {
   try {
-    // Optional shared secret for non-OAuth clients. Claude.ai's connector UI has
-    // no place for a static token, so this stays unset for that path (see SECURITY.md).
-    const secret = process.env.MCP_TOKEN;
-    if (secret && req.headers.authorization !== `Bearer ${secret}`) { res.status(401).json({ error: "Unauthorized" }); return; }
+    // Shared secret (MCP_TOKEN) when set. Claude.ai's custom connector can't send a
+    // header, so it may ride in the connector URL as ?key=…; scripts can use Bearer.
+    if (!requireToken(req, res, "MCP_TOKEN", { optional: true, allowQuery: true, queryKey: "key" })) return;
     const proto = req.headers["x-forwarded-proto"] || "https";
     const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
     const url = new URL(req.url, `${proto}://${host}`);
+    url.searchParams.delete("key"); // never hand the secret to the MCP router (or its logs)
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
     const hasBody = req.method !== "GET" && req.method !== "HEAD";
@@ -187,6 +188,6 @@ export default async function handler(req, res) {
     } else res.end(await webResponse.text());
   } catch (err) {
     console.error("MCP handler error:", err);
-    if (!res.headersSent) res.status(500).json({ error: err.message });
+    if (!res.headersSent) res.status(500).json({ error: "Internal error" });
   }
 }

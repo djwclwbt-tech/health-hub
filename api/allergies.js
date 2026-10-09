@@ -1,3 +1,5 @@
+import { preflight } from '../lib/http.mjs';
+
 const SOURCE_URLS = {
   pollen: 'https://austinpollen.com/pollens.html',
   mold: 'https://austinpollen.com/moldpage.html',
@@ -62,12 +64,8 @@ const fetchRows = async (kind) => {
 const severityRank = (level) => ({ low: 1, moderate: 2, high: 3, very: 4 }[(level || '').toLowerCase().split(/\s+/)[0]] || 0);
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=3600');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (preflight(req, res, 'GET', 'Content-Type')) return;
 
   try {
     const [pollen, mold] = await Promise.all([fetchRows('pollen'), fetchRows('mold')]);

@@ -8,24 +8,28 @@
  *   GET /api/cronometer-sync                  → sync yesterday + today
  *   GET /api/cronometer-sync?date=2026-04-11  → sync a specific date
  *
- * Called by Vercel cron 3x daily (3am / 1pm / 8pm Chicago) and can be
- * triggered manually with ?secret= when CRONOMETER_SYNC_SECRET is set.
+ * Called by Vercel cron 3x daily at 08:00, 18:00 and 01:00 UTC (3am / 1pm / 8pm
+ * Austin in CDT; 2am / noon / 7pm in CST, since cron runs in UTC) and can be
+ * triggered manually with the secret (x-sync-secret header or ?secret=).
+ * ?debug=1 (CSV header dump) needs the secret itself; a cron header alone never unlocks it.
  *
  * Environment variables:
  *   CRONOMETER_USERNAME   – Cronometer account email
  *   CRONOMETER_PASSWORD   – Cronometer account password
- *   SUPABASE_ANON_KEY     – Supabase anon/service key
- *   CRONOMETER_SYNC_SECRET (optional) – protect the endpoint
+ *   SUPABASE_KEY          – Supabase key (fallback order in lib/http.mjs supabaseEnv)
+ *   CRON_SECRET           – (recommended) Vercel sends it as Bearer on cron calls
+ *   CRONOMETER_SYNC_SECRET – manual calls
  */
 
 import { login, fetchServings, parseServings } from '../lib/cronometer.js';
+import { isCron, hasToken, requireToken, queryOf, supabaseEnv } from '../lib/http.mjs';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wszumxewqxkggtevfubb.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+const SECRET_OPTS = { header: 'x-sync-secret', allowQuery: true, queryKey: 'secret' };
 
 const NUTRITION_COLUMNS = 'date,meals,total_cal,total_protein,total_carbs,total_fat,total_fiber';
 
 async function fetchNutritionRow(date) {
+  const { url: SUPABASE_URL, key: SUPABASE_KEY } = supabaseEnv();
   const url = `${SUPABASE_URL}/rest/v1/nutrition?date=eq.${encodeURIComponent(date)}&select=${NUTRITION_COLUMNS}&limit=1`;
   const res = await fetch(url, {
     headers: {
@@ -80,6 +84,7 @@ function buildNutritionRow(date, cronometerData, existingRow) {
 }
 
 async function upsertNutritionRow(row) {
+  const { url: SUPABASE_URL, key: SUPABASE_KEY } = supabaseEnv();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/nutrition?on_conflict=date`, {
     method: 'POST',
     headers: {
@@ -101,15 +106,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Vercel cron requests are allowed through; everything else must present the secret.
-  const isCron = (req.headers['user-agent'] || '').startsWith('vercel-cron/');
-  if (!isCron) {
-    const syncSecret = process.env.CRONOMETER_SYNC_SECRET;
-    if (!syncSecret) return res.status(401).json({ error: 'Unauthorized (CRONOMETER_SYNC_SECRET not configured)' });
-    if (req.headers['x-sync-secret'] !== syncSecret && req.query.secret !== syncSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  }
+  // Vercel cron is allowed through; everything else must present CRONOMETER_SYNC_SECRET.
+  if (!isCron(req) && !requireToken(req, res, 'CRONOMETER_SYNC_SECRET', { ...SECRET_OPTS, unsetStatus: 401 })) return;
+  const query = queryOf(req);
+  const debug = query.debug === '1' && hasToken(req, 'CRONOMETER_SYNC_SECRET', SECRET_OPTS);
 
   const username = process.env.CRONOMETER_USERNAME;
   const password = process.env.CRONOMETER_PASSWORD;
@@ -123,13 +123,13 @@ export default async function handler(req, res) {
     const chi = (d) => d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
     const now = new Date();
 
-    const startDate = req.query.date ?? chi(new Date(now.getTime() - 86400000));
-    const endDate   = req.query.date ?? chi(now);
+    const startDate = query.date ?? chi(new Date(now.getTime() - 86400000));
+    const endDate   = query.date ?? chi(now);
 
     // Auth + fetch
     const { authToken, cookieHeader } = await login(username, password);
     const csv = await fetchServings(authToken, cookieHeader, startDate, endDate);
-    if (req.query.debug === '1') {
+    if (debug) {
       const headers = csv.split('\n')[0];
       return res.status(200).json({ headers });
     }

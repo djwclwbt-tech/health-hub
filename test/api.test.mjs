@@ -45,6 +45,19 @@ test('sync-weight: parses lbs from strings and objects, guards range', env({ SYN
   r = res(); await handler(req({ query: { token: 'tok', date: 'yesterday', weight: 190 } }), r); assert.equal(r.statusCode, 400);
 }));
 
+test('sync endpoints: empty body is 401 not 500, and Supabase errors are not echoed', env({ SYNC_TOKEN: 'tok', SUPABASE_KEY: 'k' }, async () => {
+  for (const name of ['sync-steps', 'sync-weight']) {
+    const { default: handler } = await import(`../api/${name}.js`);
+    let r = res(); await handler(req({ method: 'POST', body: undefined }), r); assert.equal(r.statusCode, 401, name + ' undefined body');
+    r = res(); await handler(req({ method: 'POST', body: '' }), r); assert.equal(r.statusCode, 401, name + ' empty string body');
+    r = res(); await handler(req({ method: 'POST', headers: { authorization: 'Bearer tok' }, body: undefined }), r); assert.equal(r.statusCode, 400, name + ' authorized but empty');
+  }
+  mockFetch('/rest/v1/weight', new Response('relation "weight" leaked detail', { status: 400 }));
+  const { default: weight } = await import('../api/sync-weight.js');
+  const r = res(); await weight(req({ query: { token: 'tok', date: '2026-09-08', weight: 190 } }), r);
+  assert.equal(r.statusCode, 500); assert.doesNotMatch(JSON.stringify(r.body), /leaked|relation/);
+}));
+
 test('sync endpoints fail closed without SYNC_TOKEN', env({ SYNC_TOKEN: null }, async () => {
   const { default: handler } = await import('../api/sync-steps.js');
   const r = res(); await handler(req({ query: { token: 'x', steps: 5 } }), r); assert.equal(r.statusCode, 500);
@@ -76,9 +89,9 @@ test('update: applies settings + exercise changes to live rows and logs an audit
 }));
 
 // ── MCP (Claude.ai coach) over JSON-RPC ────────────────────────────────────
-const rpc = async (handler, method, params = {}, id = 1) => {
+const rpc = async (handler, method, params = {}, id = 1, { url = '/api/mcp', headers = {} } = {}) => {
   const r = res();
-  await handler(req({ method: 'POST', url: '/api/mcp', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', host: 'x.test' }, body: { jsonrpc: '2.0', id, method, params } }), r);
+  await handler(req({ method: 'POST', url, headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', host: 'x.test', ...headers }, body: { jsonrpc: '2.0', id, method, params } }), r);
   let body = r.body;
   if (typeof body === 'string' && body.includes('data:')) body = JSON.parse(body.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join(''));
   return { status: r.statusCode, body };
@@ -138,10 +151,18 @@ test('mcp: writes land in live tables with an audit row, and rejects nonsense', 
   assert.equal(hab.body.result.isError, undefined); assert.equal(supabaseCalls('habits').find(c => c.method === 'POST').body.alcohol, false);
 }));
 
-test('mcp: MCP_TOKEN gates the endpoint when set', env({ MCP_TOKEN: 's3cret' }, async () => {
+test('mcp: MCP_TOKEN gates the endpoint when set; Bearer or ?key= (Claude.ai connector URL) both pass', env({ MCP_TOKEN: 's3cret' }, async () => {
   const { default: handler } = await import('../api/mcp.js');
   const r = res(); await handler(req({ method: 'POST', url: '/api/mcp', body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } }), r);
   assert.equal(r.statusCode, 401);
+  const init = { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } };
+  assert.equal((await rpc(handler, 'initialize', init, 1, { url: '/api/mcp?key=wrong' })).status, 401, 'wrong key');
+  assert.equal((await rpc(handler, 'initialize', init, 1, { headers: { authorization: 'Bearer wrong' } })).status, 401, 'wrong bearer');
+  const viaKey = await rpc(handler, 'initialize', init, 1, { url: '/api/mcp?key=s3cret' });
+  assert.equal(viaKey.status, 200, 'key param must not break mcp-handler routing: ' + JSON.stringify(viaKey.body).slice(0, 200));
+  assert.ok(viaKey.body.result.serverInfo);
+  const viaBearer = await rpc(handler, 'initialize', init, 1, { headers: { authorization: 'Bearer s3cret' } });
+  assert.equal(viaBearer.status, 200); assert.ok(viaBearer.body.result.serverInfo);
 }));
 
 // ── integrations ───────────────────────────────────────────────────────────
@@ -174,20 +195,55 @@ test('cronometer-sync: cron requests pass, others need the secret; manual quick 
   assert.equal(up.total_cal, 800);
 }));
 
-test('oura-sync: maps readiness + longest sleep session into one recovery row per day', env({ OURA_PAT: 'pat', SUPABASE_ANON_KEY: 'k' }, async () => {
+test('cronometer: a CSV without Day / calories / protein columns fails loudly instead of writing zeros', async () => {
+  const { parseServings } = await import('../lib/cronometer.js');
+  assert.throws(() => parseServings('Date,Food,Kcal\n2026-09-08,Bowl,650'), /missing expected columns: Day, Calories, Protein/);
+  assert.throws(() => parseServings('<!DOCTYPE html><html>login</html>'), /missing expected columns/);
+  assert.deepEqual(parseServings('Day,Group,Name,Energy (kcal),Protein (g)\n'), {}, 'header only = no entries, not an error');
+});
+
+test('cronometer-sync: changed CSV → 500, nothing written; ?debug=1 needs the secret, not a cron UA', env({ CRONOMETER_USERNAME: 'u', CRONOMETER_PASSWORD: 'p', CRONOMETER_SYNC_SECRET: 'sec', CRON_SECRET: 'cs', SUPABASE_KEY: 'k' }, async () => {
+  const mod = await import('../api/cronometer-sync.js');
+  mockFetch('cronometer.com/login/', new Response('<input name="anticsrf" value="abc">', { status: 200 }));
+  mockFetch(/cronometer\.com\/login$/, new Response('', { status: 200, headers: { 'set-cookie': 'sesnonce=NONCE; Path=/' } }));
+  mockFetch('cronometer.com/cronometer/app', (u, init) => new Response(String(init.body).includes('generateAuthorizationToken') ? '//OK[1,["TOKEN123"],0,7]' : '//OK[1,["42"],0,7]', { status: 200 }));
+  mockFetch('cronometer.com/export', new Response('Date,Food,Kcal\n2026-09-08,Bowl,650\n', { status: 200 }));
+  mockFetch(/\/rest\/v1\/nutrition/, json([{}], 201));
+  let r = res(); await mod.default(req({ query: { date: '2026-09-08', debug: '1' }, headers: { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer cs' } }), r);
+  assert.equal(r.statusCode, 500); assert.match(r.body.error, /missing expected columns/); assert.equal(r.body.headers, undefined, 'a cron call must not unlock debug');
+  assert.equal(supabaseCalls('nutrition').filter(c => c.method === 'POST').length, 0, 'no zero-calorie write');
+  r = res(); await mod.default(req({ query: { date: '2026-09-08', debug: '1', secret: 'sec' } }), r);
+  assert.equal(r.statusCode, 200); assert.equal(r.body.headers, 'Date,Food,Kcal');
+}));
+
+test('oura-sync: maps readiness + longest sleep session into one recovery row per day', env({ OURA_PAT: 'pat', SUPABASE_ANON_KEY: 'k', CRON_SECRET: 'cs', OURA_SYNC_SECRET: null }, async () => {
   const { default: handler } = await import('../api/oura-sync.js');
   mockFetch('daily_readiness', json({ data: [{ day: '2026-09-08', score: 71 }] }));
   mockFetch(/\/v2\/usercollection\/sleep\?/, json({ data: [{ day: '2026-09-08', type: 'long_sleep', total_sleep_duration: 7.2 * 3600, average_hrv: 44, lowest_heart_rate: 49, deep_sleep_duration: 3600, rem_sleep_duration: 5400, light_sleep_duration: 16920, average_breath: 14.5 }, { day: '2026-09-08', type: 'long_sleep', total_sleep_duration: 3600 }, { day: '2026-09-09', type: 'long_sleep', total_sleep_duration: 6 * 3600 }] }));
   mockFetch('/rest/v1/recovery', json([{}], 201));
-  const r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0' } }), r);
+  const r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer cs' } }), r);
   assert.equal(r.statusCode, 200, JSON.stringify(r.body));
   const rows = supabaseCalls('recovery').map(c => c.body);
   assert.equal(rows.length, 1, 'next-morning session filtered out of the range');
   assert.equal(rows[0].recovery_score, 71); assert.equal(rows[0].sleep_hours, 7.2); assert.equal(rows[0].hrv, 44); assert.equal(rows[0].source, 'oura');
+  for (const col of ['notes', 'wake_time', 'strain', 'sleep_performance']) assert.ok(!(col in rows[0]), `must not send ${col} (manual notes survive)`);
   const r2 = res(); await handler(req({ headers: { 'user-agent': 'curl' } }), r2); assert.equal(r2.statusCode, 401);
 }));
 
-test('analyze + bodycomp: send the right shape to the model and return parsed JSON', env({ ANTHROPIC_API_KEY: 'key', AI_MODEL: 'claude-sonnet-4-6' }, async () => {
+test('oura-sync: readiness without sleep sends only the score; CRON_SECRET replaces the User-Agent check', env({ OURA_PAT: 'pat', SUPABASE_KEY: 'k', CRON_SECRET: 'cron-s', OURA_SYNC_SECRET: 'manual' }, async () => {
+  const { default: handler } = await import('../api/oura-sync.js');
+  mockFetch('daily_readiness', json({ data: [{ day: '2026-09-08', score: 64 }] }));
+  mockFetch(/\/v2\/usercollection\/sleep\?/, json({ data: [] }));
+  mockFetch('/rest/v1/recovery', json([{}], 201));
+  let r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0' } }), r);
+  assert.equal(r.statusCode, 401, 'spoofable UA alone is not enough once CRON_SECRET is set');
+  r = res(); await handler(req({ query: { date: '2026-09-08' }, headers: { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer cron-s' } }), r);
+  assert.equal(r.statusCode, 200, JSON.stringify(r.body));
+  assert.deepEqual(supabaseCalls('recovery')[0].body, { date: '2026-09-08', recovery_score: 64, source: 'oura' });
+  r = res(); await handler(req({ query: { date: '2026-09-08', secret: 'manual' } }), r); assert.equal(r.statusCode, 200, 'manual secret still works');
+}));
+
+test('analyze + bodycomp: send the right shape to the model and return parsed JSON', env({ ANTHROPIC_API_KEY: 'key', AI_MODEL: 'claude-sonnet-4-6', SYNC_TOKEN: null }, async () => {
   const { default: analyze } = await import('../api/analyze.js');
   const { default: bodycomp } = await import('../api/bodycomp.js');
   mockFetch('api.anthropic.com', (u, init) => { const b = JSON.parse(init.body); const isImage = Array.isArray(b.messages[0].content); return json({ content: [{ type: 'text', text: isImage ? '{"bodyFatRange":"16-18%","muscleDevelopment":["a"],"areasOfProgress":[],"focusAreas":[],"notes":"n"}' : '```json\n{"scores":{"overall":72},"summary":"ok","wins":[],"gaps":[],"trends":[],"correlations":[],"recommendations":[],"nextWeekFocus":"x"}\n```' }] }); });
@@ -197,6 +253,27 @@ test('analyze + bodycomp: send the right shape to the model and return parsed JS
   r = res(); await bodycomp(req({ method: 'POST', body: { image: { mediaType: 'image/jpeg', data: 'AAAA' }, context: { currentWeight: 190 } } }), r);
   assert.equal(r.statusCode, 200); assert.equal(r.body.bodyFatRange, '16-18%');
   r = res(); await bodycomp(req({ method: 'POST', body: {} }), r); assert.equal(r.statusCode, 400);
+}));
+
+test('analyze + bodycomp: x-sync-token required when SYNC_TOKEN is set; upstream errors → 502; bad model JSON → 422', env({ ANTHROPIC_API_KEY: 'key', SYNC_TOKEN: 'tok' }, async () => {
+  const { default: analyze } = await import('../api/analyze.js');
+  const { default: bodycomp } = await import('../api/bodycomp.js');
+  const img = { image: { mediaType: 'image/jpeg', data: 'AAAA' } };
+  let upstream = json({ content: [{ type: 'text', text: '{"scores":{"overall":70}}' }] });
+  mockFetch('api.anthropic.com', () => upstream.clone());
+  for (const h of [analyze, bodycomp]) {
+    let r = res(); await h(req({ method: 'POST', body: img }), r); assert.equal(r.statusCode, 401, 'no token');
+    r = res(); await h(req({ method: 'POST', headers: { 'x-sync-token': 'nope' }, body: img }), r); assert.equal(r.statusCode, 401, 'wrong token');
+  }
+  assert.equal(calls.length, 0, 'no Anthropic spend without the token');
+  const ok = { method: 'POST', headers: { 'x-sync-token': 'tok' }, body: img };
+  let r = res(); await analyze(req(ok), r); assert.equal(r.statusCode, 200);
+  upstream = json({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }, 529);
+  for (const h of [analyze, bodycomp]) { r = res(); await h(req(ok), r); assert.equal(r.statusCode, 502); assert.equal(r.body.error, 'Analysis unavailable.'); }
+  upstream = json({ content: [{ type: 'text', text: 'Sorry, I cannot help with that.' }] });
+  for (const h of [analyze, bodycomp]) { r = res(); await h(req(ok), r); assert.equal(r.statusCode, 422); }
+  routes = []; mockFetch('api.anthropic.com', () => { throw new TypeError('fetch failed'); });
+  r = res(); await analyze(req(ok), r); assert.equal(r.statusCode, 502, 'network failure is an upstream error too');
 }));
 
 test('allergies: parses AustinPollen rows into a ranked summary', async () => {
@@ -222,3 +299,69 @@ test('push-schedule: refuses scheduling when NOTIFY_TOKEN is not configured', en
   const r = res(); await handler(req({ method: 'POST', body: {} }), r);
   assert.equal(r.statusCode, 503);
 }));
+
+test('push-schedule: an expired subscription (404/410) comes back as a clear 410, not a 500', async () => {
+  const { default: webpush } = await import('web-push');
+  const keys = webpush.generateVAPIDKeys();
+  await env({ VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, NOTIFY_TOKEN: 'nt' }, async () => {
+    const { default: handler } = await import('../api/push-schedule.js');
+    const real = webpush.sendNotification;
+    const job = { subscription: { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } }, dueAt: Date.now() - 1 };
+    try {
+      webpush.sendNotification = async () => { throw Object.assign(new Error('Received unexpected response code'), { statusCode: 410 }); };
+      let r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: job }), r);
+      assert.equal(r.statusCode, 410); assert.equal(r.body.expired, true);
+      webpush.sendNotification = async () => { throw Object.assign(new Error('nope'), { statusCode: 404 }); };
+      r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: job }), r); assert.equal(r.statusCode, 410);
+      webpush.sendNotification = async () => ({ statusCode: 201 });
+      r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: job }), r); assert.equal(r.statusCode, 200); assert.equal(r.body.sent, true);
+    } finally { webpush.sendNotification = real; }
+  })();
+});
+
+// ── shared http helpers ────────────────────────────────────────────────────
+test('http: safeEqual, cron fallback, supabaseEnv order', env({ CRON_SECRET: null, SUPABASE_KEY: null, SUPABASE_ANON_KEY: 'anon', SUPABASE_URL: null }, async () => {
+  const H = await import('../lib/http.mjs');
+  assert.equal(H.safeEqual('abc', 'abc'), true); assert.equal(H.safeEqual('abc', 'abcd'), false); assert.equal(H.safeEqual('', ''), false); assert.equal(H.safeEqual(undefined, 'x'), false);
+  assert.equal(H.isCron(req({ headers: { 'user-agent': 'vercel-cron/1.0' } })), false, 'no CRON_SECRET: fail closed, the UA proves nothing');
+  assert.equal(H.supabaseEnv().key, 'anon'); process.env.SUPABASE_KEY = 'main'; assert.equal(H.supabaseEnv().key, 'main', 'SUPABASE_KEY wins'); delete process.env.SUPABASE_KEY;
+  assert.match(H.supabaseEnv().url, /^https:\/\/.+\.supabase\.co$/);
+  assert.deepEqual(H.queryOf(req({ url: '/api/x?key=1&a=2' })), { key: '1', a: '2' });
+}));
+
+test('http: sameOrigin lets the app page through and refuses other sites', async () => {
+  const H = await import('../lib/http.mjs');
+  const host = 'health-hub.example.app';
+  assert.equal(H.sameOrigin(req({ headers: { host, origin: `https://${host}` } })), true);
+  assert.equal(H.sameOrigin(req({ headers: { host, referer: `https://${host}/?tab=progress` } })), true);
+  assert.equal(H.sameOrigin(req({ headers: { host, origin: 'https://evil.example' } })), false);
+  assert.equal(H.sameOrigin(req({ headers: { host } })), false, 'no Origin/Referer is not same-origin');
+});
+
+test('push-schedule: a skipped or replaced rest alert never sends (latest-wins ledger)', async () => {
+  const { default: webpush } = await import('web-push');
+  const keys = webpush.generateVAPIDKeys();
+  await env({ VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, NOTIFY_TOKEN: 'nt', SUPABASE_KEY: 'k' }, async () => {
+    const { default: handler, scheduleOrSend, stillCurrent } = await import('../api/push-schedule.js');
+    const real = webpush.sendNotification; let sent = 0;
+    webpush.sendNotification = async () => { sent++; return { statusCode: 201 }; };
+    const sub = { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } };
+    try {
+      // cancel: conditional PATCH on (device, tag), so it cannot wipe a newer alert
+      mockFetch('/rest/v1/push_jobs', (u, init) => init.method === 'PATCH' ? new Response(null, { status: 204 }) : json([{ tag: 'rest-timer-2' }]));
+      let r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: { cancel: true, subscription: sub, tag: 'rest-timer-1' } }), r);
+      assert.equal(r.statusCode, 200); assert.equal(r.body.cancelled, true);
+      const patch = supabaseCalls('push_jobs').find(c => c.method === 'PATCH');
+      assert.match(patch.url, /tag=eq\.rest-timer-1/); assert.deepEqual(patch.body, { tag: null });
+      // the ledger now holds rest-timer-2, so rest-timer-1 is stale and stays silent
+      assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-1' }), false);
+      await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-1', dueAt: Date.now() });
+      assert.equal(sent, 0, 'stale job not sent');
+      await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-2', dueAt: Date.now() });
+      assert.equal(sent, 1, 'current job sent');
+      // ledger unreachable: fail open, the alert still sends
+      routes = []; mockFetch('/rest/v1/push_jobs', new Response('down', { status: 503 }));
+      assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-9' }), true);
+    } finally { webpush.sendNotification = real; }
+  })();
+});
