@@ -146,7 +146,7 @@ const AnalysisSection=({data})=>{
 
           {/* Summary */}
           {result.summary&&(
-            <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+            <X style={{padding:12}}>
               <div style={{fontSize:13,color:C.t,lineHeight:1.6}}>{result.summary}</div>
             </X>
           )}
@@ -199,7 +199,7 @@ const AnalysisSection=({data})=>{
 
           {/* Recommendations */}
           {result.recommendations&&result.recommendations.length>0&&(
-            <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
+            <X style={{padding:10}}>
               <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:6}}>Recommendations</div>
               {result.recommendations.map((r,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
@@ -219,7 +219,7 @@ const AnalysisSection=({data})=>{
 
           {/* Body Composition */}
           {result.bodyComposition&&(
-            <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
+            <X style={{padding:10}}>
               <div style={{fontSize:11,fontWeight:700,color:C.v,marginBottom:6}}>Body Composition</div>
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
               {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}

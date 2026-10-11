@@ -35,7 +35,7 @@ const Weight=({data,setData})=>{
 
     <WeightTrendCard trend={wTrend} tdee={wtTDEE&&wtTDEE.tdee}/>
 
-    {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+    {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12}}>
       <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Cut pace</div>
       <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="up"?"Gaining":"Losing"} {Math.abs(wTrend.rate).toFixed(1)} lb/wk</div>
       <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>

@@ -162,7 +162,7 @@ const Nutrition=({data,setData})=>{
       <div style={{fontSize:11,color:C.t3,marginTop:7}}>Saved as a Cronometer recipe. Logging it takes two taps there.</div>
     </X>);})()}
 
-    <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+    <X style={{padding:12}}>
       <L>What do I need next?</L>
       <div style={{fontSize:18,fontWeight:800,color:C.t,marginBottom:4}}>{needText}</div>
       <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Rough logs are useful. Get calories + protein in, perfect macros can wait.</div>
@@ -269,7 +269,7 @@ const Nutrition=({data,setData})=>{
 
     {/* ═══ TDEE ADJUST MODAL ═══ */}
     {showTDEEAdjust&&nutTDEE&&nutTDEE.tdee&&(
-      <X style={{padding:14,borderLeft:`3px solid ${C.bd}`}}>
+      <X style={{padding:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <L>Adjust Targets Based on TDEE</L>
           <button onClick={()=>setShowTDEEAdjust(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:16}}>✕</button>

@@ -10,11 +10,14 @@ import { ExerciseHistory } from "./train/ExerciseHistory.jsx";
 import { SwapModal } from "./train/SwapModal.jsx";
 import { B, Br, EditableNum, N, S, X } from "../ui/atoms.jsx";
 import { ConfirmModal, Portal, Sheet } from "../ui/overlay.jsx";
-import { WorkoutTimerBar } from "../ui/shell.jsx";
 
 let restPushWarned=false;
 const AUTO_END_MS=90*6e4;
 // ═══ TRAINING ═══
+// Session clock in the workout header.
+const Elapsed=({start})=>{const [now,setNow]=useState(Date.now());useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(iv);},[]);
+  return <span style={{fontSize:15,color:C.p,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(Math.max(0,Math.floor((now-start)/1000)))}</span>;};
+
 const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const t=useToday(),dn=dw(t);
   const [sel,setSel]=useState(dn);
@@ -71,6 +74,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const [showAddEx,setShowAddEx]=useState(false);
   const [exInfo,setExInfo]=useState(null);          // {ex, progKey} · history sheet
   const [showPlates,setShowPlates]=useState(false);
+  const [focusEi,setFocusEi]=useState(null);       // a lift opened by tap; null = follow the cursor
   const [summary,setSummary]=useState(null);        // post-workout sheet
   const serverPushArmedRef=useRef(false);
   // Screen stays awake while a session is open and visible (Screen Wake Lock API).
@@ -121,7 +125,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
   const dS=(ei,si,rest)=>{
     const cur=workout?.exercises?.[ei]?.sets?.[si];
     if(!cur||Number(cur.reps)<=0){if(addToast)addToast("Enter reps before logging the set","error");return;}
-    haptic(30);
+    haptic(30);setFocusEi(null);
     setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;n.exercises[ei].sets[si].at=Date.now();return n;});
     if(rest>0)startRestTimer(rest);
   };
@@ -446,43 +450,40 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       </Sheet>
       {exInfo&&<ExerciseHistory data={data} ex={exInfo.ex} progKeyStr={exInfo.progKey} onClose={()=>setExInfo(null)}/>}
 
-      <WorkoutTimerBar workout={workout} compact/>
-
-      {workout.isDeload&&(<div style={{background:C.bg,border:`1px solid ${C.bd}`,padding:"8px 12px",borderRadius:6,marginBottom:4}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Deload week · All weights at 50%. Keep reps the same. Focus on form.</div>
-      </div>)}
+      {(()=>{const exs=workout.exercises;const {curEi}=sessionCursor(exs,i=>slotAt(i)?.rest);
+        return(<div style={{paddingTop:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+            <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
+            <Elapsed start={workout.start}/>
+          </div>
+          <div style={{fontSize:13,color:C.t3,marginTop:4,fontVariantNumeric:"tabular-nums"}}>
+            {exs.length?(curEi>=0?`Lift ${curEi+1} of ${exs.length}`:"All sets done"):"Empty session"}
+            {rt>0&&rl>0?` · rest ${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")} left`:""}
+            {workout.isDeload?" · deload, half weight":""}
+          </div>
+        </div>);})()}
 
       {rt>0&&(()=>{const pct=rt?Math.min(100,Math.round((1-rl/Math.max(rt,1))*100)):0;const done=rl<=0;
         return(<Portal><div style={{position:"fixed",left:0,right:0,bottom:"calc(var(--tabbar-h) + var(--safe-b))",zIndex:95,maxWidth:520,margin:"0 auto",padding:"0 8px 6px"}}>
           <div className="hh-sheet" role="timer" aria-live="off" style={{background:done?C.g:C.t,borderRadius:12,boxShadow:C.sh,padding:"8px 8px 8px 14px",display:"flex",alignItems:"center",gap:8,position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${pct}%`,background:"var(--on-accent-line)",opacity:0.35,transition:"width .5s linear"}}/>
             <div style={{position:"relative",flex:1,minWidth:0}}>
-              <div style={{fontSize:9,color:"var(--on-accent-dim)",fontFamily:FD,fontWeight:700}}>{done?"Rest done · go":"REST"}</div>
-              <div style={{fontSize:30,fontWeight:800,color:C.oa,fontFamily:FD,fontVariantNumeric:"tabular-nums",lineHeight:1}}>{done?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
+              <div style={{fontSize:12,color:"var(--on-accent-dim)"}}>{done?"Rest done. Go.":"Rest"}</div>
+              <div style={{fontSize:28,fontWeight:500,color:C.oa,fontVariantNumeric:"tabular-nums",lineHeight:1.1}}>{done?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
             </div>
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>−30</button>}
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>+30</button>}
-            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>{done?"Dismiss":"Skip"}</button>
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>−30</button>}
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>+30</button>}
+            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer"}}>{done?"Dismiss":"Skip"}</button>
           </div>
         </div></Portal>);})()}
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <div style={{fontSize:17,fontWeight:700,color:C.t}}>{s.name}</div>
-          <div style={{fontSize:13,color:C.t3}}>{s.focus}</div>
-        </div>
-        <div style={{display:"flex",gap:6}}>
-          <B small outline onClick={()=>setShowCancelConfirm(true)} color={C.r}>Cancel</B>
-          <B small onClick={()=>setShowFinishConfirm(true)} color={C.g}>Finish</B>
-        </div>
-      </div>
 
-      {s.warmup&&!wuDone&&(<X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
+      {s.warmup&&!wuDone&&(<X style={{padding:14,marginTop:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <div style={{fontSize:14,fontWeight:700,color:C.t}}>Warm-Up</div>
-          <B small onClick={()=>setWuDone(true)} color={C.g}>Done</B>
+          <div style={{fontSize:15,fontWeight:500,color:C.t}}>Warm-up</div>
+          <B small outline onClick={()=>setWuDone(true)}>Done</B>
         </div>
-        <div style={{fontSize:13,fontWeight:600,color:C.p,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
+        <div style={{fontSize:13,color:C.t2,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
         {s.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{s.warmup.note}</div>}
         {/mobility/i.test(s.name||"")&&mobExercises.map((m,i)=>(
           <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"5px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
@@ -499,135 +500,130 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             <span style={{fontSize:12,color:C.t3}}>{m.rx}</span>
           </div>
         ))}
-        {s.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{s.warmup.ramp}</div>}
+        {s.warmup.ramp&&<div style={{fontSize:13,color:C.t3,marginTop:4}}>{s.warmup.ramp}</div>}
       </X>)}
-      {s.warmup&&wuDone&&(<X style={{padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:0.6}}>
-        <span style={{fontSize:13,fontWeight:600,color:C.t}}>Warm-Up</span>
-        <span style={{fontSize:13,fontWeight:600,color:C.g}}>Done ✓</span>
-      </X>)}
+      {s.warmup&&wuDone&&(<div style={{fontSize:13,color:C.t3,marginTop:14}}>Warm-up <span style={{color:C.g}}>done</span></div>)}
 
-      {(()=>{ // ═══ SET DECK · mock 3a · one set at a time ═══
+      {(()=>{ // ═══ SET TABLE · Strong/Hevy style: Set, Last, lb, Reps, check ═══
         const exs=workout.exercises;
         // Supersets: rest:0 chains an exercise to the next one (1A → 1B). Sets
-        // inside a group interleave round-robin (A1, B1, A2, B2 …) so the pair
-        // actually alternates; the last member's rest runs the timer.
+        // inside a group interleave round-robin (A1, B1, A2, B2 …); the cursor
+        // follows that order and the last member's rest runs the timer.
         const restOf=i=>slotAt(i)?.rest;
-        const {groups,curEi,curSi:curSi0}=sessionCursor(exs,restOf);
-        const curGrp=curEi>=0?groups.find(g=>g.includes(curEi)):null;
-        const ssMates=curGrp&&curGrp.length>1?curGrp.filter(m=>m!==curEi).map(m=>exs[m].swappedTo?.name||slotAt(m)?.name).filter(Boolean):[];
-        const ssLetter=curGrp&&curGrp.length>1?String.fromCharCode(65+curGrp.indexOf(curEi)):null;
+        const {groups,curEi,curSi}=sessionCursor(exs,restOf);
         const allDone=exs.length>0&&curEi<0;
-        const segs=exs.map((e,i)=>{const done=e.sets.filter(x=>x.done||x.skipped).length;
-          return{k:i,short:shortLiftName(e.swappedTo?.name||slotAt(i)?.name||""),pct:Math.round(done/Math.max(1,e.sets.length)*100),cur:i===curEi};});
-        const wkEx=curEi>=0?exs[curEi]:null,ex=curEi>=0?slotAt(curEi):null;
-        const curSi=curSi0;
-        const cs=wkEx?wkEx.sets[curSi]:null;
-        const dispName=wkEx?.swappedTo?.name||ex?.name||"";
-        const dispCue=wkEx?.swappedTo?.cue||ex?.cue||"";
-        const inc=(wkEx?.swappedTo?.inc??ex?.inc)||5;
-        const prevLift=wkEx?(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(x=>x.done&&(x.weight>0||x.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(x=>x.reps)};}}return null;})():null;
-        const goal=(!prevLift||workout.isDeload||!ex?.rr)?null:(()=>{const top=ex.rr[1],bot=ex.rr[0];const reps=prevLift.reps||[];if(!reps.length)return null;const allTop=reps.every(r=>r>=top);const best=Math.max(...reps);
-          return allTop?{chip:"Add weight",bg:C.p,txt:`You topped the range at ${prevLift.weight}. Today: ${cs?.weight} for ${bot}+ each set.`}
-            :best>=bot?{chip:"Add a rep",bg:C.t,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Beat one of those sets today.`}
-            :{chip:"Match it",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
+        const openEi=focusEi!=null&&exs[focusEi]?focusEi:curEi;
+        const nameOf=i=>exs[i]?.swappedTo?.name||slotAt(i)?.name||"";
+        const prevOf=i=>{const id=exs[i]?.id;const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===id);if(wex){const ds=wex.sets?.filter(x=>x.done&&(x.weight>0||x.reps>0));if(ds?.length)return{date:d,sets:ds,weight:ds[0].weight,reps:ds.map(x=>x.reps)};}}return null;};
         const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));let best=null;n.exercises.forEach(e=>e.sets.forEach(x=>{if((x.done||x.skipped)&&(!best||(x.at||0)>=(best.at||0)))best=x;}));if(best){best.done=false;best.skipped=false;delete best.at;}return n;});};
+        const undoSet=(ei,si)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const x=n.exercises[ei].sets[si];x.done=false;x.skipped=false;delete x.at;return n;});
         const skipSets=(ei,which)=>{haptic(10);setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const now=Date.now();n.exercises[ei].sets.forEach((x,si)=>{if(!x.done&&!x.skipped&&(which==='all'||si===which)){x.skipped=true;x.at=now;}});return n;});};
         const unskipEx=(ei)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets.forEach(x=>{if(x.skipped){x.skipped=false;delete x.at;}});return n;});
-        const skippedEx=exs.map((e,i)=>({e,i})).filter(o=>o.e.sets.length&&o.e.sets.every(x=>x.skipped||x.done)&&o.e.sets.some(x=>x.skipped)).map(o=>({k:o.i,name:o.e.swappedTo?.name||slotAt(o.i)?.name}));
         const anyLogged=exs.some(e=>e.sets.some(x=>x.done||x.skipped));
-        const upNext=exs.map((e,i)=>({e,i})).filter(o=>o.i>curEi&&curEi>=0&&o.e.sets.some(x=>!x.done&&!x.skipped)).slice(0,4).map(o=>{const sl=slotAt(o.i);return{k:o.i,name:o.e.swappedTo?.name||sl?.name,meta:`${o.e.sets.length} sets · goal ${rrTxt(sl?.rr)} reps · ${o.e.sets[0]?.weight||"BW"}`};});
-        return(<>
-        {exs.length>1&&<div style={{display:"flex",gap:4}}>
-          {segs.map(sg=>(<div key={sg.k} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
-            <div style={{height:4,borderRadius:2,background:C.bl,overflow:"hidden"}}><div style={{height:"100%",background:sg.pct>=100?C.g:C.p,width:`${sg.pct}%`}}/></div>
-            <div style={{fontSize:9,fontWeight:700,color:sg.cur?C.p:sg.pct>=100?C.g:C.t3,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",fontFamily:FD}}>{sg.short}</div>
-          </div>))}
-        </div>}
-        {exs.length===0&&(<X style={{padding:"22px 16px",textAlign:"center"}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t}}>Empty session</div>
-          <div style={{fontSize:12,color:C.t3,marginTop:3}}>Add your first exercise to start logging.</div>
-        </X>)}
-        {allDone&&(<X style={{padding:"26px 20px",textAlign:"center"}}>
-          <div style={{fontSize:28,fontWeight:800,color:C.g,fontFamily:FD}}>Session complete</div>
-          <div style={{fontSize:13,color:C.t2,marginTop:6}}>{exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} sets logged · hit Finish to save.</div>
-          <B style={{marginTop:12}} color={C.g} onClick={()=>setShowFinishConfirm(true)}>Finish workout</B>
-        </X>)}
-        {wkEx&&cs&&(<X style={{padding:16,boxShadow:C.sh2}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-                <button type="button" onClick={()=>setExInfo({ex:{...(ex||{}),...(wkEx.swappedTo||{}),name:dispName},progKey:wkEx.progKey})} aria-label={`${dispName} history`} style={{background:"transparent",border:"none",padding:0,textAlign:"left",fontSize:21,fontWeight:800,color:C.t,fontFamily:FD,cursor:"pointer",lineHeight:1.15}}>{dispName}<span style={{fontSize:12,color:C.t3,marginLeft:6,verticalAlign:"middle"}}>›</span></button>
-                {ex?.anchor&&<div style={{fontSize:10,fontWeight:800,background:C.t,color:C.oa,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>Anchor</div>}
-                {ssLetter&&<div style={{fontSize:10,fontWeight:800,background:C.pl,color:C.p,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SUPERSET {ssLetter}</div>}
-                {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>Swapped</div>}
-              </div>
-              {ex?.rr&&<div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD,marginTop:4}}>GOAL {rrTxt(ex.rr)} REPS</div>}
-              <div style={{fontSize:12,color:C.t3,marginTop:3}}>Set <b style={{color:C.t}}>{curSi+1}</b> of {wkEx.sets.length}{prevLift?<> · last {fmt(prevLift.date)}: <span style={{fontWeight:600,color:C.t2}}>{prevLift.weight>0?prevLift.weight:"BW"} × {prevLift.reps.join("/")}</span></>:null}</div>
-              {ssMates.length>0&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{restOf(curEi)===0?`No rest · straight to ${ssMates[0]}`:`Rest after this · then back to ${ssMates[0]}`}</div>}
+        const NUMS={fontVariantNumeric:"tabular-nums"};
+        const link={background:"none",border:"none",color:C.t3,fontSize:13,cursor:"pointer",padding:"10px 6px",minHeight:40};
+        const cell={height:40,display:"flex",alignItems:"center",justifyContent:"center",marginRight:6,fontSize:15,...NUMS};
+        const inp={width:"100%",height:40,border:`1.5px solid ${C.p}`,borderRadius:8,background:C.cd,textAlign:"center",fontSize:18,fontWeight:500,outline:"none",...NUMS};
+        const Chk=({on,onClick,label,dim})=>(<button type="button" onClick={onClick} aria-label={label} aria-pressed={!!on} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:0}}>
+          <span style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${on?C.t:dim?C.bd:C.t4}`,background:on?C.t:"transparent",color:C.oa,fontSize:13,lineHeight:"19px",textAlign:"center"}}>{on?"✓":""}</span>
+        </button>);
+        const summaryOf=i=>{const e=exs[i];const done=e.sets.filter(x=>x.done).length;const w=e.sets[0]?.weight;
+          return done===e.sets.length?`${done} of ${done} done`:`${e.sets.length} × ${w>0?w:"BW"}`;};
+
+        const liftView=(ei)=>{
+          const e=exs[ei],sl=slotAt(ei),open=ei===openEi;
+          const fully=e.sets.length>0&&e.sets.every(x=>x.done||x.skipped);
+          const skippedAll=fully&&e.sets.some(x=>x.skipped)&&!e.sets.some(x=>x.done);
+          const name=nameOf(ei);
+          const grp=groups.find(g=>g.includes(ei));
+          const ssTag=grp&&grp.length>1?`Superset ${String.fromCharCode(65+grp.indexOf(ei))}`:null;
+          if(!open)return(<div style={{borderTop:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <button type="button" onClick={()=>setFocusEi(ei)} style={{flex:1,minWidth:0,display:"flex",justifyContent:"space-between",gap:10,background:"none",border:"none",padding:"14px 0",cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:15,fontWeight:500,color:skippedAll?C.t4:fully?C.t3:C.t,textDecoration:skippedAll?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
+              {!skippedAll&&<span style={{fontSize:13,color:fully?C.g:C.t3,whiteSpace:"nowrap",...NUMS}}>{summaryOf(ei)}</span>}
+            </button>
+            {skippedAll&&<button type="button" onClick={()=>unskipEx(ei)} style={{...link,color:C.t2}}>Undo skip</button>}
+          </div>);
+          const prev=prevOf(ei);
+          const edSi=ei===curEi?curSi:e.sets.findIndex(x=>!x.done&&!x.skipped);
+          const inc=(e.swappedTo?.inc??sl?.inc)||5;
+          const unit=(e.swappedTo?.unit||sl?.unit||"lb").toLowerCase().replace("lbs","lb");
+          const rr=sl?.rr;
+          const goal=(!prev||workout.isDeload||!rr)?null:(()=>{const reps=prev.reps||[];if(!reps.length)return null;
+            if(reps.every(r=>r>=rr[1]))return`all ${rr[1]}s last time, so the weight goes up`;
+            if(Math.max(...reps)>=rr[0])return"beat one of last time's sets";return"match last time before adding";})();
+          const cue=e.swappedTo?.cue||sl?.cue||"";
+          const showWu=edSi===0&&e.wu?.some(w=>!w.done);
+          return(<div style={{borderTop:`1px solid ${C.bd}`,padding:"14px 0 6px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
+              <button type="button" onClick={()=>setExInfo({ex:{...(sl||{}),...(e.swappedTo||{}),name},progKey:e.progKey})} aria-label={`${name} history`} style={{background:"none",border:"none",padding:0,textAlign:"left",fontSize:17,fontWeight:500,color:C.t,cursor:"pointer"}}>{name}</button>
+              {rr&&<span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
-            <div style={{display:"flex",gap:6,flexShrink:0}}>
-              {BARBELL_IDS.has(wkEx.id)&&<button type="button" title="Plates" aria-label="Plate calculator" onClick={()=>setShowPlates(true)} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"6px 9px",fontSize:11,fontWeight:800,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:FD}}>Plates</button>}
-              {getSwapOptions(ex,wkEx).length>0&&!wkEx.sets.some(x=>x.done)&&<button type="button" title="Swap exercise" aria-label="Swap exercise" onClick={()=>setSwapModal({ei:curEi,exName:dispName})} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:"inherit"}}>⇄</button>}
+            <div style={{fontSize:13,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
+              {[sl?.anchor?"Anchor":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&(prev||goal)?" · ":""}
+              {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}{prev&&goal?" · ":""}{goal}
             </div>
+            {ssTag&&ei===curEi&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
+            <div style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 1fr 40px",alignItems:"center",marginTop:10,rowGap:2}}>
+              {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
+              {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
+                <span style={{fontSize:13,color:C.t4}}>W</span><span style={{fontSize:13,color:C.t4}}>{w.l}</span>
+                <span style={{...cell,color:w.done?C.t4:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t4:C.t2}}>{w.r}</span>
+                <Chk on={w.done} dim label={`Warm-up ${wi+1} done`} onClick={()=>!w.done&&dWU(ei,wi,sl?.rest)}/>
+              </React.Fragment>))}
+              {e.sets.map((x,si)=>{const isEd=si===edSi;const isNow=isEd&&ei===curEi;const pv=prev?.sets?.[si];
+                const tone=x.skipped?C.t4:x.done?C.t:C.t3;
+                return(<React.Fragment key={si}>
+                  <span style={{fontSize:14,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
+                  <span style={{fontSize:13,color:C.t4,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
+                  {isEd?(<>
+                    <span style={{marginRight:6}}><input aria-label={`Set ${si+1} weight`} inputMode="decimal" value={x.weight??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9.]/g,"");uS(ei,si,"weight",v===""?"":Number(v));}} style={inp}/></span>
+                    <span style={{marginRight:6}}><input aria-label={`Set ${si+1} reps`} inputMode="numeric" value={x.reps??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9]/g,"");uS(ei,si,"reps",v===""?"":Number(v));}} style={inp}/></span>
+                  </>):(<>
+                    <span style={{...cell,color:tone,textDecoration:x.skipped?"line-through":"none"}}>{x.weight>0?x.weight:"BW"}</span>
+                    <span style={{...cell,color:tone,textDecoration:x.skipped?"line-through":"none"}}>{x.reps||"○"}</span>
+                  </>)}
+                  <Chk on={x.done} label={x.done?`Undo set ${si+1}`:x.skipped?`Unskip set ${si+1}`:`Log set ${si+1}`} onClick={()=>{if(x.done||x.skipped)undoSet(ei,si);else dS(ei,si,sl?.rest);}}/>
+                </React.Fragment>);})}
+            </div>
+            {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
+              <span style={{fontSize:13,color:C.t3,width:40}}>RIR</span>
+              {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:15,cursor:"pointer",...NUMS}}>{v}</button>);})}
+              <span style={{display:"flex",gap:4,marginLeft:4}}>
+                <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:18,cursor:"pointer"}}>−</button>
+                <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:18,cursor:"pointer"}}>+</button>
+              </span>
+            </div>)}
+            {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,sl?.rest)} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:15,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
+            <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,marginTop:4}}>
+              {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,edSi)}>Skip set</button>}
+              {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,'all')}>Skip lift</button>}
+              {getSwapOptions(sl,e).length>0&&!e.sets.some(x=>x.done)&&<button type="button" style={link} onClick={()=>setSwapModal({ei,exName:name})}>Swap lift</button>}
+              {BARBELL_IDS.has(e.id)&&<button type="button" style={link} onClick={()=>setShowPlates(true)}>Plates</button>}
+            </div>
+            {cue&&<details style={{marginTop:2}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Form cue</summary><div style={{fontSize:13,color:C.t2,lineHeight:1.5,paddingBottom:6}}>{cue}</div></details>}
+            <Sheet open={showPlates} onClose={()=>setShowPlates(false)} title="Plates"><PlateCalc weight={e.sets[Math.max(0,edSi)]?.weight||0}/></Sheet>
+          </div>);
+        };
+
+        return(<div style={{marginTop:14}}>
+          {exs.length===0&&<div style={{borderTop:`1px solid ${C.bd}`,padding:"18px 0",fontSize:14,color:C.t3}}>Add your first exercise to start logging.</div>}
+          {exs.map((_,ei)=><React.Fragment key={ei}>{liftView(ei)}</React.Fragment>)}
+          <div style={{borderTop:`1px solid ${C.bd}`}}/>
+          {allDone&&<div style={{fontSize:14,color:C.g,marginTop:14}}>All sets done. {exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} logged.</div>}
+          <button type="button" onClick={()=>setShowFinishConfirm(true)} style={{marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",
+            border:allDone?"none":`1px solid ${C.bd}`,background:allDone?C.p:C.cd,color:allDone?C.oa:C.t}}>Finish workout</button>
+          <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,marginTop:6}}>
+            <button type="button" style={link} onClick={()=>setShowAddEx(true)}>Add exercise</button>
+            {anyLogged&&<button type="button" style={link} onClick={undoLastSet}>Undo last set</button>}
+            <button type="button" style={{...link,color:C.r}} onClick={()=>setShowCancelConfirm(true)}>Discard workout</button>
           </div>
-          <Sheet open={showPlates} onClose={()=>setShowPlates(false)} title="Plates"><PlateCalc weight={cs.weight||0}/></Sheet>
-          {goal&&(<div style={{marginTop:10,background:C.pl,borderRadius:8,padding:"9px 11px",display:"flex",gap:9,alignItems:"flex-start"}}>
-            <span style={{flexShrink:0,fontSize:10,fontWeight:800,background:goal.bg,color:C.oa,borderRadius:4,padding:"3px 7px",marginTop:1,fontFamily:FD}}>{goal.chip}</span>
-            <span style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.45}}>{goal.txt}</span>
-          </div>)}
-          {workout.isDeload&&<div style={{fontSize:11,color:C.t2,fontWeight:600,marginTop:8}}>Deload · 50% weight, same reps</div>}
-          {curSi===0&&wkEx.wu.some(w=>!w.done)&&(<div style={{marginTop:10,paddingTop:8,borderTop:`1px dashed ${C.bl}`}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:3,fontFamily:FD}}>Warm-up</div>
-            {wkEx.wu.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.35:0.85,fontSize:14}}>
-              <span style={{color:C.t3,width:32}}>{wu.l}</span><span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
-              {!wu.done?<B small outline onClick={()=>dWU(curEi,wi,ex?.rest)} color={C.t3}>✓</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
-            </div>))}
-          </div>)}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
-            {[{k:"weight",l:`Weight · ${(wkEx.swappedTo?.unit||ex?.unit||"LBS").toUpperCase()}`,v:cs.weight||0,dn:()=>uS(curEi,curSi,"weight",Math.max(0,(Number(cs.weight)||0)-inc)),up:()=>uS(curEi,curSi,"weight",(Number(cs.weight)||0)+inc),set:n=>uS(curEi,curSi,"weight",n),vc:C.t},
-              {k:"reps",l:"REPS",v:cs.reps||0,dn:()=>uS(curEi,curSi,"reps",Math.max(0,(Number(cs.reps)||0)-1)),up:()=>uS(curEi,curSi,"reps",(Number(cs.reps)||0)+1),set:n=>uS(curEi,curSi,"reps",Math.round(n)),vc:C.p}].map(sp=>(
-              <div key={sp.k} style={{background:C.bg,borderRadius:8,padding:"8px 6px"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t3,textAlign:"center",fontFamily:FD}}>{sp.l}</div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
-                  <button type="button" aria-label={`${sp.k} down`} onClick={()=>{haptic(6);sp.dn();}} style={{width:48,height:48,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:22,fontWeight:700,color:C.t,cursor:"pointer",fontFamily:"inherit"}}>−</button>
-                  <EditableNum value={sp.v} onCommit={sp.set} color={sp.vc} label={sp.k}/>
-                  <button type="button" aria-label={`${sp.k} up`} onClick={()=>{haptic(6);sp.up();}} style={{width:48,height:48,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:22,fontWeight:700,color:C.t,cursor:"pointer",fontFamily:"inherit"}}>+</button>
-                </div>
-              </div>))}
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.t3,marginRight:2,fontFamily:FD}}>RIR</span>
-            {[0,1,2,3].map(v=>{const on=String(cs.rir)===String(v);return(<button key={v} onClick={()=>uS(curEi,curSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:6,border:`1px solid ${on?C.p:C.bd}`,background:on?C.p:C.cd,color:on?C.oa:C.t,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FD}}>{v}</button>);})}
-          </div>
-          <div style={{fontSize:12,lineHeight:1.5,color:C.t2,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:9}}>{dispCue}</div>
-        </X>)}
-        {wkEx&&cs&&(<button type="button" onClick={()=>dS(curEi,curSi,ex?.rest)} style={{border:"none",background:C.p,color:C.oa,borderRadius:10,padding:"18px 20px",fontSize:20,fontWeight:800,fontFamily:FD,cursor:"pointer",width:"100%",boxShadow:"var(--accent-glow)",minHeight:60}}>Log set · {cs.weight||0} × {cs.reps||0}</button>)}
-        {wkEx&&cs&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <B full outline onClick={()=>skipSets(curEi,curSi)} color={C.t3}>Skip this set</B>
-          <B full outline onClick={()=>skipSets(curEi,'all')} color={C.t3}>Skip exercise</B>
-        </div>)}
-        {anyLogged&&<button type="button" onClick={undoLastSet} style={{background:"transparent",border:"none",fontSize:12,color:C.t3,fontWeight:700,textAlign:"center",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:FD}}>Undo last set</button>}
-        <div>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:6,fontFamily:FD}}>Up next</div>
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {upNext.map(u=>(<div key={u.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:8,padding:"9px 12px"}}>
-              <span style={{fontSize:13,fontWeight:600,color:C.t2}}>{u.name}</span>
-              <span style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{u.meta}</span>
-                <button type="button" onClick={()=>skipSets(u.k,'all')} aria-label={`Skip ${u.name}`} style={{border:`1px solid ${C.bd}`,background:"transparent",color:C.t3,borderRadius:6,padding:"6px 8px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD,minHeight:32}}>SKIP</button></span>
-            </div>))}
-            {skippedEx.map(u=>(<div key={`s${u.k}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px dashed ${C.bd}`,borderRadius:8,padding:"7px 12px",opacity:0.7}}>
-              <span style={{fontSize:13,color:C.t3,textDecoration:"line-through"}}>{u.name}</span>
-              <button type="button" onClick={()=>unskipEx(u.k)} style={{border:"none",background:"transparent",color:C.p,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD}}>Undo skip</button>
-            </div>))}
-            <B full outline onClick={()=>setShowAddEx(true)}>+ Add exercise</B>
-          </div>
-        </div>
-        {rt>0&&<div style={{height:64}} aria-hidden="true"/>}
-        </>);
+          {rt>0&&<div style={{height:72}} aria-hidden="true"/>}
+        </div>);
       })()}
 
       {(()=>{const plc=workout.manual?null:getPostLiftCardio(workout.day);if(!plc)return null;
-        return(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+        return(<X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.label}</div>
@@ -635,7 +631,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             </div>
             {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick Log</B></div>
               :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
-              :<div style={{display:"flex",gap:6}}><B small outline onClick={()=>openCardioLog(plc)}>Log</B><B small onClick={()=>startCardioTimer(plc.duration)}>Start</B></div>}
+              :<div style={{display:"flex",gap:6}}><B small outline onClick={()=>openCardioLog(plc)}>Log</B><B small outline onClick={()=>startCardioTimer(plc.duration)}>Start</B></div>}
           </div>
           {cardioTimerRunning&&(<div style={{marginTop:10,textAlign:"center"}}>
             <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
@@ -671,7 +667,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const nd={...data,wk:{...data.wk,[vDate]:w}};setData(nd);sv(nd);svSB.workout(vDate,w);
         setViewW([vDate,w]);setEditW(null);addToast?.("Workout updated","success");};
       return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <X style={{borderLeft:`3px solid ${C.p}`}}>
+        <X style={{}}>
           <div style={{fontSize:17,fontWeight:700,color:C.t}}>Edit · {vSess?.name||vData.day}</div>
           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}><span style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · Duration (min)</span>
             <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:80}}/></div>
@@ -687,14 +683,14 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>);})}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           <B full outline onClick={()=>setEditW(null)}>Cancel</B>
-          <B full color={C.g} onClick={saveEdit}>Save</B>
+          <B full onClick={saveEdit}>Save</B>
         </div>
         <div style={{fontSize:11,color:C.t3,textAlign:"center"}}>Edits fix the log. Next session's weights still follow the plan.</div>
       </div>);
     }
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       <button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:"4px 0",minHeight:32}}>← Back</button>
-      <X style={{borderLeft:`3px solid ${C.bd}`}}>
+      <X style={{}}>
         <div style={{fontSize:17,fontWeight:700,color:C.t}}>{vSess?.name||vData.day}</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · {vData.dur||"?"}min</div>
@@ -739,20 +735,20 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </div>):<div style={{fontSize:12,color:C.t3,marginTop:10}}>No new e1RM records. On a cut, holding is the win.</div>}
         <div style={{display:"flex",gap:8,marginTop:14}}>
           <B full outline onClick={()=>{setViewW([summary.date,summary.log]);setSummary(null);}}>View log</B>
-          <B full onClick={()=>setSummary(null)} color={C.g}>Done</B>
+          <B full onClick={()=>setSummary(null)}>Done</B>
         </div>
       </div>)}
     </Sheet>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
-      {!todayLiftDone&&<div style={{fontSize:11,fontWeight:800,color:todaySess?C.p:C.t3}}>{todaySess?"Before lift":"Recovery day"}</div>}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:12,marginBottom:8}}>
+      <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Train</h1>
+      <span style={{fontSize:13,color:C.t3}}>{todayLiftDone?"Lifted today":todaySess?"Lift day":"Recovery day"}</span>
     </div>
 
-    <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
+    <X style={{padding:12}}>
       {todayLiftDone?(
         <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div>
-            <div style={{fontSize:16,fontWeight:800,color:C.g}}>✓ {todaySess?.name||todayWorkout.day}</div>
+            <div style={{fontSize:15,fontWeight:500,color:C.t}}>{todaySess?.name||todayWorkout.day} <span style={{color:C.g}}>✓</span></div>
             <div style={{fontSize:13,color:C.t2}}>{todayWorkout.dur?`${todayWorkout.dur} min · `:""}{todayWorkout.exercises?.reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0)||0} sets</div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -763,7 +759,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       ):todaySess?(
         <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div>
-            <div style={{fontSize:16,fontWeight:800,color:C.t}}>{todaySess.name}</div>
+            <div style={{fontSize:15,fontWeight:500,color:C.t}}>{todaySess.name}</div>
             <div style={{fontSize:13,color:C.t2}}>{todaySess.focus} · {todaySess.exercises.length} exercises · ~{estTime(todaySess)}m</div>
             <div style={{fontSize:12,color:C.t3,marginTop:3}}>{todayCardioPlan?`After: ${todayCardioPlan.duration} min ${todayCardioPlan.label}.`:"After: recovery and evening closeout."}</div>
           </div>
@@ -772,37 +768,37 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       ):(
         <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
           <div>
-            <div style={{fontSize:16,fontWeight:800,color:C.t}}>No lift today</div>
+            <div style={{fontSize:15,fontWeight:500,color:C.t}}>No lift today</div>
             <div style={{fontSize:13,color:C.t2}}>Keep cardio, mobility, protein, and sleep on track.</div>
           </div>
-          {!todayCardioDone?<B small onClick={()=>openCardioLog()}>Log cardio</B>:<span style={{fontSize:13,fontWeight:700,color:C.g}}>Cardio done</span>}
+          {!todayCardioDone?<B small outline onClick={()=>openCardioLog()}>Log cardio</B>:<span style={{fontSize:13,fontWeight:700,color:C.g}}>Cardio done</span>}
           <B small outline onClick={startManualW}>Empty session</B>
         </div>
       )}
     </X>
 
     <X style={{padding:10}}>
-      <div style={{fontSize:11,fontWeight:800,color:C.t3,marginBottom:6}}>Week plan</div>
+      <div style={{fontSize:13,color:C.t3,marginBottom:8}}>Week plan</div>
       <div style={{display:"flex",gap:3}}>
         {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:6,
-          border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
-          fontSize:11,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>{dk.slice(0,3)}</button>))}
+          border:`1px solid ${sel===dk?C.t:C.bd}`,background:sel===dk?C.t:"transparent",color:sel===dk?C.oa:C.t2,
+          fontSize:13,minHeight:40,cursor:"pointer",fontWeight:500,fontFamily:"inherit"}}>{dk.charAt(0).toUpperCase()+dk.slice(1,3)}</button>))}
       </div>
     </X>
 
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
     <X style={{padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:14,fontWeight:600,color:C.t}}>Evening Stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min · hip & spine recovery`}</div></div>
+      <div><div style={{fontSize:15,fontWeight:500,color:C.t}}>Evening stretch</div><div style={{fontSize:12,color:C.t3}}>{mobRunning?fmtElapsed(mobTimer):`~${stretchMins} min · hip & spine recovery`}</div></div>
       {mobDone?<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <span style={{fontSize:13,fontWeight:600,color:data.mob?.[t]?.skipped?C.t3:C.g}}>{data.mob?.[t]?.skipped?"Skipped":"Done"}{(()=>{const d=data.mob?.[t];return d&&typeof d==="object"&&d.dur?` · ${fmtElapsed(d.dur)}`:""})()}</span>
           <B small outline onClick={undoMob}>Undo</B></div>
-        :mobRunning?<B small color={C.g} onClick={finishMob}>Done</B>
-        :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View stretch</B>}<B small onClick={startMob}>Start stretch</B></div>}
+        :mobRunning?<B small onClick={finishMob}>Done</B>
+        :<div style={{display:"flex",gap:6}}>{!showMob&&<B small outline onClick={()=>setShowMob(true)}>View stretch</B>}<B small outline onClick={startMob}>Start stretch</B></div>}
     </X>
     {showMob&&(<div style={{marginTop:8}}>
       {!mobRunning&&!mobDone?(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
+          <X style={{padding:10}}>
             <div style={{fontSize:12,color:C.t2,marginBottom:8}}>Tonight's sequence · start when ready, or skip today to stop the reminder.</div>
             {mobExercises.map((ex,i)=>(
               <div key={`${ex.id}-${i}`} style={{padding:"7px 0",borderBottom:`1px solid ${C.bl}`}}>
@@ -813,7 +809,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             ))}
           </X>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-            <B full onClick={startMob} color={C.v}>Start stretch</B>
+            <B full onClick={startMob}>Start stretch</B>
             <B full outline onClick={skipMob}>Skip today</B>
           </div>
         </div>
@@ -972,7 +968,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:14,fontWeight:700,color:cardioToday?.done?C.g:C.t}}>{cardioToday?.done?"✓ Cardio":"Cardio · 20 min steady state"}</div><div style={{fontSize:12,color:C.t3}}>{cardioToday?.done?cardioSummary(cardioToday):(todayCardioPlan?`Today: ${todayCardioPlan.label}`:"Treadmill, stairs, bike or walk")}</div></div>
           {showCardio?null:cardioToday?.done?<div style={{display:"flex",gap:6,alignItems:"center"}}><B small outline onClick={editCardio}>Edit</B><B small outline onClick={undoCardio}>Undo</B></div>
-            :<B small onClick={()=>openCardioLog(todayCardioPlan||undefined)}>Log</B>}
+            :<B small outline onClick={()=>openCardioLog(todayCardioPlan||undefined)}>Log</B>}
         </div>
         {renderCardioForm()}
       </X>);
@@ -980,7 +976,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </div>
 
     {(!todayLiftDone&&sel===dn)?null:sess?(<>
-      {!(data.wk[t]&&sel===dn)&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
+      {!(data.wk[t]&&sel===dn)&&<X style={{}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{fontSize:16,fontWeight:700,color:C.t}}>{sess.name}</div>
             <div style={{fontSize:13,color:C.t2}}>{sess.focus} · {sess.exercises.length} ex · ~{estTime(sess)}m</div></div>
@@ -1008,7 +1004,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           {sess.warmup.ramp&&<div style={{fontSize:12,color:C.v,fontWeight:600,marginTop:4}}>{sess.warmup.ramp}</div>}
         </X>
       </S>)}
-      {sel==="wednesday"&&<X style={{padding:10,borderLeft:`4px solid ${C.bd}`}}>
+      {sel==="wednesday"&&<X style={{padding:10}}>
         <div style={{fontSize:12,fontWeight:850,color:C.v}}>Superset day</div>
         <div style={{fontSize:12,color:C.t2,marginTop:3,lineHeight:1.4}}>Do A then B back-to-back. Rest only after the B move: 1B 60s, 2B 60s, 3B 45s.</div>
       </X>}

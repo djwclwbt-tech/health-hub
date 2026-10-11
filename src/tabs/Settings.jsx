@@ -119,7 +119,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       </div>
     )}
 
-    {editTargets&&<X style={{borderLeft:`3px solid ${C.bd}`}}>
+    {editTargets&&<X style={{}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
@@ -207,7 +207,7 @@ const Settings=({data,setData,syncFailures={}})=>{
     </S>
 
     {/* ═══ HEALTH SYNC ═══ */}
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
+    <X style={{}}>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Steps + Weight Sync (via Apple Health)</div>
       <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
       <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
@@ -226,7 +226,7 @@ const Settings=({data,setData,syncFailures={}})=>{
     </X>
 
     {/* ═══ TRAVEL DAY ═══ */}
-    <X style={{borderLeft:`3px solid ${C.bd}`}}>
+    <X style={{}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
           <div style={{fontSize:14,fontWeight:700,color:C.t}}>Travel Day</div>
@@ -255,7 +255,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       const btn=(active)=>({padding:"7px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
         background:active?C.pl:"transparent",border:`1px solid ${active?C.p:C.bd}`,color:active?C.p:C.t3});
       return(
-      <X style={{borderLeft:`3px solid ${C.bd}`}}>
+      <X style={{}}>
         <div style={{fontSize:14,fontWeight:700,color:C.t}}>TDEE Calibration</div>
         <div style={{fontSize:12,color:C.t3,marginBottom:10}}>Three answers make the TDEE range much tighter on days you don't log.</div>
         <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>When you don't log food, it's usually…</div>

@@ -43,7 +43,7 @@ const S=({title,children,collapsible,defaultOpen=true})=>{
   const [open,setOpen]=useState(!collapsible||defaultOpen);
   return(<div style={{marginTop:6}}>
     <div onClick={collapsible?()=>setOpen(o=>!o):undefined}
-      style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
+      style={{fontSize:13,fontWeight:500,color:C.t3,marginBottom:6,borderBottom:`1px solid ${C.bl}`,padding:"10px 0 6px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
       <span>{title}</span>
       {collapsible&&<span style={{fontSize:10}}>{open?"▴":"▾"}</span>}
     </div>
