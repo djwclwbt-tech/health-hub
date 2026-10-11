@@ -437,7 +437,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           {(()=>{const used=new Set(workout.exercises.map(e=>e.id));
             const groups={};EXERCISE_LIBRARY.filter(o=>!o.off&&!used.has(o.id)).forEach(o=>{(groups[o.region]=groups[o.region]||[]).push(o);});
             return Object.entries(groups).map(([rg,opts])=>(<div key={rg} style={{marginBottom:8}}>
-              <div style={{fontSize:10,fontWeight:800,color:C.t3,letterSpacing:"0.08em",textTransform:"uppercase",fontFamily:FD,padding:"4px 0"}}>{rg}</div>
+              <div style={{fontSize:10,fontWeight:800,color:C.t3,fontFamily:FD,padding:"4px 0"}}>{rg}</div>
               {opts.map(o=>(<button type="button" key={o.id} onClick={()=>addManualEx(o)} style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",minHeight:44,padding:"4px 8px",borderTop:`1px solid ${C.bl}`,border:"none",borderTopStyle:"solid",background:"transparent",cursor:"pointer",textAlign:"left"}}>
                 <span style={{fontSize:14,fontWeight:600,color:C.t}}>{o.name}</span>
                 <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap"}}>{gw(o,o.sw)} {o.unit}</span>
@@ -449,7 +449,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       <WorkoutTimerBar workout={workout} compact/>
 
       {workout.isDeload&&(<div style={{background:C.bg,border:`1px solid ${C.bd}`,padding:"8px 12px",borderRadius:6,marginBottom:4}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.t}}>DELOAD WEEK · All weights at 50%. Keep reps the same. Focus on form.</div>
+        <div style={{fontSize:13,fontWeight:700,color:C.t}}>Deload week · All weights at 50%. Keep reps the same. Focus on form.</div>
       </div>)}
 
       {rt>0&&(()=>{const pct=rt?Math.min(100,Math.round((1-rl/Math.max(rt,1))*100)):0;const done=rl<=0;
@@ -457,12 +457,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div className="hh-sheet" role="timer" aria-live="off" style={{background:done?C.g:C.t,borderRadius:12,boxShadow:C.sh,padding:"8px 8px 8px 14px",display:"flex",alignItems:"center",gap:8,position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${pct}%`,background:"var(--on-accent-line)",opacity:0.35,transition:"width .5s linear"}}/>
             <div style={{position:"relative",flex:1,minWidth:0}}>
-              <div style={{fontSize:9,letterSpacing:"0.14em",color:"var(--on-accent-dim)",fontFamily:FD,fontWeight:700}}>{done?"REST DONE · GO":"REST"}</div>
+              <div style={{fontSize:9,color:"var(--on-accent-dim)",fontFamily:FD,fontWeight:700}}>{done?"Rest done · go":"REST"}</div>
               <div style={{fontSize:30,fontWeight:800,color:C.oa,fontFamily:FD,fontVariantNumeric:"tabular-nums",lineHeight:1}}>{done?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
             </div>
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.04em"}}>−30</button>}
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.04em"}}>+30</button>}
-            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD,letterSpacing:"0.06em",textTransform:"uppercase"}}>{done?"Dismiss":"Skip"}</button>
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>−30</button>}
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>+30</button>}
+            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:FD}}>{done?"Dismiss":"Skip"}</button>
           </div>
         </div></Portal>);})()}
 
@@ -527,9 +527,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const inc=(wkEx?.swappedTo?.inc??ex?.inc)||5;
         const prevLift=wkEx?(()=>{const dates=Object.keys(data.wk).sort().reverse();for(const d of dates){if(d===t)continue;const wex=data.wk[d].exercises?.find(e=>e.id===wkEx.id);if(wex){const ds=wex.sets?.filter(x=>x.done&&(x.weight>0||x.reps>0));if(ds?.length)return{date:d,weight:ds[0].weight,reps:ds.map(x=>x.reps)};}}return null;})():null;
         const goal=(!prevLift||workout.isDeload||!ex?.rr)?null:(()=>{const top=ex.rr[1],bot=ex.rr[0];const reps=prevLift.reps||[];if(!reps.length)return null;const allTop=reps.every(r=>r>=top);const best=Math.max(...reps);
-          return allTop?{chip:"ADD WEIGHT",bg:C.p,txt:`You topped the range at ${prevLift.weight}. Today: ${cs?.weight} for ${bot}+ each set.`}
-            :best>=bot?{chip:"ADD A REP",bg:C.t,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Beat one of those sets today.`}
-            :{chip:"MATCH IT",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
+          return allTop?{chip:"Add weight",bg:C.p,txt:`You topped the range at ${prevLift.weight}. Today: ${cs?.weight} for ${bot}+ each set.`}
+            :best>=bot?{chip:"Add a rep",bg:C.t,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Beat one of those sets today.`}
+            :{chip:"Match it",bg:C.t3,txt:`Last time ${reps.join(", ")} at ${prevLift.weight}. Match it before adding.`};})();
         const undoLastSet=()=>{setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));let best=null;n.exercises.forEach(e=>e.sets.forEach(x=>{if((x.done||x.skipped)&&(!best||(x.at||0)>=(best.at||0)))best=x;}));if(best){best.done=false;best.skipped=false;delete best.at;}return n;});};
         const skipSets=(ei,which)=>{haptic(10);setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const now=Date.now();n.exercises[ei].sets.forEach((x,si)=>{if(!x.done&&!x.skipped&&(which==='all'||si===which)){x.skipped=true;x.at=now;}});return n;});};
         const unskipEx=(ei)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets.forEach(x=>{if(x.skipped){x.skipped=false;delete x.at;}});return n;});
@@ -540,7 +540,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         {exs.length>1&&<div style={{display:"flex",gap:4}}>
           {segs.map(sg=>(<div key={sg.k} style={{flex:1,display:"flex",flexDirection:"column",gap:4}}>
             <div style={{height:4,borderRadius:2,background:C.bl,overflow:"hidden"}}><div style={{height:"100%",background:sg.pct>=100?C.g:C.p,width:`${sg.pct}%`}}/></div>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase",color:sg.cur?C.p:sg.pct>=100?C.g:C.t3,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",fontFamily:FD}}>{sg.short}</div>
+            <div style={{fontSize:9,fontWeight:700,color:sg.cur?C.p:sg.pct>=100?C.g:C.t3,textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",fontFamily:FD}}>{sg.short}</div>
           </div>))}
         </div>}
         {exs.length===0&&(<X style={{padding:"22px 16px",textAlign:"center"}}>
@@ -548,7 +548,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{fontSize:12,color:C.t3,marginTop:3}}>Add your first exercise to start logging.</div>
         </X>)}
         {allDone&&(<X style={{padding:"26px 20px",textAlign:"center"}}>
-          <div style={{fontSize:28,fontWeight:800,color:C.g,fontFamily:FD,textTransform:"uppercase"}}>Session complete</div>
+          <div style={{fontSize:28,fontWeight:800,color:C.g,fontFamily:FD}}>Session complete</div>
           <div style={{fontSize:13,color:C.t2,marginTop:6}}>{exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} sets logged · hit Finish to save.</div>
           <B style={{marginTop:12}} color={C.g} onClick={()=>setShowFinishConfirm(true)}>Finish workout</B>
         </X>)}
@@ -556,38 +556,38 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-                <button type="button" onClick={()=>setExInfo({ex:{...(ex||{}),...(wkEx.swappedTo||{}),name:dispName},progKey:wkEx.progKey})} aria-label={`${dispName} history`} style={{background:"transparent",border:"none",padding:0,textAlign:"left",fontSize:21,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",cursor:"pointer",lineHeight:1.15}}>{dispName}<span style={{fontSize:12,color:C.t3,marginLeft:6,verticalAlign:"middle"}}>›</span></button>
-                {ex?.anchor&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.t,color:C.oa,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>ANCHOR</div>}
-                {ssLetter&&<div style={{fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:C.pl,color:C.p,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SUPERSET {ssLetter}</div>}
-                {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SWAPPED</div>}
+                <button type="button" onClick={()=>setExInfo({ex:{...(ex||{}),...(wkEx.swappedTo||{}),name:dispName},progKey:wkEx.progKey})} aria-label={`${dispName} history`} style={{background:"transparent",border:"none",padding:0,textAlign:"left",fontSize:21,fontWeight:800,color:C.t,fontFamily:FD,cursor:"pointer",lineHeight:1.15}}>{dispName}<span style={{fontSize:12,color:C.t3,marginLeft:6,verticalAlign:"middle"}}>›</span></button>
+                {ex?.anchor&&<div style={{fontSize:10,fontWeight:800,background:C.t,color:C.oa,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>Anchor</div>}
+                {ssLetter&&<div style={{fontSize:10,fontWeight:800,background:C.pl,color:C.p,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>SUPERSET {ssLetter}</div>}
+                {wkEx.swappedTo&&<div style={{fontSize:10,background:C.bg,color:C.t2,fontWeight:700,borderRadius:4,padding:"2px 6px",fontFamily:FD}}>Swapped</div>}
               </div>
-              {ex?.rr&&<div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD,letterSpacing:"0.03em",marginTop:4}}>GOAL {rrTxt(ex.rr)} REPS</div>}
+              {ex?.rr&&<div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD,marginTop:4}}>GOAL {rrTxt(ex.rr)} REPS</div>}
               <div style={{fontSize:12,color:C.t3,marginTop:3}}>Set <b style={{color:C.t}}>{curSi+1}</b> of {wkEx.sets.length}{prevLift?<> · last {fmt(prevLift.date)}: <span style={{fontWeight:600,color:C.t2}}>{prevLift.weight>0?prevLift.weight:"BW"} × {prevLift.reps.join("/")}</span></>:null}</div>
               {ssMates.length>0&&<div style={{fontSize:11,color:C.t3,marginTop:2}}>{restOf(curEi)===0?`No rest · straight to ${ssMates[0]}`:`Rest after this · then back to ${ssMates[0]}`}</div>}
             </div>
             <div style={{display:"flex",gap:6,flexShrink:0}}>
-              {BARBELL_IDS.has(wkEx.id)&&<button type="button" title="Plates" aria-label="Plate calculator" onClick={()=>setShowPlates(true)} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"6px 9px",fontSize:11,fontWeight:800,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:FD,letterSpacing:"0.06em"}}>PLATES</button>}
+              {BARBELL_IDS.has(wkEx.id)&&<button type="button" title="Plates" aria-label="Plate calculator" onClick={()=>setShowPlates(true)} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"6px 9px",fontSize:11,fontWeight:800,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:FD}}>Plates</button>}
               {getSwapOptions(ex,wkEx).length>0&&!wkEx.sets.some(x=>x.done)&&<button type="button" title="Swap exercise" aria-label="Swap exercise" onClick={()=>setSwapModal({ei:curEi,exName:dispName})} style={{border:`1px solid ${C.bd}`,background:"transparent",borderRadius:6,padding:"8px 10px",fontSize:14,color:C.t2,cursor:"pointer",minHeight:40,fontFamily:"inherit"}}>⇄</button>}
             </div>
           </div>
           <Sheet open={showPlates} onClose={()=>setShowPlates(false)} title="Plates"><PlateCalc weight={cs.weight||0}/></Sheet>
           {goal&&(<div style={{marginTop:10,background:C.pl,borderRadius:8,padding:"9px 11px",display:"flex",gap:9,alignItems:"flex-start"}}>
-            <span style={{flexShrink:0,fontSize:10,fontWeight:800,letterSpacing:"0.08em",background:goal.bg,color:C.oa,borderRadius:4,padding:"3px 7px",marginTop:1,fontFamily:FD}}>{goal.chip}</span>
+            <span style={{flexShrink:0,fontSize:10,fontWeight:800,background:goal.bg,color:C.oa,borderRadius:4,padding:"3px 7px",marginTop:1,fontFamily:FD}}>{goal.chip}</span>
             <span style={{fontSize:12,fontWeight:600,color:C.t,lineHeight:1.45}}>{goal.txt}</span>
           </div>)}
-          {workout.isDeload&&<div style={{fontSize:11,color:C.t2,fontWeight:600,marginTop:8}}>DELOAD · 50% weight, same reps</div>}
+          {workout.isDeload&&<div style={{fontSize:11,color:C.t2,fontWeight:600,marginTop:8}}>Deload · 50% weight, same reps</div>}
           {curSi===0&&wkEx.wu.some(w=>!w.done)&&(<div style={{marginTop:10,paddingTop:8,borderTop:`1px dashed ${C.bl}`}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:3,fontFamily:FD,letterSpacing:"0.08em"}}>WARM-UP</div>
+            <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:3,fontFamily:FD}}>Warm-up</div>
             {wkEx.wu.map((wu,wi)=>(<div key={wi} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0",opacity:wu.done?0.35:0.85,fontSize:14}}>
               <span style={{color:C.t3,width:32}}>{wu.l}</span><span style={{color:C.t2,flex:1}}>{wu.w} × {wu.r}</span>
               {!wu.done?<B small outline onClick={()=>dWU(curEi,wi,ex?.rest)} color={C.t3}>✓</B>:<span style={{color:C.g,fontSize:16}}>✓</span>}
             </div>))}
           </div>)}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
-            {[{k:"weight",l:`WEIGHT · ${(wkEx.swappedTo?.unit||ex?.unit||"LBS").toUpperCase()}`,v:cs.weight||0,dn:()=>uS(curEi,curSi,"weight",Math.max(0,(Number(cs.weight)||0)-inc)),up:()=>uS(curEi,curSi,"weight",(Number(cs.weight)||0)+inc),set:n=>uS(curEi,curSi,"weight",n),vc:C.t},
+            {[{k:"weight",l:`Weight · ${(wkEx.swappedTo?.unit||ex?.unit||"LBS").toUpperCase()}`,v:cs.weight||0,dn:()=>uS(curEi,curSi,"weight",Math.max(0,(Number(cs.weight)||0)-inc)),up:()=>uS(curEi,curSi,"weight",(Number(cs.weight)||0)+inc),set:n=>uS(curEi,curSi,"weight",n),vc:C.t},
               {k:"reps",l:"REPS",v:cs.reps||0,dn:()=>uS(curEi,curSi,"reps",Math.max(0,(Number(cs.reps)||0)-1)),up:()=>uS(curEi,curSi,"reps",(Number(cs.reps)||0)+1),set:n=>uS(curEi,curSi,"reps",Math.round(n)),vc:C.p}].map(sp=>(
               <div key={sp.k} style={{background:C.bg,borderRadius:8,padding:"8px 6px"}}>
-                <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:C.t3,textAlign:"center",fontFamily:FD}}>{sp.l}</div>
+                <div style={{fontSize:10,fontWeight:700,color:C.t3,textAlign:"center",fontFamily:FD}}>{sp.l}</div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
                   <button type="button" aria-label={`${sp.k} down`} onClick={()=>{haptic(6);sp.dn();}} style={{width:48,height:48,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:22,fontWeight:700,color:C.t,cursor:"pointer",fontFamily:"inherit"}}>−</button>
                   <EditableNum value={sp.v} onCommit={sp.set} color={sp.vc} label={sp.k}/>
@@ -596,19 +596,19 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               </div>))}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
-            <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:C.t3,marginRight:2,fontFamily:FD}}>RIR</span>
+            <span style={{fontSize:10,fontWeight:700,color:C.t3,marginRight:2,fontFamily:FD}}>RIR</span>
             {[0,1,2,3].map(v=>{const on=String(cs.rir)===String(v);return(<button key={v} onClick={()=>uS(curEi,curSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:6,border:`1px solid ${on?C.p:C.bd}`,background:on?C.p:C.cd,color:on?C.oa:C.t,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:FD}}>{v}</button>);})}
           </div>
           <div style={{fontSize:12,lineHeight:1.5,color:C.t2,marginTop:10,borderTop:`1px dashed ${C.bl}`,paddingTop:9}}>{dispCue}</div>
         </X>)}
-        {wkEx&&cs&&(<button type="button" onClick={()=>dS(curEi,curSi,ex?.rest)} style={{border:"none",background:C.p,color:C.oa,borderRadius:10,padding:"18px 20px",fontSize:20,fontWeight:800,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.1em",cursor:"pointer",width:"100%",boxShadow:"var(--accent-glow)",minHeight:60}}>Log set · {cs.weight||0} × {cs.reps||0}</button>)}
+        {wkEx&&cs&&(<button type="button" onClick={()=>dS(curEi,curSi,ex?.rest)} style={{border:"none",background:C.p,color:C.oa,borderRadius:10,padding:"18px 20px",fontSize:20,fontWeight:800,fontFamily:FD,cursor:"pointer",width:"100%",boxShadow:"var(--accent-glow)",minHeight:60}}>Log set · {cs.weight||0} × {cs.reps||0}</button>)}
         {wkEx&&cs&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <B full outline onClick={()=>skipSets(curEi,curSi)} color={C.t3}>Skip this set</B>
           <B full outline onClick={()=>skipSets(curEi,'all')} color={C.t3}>Skip exercise</B>
         </div>)}
-        {anyLogged&&<button type="button" onClick={undoLastSet} style={{background:"transparent",border:"none",fontSize:12,color:C.t3,fontWeight:700,textAlign:"center",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:FD,letterSpacing:"0.08em",textTransform:"uppercase"}}>Undo last set</button>}
+        {anyLogged&&<button type="button" onClick={undoLastSet} style={{background:"transparent",border:"none",fontSize:12,color:C.t3,fontWeight:700,textAlign:"center",cursor:"pointer",padding:"8px 0",minHeight:36,fontFamily:FD}}>Undo last set</button>}
         <div>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",color:C.t3,marginBottom:6,fontFamily:FD}}>UP NEXT</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,marginBottom:6,fontFamily:FD}}>Up next</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {upNext.map(u=>(<div key={u.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:8,padding:"9px 12px"}}>
               <span style={{fontSize:13,fontWeight:600,color:C.t2}}>{u.name}</span>
@@ -617,7 +617,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
             </div>))}
             {skippedEx.map(u=>(<div key={`s${u.k}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px dashed ${C.bd}`,borderRadius:8,padding:"7px 12px",opacity:0.7}}>
               <span style={{fontSize:13,color:C.t3,textDecoration:"line-through"}}>{u.name}</span>
-              <button type="button" onClick={()=>unskipEx(u.k)} style={{border:"none",background:"transparent",color:C.p,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD}}>UNDO SKIP</button>
+              <button type="button" onClick={()=>unskipEx(u.k)} style={{border:"none",background:"transparent",color:C.p,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:FD}}>Undo skip</button>
             </div>))}
             <B full outline onClick={()=>setShowAddEx(true)}>+ Add exercise</B>
           </div>
@@ -727,11 +727,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
       {summary&&(<div>
         <div style={{fontSize:14,fontWeight:700,color:C.t2}}>{summary.name} · {fmt(summary.date)}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
-          {[[summary.dur?`${summary.dur}m`:"○","DURATION"],[String(summary.sets),`SETS · ${summary.exercises} EX`],[summary.volume?summary.volume.toLocaleString():"○","LBS VOLUME"]].map(([v,l])=>(
-            <div key={l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}>{l}</div></div>))}
+          {[[summary.dur?`${summary.dur}m`:"○","Duration"],[String(summary.sets),`SETS · ${summary.exercises} EX`],[summary.volume?summary.volume.toLocaleString():"○","Lbs volume"]].map(([v,l])=>(
+            <div key={l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:8.5,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div></div>))}
         </div>
         {summary.prs.length>0?(<div style={{marginTop:12}}>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",color:C.g,fontFamily:FD}}>NEW RECORDS</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.g,fontFamily:FD}}>New records</div>
           {summary.prs.map(p=>(<div key={p.name} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderTop:`1px solid ${C.bl}`}}>
             <span style={{fontSize:14,fontWeight:700,color:C.t}}>{p.name}</span>
             <span style={{fontSize:13,fontWeight:700,color:C.g,fontFamily:FD}}>{p.weight}×{p.reps} · e1RM {p.e1rm} <span style={{color:C.t3}}>was {p.prev}</span></span>
@@ -745,7 +745,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </Sheet>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div style={{fontSize:17,fontWeight:700,color:C.t}}>Training</div>
-      {!todayLiftDone&&<div style={{fontSize:11,fontWeight:800,color:todaySess?C.p:C.t3,letterSpacing:"0.06em"}}>{todaySess?"Before lift":"Recovery day"}</div>}
+      {!todayLiftDone&&<div style={{fontSize:11,fontWeight:800,color:todaySess?C.p:C.t3}}>{todaySess?"Before lift":"Recovery day"}</div>}
     </div>
 
     <X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
@@ -782,7 +782,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
     </X>
 
     <X style={{padding:10}}>
-      <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Week plan</div>
+      <div style={{fontSize:11,fontWeight:800,color:C.t3,marginBottom:6}}>Week plan</div>
       <div style={{display:"flex",gap:3}}>
         {dks.map(dk=>(<button key={dk} onClick={()=>setSel(dk)} style={{flex:1,padding:"8px 2px",borderRadius:6,
           border:`1px solid ${sel===dk?C.p:C.bd}`,background:sel===dk?C.pl:"transparent",color:sel===dk?C.p:C.t3,
@@ -927,7 +927,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
           const best=Math.max(0,...(wex.sets||[]).filter(saneSet).map(s=>Number(s.weight)||0));
           if(best>0)byWk[wn]=Math.max(byWk[wn]||0,best);});
         const wks=Object.keys(byWk).map(Number).sort((a,b)=>a-b);
-        if(!wks.length)return{name:shortName(ex.name),vals:[],status:"NO LOGS YET",sc:C.t3,stroke:C.t3,pts:"",exp:""};
+        if(!wks.length)return{name:shortName(ex.name),vals:[],status:"No logs yet",sc:C.t3,stroke:C.t3,pts:"",exp:""};
         const vals=wks.map(w=>byWk[w]);
         const inc=ex.inc||5;
         const expVals=wks.map((w,i)=>ex.anchor?vals[0]+inc*(w-wks[0]):vals[0]);
@@ -939,23 +939,23 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         const last=vals[vals.length-1],first=vals[0];
         let trail=1;for(let i=vals.length-1;i>0&&vals[i]<=vals[i-1];i--)trail++;
         let status,sc,stroke;
-        if(vals.length<2){status="LOGGING";sc=C.t3;stroke=C.p;}
+        if(vals.length<2){status="Logging";sc=C.t3;stroke=C.p;}
         else if(last<first&&trail>=3){status=`DOWN · ${trail} WKS`;sc=C.r;stroke=C.r;}
-        else if(last>first){stroke=C.p;sc=C.g;status=ex.anchor?(last>=expVals[expVals.length-1]?`AHEAD · +${inc} NEXT WK`:"ON PACE"):"ON PACE";}
-        else{stroke=C.t2;sc=C.t2;status=`HOLDING · ${trail} WK${trail>1?"S":""}`;}
+        else if(last>first){stroke=C.p;sc=C.g;status=ex.anchor?(last>=expVals[expVals.length-1]?`Ahead · +${inc} NEXT WK`:"On pace"):"On pace";}
+        else{stroke=C.t2;sc=C.t2;status=`Holding · ${trail} WK${trail>1?"S":""}`;}
         return{name:shortName(ex.name),status,sc,stroke,pts,exp,vals};
       });
       if(!rows.some(r=>(r.vals||[]).length>=2))return null;
       return(<X style={{padding:"14px 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",color:C.t3,fontFamily:FD}}>LIFTS VS PROGRAM · WK {nowWk+1}</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Lifts vs program · WK {nowWk+1}</div>
           <div style={{display:"flex",gap:4}}>
-            {["upper","lower"].map(tb=>{const on=liftTab===tb;return(<button key={tb} onClick={()=>setLiftTab(tb)} style={{border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t3,borderRadius:5,padding:"4px 10px",fontSize:10,fontWeight:800,letterSpacing:"0.08em",cursor:"pointer",minHeight:26,fontFamily:FD,textTransform:"uppercase"}}>{tb}</button>);})}
+            {["upper","lower"].map(tb=>{const on=liftTab===tb;return(<button key={tb} onClick={()=>setLiftTab(tb)} style={{border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t3,borderRadius:5,padding:"4px 10px",fontSize:10,fontWeight:800,cursor:"pointer",minHeight:26,fontFamily:FD}}>{tb}</button>);})}
           </div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:10}}>
           {rows.map(r=>(<div key={r.name} style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:58,fontSize:12,fontWeight:800,letterSpacing:"0.04em",color:C.t,fontFamily:FD}}>{r.name}</div>
+            <div style={{width:58,fontSize:12,fontWeight:800,color:C.t,fontFamily:FD}}>{r.name}</div>
             <svg viewBox="0 0 120 26" style={{flex:1,height:26}}>
               {r.exp&&<polyline points={r.exp} fill="none" stroke={C.bd} strokeWidth="1" strokeDasharray="3,3"/>}
               {r.pts&&<polyline points={r.pts} fill="none" stroke={r.stroke} strokeWidth="2" strokeLinecap="round"/>}
@@ -1009,7 +1009,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
         </X>
       </S>)}
       {sel==="wednesday"&&<X style={{padding:10,borderLeft:`4px solid ${C.bd}`}}>
-        <div style={{fontSize:12,fontWeight:850,color:C.v,letterSpacing:"0.06em"}}>Superset day</div>
+        <div style={{fontSize:12,fontWeight:850,color:C.v}}>Superset day</div>
         <div style={{fontSize:12,color:C.t2,marginTop:3,lineHeight:1.4}}>Do A then B back-to-back. Rest only after the B move: 1B 60s, 2B 60s, 3B 45s.</div>
       </X>}
       <S title="Exercises" collapsible defaultOpen={false}>
@@ -1023,10 +1023,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast})=>{
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   <div style={{fontSize:14,fontWeight:600,color:C.t}}>{ex.name}</div>
-                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:8,padding:"1px 5px"}}>ANCHOR</div>}
+                  {ex.anchor&&<div style={{fontSize:10,background:C.pl,color:C.p,fontWeight:700,borderRadius:8,padding:"1px 5px"}}>Anchor</div>}
                 </div>
-                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2,letterSpacing:"0.04em"}}>Superset {ss}</div>}
-                <div style={{fontSize:16,fontWeight:800,color:C.p,fontFamily:FD,letterSpacing:"0.03em",marginTop:2}}>GOAL {rrTxt(ex.rr)} REPS <span style={{fontSize:12,fontWeight:600,color:C.t2,letterSpacing:0}}>· {ex.sets} sets</span></div>
+                {ss&&<div style={{fontSize:11,color:C.v,fontWeight:850,marginTop:2}}>Superset {ss}</div>}
+                <div style={{fontSize:16,fontWeight:800,color:C.p,fontFamily:FD,marginTop:2}}>GOAL {rrTxt(ex.rr)} REPS <span style={{fontSize:12,fontWeight:600,color:C.t2,letterSpacing:0}}>· {ex.sets} sets</span></div>
                 <div style={{fontSize:12,color:C.t3}}>{ex.rest?`Rest ${ex.rest}s after this`:"No rest · go straight to paired move"}</div>
                 <div style={{fontSize:12,color:C.p,marginTop:1}}>{ex.cue}</div>
                 {lastWk&&<div style={{fontSize:11,color:C.t3,marginTop:3}}>

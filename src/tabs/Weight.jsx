@@ -36,7 +36,7 @@ const Weight=({data,setData})=>{
     <WeightTrendCard trend={wTrend} tdee={wtTDEE&&wtTDEE.tdee}/>
 
     {wTrend&&Math.abs(wTrend.rate)>1&&(<X style={{padding:12,borderLeft:`3px solid ${C.bd}`}}>
-      <div style={{fontSize:11,fontWeight:800,color:C.t3,letterSpacing:"0.06em"}}>Cut pace</div>
+      <div style={{fontSize:11,fontWeight:800,color:C.t3}}>Cut pace</div>
       <div style={{fontSize:14,color:C.t,fontWeight:750,marginTop:2}}>{wTrend.direction==="up"?"Gaining":"Losing"} {Math.abs(wTrend.rate).toFixed(1)} lb/wk</div>
       <div style={{fontSize:12,color:C.t2,marginTop:3}}>{wTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
     </X>)}
@@ -60,7 +60,7 @@ const Weight=({data,setData})=>{
         return(
           <X style={{padding:"10px 14px",marginTop:8}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em"}}>Weight + Trend</span>
+              <span style={{fontSize:11,fontWeight:600,color:C.t3}}>Weight + Trend</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontSize:10,color:C.t3}}>· raw</span>
                 <span style={{fontSize:10,color:C.g}}>· trend</span>

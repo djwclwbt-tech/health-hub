@@ -28,7 +28,7 @@ const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
   <button type="button" onClick={onClick} disabled={disabled} style={{
     background:outline?"transparent":(color||C.p),color:outline?(color||C.t):C.oa,
     border:outline?`1px solid ${color||C.bd}`:"none",borderRadius:9,
-    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.05em",
+    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,fontFamily:FD,
     cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":C.sh2,
     width:full?"100%":"auto",minHeight:44,...style,
   }}>{children}</button>
@@ -36,14 +36,14 @@ const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
 const X=({children,style={},...p})=>(
   <div style={{background:C.cd,borderRadius:12,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
 );
-const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em",marginBottom:4}}>{children}</div>;
+const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>{children}</div>;
 const S=({title,children,collapsible,defaultOpen=true})=>{
   // Collapsible sections really collapse (tap to expand) · "buried" surfaces
   // like photos/measurements stay reachable instead of being hidden entirely.
   const [open,setOpen]=useState(!collapsible||defaultOpen);
   return(<div style={{marginTop:6}}>
     <div onClick={collapsible?()=>setOpen(o=>!o):undefined}
-      style={{fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
+      style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6,borderBottom:`1px solid ${C.bl}`,paddingBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
       <span>{title}</span>
       {collapsible&&<span style={{fontSize:10}}>{open?"▴":"▾"}</span>}
     </div>
@@ -59,7 +59,7 @@ const Br=({v,max,color=C.p,h=5})=>(
 const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   if(!data||data.length<2){
     if(!empty)return null;
-    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em",marginBottom:4}}>{label}</div>}
+    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>{label}</div>}
       <div style={{height,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <span style={{fontSize:13,color:C.t3}}>{empty}</span>
       </div></X>);
@@ -72,7 +72,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   return(
     <X style={{padding:"10px 14px"}}>
       {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:600,color:C.t3,letterSpacing:"0.06em"}}>{label}</span>
+        <span style={{fontSize:11,fontWeight:600,color:C.t3}}>{label}</span>
         <span style={{fontSize:13,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
       </div>}
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height}} preserveAspectRatio="none">

@@ -135,7 +135,7 @@ const AnalysisSection=({data})=>{
           {/* Scores */}
           {result.scores&&(
             <X style={{padding:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:10}}>Scores · Last {range}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:10}}>Scores · Last {range}</div>
               {result.scores.overall!=null&&<ScoreBar label="Overall" score={result.scores.overall} color={scoreColor(result.scores.overall)}/>}
               {result.scores.training!=null&&<ScoreBar label="Training" score={result.scores.training} color={scoreColor(result.scores.training)}/>}
               {result.scores.nutrition!=null&&<ScoreBar label="Nutrition" score={result.scores.nutrition} color={scoreColor(result.scores.nutrition)}/>}
@@ -155,7 +155,7 @@ const AnalysisSection=({data})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {result.wins&&result.wins.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.g}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.g,letterSpacing:"0.06em",marginBottom:6}}>Wins</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.g,marginBottom:6}}>Wins</div>
                 {result.wins.map((w,i)=>(
                   <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.gl}`}}>{w}</div>
                 ))}
@@ -163,7 +163,7 @@ const AnalysisSection=({data})=>{
             )}
             {result.gaps&&result.gaps.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.r}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em",marginBottom:6}}>Gaps</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.r,marginBottom:6}}>Gaps</div>
                 {result.gaps.map((g,i)=>(
                   <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
                 ))}
@@ -174,7 +174,7 @@ const AnalysisSection=({data})=>{
           {/* Trends */}
           {result.trends&&result.trends.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Trends</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Trends</div>
               {result.trends.map((t,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.t3,fontWeight:700,minWidth:14}}>→</span>
@@ -187,7 +187,7 @@ const AnalysisSection=({data})=>{
           {/* Correlations */}
           {result.correlations&&result.correlations.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Correlations</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Correlations</div>
               {result.correlations.map((c,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.v,fontWeight:700,minWidth:14}}>↔</span>
@@ -200,7 +200,7 @@ const AnalysisSection=({data})=>{
           {/* Recommendations */}
           {result.recommendations&&result.recommendations.length>0&&(
             <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:6}}>Recommendations</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:6}}>Recommendations</div>
               {result.recommendations.map((r,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
                   <span style={{fontWeight:700,color:C.p}}>{i+1}. </span>{r}
@@ -212,7 +212,7 @@ const AnalysisSection=({data})=>{
           {/* Next Week Focus */}
           {result.nextWeekFocus&&(
             <X style={{padding:12,background:C.pl,border:`1px solid ${C.p}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:4}}>Next Week Focus</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:4}}>Next Week Focus</div>
               <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
             </X>
           )}
@@ -220,7 +220,7 @@ const AnalysisSection=({data})=>{
           {/* Body Composition */}
           {result.bodyComposition&&(
             <X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.v,letterSpacing:"0.06em",marginBottom:6}}>Body Composition</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.v,marginBottom:6}}>Body Composition</div>
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
               {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
               {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}

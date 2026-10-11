@@ -22,7 +22,7 @@ const TabBar=({active,set,hasActiveWorkout})=>(
       }}>
         <span style={{position:"absolute",top:-1,left:"24%",right:"24%",height:2,background:on?C.p:"transparent",borderRadius:2}}/>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on?2.2:1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={TAB_ICONS[t.id]}/></svg>
-        <span style={{fontSize:11,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:800}}>{t.l}</span>
+        <span style={{fontSize:11,fontFamily:FD,fontWeight:800}}>{t.l}</span>
         {t.id==="training"&&hasActiveWorkout&&!on&&(
           <span style={{position:"absolute",top:7,right:"50%",marginRight:-20,width:9,height:9,borderRadius:5,background:C.g,border:`2px solid ${C.cd}`}}/>
         )}
@@ -53,7 +53,7 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
         <span style={{color:"var(--on-accent-dim)",fontSize:12,fontWeight:700,fontFamily:FD,whiteSpace:"nowrap"}}>{done}/{total} SETS</span>
       </div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-        {restLeft>0&&<span style={{color:C.oa,fontSize:12,fontWeight:800,fontFamily:FD,letterSpacing:"0.06em"}}>REST {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
+        {restLeft>0&&<span style={{color:C.oa,fontSize:12,fontWeight:800,fontFamily:FD}}>REST {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
         <span style={{color:C.oa,fontSize:20,fontWeight:700,fontFamily:FD,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
       </div>
     </div>

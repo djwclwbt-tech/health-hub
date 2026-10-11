@@ -147,17 +147,17 @@ const Nutrition=({data,setData})=>{
         <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE · click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.r:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
       </div>
     </div>
-    {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4,letterSpacing:"0.04em"}}>Excluded from TDEE</div>}
+    {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4}}>Excluded from TDEE</div>}
 
     {(()=>{const dn=DINNERS[dw(viewDate)];if(!dn)return null;return(<X style={{padding:14}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>TONIGHT · {dn.name.toUpperCase()}</div>
-        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.04em",fontFamily:FD}}>{dn.tag}</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>Tonight · {dn.name.toUpperCase()}</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>{dn.tag}</div>
       </div>
       <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.4}}>{dn.how}</div>
       <div style={{display:"flex",gap:7,marginTop:9}}>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}>YOUR PLATE</div></div>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}>DANIELLE</div></div>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>Your plate</div></div>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>Danielle</div></div>
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:7}}>Saved as a Cronometer recipe. Logging it takes two taps there.</div>
     </X>);})()}
@@ -184,7 +184,7 @@ const Nutrition=({data,setData})=>{
     <S title={`Week view · ${weekRemaining>=0?`${weekRemaining.toLocaleString()} cal left`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}`} collapsible defaultOpen={false}>
       <X style={{padding:10,marginBottom:4}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-          <span style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Week Total</span>
+          <span style={{fontSize:11,fontWeight:700,color:C.t3}}>Week Total</span>
           <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.r}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
         </div>
         <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.r:C.p} h={4}/>

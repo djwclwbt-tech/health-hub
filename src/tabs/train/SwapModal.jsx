@@ -18,7 +18,7 @@ const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
           cursor:"pointer",fontFamily:"inherit"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}>
             <div style={{fontSize:14,fontWeight:700,color:C.t}}>{opt.name}</div>
-            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:C.cd,borderRadius:8,padding:"2px 6px"}}>BEST FIT</span>}
+            {idx===0&&<span style={{fontSize:10,fontWeight:800,color:C.p,background:C.cd,borderRadius:8,padding:"2px 6px"}}>Best fit</span>}
           </div>
           <div style={{fontSize:12,color:hasHistory?C.p:C.t3,marginTop:2}}>
             {hasHistory?`This slot: ${lw} ${opt.unit}`:opt.sw>0?`Start: ${opt.sw} ${opt.unit}`:"Bodyweight"} · {opt.region}

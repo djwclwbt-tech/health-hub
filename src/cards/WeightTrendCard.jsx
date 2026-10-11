@@ -16,11 +16,11 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   const dLbl=ds=>new Date(ds+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase();
   const dteEnd=(new Date(PROG.end+"T12:00:00")-new Date(td()+"T12:00:00"))/864e5;
   const wtEnd=rate<-0.05&&dteEnd>0?Math.max(goal,+(cur+rate*(dteEnd/7)).toFixed(1)):null;
-  const st=rate>=0.1?{txt:`OFF PACE · +${rate.toFixed(1)} LB/WK`,c:C.r}
+  const st=rate>=0.1?{txt:`Off pace · +${rate.toFixed(1)} LB/WK`,c:C.r}
     :rate<=-2?{txt:`FAST · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.t2}
-    :rate<=-0.6?{txt:`ON PACE · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.g}
+    :rate<=-0.6?{txt:`On pace · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.g}
     :rate<=-0.1?{txt:`SLOW · −${Math.abs(rate).toFixed(1)} LB/WK`,c:C.t2}
-    :{txt:"HOLDING",c:C.t2};
+    :{txt:"Holding",c:C.t2};
   const yr=+td().slice(0,4);
   const dayOf=md=>{let d=new Date(`${yr}-${md}T12:00:00`);if(d-new Date(td()+"T12:00:00")>1728e5)d=new Date(`${yr-1}-${md}T12:00:00`);return d;};
   const d0=dayOf(pts[0].d),dx=p=>(dayOf(p.d)-d0)/864e5,lastX=dx(lastP);
@@ -41,8 +41,8 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   return(
     <X style={{padding:"12px 14px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-        <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>CUT TRAJECTORY · WK {wkNum}/{PROG.weeks}</div>
-        <div style={{fontSize:12,fontWeight:700,color:compact?st.c:(wtEnd!=null?(wtEnd<=goal+0.75?C.g:C.t2):st.c),fontFamily:FD,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{compact?st.txt:(wtEnd!=null?`PROJECTED ${wtEnd.toFixed(1)} BY ${dLbl(PROG.end)}`:st.txt)}</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>Cut trajectory · WK {wkNum}/{PROG.weeks}</div>
+        <div style={{fontSize:12,fontWeight:700,color:compact?st.c:(wtEnd!=null?(wtEnd<=goal+0.75?C.g:C.t2):st.c),fontFamily:FD,whiteSpace:"nowrap"}}>{compact?st.txt:(wtEnd!=null?`PROJECTED ${wtEnd.toFixed(1)} BY ${dLbl(PROG.end)}`:st.txt)}</div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,marginTop:8,display:"block"}}>
         <line x1="0" y1={gy(goal)} x2={W} y2={gy(goal)} stroke={C.g} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.7"/>
@@ -58,13 +58,13 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
         <rect x={tagX} y={tagY} width={tagW} height="16" rx="3" fill={C.t}/>
         <text x={tagX+tagW/2} y={tagY+11.5} textAnchor="middle" fontFamily={FD} fontSize="10" fontWeight="800" fill={C.oa}>{compact?`${cur.toFixed(1)} TODAY`:`${cur.toFixed(1)} · ${delta>=0?"−":"+"}${Math.abs(delta).toFixed(1)}`}</text>
       </svg>
-      {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>CHECKPOINT {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · GOAL {goal}</span></div>}
-      {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD,letterSpacing:"0.04em"}}><span>{rate>0?"+":""}{rate.toFixed(1)} LB/WK</span><span>{toGo.toFixed(1)} LBS TO {goal}</span><span>GOAL BY {projLabel}</span></div>}
+      {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>CHECKPOINT {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · GOAL {goal}</span></div>}
+      {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD}}><span>{rate>0?"+":""}{rate.toFixed(1)} LB/WK</span><span>{toGo.toFixed(1)} LBS TO {goal}</span><span>GOAL BY {projLabel}</span></div>}
       {!compact&&<div style={{display:"flex",gap:7,marginTop:10}}>
-        {[[rate.toFixed(1),"LB/WK PACE"],[toGo.toFixed(1),"LBS TO GO"],[`${trend.weighIns7}/7`,"WEIGH-INS"],tdee?[Math.round(tdee).toLocaleString(),"TDEE EST"]:[projLabel,"GOAL BY"]].map(([v,l])=>(
+        {[[rate.toFixed(1),"Lb/wk pace"],[toGo.toFixed(1),"Lbs to go"],[`${trend.weighIns7}/7`,"Weigh-ins"],tdee?[Math.round(tdee).toLocaleString(),"TDEE est"]:[projLabel,"Goal by"]].map(([v,l])=>(
           <div key={l} style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
             <div style={{fontSize:18,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div>
+            <div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div>
           </div>))}
       </div>}
     </X>

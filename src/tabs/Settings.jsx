@@ -34,11 +34,11 @@ const Settings=({data,setData,syncFailures={}})=>{
     const daysAgo=d=>d?Math.round((new Date(t+"T12:00:00")-new Date(d+"T12:00:00"))/864e5):null;
     const pushOn=typeof Notification!=="undefined"&&Notification.permission==="granted"&&(data.settings.notifications||{}).enabled;
     return[
-      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"NO DATA"},
-      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"NO DATA"},
-      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"NO DATA"},
-      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} DROPPED, RETRYING`:"ALL WRITES OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0].toUpperCase()} · MIGRATION`},
-      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"REST TIMERS ON":"OFF"},
+      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"No data"},
+      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"No data"},
+      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"No data"},
+      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} DROPPED, RETRYING`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0].toUpperCase()} · MIGRATION`},
+      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"OFF"},
     ];
   })();
 
@@ -68,7 +68,7 @@ const Settings=({data,setData,syncFailures={}})=>{
   };
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-      <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Setup</div>
+      <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,lineHeight:1}}>Setup</div>
       <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
         style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
         <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
@@ -76,19 +76,19 @@ const Settings=({data,setData,syncFailures={}})=>{
       </div>
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TARGETS & DAY TYPES</div>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Targets & day types</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
-        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"TRAIN CAL"},{v:`${f.protein||200}g`,l:"PROTEIN"},{v:f.water||128,l:"WATER OZ"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"STEPS"},{v:"0",l:"WED FAST",ember:true},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"SAT/SUN"}].map(x=>(
+        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"Train cal"},{v:`${f.protein||200}g`,l:"Protein"},{v:f.water||128,l:"Water oz"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"Steps"},{v:"0",l:"Wed fast",ember:true},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"Sat/Sun"}].map(x=>(
           <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:x.ember?C.pl:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
             <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:x.ember?C.p:C.t}}>{x.v}</div>
-            <div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.06em",fontFamily:FD,color:x.ember?C.p:C.t3}}>{x.l}</div>
+            <div style={{fontSize:8.5,fontWeight:700,fontFamily:FD,color:x.ember?C.p:C.t3}}>{x.l}</div>
           </button>))}
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
     </X>
     <div onClick={()=>setShowProgress(true)} style={{background:C.cd,border:`1px solid ${C.p}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
       <div>
-        <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>PROGRESS</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>Progress</div>
         <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:3}}>Photos · measurements · weekly AI analysis</div>
         <div style={{fontSize:11.5,color:C.t3,marginTop:2}}>{lastPhotoLine}</div>
       </div>
@@ -317,7 +317,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       <div style={{fontSize:12,color:C.t3}}>~{PROG.startWeight} → under {PROG.targetWeight} lbs · Checkpoint week {PROG.checkpoint.week} ({fmt(PROG.checkpoint.date)})</div>
     </X>
 
-    <div style={{textAlign:"center",padding:"12px 0",fontSize:11,color:C.t3,opacity:0.6,fontFamily:FD,letterSpacing:"0.06em"}}>HEALTH HUB · BUILD {APP_VERSION}{isStandalone()?" · INSTALLED":""}</div>
+    <div style={{textAlign:"center",padding:"12px 0",fontSize:11,color:C.t3,opacity:0.6,fontFamily:FD}}>Health Hub · BUILD {APP_VERSION}{isStandalone()?" · INSTALLED":""}</div>
   </div>);
 };
 

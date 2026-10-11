@@ -3,8 +3,8 @@
   "short_name": "Health Hub",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F4F2EF",
-  "theme_color": "#F4F2EF",
+  "background_color": "#F5F6F7",
+  "theme_color": "#F5F6F7",
   "icons": [
     {
       "src": "icon-192.png",

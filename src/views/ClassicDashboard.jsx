@@ -120,7 +120,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       </div>
 
       <X style={{padding:16,borderLeft:`4px solid ${cutStatus.color}`}}>
-        <div style={{fontSize:11,fontWeight:800,color:cutStatus.color,letterSpacing:"0.08em",marginBottom:4}}>{cutStatus.label}</div>
+        <div style={{fontSize:11,fontWeight:800,color:cutStatus.color,marginBottom:4}}>{cutStatus.label}</div>
         <div style={{fontSize:15,fontWeight:700,color:C.t,lineHeight:1.35}}>{cutStatus.msg}</div>
         <button onClick={()=>setTab(nextAction.tab)} style={{marginTop:12,width:"100%",border:"none",borderRadius:8,background:C.p,color:C.oa,padding:"13px 16px",fontSize:15,fontWeight:800,fontFamily:"inherit",boxShadow:C.sh,cursor:"pointer"}}>{nextAction.label}</button>
         <div style={{fontSize:12,color:C.t3,marginTop:6,textAlign:"center"}}>{nextAction.hint}</div>
@@ -149,7 +149,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         </div>
         <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={7}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:9}}>
-          {WATER_PRESETS.map(b=><button type="button" key={b.oz} onClick={()=>{haptic();addWater(b.oz);}} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:60,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:22,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,marginTop:3}}>{b.l}</span></button>)}
+          {WATER_PRESETS.map(b=><button type="button" key={b.oz} onClick={()=>{haptic();addWater(b.oz);}} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:60,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:22,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,color:C.t3,marginTop:3}}>{b.l}</span></button>)}
         </div>
       </X>
 
@@ -179,8 +179,8 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
             {sc!=null&&<div style={{fontSize:22,fontWeight:800,color:col,fontFamily:FD}}>{sc}%</div>}
           </div>
           <div style={{display:"flex",gap:16,marginTop:4}}>
-            {[["HRV",r.hrv?`${Math.round(r.hrv)}ms`:null],["RHR",r.rhr?`${Math.round(r.rhr)}`:null],["SLEEP",r.sleepHours?`${(+r.sleepHours).toFixed(1)}h`:null]].filter(x=>x[1]).map(([l,v])=>(
-              <div key={l}><span style={{fontSize:16,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</span> <span style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD,letterSpacing:"0.06em"}}>{l}</span></div>))}
+            {[["HRV",r.hrv?`${Math.round(r.hrv)}ms`:null],["RHR",r.rhr?`${Math.round(r.rhr)}`:null],["Sleep",r.sleepHours?`${(+r.sleepHours).toFixed(1)}h`:null]].filter(x=>x[1]).map(([l,v])=>(
+              <div key={l}><span style={{fontSize:16,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</span> <span style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</span></div>))}
           </div>
         </X>);})()}
 
@@ -253,7 +253,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       <X style={{borderLeft:`3px solid ${C.bd}`,padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:600,color:C.p,letterSpacing:"0.06em"}}>Today</div>
+            <div style={{fontSize:11,fontWeight:600,color:C.p}}>Today</div>
             <div style={{fontSize:16,fontWeight:700,color:C.t,marginTop:1}}>{sess?sess.name:"Rest Day"}</div>
             {sess&&<div style={{fontSize:13,color:C.t2}}>{sess.focus} · {sess.exercises.length} ex · ~{estTime(sess)}m</div>}
           </div>
@@ -265,7 +265,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       {/* ═══ MORNING GAME PLAN ═══ */}
       {mealSlots>0&&proRemaining>0&&(
         <X style={{borderLeft:`3px solid ${C.bd}`,padding:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.p,letterSpacing:"0.06em",marginBottom:6}}>Game Plan</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:6}}>Game Plan</div>
           <div style={{fontSize:13,color:C.t,marginBottom:8}}>
             <span style={{fontWeight:700}}>{proRemaining}g protein</span> remaining across <span style={{fontWeight:700}}>{mealSlots} meal{mealSlots!==1?"s":""}</span>
             {calRemaining>0&&<span style={{color:C.t2}}> / {calRemaining} cal left</span>}
@@ -286,7 +286,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
           </div>
           {topProMeals.length>0&&(
             <div style={{marginTop:8,paddingTop:6,borderTop:`1px solid ${C.bl}`}}>
-              <div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>HIGH-PROTEIN FROM YOUR HISTORY</div>
+              <div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>High-protein from your history</div>
               {topProMeals.slice(0,3).map((m,i)=>(
                 <div key={i} style={{fontSize:12,color:C.t2,padding:"2px 0"}}>
                   {m.desc} · <span style={{fontWeight:600,color:C.g}}>{m.pro}g pro</span>, {m.cal} cal
@@ -305,7 +305,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       {/* ═══ AUTOREGULATION CARD ═══ */}
       {autoreg&&(<X style={{padding:10,borderLeft:`3px solid ${autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.bd:C.r}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <div style={{fontSize:11,fontWeight:700,color:autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.t2:C.r,letterSpacing:"0.06em"}}>
+          <div style={{fontSize:11,fontWeight:700,color:autoreg.level==="green"?C.g:autoreg.level==="yellow"?C.t2:C.r}}>
             Recovery Gate {weeklyRecAvg!=null?`· ${weeklyRecAvg}% avg`:""}
           </div>
         </div>
@@ -316,7 +316,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
 
       {/* ═══ WEIGHT TREND ALERT ═══ */}
       {weightTrend&&Math.abs(weightTrend.rate)>1&&(<X style={{padding:10,borderLeft:`3px solid ${C.bd}`}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.r,letterSpacing:"0.06em"}}>Weight Alert · {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.r}}>Weight Alert · {weightTrend.direction==="up"?"gaining":"losing"} {Math.abs(weightTrend.rate).toFixed(1)} lb/wk</div>
         <div style={{fontSize:12,color:C.t2,marginTop:2}}>{weightTrend.rate>0?"Pull back weekend portions slightly. You are in surplus.":"Add 200 cal to training days from carbs. You are cutting; protect performance."}</div>
       </X>)}
 
@@ -336,7 +336,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         };
         return(<X style={{padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:swActive?C.p:C.t3,letterSpacing:"0.06em"}}>Social Weekend</div>
+            <div style={{fontSize:11,fontWeight:700,color:swActive?C.p:C.t3}}>Social Weekend</div>
             {swActive&&<div style={{fontSize:10,color:C.t2}}>Mon-Thu targets lowered · ~1.5 lbs this week</div>}
           </div>
           <button onClick={toggleSW} style={{background:swActive?C.p:C.bl,color:swActive?C.oa:C.t2,border:`1px solid ${swActive?C.p:C.bd}`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{swActive?"Active":"Off"}</button>
@@ -476,7 +476,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
 
       {/* ═══ PROTEIN CHECKPOINTS ═══ */}
       {dayType==="training"&&(<X style={{padding:10}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Protein Checkpoints</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Protein Checkpoints</div>
         {PROTEIN_CHECKPOINTS.map((cp,i)=>{
           const hit=tPro>=cp.target;
           return(<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
@@ -519,7 +519,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         <X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Cut Retention Score</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3}}>Cut Retention Score</div>
               <div style={{fontSize:10,color:C.t3}}>Cut pace + protein + lift retention</div>
             </div>
             <div style={{fontSize:28,fontWeight:800,color:retention.score>=70?C.g:retention.score>=45?C.t2:C.r}}>{retention.score}</div>
@@ -555,7 +555,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
         return(
           <X style={{padding:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em"}}>Body Measurements</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t3}}>Body Measurements</div>
               <button onClick={()=>setShowMeasForm(!showMeasForm)} style={{background:C.pl,border:`1px solid ${C.p}`,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,color:C.p,cursor:"pointer",fontFamily:"inherit"}}>Log</button>
             </div>
             {showMeasForm&&(
@@ -597,7 +597,7 @@ const Dashboard=({data,setData,setTab,allergies,allergyErr})=>{
       {/* ═══ DATA INSIGHTS ═══ */}
       {dataInsights.length>0&&(
         <X style={{padding:10}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",marginBottom:6}}>Insights</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Insights</div>
           {dataInsights.map((ins,i)=>(
             <div key={i} style={{display:"flex",gap:6,alignItems:"flex-start",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
               <span style={{fontSize:12,color:ins.type==="win"?C.g:ins.type==="gap"?C.t2:C.p,fontWeight:700,minWidth:14}}>

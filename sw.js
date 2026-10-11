@@ -5,11 +5,10 @@
 //                              spots still open instantly from the last copy).
 //   /vendor, /fonts, icons   → cache-first (stable files, revalidated in background).
 //   everything else          → network only (Supabase, /api).
-const CACHE = 'health-hub-shell-v3';
+const CACHE = 'health-hub-shell-v4';
 const SHELL = ['/', '/index.html', '/app.js', '/manifest.json', '/icon-192.png', '/icon-512.png',
   '/vendor/react.production.min.js', '/vendor/react-dom.production.min.js',
-  '/fonts/Barlow-400.woff2', '/fonts/Barlow-500.woff2', '/fonts/Barlow-600.woff2', '/fonts/Barlow-700.woff2', '/fonts/Barlow-800.woff2', '/fonts/Barlow-600i.woff2',
-  '/fonts/BarlowCondensed-500.woff2', '/fonts/BarlowCondensed-600.woff2', '/fonts/BarlowCondensed-700.woff2', '/fonts/BarlowCondensed-800.woff2'];
+  '/fonts/LibreFranklin-400.woff2', '/fonts/LibreFranklin-500.woff2', '/fonts/LibreFranklin-600.woff2'];
 const NETWORK_FIRST = new Set(['/', '/index.html', '/app.js']);
 const NET_TIMEOUT_MS = 2500;
 

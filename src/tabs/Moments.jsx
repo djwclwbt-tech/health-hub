@@ -62,38 +62,38 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     const el=Math.max(0,fastNow-start);
     const hrs=Math.floor(el/3600000),mins=Math.floor((el%3600000)/60000);
     const pct=Math.min(100,Math.round(el/(36*3600000)*100));
-    const LY=[{k:"na",l:"SODIUM",target:5000},{k:"k",l:"POTASSIUM",target:3500},{k:"mg",l:"MAGNESIUM",target:400}];
+    const LY=[{k:"na",l:"Sodium",target:5000},{k:"k",l:"Potassium",target:3500},{k:"mg",l:"Magnesium",target:400}];
     return(<X style={{padding:16}}>
       <div style={{textAlign:"center"}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>FASTED FOR</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Fasted for</div>
         <div style={{fontSize:52,fontWeight:800,color:C.p,fontFamily:FD,lineHeight:1.05,fontVariantNumeric:"tabular-nums"}}>{hrs}:{String(mins).padStart(2,"0")}</div>
         <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:2}}>Tue dinner to Thu breakfast. 36 hours, zero calories.</div>
         <div style={{height:6,borderRadius:3,background:C.bl,overflow:"hidden",marginTop:10}}><div style={{height:"100%",background:C.p,width:`${pct}%`}}/></div>
         <div style={{display:"flex",gap:5,marginTop:8}}>
-          {[{h:12,l:"KETOSIS"},{h:16,l:"DEEP FAST"},{h:24,l:"FULL DAY"},{h:36,l:"REFEED"}].map(m=>{const hit=hrs>=m.h;return(<div key={m.h} style={{flex:1,borderRadius:6,padding:"6px 2px",background:hit?C.gl:C.bg,border:`1px solid ${hit?C.g:C.bd}`}}>
+          {[{h:12,l:"Ketosis"},{h:16,l:"Deep fast"},{h:24,l:"Full day"},{h:36,l:"Refeed"}].map(m=>{const hit=hrs>=m.h;return(<div key={m.h} style={{flex:1,borderRadius:6,padding:"6px 2px",background:hit?C.gl:C.bg,border:`1px solid ${hit?C.g:C.bd}`}}>
             <div style={{fontSize:13,fontWeight:800,color:hit?C.g:C.t3,fontFamily:FD}}>{m.h}h</div>
-            <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.05em",color:hit?C.g:C.t3,fontFamily:FD}}>{m.l}</div>
+            <div style={{fontSize:8,fontWeight:700,color:hit?C.g:C.t3,fontFamily:FD}}>{m.l}</div>
           </div>);})}
         </div>
       </div>
       <div style={{marginTop:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>ELECTROLYTES</div>
-          <div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD,letterSpacing:"0.04em"}}>ZERO CALORIES, SO SALT IS THE JOB</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Electrolytes</div>
+          <div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>ZERO CALORIES, SO SALT IS THE JOB</div>
         </div>
         {LY.map(x=>{const v=ly[x.k]||0;const full=v>=x.target;return(<div key={x.k} style={{marginTop:7}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,color:C.t2,marginBottom:3}}><span style={{fontFamily:FD,letterSpacing:"0.06em"}}>{x.l}</span><span style={{color:full?C.g:C.t,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{v.toLocaleString()} / {x.target.toLocaleString()} mg</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700,color:C.t2,marginBottom:3}}><span style={{fontFamily:FD}}>{x.l}</span><span style={{color:full?C.g:C.t,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{v.toLocaleString()} / {x.target.toLocaleString()} mg</span></div>
           <Br v={v} max={x.target} color={full?C.g:C.p} h={6}/>
         </div>);})}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:10}}>
-          <button onClick={()=>addLyte(810,400,50)} style={lyBtn}>RE-LYTE<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>810 · 400 · 50</span></button>
+          <button onClick={()=>addLyte(810,400,50)} style={lyBtn}>Re-Lyte<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>810 · 400 · 50</span></button>
           <button onClick={()=>addLyte(1150,0,0)} style={lyBtn}>½ TSP SALT<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>+1150 SODIUM</span></button>
           <button onClick={()=>addLyte(0,0,120)} style={lyBtn}>MG GLYC.<br/><span style={{fontSize:9,color:C.t3,fontWeight:700}}>+120 MAGNESIUM</span></button>
         </div>
       </div>
     </X>);})():null;
   const ModeChip=({m})=>(
-    <button onClick={()=>setOverride(m===mode?null:m)} style={{border:"none",borderBottom:`2px solid ${m===mode?C.p:"transparent"}`,background:"transparent",color:m===mode?C.t:C.t3,padding:"5px 8px",fontSize:11,fontWeight:700,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>{MODE_LABELS[m]}</button>
+    <button onClick={()=>setOverride(m===mode?null:m)} style={{border:"none",borderBottom:`2px solid ${m===mode?C.p:"transparent"}`,background:"transparent",color:m===mode?C.t:C.t3,padding:"5px 8px",fontSize:11,fontWeight:700,fontFamily:FD,cursor:"pointer"}}>{MODE_LABELS[m]}</button>
   );
   const header=(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
@@ -141,13 +141,13 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
           const mob=autoreg.score<40;
           return(
           <div style={{marginTop:10,padding:16,borderRadius:12,background:C.cd,border:`1px solid ${C.p}`,boxShadow:C.sh2}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>{mob?"RECOVERY UNDER 40 · PROPOSAL":"RECOVERY UNDER 60 · PROPOSAL"}</div>
+            <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>{mob?"Recovery under 40 · proposal":"Recovery under 60 · proposal"}</div>
             {mob?(<React.Fragment>
               <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Swap today's session for the 12 minute mobility routine and a walk.</div>
               <div style={{fontSize:11.5,color:C.t3,marginTop:4,lineHeight:1.5}}>Recovery is deep in the red. Lifting waits one day. The program is untouched.</div>
               <div style={{display:"flex",gap:8,marginTop:12}}>
-                <button onClick={()=>decideAutoreg("mobilitySwap")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the swap</button>
-                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
+                <button onClick={()=>decideAutoreg("mobilitySwap")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,cursor:"pointer"}}>Take the swap</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,cursor:"pointer"}}>As written</button>
               </div>
             </React.Fragment>):(<React.Fragment>
               <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.5}}>Drop 1 set from each accessory{names?`: ${names}`:""}.{anchors.length?` ${anchors.map(e=>shortLiftName(e.name)).join(" and ")} stays as written.`:""}</div>
@@ -155,13 +155,13 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
               {accs.length>0&&<div style={{display:"flex",flexDirection:"column",gap:5,marginTop:10}}>
                 {(sess?.exercises||[]).map(e=>{const rr=e.rr||[8,12];return(
                   <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,background:C.bg,borderRadius:8,padding:"8px 10px"}}>
-                    <span style={{fontSize:12.5,fontWeight:600,color:C.t}}>{e.name}{e.anchor?<span style={{fontSize:9,fontWeight:800,fontFamily:FD,background:C.t,color:C.cd,borderRadius:3,padding:"2px 5px",marginLeft:5}}>ANCHOR</span>:null}</span>
+                    <span style={{fontSize:12.5,fontWeight:600,color:C.t}}>{e.name}{e.anchor?<span style={{fontSize:9,fontWeight:800,fontFamily:FD,background:C.t,color:C.cd,borderRadius:3,padding:"2px 5px",marginLeft:5}}>Anchor</span>:null}</span>
                     <span style={{fontSize:12,fontWeight:700,fontFamily:FD,color:C.t3,whiteSpace:"nowrap"}}>{e.anchor?`${e.sets} × ${rr[0]}${rr[1]>rr[0]?"-"+rr[1]:""}`:<React.Fragment><s style={{opacity:0.5}}>{e.sets}</s> {e.sets-1} × {rr[0]}{rr[1]>rr[0]?"-"+rr[1]:""}</React.Fragment>}</span>
                   </div>);})}
               </div>}
               <div style={{display:"flex",gap:8,marginTop:12}}>
-                <button onClick={()=>decideAutoreg("minusOneSet")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>Take the cut</button>
-                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer"}}>As written</button>
+                <button onClick={()=>decideAutoreg("minusOneSet")} style={{flex:1,minHeight:48,border:"none",background:C.p,color:C.oa,borderRadius:9,fontFamily:FD,fontSize:15,fontWeight:800,cursor:"pointer"}}>Take the cut</button>
+                <button onClick={()=>decideAutoreg("dismissed")} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,background:C.cd,color:C.t3,borderRadius:9,fontFamily:FD,fontSize:14,fontWeight:700,cursor:"pointer"}}>As written</button>
               </div>
             </React.Fragment>)}
           </div>);})()}
@@ -186,7 +186,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
         <X style={{padding:16}}><div style={{fontSize:14,fontWeight:700,color:C.t}}>Rest day · no lift scheduled.</div>
         <B full outline style={{marginTop:10}} onClick={()=>setTab("training")}>Open Train anyway</B></X>
       )}
-      <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",minHeight:40}}>Full dashboard</button>
+      <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,minHeight:40}}>Full dashboard</button>
     </div>);
   }
 
@@ -233,32 +233,32 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
     {fastCard}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
         <div>
-          <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Close the day</div>
+          <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,lineHeight:1}}>Close the day</div>
           <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:3}}>{fmt(t)}{stretchDone?" · stretch done ✓":""}</div>
         </div>
-        {streak>0&&<div style={{textAlign:"right"}}><div style={{fontSize:22,fontWeight:800,color:C.g,fontFamily:FD,lineHeight:1}}>{streak}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",color:C.t3,fontFamily:FD}}>CLEAN-DAY STREAK</div></div>}
+        {streak>0&&<div style={{textAlign:"right"}}><div style={{fontSize:22,fontWeight:800,color:C.g,fontFamily:FD,lineHeight:1}}>{streak}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>Clean-day streak</div></div>}
       </div>
       <X style={{padding:16,boxShadow:C.sh2}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>CLEAN DAY · {held}/7</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Clean day · {held}/7</div>
           <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>tap what held</div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginTop:11}}>
           {SYSTEM_HABITS.map(x=>{const on=h[x.field]===x.target;return(
-            <button key={x.field} onClick={()=>toggleHabit(x)} style={{minHeight:44,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t3,fontFamily:FD,fontSize:13,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":"○"}</span></button>
+            <button key={x.field} onClick={()=>toggleHabit(x)} style={{minHeight:44,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t3,fontFamily:FD,fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":"○"}</span></button>
           );})}
         </div>
-        <button onClick={closeDay} disabled={closed||held<6} style={{marginTop:12,width:"100%",border:"none",background:closed?C.g:held>=6?C.p:C.bl,color:closed||held>=6?C.oa:C.t3,borderRadius:9,padding:15,fontFamily:FD,fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.08em",cursor:closed||held<6?"default":"pointer"}}>{closed?"Day closed ✓":held>=6?"Close the day":`${held}/7 · tap what held`}</button>
+        <button onClick={closeDay} disabled={closed||held<6} style={{marginTop:12,width:"100%",border:"none",background:closed?C.g:held>=6?C.p:C.bl,color:closed||held>=6?C.oa:C.t3,borderRadius:9,padding:15,fontFamily:FD,fontSize:16,fontWeight:800,cursor:closed||held<6?"default":"pointer"}}>{closed?"Day closed ✓":held>=6?"Close the day":`${held}/7 · tap what held`}</button>
       </X>
       <X style={{padding:16}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TONIGHT'S NUMBERS</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>TONIGHT'S NUMBERS</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
-          {[{v:stepsNow?`${(stepsNow/1000).toFixed(1)}k`:"○",l:"STEPS",ok:stepsNow>=stepsTarget},
+          {[{v:stepsNow?`${(stepsNow/1000).toFixed(1)}k`:"○",l:"Steps",ok:stepsNow>=stepsTarget},
             {v:calNow?calNow.toLocaleString():"○",l:"CAL",ok:calNow>0&&(calTarget==null||calNow<=calTarget)},
-            {v:proNow?`${proNow}g`:"○",l:"PROTEIN",ok:proNow>=proTarget}].map(x=>(
+            {v:proNow?`${proNow}g`:"○",l:"Protein",ok:proNow>=proTarget}].map(x=>(
             <div key={x.l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
               <div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{x.v}</div>
-              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:x.ok?C.g:C.t3,fontFamily:FD}}>{x.l}{x.ok?" ✓":""}</div>
+              <div style={{fontSize:9,fontWeight:700,color:x.ok?C.g:C.t3,fontFamily:FD}}>{x.l}{x.ok?" ✓":""}</div>
             </div>))}
         </div>
         <div style={{fontSize:11.5,color:C.t3,marginTop:9}}>Cronometer and HAE fill these overnight. Type only what is missing.</div>
@@ -266,19 +266,19 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
       </X>
       <X style={{padding:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>RECOVERY · OURA</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Recovery · Oura</div>
           {recStale&&lastRec?<div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>LAST WORN {fmt(lastRec[0]).toUpperCase()}</div>:null}
         </div>
         {rv?(<React.Fragment>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:7,marginTop:10,opacity:recStale?0.55:1}}>
-            {[[rv.recoveryScore!=null?`${rv.recoveryScore}%`:"○","RECOVERY"],[rv.hrv?Math.round(rv.hrv):"○","HRV"],[rv.rhr?Math.round(rv.rhr):"○","RHR"],[rv.sleepHours?`${Math.floor(rv.sleepHours)}:${String(Math.round((rv.sleepHours%1)*60)).padStart(2,"0")}`:"○","SLEEP"]].map(([v,l])=>(
-              <div key={l} style={{background:C.bg,borderRadius:8,padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:19,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.06em",color:C.t3,fontFamily:FD}}>{l}</div></div>))}
+            {[[rv.recoveryScore!=null?`${rv.recoveryScore}%`:"○","Recovery"],[rv.hrv?Math.round(rv.hrv):"○","HRV"],[rv.rhr?Math.round(rv.rhr):"○","RHR"],[rv.sleepHours?`${Math.floor(rv.sleepHours)}:${String(Math.round((rv.sleepHours%1)*60)).padStart(2,"0")}`:"○","Sleep"]].map(([v,l])=>(
+              <div key={l} style={{background:C.bg,borderRadius:8,padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:19,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div></div>))}
           </div>
           {recStale&&<div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>The ring is off. The numbers dim and pause. Nothing breaks. Wear it tonight and tomorrow's session adjusts to recovery again.</div>}
         </React.Fragment>):(<div style={{fontSize:12,color:C.t3,marginTop:8}}>No recovery data yet.</div>)}
       </X>
       <X style={{padding:16}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>WEEK {wkn(t)} · WHAT THE LOG SAYS</div>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>WEEK {wkn(t)} · WHAT THE LOG SAYS</div>
         <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
           {[
             {ok:week.liftPlanned>0&&week.liftDone>=week.liftPlanned,txt:`Lifts ${week.liftDone}/${week.liftPlanned||0} logged this week`},
@@ -295,16 +295,16 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
       </X>
       <X style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-          <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>TOMORROW</div>
+          <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Tomorrow</div>
           <div style={{fontSize:15,fontWeight:700,color:C.t,marginTop:3}}>{tmrSess?tmrSess.name:"Rest day · steps + protein floor"}</div>
         </div>
-        <div style={{fontSize:13,fontWeight:800,color:C.p,fontFamily:FD,textTransform:"uppercase"}}>{dw(tomorrow).slice(0,3)}</div>
+        <div style={{fontSize:13,fontWeight:800,color:C.p,fontFamily:FD}}>{dw(tomorrow).slice(0,3)}</div>
       </X>
       {!stretchDone&&<X style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:13,fontWeight:700,color:C.t}}>Evening stretch · ~12 min</div>
         <B small onClick={()=>setTab("training")}>Start</B>
       </X>}
-      <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",minHeight:40}}>Full dashboard</button>
+      <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,minHeight:40}}>Full dashboard</button>
     </div>);
   }
 
@@ -321,33 +321,33 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
       :!cardioDone?{label:"Log cardio",tab:"training",hint:"Zone 2 or a walk keeps the deficit honest."}
       :!closed?{label:"Close the day",ov:"closeout",hint:"Habits, then done."}
       :{label:"Day closed",ov:"closeout",hint:"Everything is logged. Go live your life."};
-    return {...na,loops:[{l:"SCALE",ok:weightLogged},{l:"FOOD",ok:nutLogged},{l:"LIFT",ok:!liftPlanned||liftDone},{l:"CARDIO",ok:cardioDone},{l:"CLOSE",ok:closed}]};
+    return {...na,loops:[{l:"Scale",ok:weightLogged},{l:"FOOD",ok:nutLogged},{l:"LIFT",ok:!liftPlanned||liftDone},{l:"Cardio",ok:cardioDone},{l:"Close",ok:closed}]};
   })();
   return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
     {header}
     {fastCard}
     <X style={{padding:16,boxShadow:C.sh}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>NOW</div>
-      <div style={{fontSize:22,fontWeight:800,color:C.t,marginTop:3,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.02em"}}>{nowAction.label}</div>
+      <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>NOW</div>
+      <div style={{fontSize:22,fontWeight:800,color:C.t,marginTop:3,fontFamily:FD}}>{nowAction.label}</div>
       <div style={{fontSize:13,color:C.t2,marginTop:2}}>{nowAction.hint}</div>
-      <button onClick={()=>nowAction.tab?setTab(nowAction.tab):setOverride(nowAction.ov)} style={{marginTop:12,width:"100%",border:"none",borderRadius:9,background:C.p,color:C.oa,padding:"15px 16px",fontSize:16,fontWeight:800,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.06em",boxShadow:C.sh2,cursor:"pointer",minHeight:52}}>{nowAction.label}</button>
+      <button onClick={()=>nowAction.tab?setTab(nowAction.tab):setOverride(nowAction.ov)} style={{marginTop:12,width:"100%",border:"none",borderRadius:9,background:C.p,color:C.oa,padding:"15px 16px",fontSize:16,fontWeight:800,fontFamily:FD,boxShadow:C.sh2,cursor:"pointer",minHeight:52}}>{nowAction.label}</button>
     </X>
     <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
       {nowAction.loops.map(x=>(
         <div key={x.l} style={{textAlign:"center",padding:"9px 2px",borderRadius:8,background:C.cd,border:`1px solid ${C.bd}`}}>
           <div style={{fontSize:15,fontWeight:800,color:x.ok?C.g:C.t3}}>{x.ok?"✓":"○"}</div>
-          <div style={{fontSize:9,fontWeight:800,color:C.t3,fontFamily:FD,letterSpacing:"0.08em"}}>{x.l}</div>
+          <div style={{fontSize:9,fontWeight:800,color:C.t3,fontFamily:FD}}>{x.l}</div>
         </div>
       ))}
     </div>
     <X style={{padding:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <div style={{fontSize:11,fontWeight:800,color:C.t3,fontFamily:FD,letterSpacing:"0.1em"}}>WATER</div>
+        <div style={{fontSize:11,fontWeight:800,color:C.t3,fontFamily:FD}}>Water</div>
         <div style={{fontSize:20,fontWeight:800,color:waterToday>=st.water?C.g:C.p,fontFamily:FD}}>{waterToday}<span style={{fontSize:13,color:C.t3,fontWeight:700}}> / {st.water} oz</span></div>
       </div>
       <Br v={waterToday} max={st.water} color={waterToday>=st.water?C.g:C.p} h={7}/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:9}}>
-        {WATER_PRESETS.map(b=><button type="button" key={b.oz} onClick={()=>{haptic();addWater(b.oz);}} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:58,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:21,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,letterSpacing:"0.08em",color:C.t3,marginTop:3}}>{b.l}</span></button>)}
+        {WATER_PRESETS.map(b=><button type="button" key={b.oz} onClick={()=>{haptic();addWater(b.oz);}} style={{border:`1px solid ${C.bd}`,background:C.bg,color:C.t,borderRadius:9,padding:"10px 4px",minHeight:58,cursor:"pointer",fontFamily:FD}}><span style={{display:"block",fontSize:21,fontWeight:800,lineHeight:1}}>+{b.oz}</span><span style={{display:"block",fontSize:9,fontWeight:700,color:C.t3,marginTop:3}}>{b.l}</span></button>)}
       </div>
     </X>
     {trend?<WeightTrendCard trend={trend} compact/>:(
@@ -359,7 +359,7 @@ const Moments=({data,setData,setTab,workout,addToast})=>{
         {(allergies?.summary||[]).slice(0,3).length?(allergies.summary.slice(0,3).map(a=>`${a.name} ${a.level||"○"}`).join(" · ")):allergyErr||"Loading…"}
       </div>
     </X>
-    <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.08em",minHeight:40}}>Full dashboard</button>
+    <button type="button" onClick={()=>setShowClassic(true)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:FD,minHeight:40}}>Full dashboard</button>
   </div>);
 };
 

@@ -28,7 +28,7 @@ const Sheet=({open,onClose,title,children,right,maxHeight="82vh"})=>{
     <div className="hh-sheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()} style={{background:C.cd,borderRadius:"14px 14px 0 0",width:"100%",maxWidth:520,maxHeight,overflowY:"auto",padding:"8px 16px calc(18px + var(--safe-b))",border:`1px solid ${C.bd}`,boxShadow:C.sh}}>
       <div style={{width:36,height:4,borderRadius:2,background:C.bl,margin:"0 auto 10px"}}/>
       {(title||right)&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8}}>
-        <div style={{fontSize:17,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em"}}>{title}</div>{right}
+        <div style={{fontSize:17,fontWeight:800,color:C.t,fontFamily:FD}}>{title}</div>{right}
       </div>}
       {children}
     </div>
@@ -41,7 +41,7 @@ const ToastStack=({toasts,dismiss})=>{
   return(<Portal><div role="status" aria-live="polite" style={{position:"fixed",bottom:"calc(var(--tabbar-h) + var(--safe-b) + 10px)",left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:6,maxWidth:440,width:"92%",pointerEvents:"none"}}>
     {toasts.map(t=>(<div key={t.id} className="hh-toast" onClick={()=>{if(t.action){t.action.fn();}dismiss(t.id);}} style={{pointerEvents:"auto",background:t.type==="success"?C.g:t.type==="error"?C.r:C.t,color:C.oa,padding:"11px 14px",borderRadius:9,fontSize:13,fontWeight:600,boxShadow:C.sh,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,cursor:"pointer"}}>
       <span>{t.message}</span>
-      {t.action&&<span style={{fontFamily:FD,fontWeight:800,textTransform:"uppercase",letterSpacing:"0.06em",fontSize:12,whiteSpace:"nowrap",borderBottom:"1px solid var(--on-accent-line)"}}>{t.action.label}</span>}
+      {t.action&&<span style={{fontFamily:FD,fontWeight:800,fontSize:12,whiteSpace:"nowrap",borderBottom:"1px solid var(--on-accent-line)"}}>{t.action.label}</span>}
     </div>))}
   </div></Portal>);
 };

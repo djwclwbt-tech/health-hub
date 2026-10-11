@@ -7,53 +7,50 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Health Hub">
-<meta name="theme-color" content="#F4F2EF">
+<meta name="theme-color" content="#F5F6F7">
 <title>Health Hub</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="preload" as="font" type="font/woff2" href="/fonts/Barlow-600.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/fonts/BarlowCondensed-800.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/LibreFranklin-400.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/fonts/LibreFranklin-500.woff2" crossorigin>
 <style>
-  /* Self-hosted Barlow (OFL) · no third-party request, precached by sw.js. */
-  @font-face{font-family:'Barlow';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/Barlow-400.woff2) format('woff2')}
-  @font-face{font-family:'Barlow';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/Barlow-500.woff2) format('woff2')}
-  @font-face{font-family:'Barlow';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/Barlow-600.woff2) format('woff2')}
-  @font-face{font-family:'Barlow';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/Barlow-700.woff2) format('woff2')}
-  @font-face{font-family:'Barlow';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/Barlow-800.woff2) format('woff2')}
-  @font-face{font-family:'Barlow';font-style:italic;font-weight:600;font-display:swap;src:url(/fonts/Barlow-600i.woff2) format('woff2')}
-  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/BarlowCondensed-500.woff2) format('woff2')}
-  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/BarlowCondensed-600.woff2) format('woff2')}
-  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/BarlowCondensed-700.woff2) format('woff2')}
-  @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/BarlowCondensed-800.woff2) format('woff2')}
+  /* Self-hosted Libre Franklin (OFL) · no third-party request, precached by sw.js.
+     Three weights only. The 600 face covers 600-900, so a heavier weight
+     anywhere in the UI renders as 600 instead of a faked bold. */
+  @font-face{font-family:'Libre Franklin';font-style:normal;font-weight:100 400;font-display:swap;src:url(/fonts/LibreFranklin-400.woff2) format('woff2')}
+  @font-face{font-family:'Libre Franklin';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/LibreFranklin-500.woff2) format('woff2')}
+  @font-face{font-family:'Libre Franklin';font-style:normal;font-weight:600 900;font-display:swap;src:url(/fonts/LibreFranklin-600.woff2) format('woff2')}
 
-  /* ═══ IRON & EMBER · the only place hex colors are allowed ═══
-     Warm paper + graphite; ember is the ONLY brand color, reserved for
-     actions. Olive = earned, deep red = destructive only; everything else
-     is graphite · there is deliberately no amber/warning tier.
+  /* ═══ DAY LINE · the only place hex colors are allowed ═══
+     Cool gray page, white cards, gray lines. Ember means "now" and the main
+     action, nothing else. Green = on track or earned. Deep red = destructive
+     or broken only. Everything else is neutral gray; there is deliberately
+     no amber/warning tier.
      Light mode only. Dark mode was removed on purpose; do not add it back. */
   :root {
-    --bg: #F4F2EF; --surface: #FFFFFF; --ink: #1A1714; --muted: #6B645C;
+    --bg: #F5F6F7; --surface: #FFFFFF; --ink: #17191C; --ink-2: #3D4148; --muted: #62666D; --faint: #9EA3AA;
     --accent: #C2410C; --accent-press: #9A3412;
-    --danger: #B91C1C; --good: #4D7C0F; --line: #E6E2DC;
+    --danger: #B91C1C; --good: #2F7A3E; --line: #E3E5E8;
     --on-accent: #FFFFFF;
-    --ink-2: color-mix(in srgb, var(--ink) 62%, var(--muted));
-    --accent-soft: #F9EBE2;
-    --danger-soft: color-mix(in srgb, var(--danger) 10%, var(--surface));
-    --good-soft: color-mix(in srgb, var(--good) 10%, var(--surface));
-    --scrim: color-mix(in srgb, var(--ink) 45%, transparent);
-    --shadow: 0 10px 28px color-mix(in srgb, var(--ink) 7%, transparent);
-    --shadow-2: 0 6px 18px color-mix(in srgb, var(--ink) 6%, transparent);
+    --accent-soft: #FBEDE5;
+    --danger-soft: color-mix(in srgb, var(--danger) 9%, var(--surface));
+    --good-soft: color-mix(in srgb, var(--good) 9%, var(--surface));
+    --scrim: color-mix(in srgb, var(--ink) 40%, transparent);
+    --shadow: 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
+    --shadow-2: none;
     --on-accent-line: color-mix(in srgb, var(--on-accent) 40%, transparent);
-    --on-accent-dim: color-mix(in srgb, var(--on-accent) 65%, transparent);
-    --accent-glow: 0 8px 20px color-mix(in srgb, var(--accent) 28%, transparent);
+    --on-accent-dim: color-mix(in srgb, var(--on-accent) 70%, transparent);
+    --accent-glow: none;
     --tabbar-h: 64px;
     --safe-b: env(safe-area-inset-bottom, 0px);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { overscroll-behavior-y: contain; }
-  body { font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--ink); overflow-x: hidden; font-variant-numeric: tabular-nums; overscroll-behavior-y: contain; -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Libre Franklin', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--ink); overflow-x: hidden; -webkit-font-smoothing: antialiased; overscroll-behavior-y: contain; -webkit-text-size-adjust: 100%; }
   #root { min-height: 100vh; min-height: 100dvh; }
-  button, input, select { -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; font: inherit; color: inherit; }
+  button, input, select { -webkit-font-smoothing: antialiased; font: inherit; color: inherit; }
+  /* Tabular figures on numbers only: inputs and anything marked .n */
+  input, .n { font-variant-numeric: tabular-nums; }
   button { touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .08s ease, opacity .12s ease; }
   button:active:not(:disabled) { transform: scale(.97); }
   input::placeholder { color: var(--muted); opacity: .7; }

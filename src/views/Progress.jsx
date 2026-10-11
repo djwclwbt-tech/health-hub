@@ -41,7 +41,7 @@ const ProgressView=({data,setData,onBack})=>{
   const baseMeas=(()=>{const e=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>a[0].localeCompare(b[0]));return e.find(([d])=>d>=PROG.start)||e[0]||null;})();
   const curMeas=(()=>{const e=Object.entries(data.bodyMeas||{}).filter(([_,v])=>v&&Object.values(v).some(x=>x)).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]||null;})();
   const arm=m=>m?((m.armL&&m.armR)?(m.armL+m.armR)/2:(m.armL||m.armR||null)):null;
-  const MEAS=[{l:"WAIST",cur:curMeas?.[1]?.waist,base:baseMeas?.[1]?.waist,goodDown:true},{l:"CHEST",cur:curMeas?.[1]?.chest,base:baseMeas?.[1]?.chest,goodDown:false},{l:"ARM",cur:arm(curMeas?.[1]),base:arm(baseMeas?.[1]),goodDown:false}];
+  const MEAS=[{l:"Waist",cur:curMeas?.[1]?.waist,base:baseMeas?.[1]?.waist,goodDown:true},{l:"Chest",cur:curMeas?.[1]?.chest,base:baseMeas?.[1]?.chest,goodDown:false},{l:"ARM",cur:arm(curMeas?.[1]),base:arm(baseMeas?.[1]),goodDown:false}];
   const measLine=(()=>{
     const w=MEAS[0],a=MEAS[2];
     if(w.cur==null||w.base==null)return "Log measurements every 2 weeks to see the trend.";
@@ -55,10 +55,10 @@ const ProgressView=({data,setData,onBack})=>{
     <button onClick={onBack} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:0,fontFamily:"inherit"}}>← Setup</button>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
       <div>
-        <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,textTransform:"uppercase",letterSpacing:"0.03em",lineHeight:1}}>Progress</div>
+        <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,lineHeight:1}}>Progress</div>
         <div style={{fontSize:12,color:C.t3,fontWeight:600,marginTop:3}}>Week {wkn(t)} of {PROG.weeks} · photos every 2 weeks</div>
       </div>
-      <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
+      <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:13,fontWeight:700,cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
     </div>
     <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:"none"}}/>
     {err&&<div style={{fontSize:12,color:C.r}}>{err}</div>}
@@ -66,17 +66,17 @@ const ProgressView=({data,setData,onBack})=>{
       {SLOTS.map(s=>{const d=slots[s];const due=!d||daysAgo(d)>=14;return(
         <button key={s} onClick={()=>takePhoto(s)} style={{aspectRatio:"3/4",border:due?`1px dashed ${C.p}`:"none",background:due?C.pl:C.bl,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
           <span style={{fontSize:15,fontWeight:800,fontFamily:FD,color:due?C.p:C.t3}}>{due?"DUE":s.toUpperCase()}</span>
-          <span style={{fontSize:10,fontWeight:700,fontFamily:FD,color:due?C.p:C.t3}}>{due?(d?"RETAKE":"TODAY"):shortDate(d)}</span>
+          <span style={{fontSize:10,fontWeight:700,fontFamily:FD,color:due?C.p:C.t3}}>{due?(d?"Retake":"Today"):shortDate(d)}</span>
         </button>);})}
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.t3,letterSpacing:"0.14em",fontFamily:FD}}>MEASUREMENTS{baseMeas?` · VS ${shortDate(baseMeas[0])}`:""}</div>
+      <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>MEASUREMENTS{baseMeas?` · VS ${shortDate(baseMeas[0])}`:""}</div>
       {curMeas?(<React.Fragment>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
           {MEAS.map(m=>{const d=m.cur!=null&&m.base!=null?m.cur-m.base:null;const good=d!=null&&(m.goodDown?d<0:d>0);return(
             <div key={m.l} style={{background:C.bg,borderRadius:8,padding:"9px 6px",textAlign:"center"}}>
               <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:C.t}}>{m.cur!=null?`${m.cur.toFixed(1)}"`:"○"}</div>
-              <div style={{fontSize:8.5,fontWeight:700,letterSpacing:"0.06em",fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
+              <div style={{fontSize:8.5,fontWeight:700,fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
             </div>);})}
         </div>
         <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>{measLine}</div>
@@ -93,7 +93,7 @@ const ProgressView=({data,setData,onBack})=>{
       </S>
     </X>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.p,letterSpacing:"0.14em",fontFamily:FD}}>WEEK {wkn(t)} AI ANALYSIS</div>
+      <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>WEEK {wkn(t)} AI ANALYSIS</div>
       <AnalysisSection data={data}/>
     </X>
   </div>);
