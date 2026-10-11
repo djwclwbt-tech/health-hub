@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Option A · Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Barlow:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2F2F5;--card:#FFFFFF;--ink:#16171A;--t2:#6C6E76;--t3:#A3A5AD;--line:#E4E4E9;--act:#1F4FD8;--act-soft:#E8EEFC;--good:#17804D;--bad:#C2362B;
+--w:'Hanken Grotesk',system-ui,-apple-system,sans-serif;--n:'Barlow',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#DCDCE2;font-family:var(--w);color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.row-of-phones{display:flex;gap:28px;padding:28px;flex-wrap:wrap}
+.phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;flex:none}
+.scroll{padding:58px 16px 100px;height:100%;overflow:hidden}
+.n{font-family:var(--n);font-feature-settings:"tnum"}
+.eyebrow{font-size:13px;color:var(--t2);font-weight:500}
+h1{font-size:28px;font-weight:700;letter-spacing:-.4px;margin-top:2px}
+.sec{font-size:13px;color:var(--t2);font-weight:500;margin:22px 4px 7px}
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.r{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:48px}
+.r+.r{border-top:1px solid var(--line);margin-left:14px;padding-left:0}
+.r .lbl{font-size:15px;flex:1}
+.r .val{font-size:15px;color:var(--t2)}
+.r .val b{color:var(--ink);font-weight:600}
+.chev{width:7px;height:12px;border-right:1.6px solid var(--t3);border-top:1.6px solid var(--t3);transform:rotate(45deg);margin-left:4px;width:8px;height:8px}
+.btn{background:var(--act);color:#fff;border:0;border-radius:10px;font:600 16px var(--w);height:48px;padding:0 18px}
+.btn.ghost{background:var(--act-soft);color:var(--act)}
+.btn.sm{height:32px;font-size:14px;border-radius:8px;padding:0 12px}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.good{color:var(--good)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:82px;background:rgba(246,246,249,.82);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border-top:1px solid var(--line);display:flex;padding:8px 6px 0}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:500;color:var(--t3)}
+.tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.6}
+.tab.on{color:var(--act)}
+.cap{font-size:13px;color:var(--t2);line-height:1.35}
+.big{font-size:44px;font-weight:600;letter-spacing:-.5px;line-height:1}
+.step{flex:1;background:var(--card);border-radius:12px;padding:12px 14px}
+.step .k{font-size:13px;color:var(--t2)}
+.step .v{font-size:40px;font-weight:600;line-height:1.1}
+.step .ctl{display:flex;gap:8px;margin-top:8px}
+.step .ctl span{flex:1;height:36px;border-radius:8px;background:var(--bg);display:grid;place-items:center;font-size:22px;font-weight:400;color:var(--ink)}
+.seg{display:flex;background:#E5E5EA;border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;font-weight:500;padding:6px 0;border-radius:7px;color:var(--ink)}
+.seg span.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.dot{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--t3);flex:none}
+.dot.on{background:var(--good);border-color:var(--good);position:relative}
+.dot.on:after{content:"";position:absolute;left:7px;top:3.5px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.label{font:500 12px var(--w);color:var(--t2);margin-bottom:6px}
+</style></head><body><div class="row-of-phones">
+
+<!-- TODAY -->
+<div class="phone"><div class="scroll">
+  <div class="eyebrow">Sunday, Oct 11 · Week 1 of 8</div>
+  <h1>Today</h1>
+  <div class="sec">Weigh-in</div>
+  <div class="group"><div class="r" style="padding:16px 14px;align-items:flex-end">
+    <div style="flex:1"><div class="big n">182.6</div><div class="cap" style="margin-top:6px">Yesterday <span class="n">183.0</span></div></div>
+    <button class="btn">Log</button>
+  </div></div>
+  <div class="sec">Trend</div>
+  <div class="group" style="padding:14px 14px 10px">
+    <div style="display:flex;align-items:baseline;gap:8px"><span class="n" style="font-size:22px;font-weight:600">−1.4 lb/wk</span><span class="cap good">On pace · 175 by Nov 22</span></div>
+    <div id="a1" style="margin-top:8px"></div>
+  </div>
+  <div class="sec">So far</div>
+  <div class="group">
+    <div class="r"><div style="flex:1"><div style="display:flex"><span class="lbl">Water</span><span class="val"><b class="n">48</b> / <span class="n">128</span> oz</span></div><div class="bar"><i style="width:37%"></i></div></div><button class="btn ghost sm">+24</button></div>
+    <div class="r"><div style="flex:1"><div style="display:flex"><span class="lbl">Steps</span><span class="val"><b class="n">9,240</b> / <span class="n">15,000</span></span></div><div class="bar"><i style="width:62%"></i></div></div></div>
+    <div class="r"><div style="flex:1"><div style="display:flex"><span class="lbl">Protein</span><span class="val"><b class="n">142</b> / <span class="n">200</span> g</span></div><div class="bar"><i style="width:71%"></i></div></div></div>
+    <div class="r"><span class="lbl">Recovery</span><span class="val"><b class="n">72%</b> · HRV <span class="n">61</span> · <span class="n">7:12</span></span></div>
+  </div>
+  <div class="sec">Training</div>
+  <div class="group"><div class="r"><div style="flex:1"><div class="lbl">Upper A · Strength</div><div class="cap">5 lifts · about 51 min</div></div><button class="btn sm">Start</button></div></div>
+</div>
+<div class="tabbar">
+  <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Today</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h18M6 8v8M18 8v8M3.5 10v4M20.5 10v4"/></svg>Train</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4"/></svg>Food</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-8"/></svg>Trend</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>Setup</div>
+</div></div>
+
+<!-- WORKOUT -->
+<div class="phone"><div class="scroll">
+  <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--act);font-size:16px;font-weight:500">End</span><span class="n" style="font-size:15px;color:var(--t2)">12:40</span><span style="color:var(--act);font-size:16px;font-weight:500">Lifts</span></div>
+  <div class="eyebrow" style="margin-top:18px">Lift 1 of 5 · Upper A</div>
+  <h1>Machine Chest Press</h1>
+  <div class="cap" style="margin-top:4px">Set 2 of 3 · goal 5–8 reps · last time <span class="n">135 × 8, 8, 7</span></div>
+  <div style="display:flex;gap:10px;margin-top:20px">
+    <div class="step"><div class="k">Weight, lb</div><div class="v n">140</div><div class="ctl"><span>−</span><span>+</span></div></div>
+    <div class="step"><div class="k">Reps</div><div class="v n">8</div><div class="ctl"><span>−</span><span>+</span></div></div>
+  </div>
+  <button class="btn" style="width:100%;margin-top:12px">Log set 2</button>
+  <div class="sec">Sets</div>
+  <div class="group">
+    <div class="r"><span class="n" style="width:18px;color:var(--t2)">1</span><span class="lbl n">140 × 8</span><span class="dot on"></span></div>
+    <div class="r"><span class="n" style="width:18px;color:var(--act);font-weight:600">2</span><span class="lbl" style="color:var(--act)">Now</span><span class="dot"></span></div>
+    <div class="r"><span class="n" style="width:18px;color:var(--t2)">3</span><span class="lbl" style="color:var(--t3)">Next</span><span class="dot"></span></div>
+  </div>
+  <div class="cap" style="margin:10px 4px 0">Hit 8 on all three and next week goes to <span class="n">145</span>.</div>
+  <div class="sec">Up next</div>
+  <div class="group"><div class="r"><span class="lbl">Seated Row Machine</span><span class="val n">2 × 160</span><span class="chev"></span></div><div class="r"><span class="lbl">Machine Shoulder Press</span><span class="val n">2 × 95</span><span class="chev"></span></div></div>
+</div>
+<div style="position:absolute;left:12px;right:12px;bottom:92px;background:var(--ink);color:#fff;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+  <div style="flex:1"><div style="font-size:13px;opacity:.65">Rest</div><div class="n" style="font-size:22px;font-weight:600">1:48</div></div><span style="font-size:15px;opacity:.85">+30s</span><span style="font-size:15px;font-weight:600">Skip</span>
+</div>
+<div class="tabbar">
+  <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Today</div>
+  <div class="tab on"><svg viewBox="0 0 24 24"><path d="M3 12h18M6 8v8M18 8v8M3.5 10v4M20.5 10v4"/></svg>Train</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4"/></svg>Food</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-8"/></svg>Trend</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>Setup</div>
+</div></div>
+
+<!-- TREND -->
+<div class="phone"><div class="scroll">
+  <div class="eyebrow">Trend weight</div>
+  <div style="display:flex;align-items:baseline;gap:10px"><span class="big n">183.1</span><span class="cap">lb</span></div>
+  <div class="cap good" style="margin-top:6px">−1.4 lb/wk over 14 days · on pace</div>
+  <div class="seg" style="margin-top:18px"><span class="on">2W</span><span>8W</span><span>Cut</span><span>All</span></div>
+  <div class="group" style="margin-top:12px;padding:14px 10px 8px 14px">
+    <div style="display:flex;justify-content:space-between;font-size:13px"><span class="cap">Thu, Oct 8</span><span><span class="n" style="font-weight:600">183.4</span> <span class="cap">trend ·</span> <span class="n cap">184.0</span> <span class="cap">scale</span></span></div>
+    <div id="a2" style="margin-top:8px"></div>
+  </div>
+  <div class="sec">Cut</div>
+  <div class="group">
+    <div class="r"><span class="lbl">To goal</span><span class="val"><b class="n">8.1</b> lb</span></div>
+    <div class="r"><span class="lbl">Reach 175</span><span class="val"><b>Nov 22</b> at this pace</span></div>
+    <div class="r"><span class="lbl">Burn estimate</span><span class="val"><b class="n">2,405</b> cal/day</span></div>
+    <div class="r"><span class="lbl">Weigh-ins this week</span><span class="val"><b class="n">5</b> of 7</span></div>
+  </div>
+  <div class="sec">History</div>
+  <div class="group"><div class="r"><span class="lbl">All weigh-ins</span><span class="chev"></span></div><div class="r"><span class="lbl">Body comp photos</span><span class="chev"></span></div></div>
+</div>
+<div class="tabbar">
+  <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Today</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 12h18M6 8v8M18 8v8M3.5 10v4M20.5 10v4"/></svg>Train</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4"/></svg>Food</div>
+  <div class="tab on"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-8"/></svg>Trend</div>
+  <div class="tab"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/></svg>Setup</div>
+</div></div>
+
+</div>
+<script src="kit.js"></script>
+<script>
+const base={numFont:"Barlow",bg:"#fff",gridC:"#EEEEF2",labelC:"#A3A5AD",goalC:"#17804D",lineC:"#1F4FD8",dotC:"#C9CAD1",crossC:"#C9CAD1"};
+weightChart(document.getElementById('a1'),{...base,w:334,h:92,grid:[],goal:175,ahead:0,lo:174,hi:187,xlabels:[],padR:30});
+weightChart(document.getElementById('a2'),{...base,w:338,h:250,grid:[180,185],goal:175,ahead:5,cross:10,xlabels:[[0,'Sep 28'],[13,'Oct 11'],[18,'Oct 16']]});
+</script></body></html>

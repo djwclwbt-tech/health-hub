@@ -13,7 +13,7 @@ import { Nutrition } from "./Nutrition.jsx";
 // ═══ TODAY · the Day line ═══
 // One timeline per day. Done items are one quiet line, the "Now" item is open
 // with its button, later items wait below. Which item is "now" comes from the
-// clock and today's logs (pickNow). ?clock=HH:MM and &day=weekday simulate.
+// clock and today's logs (see nowId below). ?clock=HH:MM and &day=weekday simulate.
 const clockParam=()=>{try{const v=new URLSearchParams(location.search).get("clock");const m=v&&v.match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]+(+m[2])/60:null;}catch{return null;}};
 const dayParam=()=>{try{const v=new URLSearchParams(location.search).get("day");return ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(v)?v:null;}catch{return null;}};
 const nowHM=()=>{const c=clockParam();if(c!=null)return c;const d=new Date();return d.getHours()+d.getMinutes()/60;};
@@ -115,7 +115,8 @@ const Today=({data,setData,setTab,workout,addToast})=>{
 
   // ── Scale ──
   const trendV=trend?.points?.length?trend.points[trend.points.length-1].v:null;
-  const pace=trend?(trend.direction==="down"?<span style={{color:C.g}}>{trend.message}</span>:trend.message):null;
+  // Green only inside the planned cut pace (same band as Trends).
+  const pace=trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
   rows.push(<Ev key="scale" time={nowId==="scale"?"Now":"AM"} state={stateOf("scale",wt!=null)}
     title={wt!=null?<>Weighed in <span style={NUM}>{Number(wt).toFixed(1)}</span></>:"Weigh in"}
     sub={trendV!=null?<>Trend <span style={NUM}>{trendV.toFixed(1)}</span>{pace?<> · {pace}</>:null}</>:"A couple of weigh-ins start the trend"}
