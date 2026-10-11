@@ -59,13 +59,13 @@ const Nutrition=({data,setData})=>{
 
   const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
   const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
-  const needText=proRemaining>0
-    ?`${proRemaining}g protein left${calRemaining!==null?` · ${calRemaining} cal flex`:""}`
-    :calRemaining!==null&&calRemaining>0
-      ?`Protein hit · ${calRemaining} cal flex left`
-      :calT!==null&&tl.totalCal>calT
-        ?`Protein hit · ${tl.totalCal-calT} cal over, keep next meal lean`
-        :"Protein covered · keep logging simple";
+  // One plain line: protein left or hit, calories left or over.
+  const needText=(()=>{
+    const pro=proRemaining>0?`${proRemaining} g protein left`:"Protein hit";
+    if(calT===null)return`${pro} · no calorie cap today`;
+    const over=Math.round((tl.totalCal||0)-calT);
+    return`${pro} · ${over>0?`${over.toLocaleString()} cal over`:`${Math.round(calRemaining).toLocaleString()} cal left`}`;
+  })();
   const quickMealType=(()=>{const h=new Date().getHours();return h<11?"Breakfast":h<15?"Lunch":h<20?"Dinner":"Snack";})();
   const addQuickMeal=(preset)=>{
     const cal=+(preset?.cal??quickCal)||0, protein=+(preset?.protein??quickPro)||0;
@@ -90,14 +90,14 @@ const Nutrition=({data,setData})=>{
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <button onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.t,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
-      <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
+      <button type="button" onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Food</button>
+      <div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+          <div style={{fontSize:17,fontWeight:500,color:C.t,lineHeight:1.35}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
             {meal.source&&<span style={{fontSize:11,fontWeight:700,padding:"2px 6px",borderRadius:6,
               color:meal.source==="mfp"?C.g:C.t3,
               background:meal.source==="mfp"?C.gl:"transparent",
-            }}>{meal.source==="mfp"?"Sync":meal.source}</span>}
+            }}>{meal.source==="mfp"||meal.source==="cronometer"?"Cronometer":meal.source==="coach"?"Coach":meal.source==="quick"?"Quick log":meal.source}</span>}
             {meal.mealType&&<span style={{fontSize:12,color:C.t3}}>{meal.mealType}</span>}
           </div>
         </div>
@@ -118,7 +118,7 @@ const Nutrition=({data,setData})=>{
           <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.t3}}/><div style={{width:`${fp}%`,background:C.t2}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
-      </X>
+      </div>
       {(meal.source==="cronometer"||meal.source==="mfp")?(
         <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"6px 0"}}>Synced from Cronometer · read-only here; edit in Cronometer.</div>
       ):(
@@ -137,234 +137,150 @@ const Nutrition=({data,setData})=>{
   const isExcluded=!!(data.tdeeExclude||{})[viewDate];
   const toggleExclude=()=>{const newVal=!isExcluded;const nd={...data,tdeeExclude:{...data.tdeeExclude,[viewDate]:newVal||undefined}};if(!newVal)delete nd.tdeeExclude[viewDate];setData(nd);sv(nd);svSB.tdeeExclude(viewDate,newVal);};
 
-  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <button type="button" aria-label="Previous day" onClick={()=>navDate(-1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,cursor:"pointer",fontSize:18,minWidth:40,minHeight:36}}>‹</button>
-        <button type="button" onClick={()=>setViewDate(t)} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:isViewingToday?C.t:C.t2,minWidth:84,textAlign:"center",cursor:"pointer",fontFamily:"inherit"}}>{isViewingToday?"Today":fmt(viewDate)}</button>
-        <button type="button" aria-label="Next day" onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,minWidth:40,minHeight:36}}>›</button>
-        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE · click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.t2:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
+  // ── Main page. Order follows a normal day: where am I, what did I eat, log
+  // something, then the reference folds (dinner plan, week, targets, water).
+  const NUMS={fontVariantNumeric:"tabular-nums"};
+  const hasLog=d=>(data.nut?.[d]?.meals?.length||0)>0||(data.nut?.[d]?.totalCal||0)>0;
+  const lastSynced=Object.entries(data.nut||{}).filter(([d,v])=>(v?.meals||[]).some(m=>m.source==="cronometer"||m.source==="mfp")).map(([d])=>d).sort().pop()||null;
+  const viewLogged=hasLog(viewDate);
+  const dayTypeLabel=calT===null?"Social weekend":viewDayType==="travel"?"Travel day":viewDayType==="wednesday"?"Fast day":viewDayType==="training"?"Training day":"Weekend";
+  // Week: count only days that have food logged. An unsynced day is unknown, not zero.
+  const wk=weekDates.map(d=>({d,logged:hasLog(d),cal:Math.round(data.nut?.[d]?.totalCal||0),pro:Math.round(data.nut?.[d]?.totalProtein||0),calT:getDayCalTarget(d,st,data.travelDays,data.socialWeekend),proT:getDayProTarget(d,st,data.travelDays,data.socialWeekend),future:d>t,today:d===t}));
+  const wkDone=wk.filter(x=>x.logged&&!x.today);
+  const wkCal=wkDone.reduce((a,x)=>a+x.cal,0),wkCalT=wkDone.reduce((a,x)=>a+(x.calT||0),0);
+  const wkMissing=wk.filter(x=>!x.logged&&!x.future&&!x.today&&getDayType(x.d,data.travelDays)!=="wednesday").length;
+  const proHitDays=wkDone.filter(x=>x.pro>=(x.proT||proT)).length;
+  const link={background:"none",border:"none",color:C.t2,fontSize:14,cursor:"pointer",padding:"8px 0",minHeight:40};
+  const navBtn={background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,cursor:"pointer",fontSize:18,minWidth:44,minHeight:40};
+  const Stat=({label,v,target,unit,good})=>(<div style={{flex:1,minWidth:0}}>
+    <div style={{fontSize:13,color:C.t3}}>{label}</div>
+    <div style={{marginTop:2,...NUMS}}><span style={{fontSize:28,fontWeight:600,letterSpacing:"-0.3px",color:good?C.g:C.t}}>{viewLogged||isViewingToday?Math.round(v).toLocaleString():"○"}</span>{target!=null&&<span style={{fontSize:14,color:C.t3}}> / {Math.round(target).toLocaleString()}{unit}</span>}</div>
+    {target!=null&&<div style={{marginTop:6}}><Br v={v} max={target} color={good?C.g:C.t} h={3}/></div>}
+  </div>);
+  const quickOk=!!(quickCal||quickPro);
+  return(<div style={{display:"flex",flexDirection:"column"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+      <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Food</h1>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <button type="button" aria-label="Previous day" onClick={()=>navDate(-1)} style={navBtn}>‹</button>
+        <button type="button" onClick={()=>setViewDate(t)} style={{background:"none",border:"none",fontSize:14,fontWeight:500,color:C.t,minWidth:92,textAlign:"center",cursor:"pointer"}}>{isViewingToday?"Today":fmt(viewDate)}</button>
+        <button type="button" aria-label="Next day" onClick={()=>navDate(1)} disabled={isViewingToday} style={{...navBtn,opacity:isViewingToday?0.35:1}}>›</button>
       </div>
     </div>
-    {isExcluded&&<div style={{fontSize:11,fontWeight:600,color:C.t2,textAlign:"right",marginTop:-4}}>Excluded from TDEE</div>}
 
-    {(()=>{const dn=DINNERS[dw(viewDate)];if(!dn)return null;return(<X style={{padding:14}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t,fontFamily:FD}}>Tonight · {dn.name}</div>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>{dn.tag}</div>
-      </div>
-      <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.4}}>{dn.how}</div>
-      <div style={{display:"flex",gap:7,marginTop:9}}>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>Your plate</div></div>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>Danielle</div></div>
-      </div>
-      <div style={{fontSize:11,color:C.t3,marginTop:7}}>Saved as a Cronometer recipe. Logging it takes two taps there.</div>
-    </X>);})()}
+    {/* Where the day stands */}
+    <div style={{display:"flex",gap:20,marginTop:16}}>
+      <Stat label="Protein" v={tl.totalProtein||0} target={proT} unit=" g" good={(tl.totalProtein||0)>=proT}/>
+      {calT!==null?<Stat label="Calories" v={tl.totalCal||0} target={calT} unit=""/>:<Stat label="Calories" v={tl.totalCal||0}/>}
+    </div>
+    <div style={{fontSize:13,color:C.t2,marginTop:10,lineHeight:1.45,...NUMS}}>
+      {!viewLogged&&!isViewingToday?`Nothing logged.${lastSynced&&lastSynced<viewDate?` Cronometer last synced ${fmt(lastSynced)}.`:""}`:needText}
+    </div>
+    <div style={{fontSize:12,color:C.t3,marginTop:2,...NUMS}}>{dayTypeLabel} · fiber {Math.round(tl.totalFiber||0)} of {st.fiber||30} g{viewFatPct>25&&tl.totalCal>0?` · fat ${viewFatPct}% of calories, aim for 20 to 25`:""}</div>
 
-    <X style={{padding:12}}>
-      <L>What do I need next?</L>
-      <div style={{fontSize:18,fontWeight:800,color:C.t,marginBottom:4}}>{needText}</div>
-      <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Rough logs are useful. Get calories + protein in, perfect macros can wait.</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-        {[{description:"Shake: whey + banana",cal:435,protein:52},{description:"Nurri",cal:150,protein:30},{description:"Prepped protein + veg + fruit",cal:420,protein:52},{description:"Greek yogurt",cal:130,protein:18}].map(p=>(
-          <button key={p.description} onClick={()=>addQuickMeal(p)} style={{padding:"9px 4px",borderRadius:8,border:`1px solid ${C.bd}`,background:C.bg,color:C.t,fontSize:11,fontWeight:800,fontFamily:"inherit",minHeight:44}}>
-            {p.description}<br/><span style={{color:C.t3,fontWeight:700}}>{p.cal} cal · {p.protein}g</span>
-          </button>
-        ))}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1.5fr .8fr .8fr",gap:6}}>
-        <T value={quickDesc} onChange={setQuickDesc} placeholder="Quick meal"/>
-        <N value={quickCal} onChange={setQuickCal} placeholder="cal"/>
-        <N value={quickPro} onChange={setQuickPro} placeholder="pro"/>
-      </div>
-      <B full small style={{marginTop:6}} disabled={!quickCal&&!quickPro} onClick={()=>addQuickMeal()}>Log rough meal</B>
-    </X>
+    {/* What you ate */}
+    <h2 style={{fontSize:13,fontWeight:500,color:C.t3,marginTop:24}}>Meals</h2>
+    <div style={{marginTop:6,borderTop:`1px solid ${C.bd}`}}>
+      {tl.meals.length===0&&<div style={{fontSize:14,color:C.t3,padding:"14px 0",borderBottom:`1px solid ${C.bd}`}}>{isViewingToday?"Nothing yet. Cronometer fills this through the day, or log below.":"No meals this day."}</div>}
+      {MEAL_TYPES.map(mt=>{const ms=grouped[mt];if(!ms?.length)return null;const mtCal=ms.reduce((s,m)=>s+(m.cal||0),0),mtPro=ms.reduce((s,m)=>s+(m.protein||0),0);return(<div key={mt}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.t3,padding:"10px 2px 4px",...NUMS}}><span style={{color:C.t2,fontWeight:500}}>{mt}</span><span>{Math.round(mtCal)} cal · {Math.round(mtPro)} g</span></div>
+        {ms.map(m=>(<button type="button" key={m._idx} onClick={()=>setSelM(m._idx)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:48,background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left",padding:"6px 2px"}}>
+          <span style={{fontSize:15,color:C.t,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
+          <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{Math.round(m.cal||0)} cal · {Math.round(m.protein||0)} g</span>
+        </button>))}
+      </div>);})}
+      {tl.meals.length>0&&<div style={{fontSize:12,color:C.t3,padding:"8px 2px"}}>{tl.meals.every(m=>m.source==="cronometer"||m.source==="mfp")?"All from Cronometer. Edit them there.":"Quick logs can be edited here. Cronometer meals are edited in Cronometer."}</div>}
+    </div>
 
-    <S title={`Week view · ${weekRemaining>=0?`${weekRemaining.toLocaleString()} cal left`:`${Math.abs(weekRemaining).toLocaleString()} cal over`}`} collapsible defaultOpen={false}>
-      <X style={{padding:10,marginBottom:4}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-          <span style={{fontSize:11,fontWeight:700,color:C.t3}}>Week Total</span>
-          <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.t2}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
-        </div>
-        <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.t2:C.t} h={4}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
-          {weekDates.map((d,i)=>{
-            const dc=data.nut[d]?.totalCal||0;
-            const dt=getDayCalTarget(d,st,data.travelDays,data.socialWeekend);
-            const isView=d===viewDate;
-            const isFuture=d>td();
-            const logged=dc>0;
-            return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:6,
-              background:isView?C.bg:"transparent",border:isView?`1px solid ${C.t}`:"1px solid transparent"}}>
-              <div style={{fontSize:11,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
-              <div style={{fontSize:11,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.t2:C.g):isFuture?C.t3:C.t2}}>
-                {logged?Math.round(dc/100)*100:isFuture?"○":"0"}
-              </div>
-            </div>);
-          })}
-        </div>
-        {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
-          <div style={{fontSize:11,fontWeight:600,color:C.t3,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active · ~1.5 lbs expected this week</div>
-        )}
-      </X>
-    </S>
+    {/* Quick log */}
+    <h2 style={{fontSize:13,fontWeight:500,color:C.t3,marginTop:24}}>Quick log</h2>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
+      {[{description:"Shake: whey + banana",cal:435,protein:52},{description:"Nurri",cal:150,protein:30},{description:"Prepped protein + veg + fruit",cal:420,protein:52},{description:"Greek yogurt",cal:130,protein:18}].map(p=>(
+        <button type="button" key={p.description} onClick={()=>addQuickMeal(p)} style={{padding:"8px 10px",borderRadius:9,border:`1px solid ${C.bd}`,background:C.cd,color:C.t,minHeight:56,textAlign:"left",cursor:"pointer"}}>
+          <span style={{display:"block",fontSize:14,fontWeight:500,lineHeight:1.25}}>{p.description}</span>
+          <span style={{display:"block",fontSize:12,color:C.t3,marginTop:2,...NUMS}}>{p.cal} cal · {p.protein} g</span>
+        </button>))}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1.6fr .8fr .8fr",gap:6,marginTop:8}}>
+      <T value={quickDesc} onChange={setQuickDesc} placeholder="What was it"/>
+      <N value={quickCal} onChange={setQuickCal} placeholder="cal"/>
+      <N value={quickPro} onChange={setQuickPro} placeholder="g"/>
+    </div>
+    <button type="button" disabled={!quickOk} onClick={()=>addQuickMeal()} style={{marginTop:8,minHeight:48,border:"none",borderRadius:9,background:quickOk?C.p:C.bl,color:quickOk?C.oa:C.t3,fontSize:15,fontWeight:500,cursor:quickOk?"pointer":"default"}}>Log {isViewingToday?"it":`for ${fmt(viewDate)}`}</button>
 
-    <X style={{padding:12}}>
-      {calT!==null?(<>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-        <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.t2:C.t}}>{tl.totalCal}</div>
-        <div style={{fontSize:13,color:C.t3}}>/ {calT} cal</div>
-      </div>
-      <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.t2:C.t} h={7}/>
-      </>):(<>
-      <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend · log your food, protein first</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-        <div style={{fontSize:26,fontWeight:700,color:tl.totalProtein>=proT?C.g:C.t}}>{tl.totalProtein}g</div>
-        <div style={{fontSize:13,color:C.t3}}>/ {proT}g protein floor</div>
-      </div>
-      <Br v={tl.totalProtein} max={proT} color={tl.totalProtein>=proT?C.g:C.t} h={7}/>
-      </>)}
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:13,fontWeight:700}}>
-        <span style={{color:tl.totalProtein>=proT?C.g:C.t2}}>{tl.totalProtein}g / {proT}g protein</span>
-        <span style={{color:C.t2}}>{tl.totalCal} cal</span>
-        <span style={{color:C.t2}}>{tl.totalFiber||0}g / {st.fiber||30}g fiber</span>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3,marginTop:4}}>
-        <span style={{fontWeight:600,color:viewDayType==="travel"?C.t2:calT===null?C.t2:C.t2}}>{calT===null?"Social Weekend":viewDayType==="travel"?"Travel Day":viewDayType==="wednesday"?"Wednesday (Fast)":viewDayType==="training"?"Training Day":"Weekend"}</span>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {tl.meals?.length>0&&tl.meals.every(m=>!m.source||m.source==="mfp"||m.source==="cronometer")&&(
-            <span style={{fontSize:11,fontWeight:700,padding:"2px 6px",borderRadius:6,background:C.gl,color:C.g}}>Cronometer</span>
-          )}
-          <span>{calT} cal · {proT}g pro target</span>
-        </div>
-      </div>
-      {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:8,fontSize:11,color:C.t2,fontWeight:600}}>
-        Fat at {viewFatPct}% of calories (target: 20-25%). Watch cooking oil, cheese, and sauces.
-      </div>)}
-    </X>
-
-    {tl.totalCal>0&&(
-      <div style={{display:"flex",justifyContent:"space-around",padding:"6px 0",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:600,color:proT-tl.totalProtein>0?C.t2:C.g}}>
-          {Math.max(0,proT-tl.totalProtein)}g protein left
-        </span>
-        <span style={{fontSize:11,fontWeight:600,color:calT-tl.totalCal>0?C.t2:C.t2}}>
-          {Math.max(0,calT-tl.totalCal)} cal left
-        </span>
-      </div>
-    )}
-
-    {/* ═══ TDEE SMART BANNER ═══ */}
-    {nutTDEE&&nutTDEE.phase!=="collecting"&&nutTDEE.confidence>=60&&isViewingToday&&(
-      <S title="Target logic" collapsible defaultOpen={false}>
-        <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
-          <div style={{fontSize:11,color:C.t2}}>
-            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?`±${nutTDEE.tdee-nutTDEE.tdeeLow}`:""}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.t2}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
+    {/* Reference folds */}
+    <div style={{marginTop:20}}>
+      {(()=>{const dn2=DINNERS[dw(viewDate)];if(!dn2)return null;return(
+        <S title="Tonight's dinner" meta={dn2.name} collapsible defaultOpen={false}>
+          <div style={{fontSize:14,color:C.t,lineHeight:1.45,paddingTop:2}}>{dn2.how}</div>
+          <div style={{display:"flex",gap:20,marginTop:10,...NUMS}}>
+            <div><div style={{fontSize:12,color:C.t3}}>Your plate</div><div style={{fontSize:16,fontWeight:500,marginTop:2}}>{dn2.you}</div></div>
+            <div><div style={{fontSize:12,color:C.t3}}>Danielle</div><div style={{fontSize:16,fontWeight:500,marginTop:2}}>{dn2.dani}</div></div>
           </div>
-          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.cd,color:C.t,border:`1px solid ${C.bd}`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
+          <div style={{fontSize:12,color:C.t3,marginTop:8}}>{dn2.tag}. Saved as a Cronometer recipe, two taps to log there.</div>
+        </S>);})()}
+
+      <S title="This week" meta={wkDone.length?`${wkDone.length} days logged${wkMissing?` · ${wkMissing} missing`:""}`:"No days logged"} collapsible defaultOpen={false}>
+        <div style={{display:"grid",gridTemplateColumns:"48px 1fr 1fr",columnGap:8,fontSize:12,color:C.t4,padding:"4px 2px"}}><span>Day</span><span style={{textAlign:"right"}}>Calories</span><span style={{textAlign:"right"}}>Protein</span></div>
+        {wk.map((x,i)=>(<button type="button" key={x.d} disabled={x.future} onClick={()=>setViewDate(x.d)} style={{width:"100%",display:"grid",gridTemplateColumns:"48px 1fr 1fr",columnGap:8,alignItems:"center",minHeight:44,background:x.d===viewDate?C.cd:"none",border:"none",borderTop:`1px solid ${C.bd}`,cursor:x.future?"default":"pointer",padding:"0 2px",fontSize:14,textAlign:"left",...NUMS}}>
+          <span style={{color:x.future?C.t4:C.t2}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i]}</span>
+          {x.future?<span style={{gridColumn:"2 / 4",textAlign:"right",color:C.t4}}>○</span>
+            :!x.logged&&!x.today?<span style={{gridColumn:"2 / 4",textAlign:"right",color:C.t3}}>{getDayType(x.d,data.travelDays)==="wednesday"?"Fast day, nothing logged":"Not synced"}</span>
+            :<><span style={{textAlign:"right",color:C.t}}>{x.cal.toLocaleString()}<span style={{color:C.t3}}>{x.calT?` / ${x.calT.toLocaleString()}`:""}</span></span>
+              <span style={{textAlign:"right",color:x.pro>=(x.proT||proT)?C.g:C.t}}>{x.pro} g</span></>}
+        </button>))}
+        <div style={{fontSize:13,color:C.t2,marginTop:8,lineHeight:1.45,...NUMS}}>
+          {wkDone.length?<>On the {wkDone.length} logged day{wkDone.length>1?"s":""} before today: {wkCal.toLocaleString()} of {wkCalT.toLocaleString()} cal ({wkCal<=wkCalT?`${(wkCalT-wkCal).toLocaleString()} under`:`${(wkCal-wkCalT).toLocaleString()} over`}), protein hit on {proHitDays}.</>:"No full days logged yet this week."}
+          {wkMissing?` ${wkMissing} day${wkMissing>1?"s are":" is"} not synced, so they are left out.`:""}
         </div>
+        {isSocialWeekendActive(viewDate,data.socialWeekend)&&<div style={{fontSize:12,color:C.t3,marginTop:4}}>Social weekend is on. Expect about 1.5 lb on the scale this week.</div>}
       </S>
-    )}
 
-    {/* ═══ TDEE ADJUST MODAL ═══ */}
-    {showTDEEAdjust&&nutTDEE&&nutTDEE.tdee&&(
-      <X style={{padding:14}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <L>Adjust Targets Based on TDEE</L>
-          <button onClick={()=>setShowTDEEAdjust(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:16}}>✕</button>
-        </div>
-        <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Your adaptive TDEE: <span style={{fontWeight:700,color:C.t}}>{nutTDEE.tdee.toLocaleString()} cal/day</span></div>
-        {[
-          {id:"aggressive_cut",label:"Aggressive cut",offset:-500,desc:"~1 lb/wk loss"},
-          {id:"moderate_cut",label:"Moderate cut",offset:-250,desc:"~0.5 lb/wk loss"},
-          {id:"maintenance",label:"Maintenance hold",offset:0,desc:"pause loss if recovery demands it"}
-        ].map(opt=>(
-          <div key={opt.id} onClick={()=>setTdeeGoal(opt.id)} style={{
-            display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",marginBottom:4,
-            background:tdeeGoal===opt.id?C.pl:C.bg,borderRadius:6,cursor:"pointer",
-            border:tdeeGoal===opt.id?`2px solid ${C.p}`:`2px solid transparent`
-          }}>
-            <div>
-              <div style={{fontSize:13,fontWeight:600,color:C.t}}>{opt.label} <span style={{fontWeight:400,color:C.t3}}>({opt.offset>0?"+":""}{opt.offset})</span></div>
-              <div style={{fontSize:11,color:C.t3}}>{opt.desc}</div>
-            </div>
-            <div style={{fontSize:15,fontWeight:700,color:tdeeGoal===opt.id?C.p:C.t2}}>{(nutTDEE.tdee+opt.offset).toLocaleString()}</div>
+      {nutTDEE&&nutTDEE.tdee&&(<S title="Target logic" meta={`burn ≈ ${nutTDEE.tdee.toLocaleString()}`} collapsible defaultOpen={false}>
+        <div style={{fontSize:14,color:C.t2,lineHeight:1.5,...NUMS}}>Estimated burn {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?` ± ${nutTDEE.tdee-nutTDEE.tdeeLow}`:""} cal a day. {calT!=null?<>Today's target {calT.toLocaleString()} is a {Math.abs(nutTDEE.tdee-calT).toLocaleString()} cal {nutTDEE.tdee>=calT?"deficit":"surplus"}.</>:null}</div>
+        {!showTDEEAdjust&&<button type="button" style={link} onClick={()=>setShowTDEEAdjust(true)}>Change targets from this estimate</button>}
+        {showTDEEAdjust&&(<div style={{marginTop:8}}>
+          {[{id:"aggressive_cut",label:"Faster cut",offset:-500,desc:"about 1 lb a week"},{id:"moderate_cut",label:"Steady cut",offset:-250,desc:"about 0.5 lb a week"},{id:"maintenance",label:"Hold",offset:0,desc:"pause loss if recovery needs it"}].map(opt=>{const on=tdeeGoal===opt.id;return(
+            <button type="button" key={opt.id} aria-pressed={on} onClick={()=>setTdeeGoal(opt.id)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:52,padding:"6px 12px",marginBottom:6,background:C.cd,borderRadius:9,cursor:"pointer",border:`1px solid ${on?C.t:C.bd}`,textAlign:"left"}}>
+              <span><span style={{display:"block",fontSize:14,fontWeight:500}}>{opt.label}</span><span style={{display:"block",fontSize:12,color:C.t3}}>{opt.desc}</span></span>
+              <span style={{fontSize:15,fontWeight:500,...NUMS}}>{(nutTDEE.tdee+opt.offset).toLocaleString()}</span>
+            </button>);})}
+          <div style={{display:"flex",gap:8,marginTop:4}}>
+            <button type="button" onClick={()=>setShowTDEEAdjust(false)} style={{flex:1,minHeight:48,border:`1px solid ${C.bd}`,borderRadius:9,background:C.cd,fontSize:15,cursor:"pointer"}}>Cancel</button>
+            <button type="button" onClick={()=>{
+              const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0}[tdeeGoal]||0;
+              const newCal=nutTDEE.tdee+opt;
+              const ratio=newCal/(st.calories||DEFAULTS.calories);
+              const nd={...data,settings:{...st,
+                calories:Math.round(newCal),
+                trainingCal:Math.round((st.trainingCal||DEFAULTS.trainingCal)*ratio),
+                wednesdayCal:Math.round((st.wednesdayCal??DEFAULTS.wednesdayCal)*ratio),
+                weekendCal:Math.round((st.weekendCal||DEFAULTS.weekendCal)*ratio)
+              }};
+              setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
+            }} style={{flex:1,minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:15,fontWeight:500,cursor:"pointer"}}>Apply</button>
           </div>
-        ))}
-        <B full color={C.p} onClick={()=>{
-          const opt={aggressive_cut:-500,moderate_cut:-250,maintenance:0}[tdeeGoal]||0;
-          const newCal=nutTDEE.tdee+opt;
-          const ratio=newCal/(st.calories||DEFAULTS.calories);
-          const nd={...data,settings:{...st,
-            calories:Math.round(newCal),
-            trainingCal:Math.round((st.trainingCal||DEFAULTS.trainingCal)*ratio),
-            wednesdayCal:Math.round((st.wednesdayCal??DEFAULTS.wednesdayCal)*ratio),
-            weekendCal:Math.round((st.weekendCal||DEFAULTS.weekendCal)*ratio)
-          }};
-          setData(nd);sv(nd);svSB.settings(nd.settings);setShowTDEEAdjust(false);
-        }} style={{marginTop:8}}>Apply to Settings</B>
-      </X>
-    )}
+        </div>)}
+        <label style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:48,borderTop:`1px solid ${C.bd}`,marginTop:8,fontSize:14,color:C.t,cursor:"pointer"}}>
+          <span>Leave {isViewingToday?"today":fmt(viewDate)} out of the estimate<span style={{display:"block",fontSize:12,color:C.t3}}>For days the log is incomplete</span></span>
+          <input type="checkbox" checked={isExcluded} onChange={toggleExclude} style={{width:22,height:22,accentColor:"var(--ink)"}}/>
+        </label>
+      </S>)}
 
-    <S title={`Water · ${waterToday}/${waterGoal} oz`} collapsible defaultOpen={false}>
-    <X style={{padding:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-        <div>
-          <span style={{fontSize:13,fontWeight:700,color:C.t}}>Water </span>
-          <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.t}}>{waterToday}</span>
-          <span style={{fontSize:13,color:C.t3}}> / {waterGoal} oz</span>
+      <S title="Water" meta={`${waterToday} of ${waterGoal} oz`} collapsible defaultOpen={false}>
+        <div style={{display:"flex",gap:6,paddingTop:2}}>
+          {[24,32,64].map(oz=>(<button type="button" key={oz} onClick={()=>addWater(oz)} style={{flex:1,minHeight:44,borderRadius:9,border:`1px solid ${C.bd}`,background:C.cd,fontSize:15,cursor:"pointer",...NUMS}}>+{oz}</button>))}
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
-          {Object.keys(data.water||{}).length>1&&<button onClick={()=>setShowWaterHist(!showWaterHist)} style={{background:"none",border:"none",color:C.t,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{showWaterHist?"Hide":"7d"}</button>}
-        </div>
-      </div>
-      <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.t} h={8}/>
-      <div style={{display:"flex",gap:6,marginTop:8}}>
-        {[24,32,64].map(oz=>(
-          <button key={oz} onClick={()=>addWater(oz)} style={{
-            flex:1,padding:"10px 4px",borderRadius:6,fontSize:15,fontWeight:700,cursor:"pointer",
-            background:"transparent",border:`1px solid ${C.bd}`,color:C.t,fontFamily:"inherit",minHeight:44,
-          }}>+{oz}oz</button>
-        ))}
-      </div>
-      {showWaterHist&&(()=>{
-        const entries=Object.entries(data.water||{}).filter(([d])=>d!==viewDate).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
-        const avg=entries.length?Math.round(entries.reduce((s,[_,v])=>s+v,0)/entries.length):0;
-        return(<div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:6}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:4}}>Last 7 days · avg {avg} oz</div>
-          {entries.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
-            <span style={{fontSize:12,color:C.t2}}>{fmt(d)}</span>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:60}}><Br v={v} max={waterGoal} color={v>=waterGoal?C.g:C.t} h={4}/></div>
-              <span style={{fontSize:12,fontWeight:600,color:v>=waterGoal?C.g:C.t,width:40,textAlign:"right"}}>{v}oz</span>
-            </div>
-          </div>))}
-        </div>);
-      })()}
-    </X>
-    </S>
-
-    {MEAL_TYPES.map(mt=>{
-      const meals=grouped[mt];
-      if(meals.length===0)return null;
-      const mtCal=meals.reduce((s,m)=>s+(m.cal||0),0);
-      return(
-        <S key={mt} title={`${mt} (${meals.length}) · ${mtCal} cal`}>
-          {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:11,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:8,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
-              </div>
-                <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} cal · {m.protein}g protein{m.fiber?` · ${m.fiber}g fiber`:""}</div></div>
-              <span style={{color:C.t3,fontSize:13}}>→</span>
-            </div>
-          </X>))}
-        </S>
-      );
-    })}
-    {tl.meals.length===0&&<div style={{color:C.t3,fontSize:13,padding:12,textAlign:"center"}}>No meals logged today</div>}
+        {waterToday>0&&<button type="button" style={{...link,color:C.t3}} onClick={resetWater}>Reset to 0</button>}
+        {(()=>{const es=Object.entries(data.water||{}).filter(([d])=>d<viewDate).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);if(!es.length)return null;
+          const avg=Math.round(es.reduce((s,[_,v])=>s+v,0)/es.length);
+          return(<div style={{marginTop:6}}>
+            <div style={{fontSize:12,color:C.t3,padding:"4px 2px",...NUMS}}>Last {es.length} days with water logged · avg {avg} oz</div>
+            {es.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",minHeight:36,alignItems:"center",borderTop:`1px solid ${C.bd}`,fontSize:14,padding:"0 2px",...NUMS}}>
+              <span style={{color:C.t2}}>{fmt(d)}</span><span style={{color:v>=waterGoal?C.g:C.t}}>{v} oz</span></div>))}
+          </div>);})()}
+      </S>
+    </div>
   </div>);
 };
 
