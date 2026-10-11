@@ -468,3 +468,23 @@ test('sessionCursor treats skipped sets as handled', () => {
   exs[2].sets[0].skipped = true;
   assert.equal(E.sessionCursor(exs, () => 90).curEi, -1);
 });
+
+test('workoutLabel names a log from its own lifts, not the current program by position', () => {
+  const program = { monday: { name: 'Upper A', exercises: [{ id: 'machine-chest-press' }, { id: 'seated-row-machine' }] } };
+  // matches the current Monday → its name
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: [{ id: 'machine-chest-press' }, { id: 'seated-row-machine' }] }, program), 'Upper A');
+  // an old Monday from another block → derived from patterns, not "Upper A"
+  const lower = Object.values(E.exLibById).filter(e => ['squat', 'hinge', 'leg-curl'].includes(e.pattern)).slice(0, 3).map(e => ({ id: e.id }));
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: lower }, program), 'Lower body');
+  // a stored name wins; unknown ids fall back to "Workout"
+  assert.equal(E.workoutLabel({ name: 'Manual', day: 'monday', exercises: lower }, program), 'Manual');
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: [{ id: 'cable-crunch' }] }, program), 'Workout');
+  assert.equal(E.exerciseName('cable-crunch'), 'Cable crunch');
+});
+
+test('cleanDur hides forgotten-finish durations', () => {
+  assert.equal(E.cleanDur(52), 52);
+  assert.equal(E.cleanDur(658), null);
+  assert.equal(E.cleanDur(null), null);
+  assert.equal(E.cleanDur(0), null);
+});

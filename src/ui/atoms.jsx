@@ -37,18 +37,21 @@ const X=({children,style={},...p})=>(
   <div style={{background:C.cd,borderRadius:12,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
 );
 const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>{children}</div>;
-const S=({title,children,collapsible,defaultOpen=true})=>{
-  // Collapsible sections really collapse (tap to expand) · "buried" surfaces
-  // like photos/measurements stay reachable instead of being hidden entirely.
+// Section. collapsible = a fold: a full-width row you tap (48px, a real
+// button with aria-expanded), title on the left, an optional `meta` summary and
+// a chevron on the right. Plain sections get a small gray heading.
+const S=({title,meta,children,collapsible,defaultOpen=true})=>{
   const [open,setOpen]=useState(!collapsible||defaultOpen);
-  return(<div style={{marginTop:6}}>
-    <div onClick={collapsible?()=>setOpen(o=>!o):undefined}
-      style={{fontSize:13,fontWeight:500,color:C.t3,marginBottom:6,borderBottom:`1px solid ${C.bl}`,padding:"10px 0 6px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
-      <span>{title}</span>
-      {collapsible&&<span style={{fontSize:11}}>{open?"▴":"▾"}</span>}
-    </div>
-    {open&&children}
-  </div>);
+  if(!collapsible)return(<section style={{marginTop:20}}>
+    <h2 style={{fontSize:13,fontWeight:500,color:C.t3,margin:"0 0 6px"}}>{title}</h2>{children}</section>);
+  return(<section style={{marginTop:12}}>
+    <button type="button" aria-expanded={open} onClick={()=>setOpen(o=>!o)} style={{width:"100%",minHeight:48,display:"flex",alignItems:"center",gap:10,background:"none",border:"none",borderTop:`1px solid ${C.bd}`,borderBottom:open?"none":`1px solid ${C.bd}`,padding:"0 2px",cursor:"pointer",textAlign:"left"}}>
+      <span style={{flex:1,fontSize:15,fontWeight:500,color:C.t}}>{title}</span>
+      {meta!=null&&<span style={{fontSize:13,color:C.t3,fontVariantNumeric:"tabular-nums"}}>{meta}</span>}
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{flexShrink:0,transform:open?"rotate(180deg)":"none",transition:"transform .15s"}}><path d="M2 4.5l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{color:C.t3}}/></svg>
+    </button>
+    {open&&<div style={{paddingBottom:8}}>{children}</div>}
+  </section>);
 };
 const Br=({v,max,color=C.p,h=5})=>(
   <div style={{height:h,background:C.bl,borderRadius:6,overflow:"hidden"}}>

@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout } from "../../lib/engine.mjs";
+import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -15,6 +15,15 @@ import { ConfirmModal, Portal, Sheet } from "../ui/overlay.jsx";
 let restPushWarned=false;
 const AUTO_END_MS=90*6e4;
 // ═══ TRAINING ═══
+// Train home building blocks (module level so they keep identity across renders).
+const NUMS_T={fontVariantNumeric:"tabular-nums"};
+const H2=({children,right})=>(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:28,minHeight:40}}><h2 style={{fontSize:13,fontWeight:500,color:C.t3}}>{children}</h2>{right}</div>);
+const Row=({title,sub,right,onClick,last})=>(<div onClick={onClick} role={onClick?"button":undefined} tabIndex={onClick?0:undefined}
+        style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:56,padding:"10px 0",borderTop:`1px solid ${C.bd}`,borderBottom:last?`1px solid ${C.bd}`:"none",cursor:onClick?"pointer":"default"}}>
+        <div style={{minWidth:0}}><div style={{fontSize:15,fontWeight:500,color:C.t}}>{title}</div>{sub&&<div style={{fontSize:13,color:C.t3,marginTop:2,...NUMS_T}}>{sub}</div>}</div>
+        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,fontSize:13,color:C.t3,...NUMS_T}}>{right}</div>
+      </div>);
+
 // Session clock in the workout header.
 const Elapsed=({start})=>{const [now,setNow]=useState(Date.now());useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(iv);},[]);
   return <span style={{fontSize:15,color:C.t2,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(Math.max(0,Math.floor((now-start)/1000)))}</span>;};
@@ -23,6 +32,15 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const t=useToday(),dn=dw(t);
   const [sel,setSel]=useState(dn);
   useEffect(()=>{setSel(dn);},[dn]);
+  // Train home: the day picked in the week strip (any date), the strip page
+  // (0 = this week) and the session picker ({date} or null).
+  const [selDate,setSelDate]=useState(t);
+  useEffect(()=>{setSelDate(t);},[t]);
+  useEffect(()=>{setSel(dw(selDate));},[selDate]);
+  const [weekOff,setWeekOff]=useState(0);
+  const [picker,setPicker]=useState(null);
+  const stripRef=useRef(null);
+  useBackClose(!!picker,()=>setPicker(null));
   const [rl,setRl]=useState(0);
   const [rt,setRt]=useState(0);
   const restEndRef=useRef(0);
@@ -99,12 +117,14 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
 
   const isDeload=wkn(t)===PROG.deload;
 
-  const startW=(day=sel)=>{const startVariant=activeVariant[day]||null;const startSess=getSess(day,startVariant);if(!startSess)return;
-    setWorkout(buildSession(data,day,startSess,{date:t,variant:startVariant}));setWuDone(false);};
+  // date: the day the log belongs to. Today by default; a past date backfills a
+  // missed day (its duration is not recorded, the clock would be meaningless).
+  const startW=(day=sel,opts={})=>{const startVariant=opts.variant!==undefined?opts.variant:(activeVariant[day]||null);const startSess=getSess(day,startVariant);if(!startSess)return;
+    setWorkout(buildSession(data,day,startSess,{date:opts.date||t,variant:startVariant}));setWuDone(false);setPicker(null);};
 
   // Manual workout: start empty, add exercises from the library mid-session.
   // Weights come from gw() (progression + history), rest timers work as normal.
-  const startManualW=()=>{setWorkout({day:sel,date:t,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);};
+  const startManualW=(date=t)=>{setWorkout({day:dw(date),date,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);setPicker(null);};
   const addManualEx=(opt)=>{
     const slot=manualSlot(opt);
     setWorkout(p=>({...p,exercises:[...p.exercises,buildExerciseEntry(data,slot,{isDeload:!!p.isDeload,withWarmup:p.exercises.length===0,extra:{slot}})]}));
@@ -121,7 +141,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     if(!cur||Number(cur.reps)<=0){if(addToast)addToast("Enter reps before logging the set","error");return;}
     haptic(30);setFocusEi(null);
     setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;n.exercises[ei].sets[si].at=Date.now();return n;});
-    if(rest>0)startRestTimer(rest);
+    if(rest>0&&(workout?.date||t)===t)startRestTimer(rest);   // no rest timer while backfilling a past day
   };
 
   const armRestAudio=()=>{
@@ -271,6 +291,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     // (or is finished from a stale tab) cannot overwrite the next day's workout.
     const d=workout.date||t;
     const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,d,endAt);
+    if(d<t){log.dur=null;if(nd.wk?.[d])nd.wk[d]={...nd.wk[d],dur:null};}  // backfilled: no real duration
     setData(nd);sv(nd);svSB.workout(d,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
     setWorkout(null);clearRestTimer();stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
     haptic([40,60,40]);
@@ -417,12 +438,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         return(<div style={{paddingTop:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
             <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
-            <Elapsed start={workout.start}/>
+            {(workout.date||t)===t&&<Elapsed start={workout.start}/>}
           </div>
           <div style={{fontSize:13,color:C.t3,marginTop:4,fontVariantNumeric:"tabular-nums"}}>
             {exs.length?(curEi>=0?`Lift ${curEi+1} of ${exs.length}`:"All sets done"):"Empty session"}
             {rt>0&&rl>0?` · rest ${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")} left`:""}
             {workout.isDeload?" · deload, half weight":""}
+            {workout.date&&workout.date!==t?<div style={{color:C.t2,marginTop:2}}>Logging for {fmt(workout.date)}. The clock is ignored.</div>:null}
           </div>
         </div>);})()}
 
@@ -608,75 +630,74 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     </div>);
   }
 
-  const calDays=()=>{
-    const first=new Date(calYear,calMonth,1);
-    const last=new Date(calYear,calMonth+1,0);
-    const startPad=first.getDay();
-    const days=[];
-    for(let i=0;i<startPad;i++)days.push(null);
-    for(let d=1;d<=last.getDate();d++)days.push(d);
-    return days;
-  };
-  const calKey=(d)=>`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
   const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   if(viewW){
+    // A logged workout. Names come from the log's own exercise ids (the program
+    // may have changed since), the goal range only when the lift still matches.
     const [vDate,vData]=viewW;
     const vSess=getSess(vData.day,vData.variant);
+    const title=workoutLabel(vData,data.program);
+    const rrOf=ex=>{const pe=vSess?.exercises?.find(p=>p.id===ex.id);return pe?.rr||null;};
+    const nameOf=ex=>ex.swappedTo?.name||exerciseName(ex.id);
+    const NUMS={fontVariantNumeric:"tabular-nums"};
+    const back=<button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Train</button>;
+    const grid={display:"grid",gridTemplateColumns:"32px 1fr 1fr 64px",alignItems:"center",columnGap:8};
     if(editW){
       const upd=(fn)=>setEditW(p=>{const n=JSON.parse(JSON.stringify(p));fn(n);return n;});
       const saveEdit=()=>{
         const w={...editW,dur:+editW.dur||vData.dur||0};w.volume=w.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.done).reduce((b,x)=>b+(+x.weight||0)*(+x.reps||0),0),0);
         const nd={...data,wk:{...data.wk,[vDate]:w}};setData(nd);sv(nd);svSB.workout(vDate,w);
         setViewW([vDate,w]);setEditW(null);addToast?.("Workout updated","success");};
-      return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <X style={{}}>
-          <div style={{fontSize:17,fontWeight:700,color:C.t}}>Edit · {vSess?.name||vData.day}</div>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}><span style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · Duration (min)</span>
-            <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:80}}/></div>
-        </X>
-        {editW.exercises?.map((ex,ei)=>{const pe=vSess?.exercises[ei];return(<X key={ei} style={{padding:10}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:4}}>{ex.swappedTo?.name||pe?.name||ex.id}{pe?.rr?<span style={{fontSize:12,color:C.t2,fontWeight:700}}> · goal {rrTxt(pe.rr)}</span>:null}</div>
-          {ex.sets?.map((st,si)=>(<div key={si} style={{display:"grid",gridTemplateColumns:"18px 1fr 1fr 70px",gap:6,alignItems:"center",padding:"3px 0"}}>
-            <span style={{fontSize:12,color:C.t3,fontWeight:600}}>{si+1}</span>
+      return(<div style={{paddingTop:4}}>
+        {back}
+        <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Edit {title}</h1>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,fontSize:13,color:C.t3}}>{fmt(vDate)} · minutes
+          <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:72}}/></div>
+        {editW.exercises?.map((ex,ei)=>(<div key={ei} style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:12}}>
+          <div style={{fontSize:15,fontWeight:500}}>{nameOf(ex)}</div>
+          <div style={{...grid,marginTop:6}}>{["Set","lb","Reps",""].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4}}>{h}</span>)}</div>
+          {ex.sets?.map((st,si)=>(<div key={si} style={{...grid,padding:"3px 0"}}>
+            <span style={{fontSize:14,color:C.t4,...NUMS}}>{si+1}</span>
             <N value={String(st.weight??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].weight=v===""?"":+v||v;})} placeholder="lb"/>
             <N value={String(st.reps??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].reps=v===""?"":+v||v;})} placeholder="reps"/>
-            <button type="button" onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{border:`1px solid ${st.done?C.g:C.bd}`,background:"transparent",color:st.done?C.g:C.t3,borderRadius:6,padding:"8px 4px",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>{st.done?"✓ done":"skipped"}</button>
+            <button type="button" aria-pressed={!!st.done} onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{minHeight:40,border:`1px solid ${C.bd}`,background:C.cd,color:st.done?C.t:C.t3,borderRadius:8,fontSize:13,cursor:"pointer"}}>{st.done?"Done":"Skipped"}</button>
           </div>))}
-        </X>);})}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+        </div>))}
+        <div style={{display:"flex",gap:8,marginTop:18}}>
           <B full outline onClick={()=>setEditW(null)}>Cancel</B>
           <B full onClick={saveEdit}>Save</B>
         </div>
-        <div style={{fontSize:11,color:C.t3,textAlign:"center"}}>Edits fix the log. Next session's weights still follow the plan.</div>
+        <div style={{fontSize:12,color:C.t3,textAlign:"center",marginTop:8}}>Edits fix the log. Next session's weights still follow the plan.</div>
       </div>);
     }
-    return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-      <button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:"4px 0",minHeight:32}}>← Back</button>
-      <X style={{}}>
-        <div style={{fontSize:17,fontWeight:700,color:C.t}}>{vSess?.name||vData.day}</div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontSize:13,color:C.t2}}>{fmt(vDate)} · {vData.dur||"?"}min</div>
-          <B small outline onClick={()=>setEditW(JSON.parse(JSON.stringify(vData)))}>Edit</B>
+    const doneSets=(vData.exercises||[]).reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0);
+    const vol=vData.volume||(vData.exercises||[]).reduce((a,e)=>a+(e.sets||[]).filter(saneSet).reduce((b,x)=>b+(+x.weight||0)*(+x.reps||0),0),0);
+    const dur=cleanDur(vData.dur);
+    return(<div style={{paddingTop:4}}>
+      {back}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+        <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>{title}</h1>
+        <button type="button" onClick={()=>setEditW(JSON.parse(JSON.stringify(vData)))} style={{background:"none",border:"none",color:C.t2,fontSize:14,cursor:"pointer",padding:"8px 0",minHeight:40}}>Edit</button>
+      </div>
+      <div style={{fontSize:13,color:C.t3,marginTop:2,...NUMS}}>{fmt(vDate)}{dur?` · ${dur} min`:""} · {doneSets} sets{vol>0?` · ${Math.round(vol).toLocaleString()} lb moved`:""}</div>
+      {(vData.exercises||[]).map((ex,ei)=>{const rr=rrOf(ex);return(<div key={ei} style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+          <span style={{fontSize:15,fontWeight:500}}>{nameOf(ex)}</span>
+          {rr&&<span style={{fontSize:13,color:C.t3,...NUMS}}>{rrTxt(rr)} reps</span>}
         </div>
-      </X>
-      {vData.exercises?.map((ex,ei)=>{
-        const pe=vSess?.exercises[ei];
-        return(<X key={ei} style={{padding:10}}>
-          <div style={{fontSize:15,fontWeight:700,color:C.t,marginBottom:ex.swappedFrom?2:4}}>{ex.swappedTo?.name||pe?.name||ex.id}</div>
-          {ex.swappedFrom&&<div style={{fontSize:11,color:C.t3,fontStyle:"italic",marginBottom:4}}>swapped from {ex.swappedFrom.name}</div>}
-          {ex.sets?.map((s,si)=>(
-            <div key={si} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:si>0?`1px solid ${C.bl}`:"none",fontSize:14}}>
-              <span style={{fontSize:12,color:C.t3,width:18,fontWeight:600}}>{si+1}</span>
-              <span style={{fontWeight:600,color:C.t}}>{s.weight||"BW"}</span>
-              <span style={{color:C.t3}}>×</span>
-              <span style={{fontWeight:600,color:s.reps>=((pe?.rr||[])[1]||999)?C.g:C.t}}>{s.reps}</span>
-              {s.rir!=null&&s.rir!==""&&<span style={{fontSize:11,color:C.t2,fontWeight:600,marginLeft:4}}>RIR {s.rir}</span>}
-              {s.done?<span style={{color:C.g,marginLeft:"auto"}}>✓</span>:<span style={{color:C.r,marginLeft:"auto",fontSize:12}}>skipped</span>}
-            </div>
-          ))}
-        </X>);
-      })}
+        {ex.swappedFrom&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>Swapped from {ex.swappedFrom.name}</div>}
+        <div style={{...grid,gridTemplateColumns:"32px 1fr 1fr 1fr",marginTop:6}}>
+          {["Set","lb","Reps","RIR"].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4,textAlign:i?"center":"left"}}>{h}</span>)}
+          {(ex.sets||[]).map((x,si)=>{const ok=x.done;const top=rr&&ok&&+x.reps>=rr[1];const c=ok?C.t:C.t4;return(<React.Fragment key={si}>
+            <span style={{fontSize:14,color:C.t4,padding:"7px 0",...NUMS}}>{si+1}</span>
+            <span style={{fontSize:15,color:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{+x.weight>0?x.weight:"BW"}</span>
+            <span style={{fontSize:15,color:top?C.g:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{x.reps||"○"}</span>
+            <span style={{fontSize:13,color:C.t3,textAlign:"center",...NUMS}}>{ok?(x.rir!=null&&x.rir!==""?x.rir:""):"skipped"}</span>
+          </React.Fragment>);})}
+        </div>
+      </div>);})}
+      <div style={{fontSize:12,color:C.t3,marginTop:16}}>Green reps hit the top of the range.</div>
     </div>);
   }
 
@@ -707,77 +728,133 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     {(()=>{ // ═══ TRAIN HOME · week strip, the selected day's session, also today, progress, history ═══
       const NUMS={fontVariantNumeric:"tabular-nums"};
       const link={background:"none",border:"none",color:C.t3,fontSize:13,cursor:"pointer",padding:"10px 8px",minHeight:40};
-      const H2=({children,right})=>(<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginTop:28}}><h2 style={{fontSize:13,fontWeight:500,color:C.t3}}>{children}</h2>{right}</div>);
-      const Row=({title,sub,right,onClick,last})=>(<div onClick={onClick} role={onClick?"button":undefined} tabIndex={onClick?0:undefined}
-        style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:56,padding:"10px 0",borderTop:`1px solid ${C.bd}`,borderBottom:last?`1px solid ${C.bd}`:"none",cursor:onClick?"pointer":"default"}}>
-        <div style={{minWidth:0}}><div style={{fontSize:15,fontWeight:500,color:C.t}}>{title}</div>{sub&&<div style={{fontSize:13,color:C.t3,marginTop:2,...NUMS}}>{sub}</div>}</div>
-        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,fontSize:13,color:C.t3,...NUMS}}>{right}</div>
-      </div>);
-      const monday=(()=>{const d=new Date(t+"T12:00:00");const k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return d;})();
-      const weekDays=dks.map((dk,i)=>{const d=new Date(monday);d.setDate(d.getDate()+i);const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-        return{dk,ds,n:d.getDate(),lift:!!data.program?.[dk]?.exercises?.length,done:!!data.wk?.[ds],today:ds===t};});
-      const selDay=weekDays.find(w=>w.dk===sel)||weekDays[0];
-      const selDone=selDay?data.wk?.[selDay.ds]:null;
-      const isToday=sel===dn;
+      // ── Week strip: 12 weeks back to 1 ahead, swipe sideways (snaps per week).
+      const dsOf=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const PAST_WEEKS=12;
+      const mon0=(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-(d.getDay()+6)%7);return d;})();
+      const weekOf=off=>dks.map((dk,i)=>{const d=new Date(mon0);d.setDate(d.getDate()+off*7+i);const ds=dsOf(d);
+        return{dk,ds,n:d.getDate(),lift:!!data.program?.[dk]?.exercises?.length,done:!!data.wk?.[ds],today:ds===t,future:ds>t};});
+      const pages=Array.from({length:PAST_WEEKS+2},(_,i)=>i-PAST_WEEKS);
+      const shortD=ds=>new Date(ds+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
+      const wk=weekOf(weekOff);
+      const weekLabel=weekOff===0?"This week":weekOff===-1?"Last week":weekOff===1?"Next week":`${shortD(wk[0].ds)} – ${shortD(wk[6].ds)}`;
+      const jumpToday=()=>{setSelDate(t);const el=stripRef.current;if(el)el.scrollTo({left:el.clientWidth*PAST_WEEKS,behavior:"smooth"});};
+      const selDow=dw(selDate);
+      const selLog=data.wk?.[selDate];
+      // Before this block started there was no plan for that day; offer the picker instead.
+      const selPlan=selDate<PROG.start?null:getSess(selDow,activeVariant[selDow]);
+      const isToday=selDate===t,isPast=selDate<t;
+      const selLabel=isToday?"Today":fmt(selDate);
+      const todayLogged=!!data.wk?.[t];
       const cardioToday=data.cardio?.[t];
       const mobEntry=data.mob?.[t];
-      const recent=allWk.slice(0,5);
+      const bigBtn=(primary)=>({marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",border:primary?"none":`1px solid ${C.bd}`,background:primary?C.p:C.cd,color:primary?C.oa:C.t});
+      const liftRows=(exs,dim)=>(<div style={{marginTop:12,borderTop:`1px solid ${C.bd}`}}>
+        {exs.map(ex=>{const cw=gw(ex,ex.sw,ex);const ss=supersetLabel(selDow,ex);return(
+          <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
+            <span style={{minWidth:0}}>
+              <span style={{display:"block",fontSize:15,color:dim?C.t2:C.t}}>{ex.name}</span>
+              <span style={{display:"block",fontSize:13,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`].filter(Boolean).join(" · ")}</span>
+            </span>
+            <span style={{fontSize:15,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:12,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
+          </button>);})}
+      </div>);
       return(<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:12}}>
           <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Train</h1>
           <span style={{fontSize:13,color:C.t3,...NUMS}}>Week {wkn(t)} of {PROG.weeks}{isDeload?" · deload":""}</span>
         </div>
 
-        {/* Week strip: tap a day to see its session. Green dot = logged, ember dot = today. */}
-        <div role="tablist" aria-label="This week" style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginTop:16}}>
-          {weekDays.map(w=>{const on=w.dk===sel;return(
-            <button type="button" role="tab" aria-selected={on} key={w.dk} onClick={()=>setSel(w.dk)} style={{minHeight:58,borderRadius:9,border:`1px solid ${on?C.t:"transparent"}`,background:on?C.cd:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
-              <span style={{fontSize:12,color:w.lift?C.t3:C.t4}}>{w.dk.charAt(0).toUpperCase()+w.dk.slice(1,3)}</span>
-              <span style={{fontSize:16,fontWeight:500,color:w.lift?C.t:C.t4,...NUMS}}>{w.n}</span>
-              <span aria-hidden="true" style={{width:5,height:5,borderRadius:3,background:w.done?C.g:w.today?C.p:"transparent"}}/>
-            </button>);})}
+        {/* Week strip. Swipe for other weeks. Green dot = logged, ember dot = today. */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,minHeight:32}}>
+          <span style={{fontSize:13,color:C.t3,...NUMS}}>{weekLabel}</span>
+          {(weekOff!==0||selDate!==t)&&<button type="button" onClick={jumpToday} style={{background:"none",border:"none",fontSize:13,color:C.t2,cursor:"pointer",padding:"6px 0",minHeight:32}}>Back to today</button>}
+        </div>
+        <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init){el.dataset.init="1";el.scrollLeft=el.clientWidth*(PAST_WEEKS+weekOff);}}}
+          onScroll={e=>{const el=e.currentTarget;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
+          style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:4}}>
+          {pages.map(off=>(<div key={off} role="tablist" aria-label={off===0?"This week":`Week ${off>0?"+":""}${off}`} style={{flex:"0 0 100%",scrollSnapAlign:"start",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+            {weekOf(off).map(w=>{const on=w.ds===selDate;return(
+              <button type="button" role="tab" aria-selected={on} key={w.ds} onClick={()=>setSelDate(w.ds)} aria-label={`${fmt(w.ds)}${w.done?", logged":""}`}
+                style={{minHeight:58,borderRadius:9,border:`1px solid ${on?C.t:"transparent"}`,background:on?C.cd:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
+                <span style={{fontSize:12,color:C.t3}}>{w.dk.charAt(0).toUpperCase()+w.dk.slice(1,3)}</span>
+                <span style={{fontSize:16,fontWeight:w.done||w.today?500:400,color:w.done||w.today||(!w.future&&w.lift)?C.t:C.t4,...NUMS}}>{w.n}</span>
+                <span aria-hidden="true" style={{width:5,height:5,borderRadius:3,background:w.done?C.g:w.today?C.p:"transparent"}}/>
+              </button>);})}
+          </div>))}
         </div>
 
-        {/* Selected day's session */}
-        {sess?(<section style={{marginTop:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-            <div style={{fontSize:20,fontWeight:600}}>{sess.name}</div>
-            <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{sess.exercises.length} lifts · {estTime(sess)} min</span>
-          </div>
-          {sess.focus&&!sess.name.includes(sess.focus)&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>{sess.focus}</div>}
-          {hasVariants&&<div role="group" aria-label="Version" style={{display:"flex",flexWrap:"wrap",marginTop:6,marginLeft:-6}}>
-            {[[null,"Standard"],...Object.entries(hasVariants).map(([k,v])=>[k,v.name.replace(data.program[sel]?.name+" ","").replace(/[()]/g,"")])].map(([k,l])=>{const on=(activeVariant[sel]||null)===k;return(
-              <button type="button" key={l} aria-pressed={on} onClick={()=>setVariant(sel,k)} style={{background:"none",border:"none",fontSize:13,color:on?C.t:C.t3,fontWeight:on?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>);})}
-          </div>}
-          {sel==="wednesday"&&<div style={{fontSize:13,color:C.t3,marginTop:4}}>Superset day. Do A then B back to back, rest after B.</div>}
-          <div style={{marginTop:12,borderTop:`1px solid ${C.bd}`}}>
-            {sess.exercises.map(ex=>{const cw=gw(ex,ex.sw,ex);const ss=supersetLabel(sel,ex);return(
-              <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
-                <span style={{minWidth:0}}>
-                  <span style={{display:"block",fontSize:15,color:C.t}}>{ex.name}</span>
-                  <span style={{display:"block",fontSize:13,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`].filter(Boolean).join(" · ")}</span>
-                </span>
-                <span style={{fontSize:15,fontWeight:500,color:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:12,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
-              </button>);})}
-          </div>
-          {sess.warmup&&<details style={{marginTop:2}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"10px 0"}}>Warm-up · {sess.warmup.cardio}</summary>
-            {sess.warmup.moves.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0"}}><span style={{color:C.t2}}>{m.name}</span><span style={{color:C.t3}}>{m.rx}</span></div>))}
-            {sess.warmup.ramp&&<div style={{fontSize:13,color:C.t3,padding:"5px 0"}}>{sess.warmup.ramp}</div>}
-          </details>}
-          {selDone?(<div style={{marginTop:12}}>
-            <div style={{fontSize:14,color:C.g,...NUMS}}>Logged {isToday?"today":fmt(selDay.ds)}{selDone.dur?` · ${selDone.dur} min`:""} · {selDone.exercises?.reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0)||0} sets</div>
-            <div style={{display:"flex",marginLeft:-8}}><button type="button" style={{...link,color:C.t2}} onClick={()=>setViewW([selDay.ds,selDone])}>View or edit</button>{isToday&&<button type="button" style={link} onClick={undoWorkout}>Undo</button>}</div>
-          </div>):(<>
-            <button type="button" onClick={()=>{startW(sel);}} style={{marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",
-              border:isToday?"none":`1px solid ${C.bd}`,background:isToday?C.p:C.cd,color:isToday?C.oa:C.t}}>{isToday?"Start workout":`Start ${sel.charAt(0).toUpperCase()+sel.slice(1)}'s session`}</button>
-            <div style={{textAlign:"center"}}><button type="button" style={link} onClick={startManualW}>Empty session</button></div>
+        {/* The selected day. Logged → what you did. Today → the plan and Start.
+            A past day with no log → log it for that date or do it today. Future → preview. */}
+        <section style={{marginTop:20}}>
+          {selLog?(()=>{const n=(selLog.exercises||[]).reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0);const du=cleanDur(selLog.dur);return(<>
+            <div style={{fontSize:13,color:C.g,...NUMS}}>Logged · {selLabel}{du?` · ${du} min`:""} · {n} sets</div>
+            <div style={{fontSize:20,fontWeight:600,marginTop:4}}>{workoutLabel(selLog,data.program)}</div>
+            <div style={{marginTop:10,borderTop:`1px solid ${C.bd}`}}>
+              {(selLog.exercises||[]).filter(e=>(e.sets||[]).some(saneSet)).map((e,i)=>{const ds=(e.sets||[]).filter(saneSet);const top=Math.max(...ds.map(x=>+x.weight||0));return(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",gap:12,minHeight:44,alignItems:"center",borderBottom:`1px solid ${C.bd}`}}>
+                  <span style={{fontSize:15,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.swappedTo?.name||exerciseName(e.id)}</span>
+                  <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{top>0?`${top} × `:"BW × "}{ds.map(x=>x.reps).join(", ")}</span>
+                </div>);})}
+            </div>
+            <button type="button" style={bigBtn(false)} onClick={()=>setViewW([selDate,selLog])}>Open workout</button>
+            {isToday&&<div style={{textAlign:"center"}}><button type="button" style={link} onClick={undoWorkout}>Undo today's log</button></div>}
+          </>);})()
+          :selPlan?(<>
+            <div style={{fontSize:13,color:C.t3,...NUMS}}>{isToday?"Today's plan":isPast?`Nothing logged · ${selLabel}`:`Planned · ${selLabel}`}</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginTop:4}}>
+              <div style={{fontSize:20,fontWeight:600,color:isPast?C.t2:C.t}}>{selPlan.name}</div>
+              <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{selPlan.exercises.length} lifts · {estTime(selPlan)} min</span>
+            </div>
+            {PROG.variants?.[selDow]&&<div role="group" aria-label="Version" style={{display:"flex",flexWrap:"wrap",marginTop:6,marginLeft:-6}}>
+              {[[null,"Standard"],...Object.entries(PROG.variants[selDow]).map(([k,v])=>[k,v.name.replace(data.program[selDow]?.name+" ","").replace(/[()]/g,"")])].map(([k,l])=>{const on=(activeVariant[selDow]||null)===k;return(
+                <button type="button" key={l} aria-pressed={on} onClick={()=>setVariant(selDow,k)} style={{background:"none",border:"none",fontSize:13,color:on?C.t:C.t3,fontWeight:on?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>);})}
+            </div>}
+            {selDow==="wednesday"&&<div style={{fontSize:13,color:C.t3,marginTop:4}}>Superset day. Do A then B back to back, rest after B.</div>}
+            {liftRows(selPlan.exercises,isPast)}
+            {selPlan.warmup&&!isPast&&<details style={{marginTop:2}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"10px 0"}}>Warm-up · {selPlan.warmup.cardio}</summary>
+              {selPlan.warmup.moves.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0"}}><span style={{color:C.t2}}>{m.name}</span><span style={{color:C.t3}}>{m.rx}</span></div>))}
+              {selPlan.warmup.ramp&&<div style={{fontSize:13,color:C.t3,padding:"5px 0"}}>{selPlan.warmup.ramp}</div>}
+            </details>}
+            {isToday&&<button type="button" style={bigBtn(true)} onClick={()=>startW(selDow)}>Start workout</button>}
+            {isPast&&<>
+              <button type="button" style={bigBtn(!todayLogged)} onClick={()=>startW(selDow)}>Do {selPlan.name} today</button>
+              <button type="button" style={{...bigBtn(false),marginTop:8}} onClick={()=>startW(selDow,{date:selDate})}>Log it for {selLabel}</button>
+            </>}
+            {!isToday&&!isPast&&<button type="button" style={bigBtn(false)} onClick={()=>startW(selDow)}>Do it today instead</button>}
+            <div style={{textAlign:"center"}}><button type="button" style={link} onClick={()=>setPicker({date:isPast?selDate:t})}>Pick a different session</button></div>
+          </>):(<>
+            <div style={{fontSize:13,color:C.t3}}>{isPast?`Nothing logged · ${selLabel}`:selLabel}</div>
+            <div style={{fontSize:20,fontWeight:600,marginTop:4}}>{selDate<PROG.start?"Before this block":"Rest day"}</div>
+            <div style={{fontSize:13,color:C.t3,marginTop:2}}>{selDate<PROG.start?`${PROG.name} started ${fmt(PROG.start)}.`:"No lift on the plan. Steps, stretch and protein still count."}</div>
+            {isPast?<>
+              <button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:selDate})}>Log a session for {selLabel}</button>
+            </>:<button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:t})}>Start a session</button>}
           </>)}
-        </section>):(<section style={{marginTop:20}}>
-          <div style={{fontSize:20,fontWeight:600}}>Rest day</div>
-          <div style={{fontSize:13,color:C.t3,marginTop:2}}>No lift on the plan. Steps, stretch and protein still count.</div>
-          <button type="button" onClick={startManualW} style={{marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",border:`1px solid ${C.bd}`,background:C.cd,color:C.t}}>Start an empty session</button>
-        </section>)}
+        </section>
 
+        {/* Session picker: any program session or a blank one, for today or the picked past day. */}
+        <Sheet open={!!picker} onClose={()=>setPicker(null)} title={picker?.date===t?"Start a session":`Log a session for ${picker?fmt(picker.date):""}`}>
+          {picker&&(()=>{const taken=data.wk?.[picker.date];const opts=[];
+            dks.forEach(dk=>{const base=data.program?.[dk];if(!base?.exercises?.length)return;opts.push({dk,variant:null,s:base});
+              Object.entries(PROG.variants?.[dk]||{}).forEach(([k,v])=>opts.push({dk,variant:k,s:v}));});
+            return(<div>
+              {taken&&<div style={{fontSize:13,color:C.t2,background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:10}}>{picker.date===t?"Today":fmt(picker.date)} already has {workoutLabel(taken,data.program)}. Finishing a new one replaces it.</div>}
+              {picker.date!==t&&<div style={{fontSize:13,color:C.t3,marginBottom:8}}>Type the sets you did. The clock is ignored for a past day.</div>}
+              <div style={{borderTop:`1px solid ${C.bd}`}}>
+                {opts.map(o=>(<button type="button" key={`${o.dk}-${o.variant||"std"}`} onClick={()=>startW(o.dk,{date:picker.date,variant:o.variant})}
+                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:56,background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left",padding:"8px 2px"}}>
+                  <span><span style={{display:"block",fontSize:15,fontWeight:500}}>{o.s.name}</span>
+                    <span style={{display:"block",fontSize:13,color:C.t3,marginTop:2,...NUMS}}>{o.dk.charAt(0).toUpperCase()+o.dk.slice(1)}'s session · {o.s.exercises.length} lifts · {estTime(o.s)} min</span></span>
+                  <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
+                </button>))}
+                <button type="button" onClick={()=>startManualW(picker.date)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:56,background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left",padding:"8px 2px"}}>
+                  <span><span style={{display:"block",fontSize:15,fontWeight:500}}>Blank session</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Add lifts as you go</span></span>
+                  <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
+                </button>
+              </div>
+            </div>);})()}
+        </Sheet>
         {/* Also today */}
         <H2>Also today</H2>
         <div style={{marginTop:6}}>
@@ -854,53 +931,40 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         <div style={{fontSize:12,color:C.t3,marginTop:8}}>Solid line is your best set each week. Dashed is the plan. On a cut, holding is a win.</div>
       </section>);})()}
 
-        {/* History */}
-        <H2>Recent workouts</H2>
-        <div style={{marginTop:6}}>
-          {recent.length===0&&<div style={{fontSize:14,color:C.t3,padding:"12px 0"}}>No workouts logged yet.</div>}
-          {recent.map(([d,w],i)=>{const ws=data.program[w.day];const n=w.exercises?w.exercises.reduce((s,e)=>s+(e.sets?.filter(x=>x.done).length||0),0):0;return(
-            <Row key={d} last={i===recent.length-1} title={ws?.name||w.day} sub={`${fmt(d)}${w.dur?` · ${w.dur} min`:""} · ${n} sets`} onClick={()=>setViewW([d,w])} right={<span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>}/>);})}
-        </div>
-        {allWk.length>5&&<S title={`All workouts (${allWk.length})`} collapsible defaultOpen={false}>
-          {allWk.slice(5,60).map(([d,w])=>{const ws=data.program[w.day];return(
-            <Row key={d} title={ws?.name||w.day} sub={`${fmt(d)}${w.dur?` · ${w.dur} min`:""}`} onClick={()=>setViewW([d,w])} right={<span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>}/>);})}
-        </S>}
-    <S title="Calendar" collapsible defaultOpen={false}>
-    <div style={{padding:"4px 0"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <button onClick={()=>{if(calMonth===0){setCalMonth(11);setCalYear(calYear-1);}else setCalMonth(calMonth-1);}}
-          style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>‹</button>
-        <span style={{fontSize:14,fontWeight:500,color:C.t}}>{monthNames[calMonth]} {calYear}</span>
-        <button onClick={()=>{if(calMonth===11){setCalMonth(0);setCalYear(calYear+1);}else setCalMonth(calMonth+1);}}
-          style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"4px 8px"}}>›</button>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
-        {["S","M","T","W","T","F","S"].map((d,i)=>(
-          <div key={i} style={{fontSize:11,fontWeight:700,color:C.t3,padding:"2px 0"}}>{d}</div>
-        ))}
-        {calDays().map((d,i)=>{
-          if(!d)return <div key={`e${i}`}/>;
-          const dk=calKey(d);
-          const isToday=dk===t;
-          const hasWorkout=!!data.wk[dk];
-          const hasMob=!!(data.mob?.[dk]?.done||data.mob?.[dk]===true);
-          const dayName=dw(dk);
-          const isRestDay=["saturday","sunday"].includes(dayName);
-          return(
-            <div key={dk} onClick={hasWorkout?()=>setViewW([dk,data.wk[dk]]):undefined}
-              style={{padding:"4px 2px",borderRadius:8,cursor:hasWorkout?"pointer":"default",
-                background:isToday?C.bg:hasWorkout?C.gl:"transparent",
-                border:isToday?`1px solid ${C.p}`:"1px solid transparent",
-                position:"relative",minHeight:28,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-              <span style={{fontSize:12,fontWeight:isToday?700:400,color:isRestDay?C.t3:C.t}}>{d}</span>
-              {hasWorkout&&<div style={{width:5,height:5,borderRadius:6,background:C.g,marginTop:1}}/>}
-              {hasMob&&<div style={{width:5,height:5,borderRadius:6,background:C.t2,marginTop:1}}/>}
+        {/* History: one month at a time. Calendar on top (Monday first, like the
+            week strip), that month's workouts listed under it. */}
+        {(()=>{
+          const mk=`${calYear}-${String(calMonth+1).padStart(2,"0")}`;
+          const monthWk=allWk.filter(([d])=>d.startsWith(mk));
+          const first=new Date(calYear,calMonth,1),days=new Date(calYear,calMonth+1,0).getDate();
+          const pad=(first.getDay()+6)%7;
+          const cells=[...Array(pad).fill(null),...Array.from({length:days},(_,i)=>i+1)];
+          const step=dir=>{let m=calMonth+dir,y=calYear;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);};
+          const atNow=calYear===now.getFullYear()&&calMonth===now.getMonth();
+          const navBtn={background:"none",border:"none",color:C.t2,fontSize:18,cursor:"pointer",minWidth:40,minHeight:40};
+          return(<>
+            <H2 right={<div style={{display:"flex",alignItems:"center"}}>
+              <button type="button" aria-label="Previous month" style={navBtn} onClick={()=>step(-1)}>‹</button>
+              <span style={{fontSize:14,fontWeight:500,color:C.t,minWidth:72,textAlign:"center"}}>{monthNames[calMonth]} {calYear}</span>
+              <button type="button" aria-label="Next month" style={{...navBtn,opacity:atNow?0.3:1}} disabled={atNow} onClick={()=>step(1)}>›</button>
+            </div>}>History</H2>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",rowGap:2,marginTop:6,textAlign:"center"}}>
+              {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{fontSize:12,color:C.t4,padding:"4px 0"}}>{d}</div>)}
+              {cells.map((d,i)=>{if(!d)return <div key={`e${i}`}/>;
+                const dk=`${mk}-${String(d).padStart(2,"0")}`;const w=data.wk?.[dk];const mob=!!(data.mob?.[dk]?.done&&!data.mob?.[dk]?.skipped)||data.mob?.[dk]===true;const isT=dk===t;
+                return(<button type="button" key={dk} disabled={!w} onClick={()=>w&&setViewW([dk,w])} aria-label={`${fmt(dk)}${w?`, ${workoutLabel(w,data.program)}`:""}`}
+                  style={{minHeight:44,background:"none",border:isT?`1px solid ${C.p}`:"1px solid transparent",borderRadius:8,cursor:w?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
+                  <span style={{fontSize:14,color:w?C.t:dk>t?C.t4:C.t3,fontWeight:w?500:400,fontVariantNumeric:"tabular-nums"}}>{d}</span>
+                  <span style={{display:"flex",gap:2,height:5}}>{w&&<span style={{width:5,height:5,borderRadius:3,background:C.g}}/>}{mob&&<span style={{width:5,height:5,borderRadius:3,background:C.t4}}/>}</span>
+                </button>);})}
             </div>
-          );
-        })}
-      </div>
-    </div>
-    </S>
+            <div style={{fontSize:12,color:C.t3,marginTop:4,display:"flex",gap:14}}><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.g,marginRight:5}}/>Workout</span><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.t4,marginRight:5}}/>Stretch</span></div>
+            <div style={{marginTop:10}}>
+              {monthWk.length===0&&<div style={{fontSize:14,color:C.t3,padding:"12px 0",borderTop:`1px solid ${C.bd}`}}>No workouts this month.</div>}
+              {monthWk.map(([d,w],i)=>{const n=(w.exercises||[]).reduce((s,e)=>s+(e.sets||[]).filter(saneSet).length,0);const du=cleanDur(w.dur);return(
+                <Row key={d} last={i===monthWk.length-1} title={workoutLabel(w,data.program)} sub={`${fmt(d)}${du?` · ${du} min`:""} · ${n} sets`} onClick={()=>setViewW([d,w])} right={<span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>}/>);})}
+            </div>
+          </>);})()}
       </>);
     })()}
 

@@ -122,7 +122,7 @@ const Trends=({data,setData})=>{
       <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
     </button>
 
-    <S title={`Weigh-ins (${entries.length})`} collapsible defaultOpen={false}>
+    <S title="Weigh-ins" meta={entries.length} collapsible defaultOpen={false}>
       {entries.slice(0,30).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev!=null?+(w-prev).toFixed(1):null;
         return(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.bd}`,fontSize:14,minHeight:44}}>
           <span style={{color:C.t2}}>{fmt(d)}</span>
