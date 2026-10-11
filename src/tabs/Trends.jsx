@@ -5,7 +5,7 @@ import { useToday } from "../core/hooks.js";
 import { sv, svSB } from "../core/storage.js";
 import { C } from "../core/theme.js";
 import { S } from "../ui/atoms.jsx";
-import { ConfirmModal } from "../ui/overlay.jsx";
+import { ConfirmModal, Sheet } from "../ui/overlay.jsx";
 import { ProgressView } from "../views/Progress.jsx";
 
 // ═══ TRENDS · weight trend first, then history, lifts and body ═══
@@ -62,6 +62,9 @@ const Trends=({data,setData})=>{
   const [range,setRange]=useState(14);   // 2W matches getTrend() exactly; longer ranges seed their own EWMA
   const [scrub,setScrub]=useState(null);
   const [delDate,setDelDate]=useState(null);
+  const [edit,setEdit]=useState(null);           // {date,value,isNew} · the weigh-in sheet
+  const [showMonths,setShowMonths]=useState(3);
+  useBackClose(!!edit,()=>setEdit(null));
   const [showProgress,setShowProgress]=useState(false);
   useBackClose(showProgress,()=>setShowProgress(false));
   const st=data.settings||DEFAULTS;
@@ -92,6 +95,14 @@ const Trends=({data,setData})=>{
   const proAvg=proDays.length?Math.round(proDays.reduce((a,b)=>a+b,0)/proDays.length):null;
   const cells=[["To goal",cur!=null?`${Math.max(0,cur-goal).toFixed(1)} lb`:"○"],["Burn estimate",tdee?.tdee?Math.round(tdee.tdee).toLocaleString():"○"],["Weigh-ins, week",`${weighs}/7`],["Protein, 7-day",proAvg!=null?`${proAvg} g`:"○"]];
   const entries=all.slice().reverse();
+  // Weigh-ins by month. The change shows only against a weigh-in in the 7 days
+  // before; after a longer gap a "+7.0" would be a month of drift, not a day.
+  const dayGap=(a,b)=>Math.round((new Date(a+"T12:00:00")-new Date(b+"T12:00:00"))/864e5);
+  const months=(()=>{const out=[];entries.forEach(([d,w],i)=>{const prev=entries[i+1];const gap=prev?dayGap(d,prev[0]):null;
+      const row={d,w,gap:gap>7?gap:null,diff:prev&&gap<=7?+(w-prev[1]).toFixed(1):null};
+      const key=d.slice(0,7);let m=out[out.length-1];if(!m||m.key!==key){m={key,label:new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}),rows:[]};out.push(m);}m.rows.push(row);});
+    out.forEach(m=>{m.avg=m.rows.reduce((a,r)=>a+r.w,0)/m.rows.length;});return out;})();
+  const saveEdit=(date,v)=>{const nd={...data,wt:{...data.wt,[date]:v}};setData(nd);sv(nd);svSB.weight(date,v);setEdit(null);};
   const del=()=>{const nw={...data.wt};delete nw[delDate];const nd={...data,wt:nw};setData(nd);sv(nd);svSB.delWeight(delDate);setDelDate(null);};
 
   return(<div style={{paddingTop:12}}>
@@ -123,16 +134,33 @@ const Trends=({data,setData})=>{
     </button>
 
     <S title="Weigh-ins" meta={entries.length} collapsible defaultOpen={false}>
-      {entries.slice(0,30).map(([d,w],i)=>{const prev=entries[i+1]?.[1];const diff=prev!=null?+(w-prev).toFixed(1):null;
-        return(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.bd}`,fontSize:14,minHeight:44}}>
-          <span style={{color:C.t2}}>{fmt(d)}</span>
-          <span style={{display:"flex",alignItems:"center",gap:10,...NUM}}>
-            {diff?<span style={{fontSize:13,color:C.t3}}>{diff>0?"+":"−"}{Math.abs(diff).toFixed(1)}</span>:null}
-            <span style={{fontWeight:500}}>{w.toFixed(1)}</span>
-            <button type="button" aria-label={`Delete weigh-in ${fmt(d)}`} onClick={()=>setDelDate(d)} style={{background:"none",border:"none",color:C.t4,fontSize:14,cursor:"pointer",padding:"10px 6px"}}>✕</button>
+      <button type="button" onClick={()=>setEdit({date:"",value:"",isNew:true})} style={{width:"100%",minHeight:44,border:`1px solid ${C.bd}`,borderRadius:9,background:C.cd,color:C.t,fontSize:14,fontWeight:500,cursor:"pointer",margin:"4px 0 6px"}}>Add a missed weigh-in</button>
+      {months.slice(0,showMonths).map(m=>(<div key={m.key}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"14px 2px 6px"}}>
+          <span style={{fontSize:13,fontWeight:500,color:C.t2}}>{m.label}</span>
+          <span style={{fontSize:13,color:C.t3,...NUM}}>{m.rows.length} weigh-in{m.rows.length===1?"":"s"} · avg {m.avg.toFixed(1)}</span>
+        </div>
+        {m.rows.map(r=>(<button type="button" key={r.d} onClick={()=>setEdit({date:r.d,value:String(r.w)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:44,background:"none",border:"none",borderTop:`1px solid ${C.bd}`,cursor:"pointer",padding:"0 2px",fontSize:14}}>
+          <span style={{color:C.t2}}>{fmt(r.d)}</span>
+          <span style={{display:"flex",alignItems:"baseline",gap:12,...NUM}}>
+            <span style={{fontSize:13,color:C.t3}}>{r.diff==null?(r.gap?`${r.gap} days since last`:""):r.diff===0?"same":`${r.diff>0?"+":"−"}${Math.abs(r.diff).toFixed(1)}`}</span>
+            <span style={{fontWeight:500,color:C.t,minWidth:44,textAlign:"right"}}>{r.w.toFixed(1)}</span>
           </span>
-        </div>);})}
+        </button>))}
+      </div>))}
+      {months.length>showMonths&&<button type="button" onClick={()=>setShowMonths(n=>n+3)} style={{width:"100%",minHeight:44,background:"none",border:"none",borderTop:`1px solid ${C.bd}`,color:C.t2,fontSize:14,cursor:"pointer"}}>Show older months</button>}
     </S>
+    <Sheet open={!!edit} onClose={()=>setEdit(null)} title={edit?.isNew?"Add a weigh-in":edit?`Weigh-in · ${fmt(edit.date)}`:""}>
+      {edit&&(()=>{const v=Number(edit.value);const ok=edit.date&&edit.date<=t&&v>80&&v<500;const exists=edit.isNew&&edit.date&&data.wt?.[edit.date]!=null;
+        const inp={width:"100%",height:48,border:`1px solid ${C.bd}`,borderRadius:8,padding:"0 12px",fontSize:17,background:C.cd,...NUM};
+        return(<div>
+          {edit.isNew&&<label style={{display:"block",fontSize:13,color:C.t3}}>Date<input type="date" max={t} value={edit.date} onChange={e=>setEdit({...edit,date:e.target.value})} style={{...inp,marginTop:4}}/></label>}
+          <label style={{display:"block",fontSize:13,color:C.t3,marginTop:edit.isNew?12:0}}>Weight, lb<input inputMode="decimal" value={edit.value} onChange={e=>setEdit({...edit,value:e.target.value.replace(/[^0-9.]/g,"")})} style={{...inp,marginTop:4}}/></label>
+          {exists&&<div style={{fontSize:13,color:C.t2,marginTop:8}}>{fmt(edit.date)} already has {Number(data.wt[edit.date]).toFixed(1)}. Saving replaces it.</div>}
+          <button type="button" disabled={!ok} onClick={()=>saveEdit(edit.date,v)} style={{width:"100%",minHeight:48,marginTop:14,border:"none",borderRadius:9,background:ok?C.p:C.bl,color:ok?C.oa:C.t3,fontSize:15,fontWeight:500,cursor:ok?"pointer":"default"}}>Save</button>
+          {!edit.isNew&&<button type="button" onClick={()=>{setDelDate(edit.date);setEdit(null);}} style={{width:"100%",minHeight:44,marginTop:6,background:"none",border:"none",color:C.r,fontSize:14,cursor:"pointer"}}>Delete this weigh-in</button>}
+        </div>);})()}
+    </Sheet>
   </div>);
 };
 
