@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, cutStepsTarget, DEFAULTS, bl, td, fmt, wkn } from "../../lib/engine.mjs";
+import { PROG, cutStepsTarget, DEFAULTS, bl, td, fmt, wkn, describeChange } from "../../lib/engine.mjs";
 import { LOAD_PLAN } from "../../lib/supabase.mjs";
 import { ensureNotificationPermission, isStandalone, notifyDevice, scheduleServerPush } from "../core/device.js";
 import { useBackClose } from "../core/nav.js";
@@ -38,7 +38,7 @@ const Settings=({data,setData,setTab,syncFailures={}})=>{
       {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`Synced ${fmt(lastRecRow[0])}`:`Last worn ${fmt(lastRecRow[0])}`):"No data"},
       {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
       syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · needs migration`},
-      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"OFF"},
+      {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"Off"},
     ];
   })();
 
@@ -89,6 +89,29 @@ const Settings=({data,setData,setTab,syncFailures={}})=>{
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
     </X>
+    {/* ═══ TRAVEL DAY ═══ */}
+    <X style={{}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:C.t}}>Travel Day</div>
+          <div style={{fontSize:12,color:C.t3}}>Toggle for travel/social weekends</div>
+        </div>
+        <button onClick={toggleTravel} style={{padding:"8px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+          background:isTravel?C.bg:"transparent",border:`1px solid ${isTravel?C.t:C.bd}`,color:isTravel?C.t:C.t3}}>{isTravel?"On":"Off"}</button>
+      </div>
+      {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:8}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.t,marginBottom:4}}>Travel Protocol</div>
+        <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>
+          • Hydrate aggressively: 20-32 oz water + electrolytes before bed<br/>
+          • Take magnesium glycinate regardless of time<br/>
+          • Skip melatonin if drinking<br/>
+          • Wake at 6 AM · get sunlight immediately<br/>
+          • Prioritize protein when eating. Light movement &gt; nothing<br/>
+          • Don't nap past 1 PM. Normal bedtime that night.
+        </div>
+      </div>)}
+    </X>
+
     <button type="button" onClick={()=>setShowClassic(true)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",textAlign:"left"}}>
       <span><span style={{display:"block",fontSize:15,fontWeight:500,color:C.t}}>Full dashboard</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Every number on one page</span></span>
       <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
@@ -138,6 +161,75 @@ const Settings=({data,setData,setTab,syncFailures={}})=>{
       <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
     </X>}
 
+    {(data.coachLog||[]).length>0&&(
+      <S title="Coach changes" meta={(data.coachLog||[]).length} collapsible defaultOpen={false}>
+        {(data.coachLog||[]).slice(0,20).map((c,i)=>(
+          <div key={c.id||i} style={{padding:"10px 2px",borderTop:`1px solid ${C.bd}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"baseline"}}>
+              <span style={{fontSize:15,fontWeight:500,color:c.applied?C.t:C.r}}>{describeChange(c)}</span>
+              <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap"}}>{c.at?fmt(String(c.at).slice(0,10)):""}</span>
+            </div>
+            {c.reason&&<div style={{fontSize:13,color:C.t3,marginTop:3,lineHeight:1.45}}>{c.reason}</div>}
+            {!c.applied&&<div style={{fontSize:12,color:C.r,marginTop:2}}>Not applied</div>}
+          </div>))}
+      </S>
+    )}
+    <S title="Apple Health sync setup" collapsible defaultOpen={false}>
+    {/* ═══ HEALTH SYNC ═══ */}
+    <X style={{}}>
+      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Steps + Weight Sync (via Apple Health)</div>
+      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
+      <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
+        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/></div>
+      <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.bd}`}}>
+        <div style={{fontWeight:700,marginBottom:4,color:C.t2}}>Steps + Weight Shortcuts:</div>
+        Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
+        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
+        </span>
+        Weight: use latest Body Mass, convert to pounds, then call:<br/>
+        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
+          https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
+        </span>
+      </div>
+    </X>
+
+    </S>
+    <S title="Burn estimate calibration" collapsible defaultOpen={false}>
+    {/* ═══ TDEE CALIBRATION ═══ */}
+    {(()=>{
+      const tc=data.tdeeCal||{};
+      const saveCal=(patch)=>{const nd={...data,tdeeCal:{...tc,...patch,answered:true}};setData(nd);sv(nd);};
+      const btn=(active)=>({padding:"7px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+        background:active?C.bg:"transparent",border:`1px solid ${active?C.t:C.bd}`,color:active?C.t:C.t3});
+      return(
+      <X style={{}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.t}}>TDEE Calibration</div>
+        <div style={{fontSize:12,color:C.t3,marginBottom:10}}>Three answers make the TDEE range much tighter on days you don't log.</div>
+        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>When you don't log food, it's usually…</div>
+        <div style={{display:"flex",gap:6,marginBottom:10}}>
+          <button style={btn(tc.unloggedIs==="normal")} onClick={()=>saveCal({unloggedIs:"normal"})}>A normal day</button>
+          <button style={btn(tc.unloggedIs==="blowup")} onClick={()=>saveCal({unloggedIs:"blowup"})}>A blow-up</button>
+          <button style={btn(tc.unloggedIs==="mixed")} onClick={()=>saveCal({unloggedIs:"mixed"})}>Weekends blow up</button>
+        </div>
+        {(tc.unloggedIs==="blowup"||tc.unloggedIs==="mixed")&&(<>
+          <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Typical blow-up day total (food + drinks)</div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>
+            {[2500,3000,3500,4000].map(v=>(
+              <button key={v} style={btn((tc.socialCal||3000)===v)} onClick={()=>saveCal({socialCal:v})}>{v.toLocaleString()}</button>
+            ))}
+          </div>
+        </>)}
+        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Does the Wednesday fast ever slip?</div>
+        <div style={{display:"flex",gap:6}}>
+          <button style={btn(tc.fastSlips===false)} onClick={()=>saveCal({fastSlips:false})}>Holds</button>
+          <button style={btn(tc.fastSlips===true)} onClick={()=>saveCal({fastSlips:true})}>Sometimes slips</button>
+        </div>
+        {tc.answered&&<div style={{fontSize:11,color:C.g,marginTop:8}}>Calibrated · the TDEE estimate now uses these answers.</div>}
+      </X>);
+    })()}
+
+    </S>
     {/* ═══ NOTIFICATIONS ═══ */}
     <S title="Notifications">
       <X style={{padding:10}}>
@@ -205,95 +297,6 @@ const Settings=({data,setData,setTab,syncFailures={}})=>{
       </X>
     </S>
 
-    {/* ═══ HEALTH SYNC ═══ */}
-    <X style={{}}>
-      <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:4}}>Steps + Weight Sync (via Apple Health)</div>
-      <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
-      <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
-        style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/></div>
-      <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.bd}`}}>
-        <div style={{fontWeight:700,marginBottom:4,color:C.t2}}>Steps + Weight Shortcuts:</div>
-        Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
-          https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
-        </span>
-        Weight: use latest Body Mass, convert to pounds, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
-          https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
-        </span>
-      </div>
-    </X>
-
-    {/* ═══ TRAVEL DAY ═══ */}
-    <X style={{}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:C.t}}>Travel Day</div>
-          <div style={{fontSize:12,color:C.t3}}>Toggle for travel/social weekends</div>
-        </div>
-        <button onClick={toggleTravel} style={{padding:"8px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-          background:isTravel?C.bg:"transparent",border:`1px solid ${isTravel?C.t:C.bd}`,color:isTravel?C.t:C.t3}}>{isTravel?"ON":"OFF"}</button>
-      </div>
-      {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:8}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t,marginBottom:4}}>Travel Protocol</div>
-        <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>
-          • Hydrate aggressively: 20-32 oz water + electrolytes before bed<br/>
-          • Take magnesium glycinate regardless of time<br/>
-          • Skip melatonin if drinking<br/>
-          • Wake at 6 AM · get sunlight immediately<br/>
-          • Prioritize protein when eating. Light movement &gt; nothing<br/>
-          • Don't nap past 1 PM. Normal bedtime that night.
-        </div>
-      </div>)}
-    </X>
-
-    {/* ═══ TDEE CALIBRATION ═══ */}
-    {(()=>{
-      const tc=data.tdeeCal||{};
-      const saveCal=(patch)=>{const nd={...data,tdeeCal:{...tc,...patch,answered:true}};setData(nd);sv(nd);};
-      const btn=(active)=>({padding:"7px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
-        background:active?C.bg:"transparent",border:`1px solid ${active?C.t:C.bd}`,color:active?C.t:C.t3});
-      return(
-      <X style={{}}>
-        <div style={{fontSize:14,fontWeight:700,color:C.t}}>TDEE Calibration</div>
-        <div style={{fontSize:12,color:C.t3,marginBottom:10}}>Three answers make the TDEE range much tighter on days you don't log.</div>
-        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>When you don't log food, it's usually…</div>
-        <div style={{display:"flex",gap:6,marginBottom:10}}>
-          <button style={btn(tc.unloggedIs==="normal")} onClick={()=>saveCal({unloggedIs:"normal"})}>A normal day</button>
-          <button style={btn(tc.unloggedIs==="blowup")} onClick={()=>saveCal({unloggedIs:"blowup"})}>A blow-up</button>
-          <button style={btn(tc.unloggedIs==="mixed")} onClick={()=>saveCal({unloggedIs:"mixed"})}>Weekends blow up</button>
-        </div>
-        {(tc.unloggedIs==="blowup"||tc.unloggedIs==="mixed")&&(<>
-          <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Typical blow-up day total (food + drinks)</div>
-          <div style={{display:"flex",gap:6,marginBottom:10}}>
-            {[2500,3000,3500,4000].map(v=>(
-              <button key={v} style={btn((tc.socialCal||3000)===v)} onClick={()=>saveCal({socialCal:v})}>{v.toLocaleString()}</button>
-            ))}
-          </div>
-        </>)}
-        <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:4}}>Does the Wednesday fast ever slip?</div>
-        <div style={{display:"flex",gap:6}}>
-          <button style={btn(tc.fastSlips===false)} onClick={()=>saveCal({fastSlips:false})}>Holds</button>
-          <button style={btn(tc.fastSlips===true)} onClick={()=>saveCal({fastSlips:true})}>Sometimes slips</button>
-        </div>
-        {tc.answered&&<div style={{fontSize:11,color:C.g,marginTop:8}}>Calibrated · the TDEE estimate now uses these answers.</div>}
-      </X>);
-    })()}
-
-    {(data.coachLog||[]).length>0&&(
-      <S title="Coach changes" collapsible defaultOpen={false}>
-        <X style={{padding:"4px 12px"}}>
-          {(data.coachLog||[]).slice(0,12).map((c,i)=>(
-            <div key={c.id||i} style={{padding:"8px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
-                <span style={{fontSize:13,fontWeight:700,color:c.applied?C.t:C.r}}>{c.summary||`${c.type}${c.action?` · ${c.action}`:""}`}</span>
-                <span style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>{c.at?fmt(String(c.at).slice(0,10)):""}</span>
-              </div>
-              {c.reason&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.reason}</div>}
-            </div>))}
-        </X>
-      </S>
-    )}
     <X>
       <div style={{fontSize:14,fontWeight:700,color:C.t,marginBottom:8}}>Data</div>
       <div style={{display:"flex",gap:6}}>

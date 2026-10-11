@@ -496,3 +496,9 @@ test('getTrend flags a rate from too few weigh-ins as unreliable', () => {
   assert.equal(enough.reliable, true);
   assert.equal(enough.spanDays, 10);
 });
+
+test('describeChange turns Coach payloads into plain words', () => {
+  assert.equal(E.describeChange({ payload: { type: 'settings', field: 'weekendCal', value: 2000 } }), 'Weekend calories → 2,000');
+  assert.equal(E.describeChange({ payload: { type: 'exercise', action: 'swap', oldExerciseId: 'lat-pulldown', newExercise: { id: 'pull-ups', name: 'Pull-ups' } } }).startsWith('Swap '), true);
+  assert.equal(E.describeChange({ summary: 'Set protein to 200', payload: {} }), 'Set protein to 200');
+});
