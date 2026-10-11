@@ -10,6 +10,6 @@ const waterOps=(setData,date)=>({
   add:(oz)=>setData(prev=>{const nv=Math.max(0,Math.round((Number(prev.water?.[date])||0)+oz));const water={...(prev.water||{})};if(nv>0)water[date]=nv;else delete water[date];const nd={...prev,water};sv(nd);svSB.water(date,nv);return nd;}),
   reset:()=>setData(prev=>{const water={...(prev.water||{})};delete water[date];const nd={...prev,water};sv(nd);svSB.delWater(date);return nd;}),
 });
-const WATER_PRESETS=[{oz:24,l:"Small bottle"},{oz:32,l:"Big bottle"},{oz:64,l:"JUG"}];
+const WATER_PRESETS=[{oz:24,l:"Small bottle"},{oz:32,l:"Big bottle"},{oz:64,l:"Jug"}];
 
 export { useToday, waterOps, WATER_PRESETS };
