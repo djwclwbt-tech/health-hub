@@ -113,7 +113,7 @@ const AnalysisSection=({data})=>{
   return(
     <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div style={{fontSize:14,fontWeight:700,color:C.t}}>AI Analysis</div>
+        <div style={{fontSize:15,fontWeight:500,color:C.t}}>Weekly analysis</div>
         <div style={{display:"flex",gap:3}}>
           {["7d","14d","30d"].map(r=>(
             <button key={r} onClick={()=>setRange(r)} style={{
@@ -124,8 +124,8 @@ const AnalysisSection=({data})=>{
         </div>
       </div>
 
-      <B full onClick={runAnalysis} disabled={loading} color={C.v} style={{marginBottom:8}}>
-        {loading?"Analyzing...":"⚡ Run Analysis"}
+      <B full outline onClick={runAnalysis} disabled={loading} style={{marginBottom:8}}>
+        {loading?"Analyzing…":`Analyze the last ${range.replace("d"," days")}`}
       </B>
 
       {error&&<div style={{fontSize:13,color:C.r,padding:"8px 10px",background:C.rl,borderRadius:6,marginBottom:8}}>{error}</div>}
@@ -224,7 +224,7 @@ const AnalysisSection=({data})=>{
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
               {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
               {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
-              {result.bodyComposition.photoReminder&&<div style={{fontSize:13,color:C.t2}}>{"📸"} {result.bodyComposition.photoReminder}</div>}
+              {result.bodyComposition.photoReminder&&<div style={{fontSize:13,color:C.t2}}>{result.bodyComposition.photoReminder}</div>}
             </X>
           )}
         </div>

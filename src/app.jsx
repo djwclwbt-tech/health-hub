@@ -33,9 +33,11 @@ window.App = function App(){
     if(first&&f&&!f.transient)addToast(`Sync failed: ${table} · not backed up`,"error");
   }),[addToast]);
 
+  const [missingTables,setMissingTables]=useState([]);
   useEffect(()=>{
     (async()=>{
       const sbData=await loadFromSB();
+      setMissingTables(sbData?.__missing||[]);   // tables that do not exist in the cloud (migration not run)
       let finalData;
       if(sbData){
         const local=ld();
@@ -136,7 +138,7 @@ window.App = function App(){
         <TabPane active={tab==="dashboard"}><Today data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>
         <TabPane active={tab==="training"}><Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast} active={tab==="training"}/></TabPane>
         <TabPane active={tab==="weight"}><Trends data={data} setData={setData}/></TabPane>
-        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} setTab={setTab} syncFailures={syncFailures} addToast={addToast}/></TabPane>
+        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} setTab={setTab} missingTables={missingTables} syncFailures={syncFailures} addToast={addToast}/></TabPane>
       </main>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
       <ToastStack toasts={toasts} dismiss={dismissToast}/>

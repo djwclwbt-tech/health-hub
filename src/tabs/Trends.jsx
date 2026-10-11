@@ -130,7 +130,7 @@ const Trends=({data,setData})=>{
     <div style={{fontSize:13,color:C.t3,marginTop:14,lineHeight:1.45}}>Scale moves with water. The line is what counts.</div>
 
     <button type="button" onClick={()=>setShowProgress(true)} style={{marginTop:22,width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left"}}>
-      <span><span style={{display:"block",fontSize:15,fontWeight:500}}>Lifts and body</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Photos, measurements, weekly analysis</span></span>
+      <span><span style={{display:"block",fontSize:15,fontWeight:500}}>Body</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Photos, tape measurements, weekly analysis</span></span>
       <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
     </button>
 

@@ -10,7 +10,7 @@ import { ConfirmModal } from "../ui/overlay.jsx";
 import { Dashboard } from "../views/ClassicDashboard.jsx";
 
 // ═══ SETTINGS ═══
-const Settings=({data,setData,setTab,syncFailures={}})=>{
+const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
   const failedTables=Object.keys(syncFailures);
   const hardTables=failedTables.filter(tb=>!syncFailures[tb]?.transient);
   const blipTables=failedTables.filter(tb=>syncFailures[tb]?.transient);
@@ -124,6 +124,12 @@ const Settings=({data,setData,setTab,syncFailures={}})=>{
           <span style={{fontSize:13,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
         </div>))}
     </X>
+    {missingTables.length>0&&(()=>{const MIG={lytes:"2026-07-26-lytes.sql",body_measurements:"2026-09-08_coach.sql",program_updates:"2026-09-08_coach.sql",push_jobs:"2026-10-08_push_jobs.sql"};
+      const files=[...new Set(missingTables.map(tb=>MIG[tb]||"the matching file"))];return(
+      <div style={{border:`1px solid ${C.r}`,borderRadius:12,padding:"12px 16px",background:C.cd}}>
+        <div style={{fontSize:15,fontWeight:500,color:C.r}}>Missing in the cloud: {missingTables.join(", ")}</div>
+        <div style={{fontSize:13,color:C.t2,marginTop:4,lineHeight:1.45}}>What you log there stays on this phone only. Run {files.map(f=>`supabase/${f}`).join(" and ")} in the Supabase SQL editor once.</div>
+      </div>);})()}
     {!syncOk&&(
       <X style={{padding:10,borderLeft:`3px solid ${C.r}`}}>
         <div style={{fontSize:11,fontWeight:800,color:C.r,marginBottom:4}}>Cloud sync errors this session</div>
