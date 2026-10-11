@@ -53,3 +53,18 @@ Changes made along the way:
 - **The old full dashboard** sits under You and got the same color cleanup.
 - **Train home rebuilt** (your ask). A week strip on top, the day's lifts as plain rows, stretch and cardio as two rows under "Also today", then progress and history.
 - **New stretch player** (your ask). One pose at a time. Once started it runs itself, with a 5 second "get ready" between sides. Skip side, skip pose, previous, pause and +15 s are always there.
+
+## Round 3: daily-use pass (Oct 11)
+
+You asked for depth, not surface fixes. I used each screen like a normal day and fixed what broke.
+
+- **Week strip scrolls.** Swipe back up to 12 weeks. A past day shows what you actually logged.
+- **Missed a day?** On a past day with no log, pick "Do it today" or "Log it for that date". "Pick a different session" lists every program session plus a blank one.
+- **History tells the truth.** Old workouts were named after today's program, so July showed "Upper A". Names now come from the workout itself. Durations over 4 hours, from a forgotten Finish, are hidden.
+- **Weigh-ins.** Grouped by month. The change only compares to a weigh-in from the week before, so no more "+7.0" across a six-week gap. Tap one to fix or delete it, or add a missed one.
+- **Weight rate.** Shown only with 4 or more weigh-ins across a week. "Down 9.7 lb a week" from 3 weigh-ins was noise.
+- **Food.** Today's numbers first. The week counts only days with food logged, so an unsynced day no longer counts as zero calories.
+- **Coach changes** say what changed, for example "Weekend calories → 2,000".
+
+!!! warning "One thing only you can do"
+    Two cloud tables were never created: `lytes` and `body_measurements`. Electrolytes and tape measurements stay on your phone until you run `supabase/2026-07-26-lytes.sql` and `supabase/2026-09-08_coach.sql` in the Supabase SQL editor. The You tab now shows this in red.
