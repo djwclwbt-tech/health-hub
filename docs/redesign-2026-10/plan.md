@@ -51,3 +51,5 @@ Changes made along the way:
 - **Trends opens on 2W.** On 8W the line and the big number can disagree when weigh-ins are sparse. 2W uses the same math as Today, so they always match.
 - **Pace turns green only inside the plan.** Losing faster than 2 lb a week is no longer shown as "on track".
 - **The old full dashboard** sits under You and got the same color cleanup.
+- **Train home rebuilt** (your ask). A week strip on top, the day's lifts as plain rows, stretch and cardio as two rows under "Also today", then progress and history.
+- **New stretch player** (your ask). One pose at a time. Once started it runs itself, with a 5 second "get ready" between sides. Skip side, skip pose, previous, pause and +15 s are always there.

@@ -17,6 +17,7 @@ import { Nutrition } from "./Nutrition.jsx";
 const clockParam=()=>{try{const v=new URLSearchParams(location.search).get("clock");const m=v&&v.match(/^(\d{1,2}):(\d{2})$/);return m?+m[1]+(+m[2])/60:null;}catch{return null;}};
 const dayParam=()=>{try{const v=new URLSearchParams(location.search).get("day");return ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"].includes(v)?v:null;}catch{return null;}};
 const nowHM=()=>{const c=clockParam();if(c!=null)return c;const d=new Date();return d.getHours()+d.getMinutes()/60;};
+const openStretch=setTab=>{try{sessionStorage.setItem("hh_open_stretch","1");}catch{}setTab("training");};
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const hm=h=>`${Math.floor(h)}:${String(Math.round((h%1)*60)).padStart(2,"0")}`;
 const n=v=>Math.round(v).toLocaleString();
@@ -135,7 +136,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   // ── Lift ──
   if(adj?.type==="mobilitySwap"){
     rows.push(<Ev key="lift" time="AM" state={stretchDone?"done":"later"} title="Mobility instead of lifting" sub="Recovery was low. The program is untouched." open={isOpen("lift")} onToggle={toggle("lift")}>
-      <Card><div style={{fontSize:13,color:C.t2}}>The 12 minute stretch block and a walk.</div><Main onClick={()=>setTab("training")}>Open stretch</Main></Card>
+      <Card><div style={{fontSize:13,color:C.t2}}>The 12 minute stretch block and a walk.</div><Main onClick={()=>openStretch(setTab)}>Open stretch</Main></Card>
     </Ev>);
   }else if(sess){
     const exs=sess.exercises||[];
@@ -234,7 +235,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
         <KV k="Protein" v={<span style={{color:proNow>=proT?C.g:C.t}}>{proNow?`${proNow} g`:"○"}</span>}/>
         <KV k="Tomorrow" v={tmrSess?tmrSess.name:"Rest day"}/>
       </div>
-      {!stretchDone&&<Quiet style={{width:"100%",marginTop:8}} onClick={()=>setTab("training")}>Evening stretch · 12 min</Quiet>}
+      {!stretchDone&&<Quiet style={{width:"100%",marginTop:8}} onClick={()=>openStretch(setTab)}>Evening stretch</Quiet>}
       <details style={{marginTop:10}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Type a missing number</summary><CloseoutPanel data={data} setData={setData}/></details>
     </Card>
   </Ev>);
