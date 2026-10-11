@@ -117,7 +117,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   // ── Scale ──
   const trendV=trend?.points?.length?trend.points[trend.points.length-1].v:null;
   // Green only inside the planned cut pace (same band as Trends).
-  const pace=trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
+  const pace=trend&&!trend.reliable?`${trend.n} weigh-ins in 2 weeks, too few for a rate`:trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
   rows.push(<Ev key="scale" time={nowId==="scale"?"Now":"AM"} state={stateOf("scale",wt!=null)}
     title={wt!=null?<>Weighed in <span style={NUM}>{Number(wt).toFixed(1)}</span></>:"Weigh in"}
     sub={trendV!=null?<>Trend <span style={NUM}>{trendV.toFixed(1)}</span>{pace?<> · {pace}</>:null}</>:"A couple of weigh-ins start the trend"}

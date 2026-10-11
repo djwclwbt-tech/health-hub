@@ -488,3 +488,11 @@ test('cleanDur hides forgotten-finish durations', () => {
   assert.equal(E.cleanDur(null), null);
   assert.equal(E.cleanDur(0), null);
 });
+
+test('getTrend flags a rate from too few weigh-ins as unreliable', () => {
+  const few = E.getTrend({ '2026-10-05': 186, '2026-10-06': 182.4, '2026-10-08': 181.4 }, '2026-10-11');
+  assert.equal(few.reliable, false);
+  const enough = E.getTrend({ '2026-10-01': 186, '2026-10-03': 185.6, '2026-10-06': 185.2, '2026-10-09': 184.8, '2026-10-11': 184.6 }, '2026-10-11');
+  assert.equal(enough.reliable, true);
+  assert.equal(enough.spanDays, 10);
+});

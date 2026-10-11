@@ -80,10 +80,11 @@ const Trends=({data,setData})=>{
   const pts=inRange.map(([d,v],i)=>({date:d,raw:v,v:sm[i]}));
   const goal=PROG.targetWeight;
   const cur=trend?.points?.length?trend.points[trend.points.length-1].v:null;
-  const rate=trend?.rate??0;
+  const reliable=!!trend?.reliable;
+  const rate=reliable?trend.rate:0;   // no rate, no projection, until there are enough weigh-ins
   const daysToGoal=cur!=null&&rate<-0.05&&cur>goal?(cur-goal)/(-rate)*7:null;
   const goalBy=daysToGoal!=null&&daysToGoal<=180?(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()+Math.round(daysToGoal));return shortD(lds(d));})():null;
-  const pace=!trend?null:rate>=0.1?{txt:`+${rate.toFixed(1)} lb/wk · gaining`,c:C.t2}
+  const pace=!trend?null:!reliable?{txt:`${trend.n} weigh-ins in 2 weeks. A rate needs 4 across a week.`,c:C.t3}:rate>=0.1?{txt:`+${rate.toFixed(1)} lb/wk · gaining`,c:C.t2}
     :rate<=-0.6&&rate>-2?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · on pace${goalBy?` for ${goalBy}`:""}`,c:C.g}
     :rate<=-2?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · faster than planned`,c:C.t2}
     :rate<=-0.1?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · slow`,c:C.t2}
