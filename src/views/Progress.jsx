@@ -50,9 +50,9 @@ const ProgressView=({data,setData,onBack})=>{
     if(wd<0)return "Waist down. Watch the arm number, protein protects it.";
     return "Waist is holding. The trend chart decides, not one tape day.";
   })();
-  const shortDate=d=>fmt(d).toUpperCase().replace(/^[A-Z]+, /,"");
+  const shortDate=d=>fmt(d).replace(/^[A-Za-z]+, /,"");
   return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-    <button onClick={onBack} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:0,fontFamily:"inherit"}}>← Setup</button>
+    <button onClick={onBack} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,fontWeight:700,textAlign:"left",padding:0,fontFamily:"inherit"}}>← Setup</button>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
       <div>
         <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,lineHeight:1}}>Progress</div>
@@ -64,19 +64,19 @@ const ProgressView=({data,setData,onBack})=>{
     {err&&<div style={{fontSize:12,color:C.r}}>{err}</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
       {SLOTS.map(s=>{const d=slots[s];const due=!d||daysAgo(d)>=14;return(
-        <button key={s} onClick={()=>takePhoto(s)} style={{aspectRatio:"3/4",border:due?`1px dashed ${C.p}`:"none",background:due?C.pl:C.bl,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
-          <span style={{fontSize:15,fontWeight:800,fontFamily:FD,color:due?C.p:C.t3}}>{due?"DUE":s.toUpperCase()}</span>
-          <span style={{fontSize:10,fontWeight:700,fontFamily:FD,color:due?C.p:C.t3}}>{due?(d?"Retake":"Today"):shortDate(d)}</span>
+        <button key={s} onClick={()=>takePhoto(s)} style={{aspectRatio:"3/4",border:due?`1px dashed ${C.p}`:"none",background:due?C.bg:C.bl,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
+          <span style={{fontSize:15,fontWeight:800,fontFamily:FD,color:due?C.t:C.t3}}>{due?"Due":s.charAt(0).toUpperCase()+s.slice(1)}</span>
+          <span style={{fontSize:11,fontWeight:700,fontFamily:FD,color:due?C.t:C.t3}}>{due?(d?"Retake":"Today"):shortDate(d)}</span>
         </button>);})}
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>MEASUREMENTS{baseMeas?` · VS ${shortDate(baseMeas[0])}`:""}</div>
+      <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>MEASUREMENTS{baseMeas?` · VS ${shortDate(baseMeas[0])}`:""}</div>
       {curMeas?(<React.Fragment>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
           {MEAS.map(m=>{const d=m.cur!=null&&m.base!=null?m.cur-m.base:null;const good=d!=null&&(m.goodDown?d<0:d>0);return(
             <div key={m.l} style={{background:C.bg,borderRadius:8,padding:"9px 6px",textAlign:"center"}}>
               <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:C.t}}>{m.cur!=null?`${m.cur.toFixed(1)}"`:"○"}</div>
-              <div style={{fontSize:8.5,fontWeight:700,fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
+              <div style={{fontSize:11,fontWeight:700,fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
             </div>);})}
         </div>
         <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>{measLine}</div>
@@ -93,7 +93,7 @@ const ProgressView=({data,setData,onBack})=>{
       </S>
     </X>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>WEEK {wkn(t)} AI ANALYSIS</div>
+      <div style={{fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD}}>WEEK {wkn(t)} AI ANALYSIS</div>
       <AnalysisSection data={data}/>
     </X>
   </div>);

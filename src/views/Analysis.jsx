@@ -118,7 +118,7 @@ const AnalysisSection=({data})=>{
           {["7d","14d","30d"].map(r=>(
             <button key={r} onClick={()=>setRange(r)} style={{
               padding:"5px 10px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:`1px solid ${range===r?C.p:C.bd}`,background:range===r?C.pl:"transparent",color:range===r?C.p:C.t3,
+              border:`1px solid ${range===r?C.t:C.bd}`,background:range===r?C.bg:"transparent",color:range===r?C.t:C.t3,
             }}>{r}</button>
           ))}
         </div>
@@ -190,7 +190,7 @@ const AnalysisSection=({data})=>{
               <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Correlations</div>
               {result.correlations.map((c,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
-                  <span style={{color:C.v,fontWeight:700,minWidth:14}}>↔</span>
+                  <span style={{color:C.t2,fontWeight:700,minWidth:14}}>↔</span>
                   <span>{c}</span>
                 </div>
               ))}
@@ -200,10 +200,10 @@ const AnalysisSection=({data})=>{
           {/* Recommendations */}
           {result.recommendations&&result.recommendations.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:6}}>Recommendations</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6}}>Recommendations</div>
               {result.recommendations.map((r,i)=>(
                 <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
-                  <span style={{fontWeight:700,color:C.p}}>{i+1}. </span>{r}
+                  <span style={{fontWeight:700,color:C.t2}}>{i+1}. </span>{r}
                 </div>
               ))}
             </X>
@@ -211,8 +211,8 @@ const AnalysisSection=({data})=>{
 
           {/* Next Week Focus */}
           {result.nextWeekFocus&&(
-            <X style={{padding:12,background:C.pl,border:`1px solid ${C.p}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.p,marginBottom:4}}>Next Week Focus</div>
+            <X style={{padding:12,background:C.bg,border:`1px solid ${C.p}`}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:4}}>Next Week Focus</div>
               <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
             </X>
           )}
@@ -220,7 +220,7 @@ const AnalysisSection=({data})=>{
           {/* Body Composition */}
           {result.bodyComposition&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.v,marginBottom:6}}>Body Composition</div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6}}>Body Composition</div>
               {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
               {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
               {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}

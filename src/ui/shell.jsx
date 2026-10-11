@@ -5,27 +5,21 @@ import { REST_TIMER_KEY } from "../core/storage.js";
 import { C, FD } from "../core/theme.js";
 
 // ═══ TAB BAR ═══
-const TAB_ICONS={
-  dashboard:"M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z",
-  training:"M4 9v6M7 6v12M17 6v12M20 9v6M7 12h10",
-  nutrition:"M3 12h18c0 4.5-3.8 8-9 8s-9-3.5-9-8zM9 12V6M12 12V4M15 12V6",
-  weight:"M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM8 12a4 4 0 0 1 8 0M12 11l2-2",
-  settings:"M4 7h9M17 7h3M4 17h5M13 17h7M13 4v6M9 14v6",
-};
-const TABS=[{id:"dashboard",l:"Home"},{id:"training",l:"Train"},{id:"nutrition",l:"Food"},{id:"weight",l:"Scale"},{id:"settings",l:"Setup"}];
+// Four text tabs. The active one is ink with a short line above it; ember is
+// kept for "now" and the main action, so it never marks a tab. Ids stay the
+// old ones so deep links (?tab=training) and notification taps keep working.
+const TABS=[{id:"dashboard",l:"Today"},{id:"training",l:"Train"},{id:"weight",l:"Trends"},{id:"settings",l:"You"}];
 const TabBar=({active,set,hasActiveWorkout})=>(
-  <nav aria-label="Primary" style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:C.cd,position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",boxShadow:C.sh,paddingBottom:"var(--safe-b)"}}>
+  <nav aria-label="Primary" style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:"color-mix(in srgb, var(--bg) 88%, transparent)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",padding:"0 12px var(--safe-b)"}}>
     {TABS.map(t=>{const on=active===t.id;return(
       <button type="button" key={t.id} aria-current={on?"page":undefined} onClick={()=>{if(!on)haptic(6);set(t.id);}} style={{
-        flex:1,padding:"8px 2px 6px",background:"transparent",border:"none",cursor:"pointer",
-        color:on?C.p:C.t3,fontFamily:"inherit",position:"relative",minHeight:"var(--tabbar-h)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,
+        flex:1,background:"transparent",border:"none",cursor:"pointer",color:on?C.t:C.t3,position:"relative",minHeight:"var(--tabbar-h)",
+        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:10,gap:8,fontSize:13,fontWeight:500,
       }}>
-        <span style={{position:"absolute",top:-1,left:"24%",right:"24%",height:2,background:on?C.p:"transparent",borderRadius:2}}/>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={on?2.2:1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={TAB_ICONS[t.id]}/></svg>
-        <span style={{fontSize:11,fontFamily:FD,fontWeight:800}}>{t.l}</span>
-        {t.id==="training"&&hasActiveWorkout&&!on&&(
-          <span style={{position:"absolute",top:7,right:"50%",marginRight:-20,width:9,height:9,borderRadius:5,background:C.g,border:`2px solid ${C.cd}`}}/>
-        )}
+        <span aria-hidden="true" style={{width:18,height:2,borderRadius:1,background:on?C.t:"transparent"}}/>
+        <span style={{position:"relative"}}>{t.l}
+          {t.id==="training"&&hasActiveWorkout&&!on&&<span aria-label="Workout in progress" style={{position:"absolute",top:-1,right:-9,width:6,height:6,borderRadius:3,background:C.p}}/>}
+        </span>
       </button>);})}
   </nav>
 );
@@ -48,13 +42,12 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   return(
     <div onClick={onTap} role={onTap?"button":undefined} style={{background:C.p,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?8:0,boxShadow:C.sh}}>
       <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-        <div style={{width:8,height:8,borderRadius:8,background:C.g,animation:"pulse 2s infinite",flexShrink:0}}/>
-        <span style={{color:C.oa,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sess?.name||"Workout"}</span>
-        <span style={{color:"var(--on-accent-dim)",fontSize:12,fontWeight:700,fontFamily:FD,whiteSpace:"nowrap"}}>{done}/{total} SETS</span>
+                <span style={{color:C.oa,fontSize:14,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sess?.name||"Workout"}</span>
+        <span style={{color:"var(--on-accent-dim)",fontSize:13,whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{done} of {total} sets</span>
       </div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-        {restLeft>0&&<span style={{color:C.oa,fontSize:12,fontWeight:800,fontFamily:FD}}>REST {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
-        <span style={{color:C.oa,fontSize:20,fontWeight:700,fontFamily:FD,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
+        {restLeft>0&&<span style={{color:C.oa,fontSize:13,fontVariantNumeric:"tabular-nums"}}>Rest {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
+        <span style={{color:C.oa,fontSize:17,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
       </div>
     </div>
   );

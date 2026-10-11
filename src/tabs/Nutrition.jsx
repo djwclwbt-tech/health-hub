@@ -90,34 +90,34 @@ const Nutrition=({data,setData})=>{
     const mt=(meal.protein||0)*4+(meal.carbs||0)*4+(meal.fat||0)*9;
     const pp=mt?Math.round(((meal.protein||0)*4/mt)*100):0,cp=mt?Math.round(((meal.carbs||0)*4/mt)*100):0,fp=100-pp-cp;
     return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <button onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
+      <button onClick={()=>{setSelM(null);setEditing(null);}} style={{background:"none",border:"none",color:C.t,cursor:"pointer",fontSize:14,fontWeight:600,textAlign:"left",padding:0}}>← Back</button>
       <X><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontSize:16,fontWeight:700,color:C.t}}>{meal.description}</div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            {meal.source&&<span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6,
+            {meal.source&&<span style={{fontSize:11,fontWeight:700,padding:"2px 6px",borderRadius:6,
               color:meal.source==="mfp"?C.g:C.t3,
               background:meal.source==="mfp"?C.gl:"transparent",
             }}>{meal.source==="mfp"?"Sync":meal.source}</span>}
-            {meal.mealType&&<span style={{fontSize:11,fontWeight:600,color:C.p,background:C.pl,padding:"2px 8px",borderRadius:8}}>{meal.mealType}</span>}
+            {meal.mealType&&<span style={{fontSize:12,color:C.t3}}>{meal.mealType}</span>}
           </div>
         </div>
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:3}}>
             {[{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
-              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>{const updated={...meal,[f.k]:+v||0};const cal=(updated.protein||0)*4+(updated.carbs||0)*4+(updated.fat||0)*9;updateMeal(selM,{[f.k]:+v||0,cal});}} placeholder={f.l}/><div style={{fontSize:9,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
+              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>{const updated={...meal,[f.k]:+v||0};const cal=(updated.protein||0)*4+(updated.carbs||0)*4+(updated.fat||0)*9;updateMeal(selM,{[f.k]:+v||0,cal});}} placeholder={f.l}/><div style={{fontSize:11,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
           </div>
           <B full small style={{marginTop:6}} onClick={()=>setEditing(null)}>Done</B>
         </div>):(<div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:3,textAlign:"center",margin:"10px 0"}}>
-            {[{l:"Cal",v:meal.cal,c:C.p},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.t2},
-              {l:"Fat",v:`${meal.fat}g`,c:C.r},{l:"Fib",v:`${meal.fiber||0}g`,c:C.v}].map((m,i)=>(
-              <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:9,color:C.t3,fontWeight:600}}>{m.l}</div></div>))}
+            {[{l:"Cal",v:meal.cal,c:C.t},{l:"Pro",v:`${meal.protein}g`,c:C.g},{l:"Carb",v:`${meal.carbs}g`,c:C.t2},
+              {l:"Fat",v:`${meal.fat}g`,c:C.t2},{l:"Fib",v:`${meal.fiber||0}g`,c:C.t2}].map((m,i)=>(
+              <div key={i}><div style={{fontSize:17,fontWeight:700,color:m.c}}>{m.v}</div><div style={{fontSize:11,color:C.t3,fontWeight:600}}>{m.l}</div></div>))}
           </div>
         </div>)}
         <div style={{display:"flex",height:6,borderRadius:6,overflow:"hidden",marginTop:6,marginBottom:2}}>
-          <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.t3}}/><div style={{width:`${fp}%`,background:C.r}}/>
+          <div style={{width:`${pp}%`,background:C.g}}/><div style={{width:`${cp}%`,background:C.t3}}/><div style={{width:`${fp}%`,background:C.t2}}/>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3}}><span>P {pp}%</span><span>C {cp}%</span><span>F {fp}%</span></div>
       </X>
       {(meal.source==="cronometer"||meal.source==="mfp")?(
         <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"6px 0"}}>Synced from Cronometer · read-only here; edit in Cronometer.</div>
@@ -142,22 +142,22 @@ const Nutrition=({data,setData})=>{
       <div style={{fontSize:17,fontWeight:700,color:C.t}}>Food</div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <button type="button" aria-label="Previous day" onClick={()=>navDate(-1)} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,cursor:"pointer",fontSize:18,minWidth:40,minHeight:36}}>‹</button>
-        <button type="button" onClick={()=>setViewDate(t)} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:isViewingToday?C.p:C.t2,minWidth:84,textAlign:"center",cursor:"pointer",fontFamily:"inherit"}}>{isViewingToday?"Today":fmt(viewDate)}</button>
+        <button type="button" onClick={()=>setViewDate(t)} style={{background:"none",border:"none",fontSize:13,fontWeight:700,color:isViewingToday?C.t:C.t2,minWidth:84,textAlign:"center",cursor:"pointer",fontFamily:"inherit"}}>{isViewingToday?"Today":fmt(viewDate)}</button>
         <button type="button" aria-label="Next day" onClick={()=>navDate(1)} disabled={isViewingToday} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:isViewingToday?C.bd:C.t2,cursor:isViewingToday?"default":"pointer",fontSize:18,minWidth:40,minHeight:36}}>›</button>
-        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE · click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.r:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
+        <button onClick={toggleExclude} title={isExcluded?"Excluded from TDEE · click to include":"Include in TDEE calc"} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,padding:"2px 4px",color:isExcluded?C.t2:C.t3,opacity:isExcluded?1:0.5}}>{isExcluded?"⊘":"◎"}</button>
       </div>
     </div>
-    {isExcluded&&<div style={{fontSize:10,fontWeight:600,color:C.r,textAlign:"right",marginTop:-4}}>Excluded from TDEE</div>}
+    {isExcluded&&<div style={{fontSize:11,fontWeight:600,color:C.t2,textAlign:"right",marginTop:-4}}>Excluded from TDEE</div>}
 
     {(()=>{const dn=DINNERS[dw(viewDate)];if(!dn)return null;return(<X style={{padding:14}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>Tonight · {dn.name.toUpperCase()}</div>
-        <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>{dn.tag}</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t,fontFamily:FD}}>Tonight · {dn.name}</div>
+        <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>{dn.tag}</div>
       </div>
       <div style={{fontSize:14,fontWeight:600,color:C.t,marginTop:6,lineHeight:1.4}}>{dn.how}</div>
       <div style={{display:"flex",gap:7,marginTop:9}}>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>Your plate</div></div>
-        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:9,fontWeight:700,color:C.t3,fontFamily:FD}}>Danielle</div></div>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.you}</div><div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>Your plate</div></div>
+        <div style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 10px"}}><div style={{fontSize:15,fontWeight:800,color:C.t,fontFamily:FD}}>{dn.dani}</div><div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>Danielle</div></div>
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:7}}>Saved as a Cronometer recipe. Logging it takes two taps there.</div>
     </X>);})()}
@@ -185,9 +185,9 @@ const Nutrition=({data,setData})=>{
       <X style={{padding:10,marginBottom:4}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
           <span style={{fontSize:11,fontWeight:700,color:C.t3}}>Week Total</span>
-          <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.r}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
+          <span style={{fontSize:13,fontWeight:700,color:weekRemaining>=0?C.t:C.t2}}>{weekCals.toLocaleString()} / {weekTarget.toLocaleString()}</span>
         </div>
-        <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.r:C.p} h={4}/>
+        <Br v={weekCals} max={weekTarget} color={weekCals>weekTarget?C.t2:C.t} h={4}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginTop:6}}>
           {weekDates.map((d,i)=>{
             const dc=data.nut[d]?.totalCal||0;
@@ -196,16 +196,16 @@ const Nutrition=({data,setData})=>{
             const isFuture=d>td();
             const logged=dc>0;
             return(<div key={d} style={{textAlign:"center",padding:"3px 0",borderRadius:6,
-              background:isView?C.pl:"transparent",border:isView?`1px solid ${C.p}`:"1px solid transparent"}}>
-              <div style={{fontSize:9,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
-              <div style={{fontSize:10,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.r:C.g):isFuture?C.t3:C.r}}>
+              background:isView?C.bg:"transparent",border:isView?`1px solid ${C.t}`:"1px solid transparent"}}>
+              <div style={{fontSize:11,fontWeight:600,color:C.t3}}>{weekDayLabels[i]}</div>
+              <div style={{fontSize:11,fontWeight:700,color:logged?(dt===null?C.t:dc>dt?C.t2:C.g):isFuture?C.t3:C.t2}}>
                 {logged?Math.round(dc/100)*100:isFuture?"○":"0"}
               </div>
             </div>);
           })}
         </div>
         {isSocialWeekendActive(viewDate,data.socialWeekend)&&(
-          <div style={{fontSize:10,fontWeight:600,color:C.t3,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active · ~1.5 lbs expected this week</div>
+          <div style={{fontSize:11,fontWeight:600,color:C.t3,marginTop:4,textAlign:"center",fontStyle:"italic"}}>Social weekend active · ~1.5 lbs expected this week</div>
         )}
       </X>
     </S>
@@ -213,43 +213,43 @@ const Nutrition=({data,setData})=>{
     <X style={{padding:12}}>
       {calT!==null?(<>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-        <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.r:C.p}}>{tl.totalCal}</div>
+        <div style={{fontSize:26,fontWeight:700,color:tl.totalCal>calT?C.t2:C.t}}>{tl.totalCal}</div>
         <div style={{fontSize:13,color:C.t3}}>/ {calT} cal</div>
       </div>
-      <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.r:C.p} h={7}/>
+      <Br v={tl.totalCal} max={calT} color={tl.totalCal>calT?C.t2:C.t} h={7}/>
       </>):(<>
       <div style={{fontSize:13,color:C.t2,marginBottom:6,fontStyle:"italic"}}>Social weekend · log your food, protein first</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-        <div style={{fontSize:26,fontWeight:700,color:tl.totalProtein>=proT?C.g:C.p}}>{tl.totalProtein}g</div>
+        <div style={{fontSize:26,fontWeight:700,color:tl.totalProtein>=proT?C.g:C.t}}>{tl.totalProtein}g</div>
         <div style={{fontSize:13,color:C.t3}}>/ {proT}g protein floor</div>
       </div>
-      <Br v={tl.totalProtein} max={proT} color={tl.totalProtein>=proT?C.g:C.p} h={7}/>
+      <Br v={tl.totalProtein} max={proT} color={tl.totalProtein>=proT?C.g:C.t} h={7}/>
       </>)}
       <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:13,fontWeight:700}}>
-        <span style={{color:tl.totalProtein>=proT?C.g:C.r}}>{tl.totalProtein}g / {proT}g protein</span>
+        <span style={{color:tl.totalProtein>=proT?C.g:C.t2}}>{tl.totalProtein}g / {proT}g protein</span>
         <span style={{color:C.t2}}>{tl.totalCal} cal</span>
-        <span style={{color:C.v}}>{tl.totalFiber||0}g / {st.fiber||30}g fiber</span>
+        <span style={{color:C.t2}}>{tl.totalFiber||0}g / {st.fiber||30}g fiber</span>
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:C.t3,marginTop:4}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3,marginTop:4}}>
         <span style={{fontWeight:600,color:viewDayType==="travel"?C.t2:calT===null?C.t2:C.t2}}>{calT===null?"Social Weekend":viewDayType==="travel"?"Travel Day":viewDayType==="wednesday"?"Wednesday (Fast)":viewDayType==="training"?"Training Day":"Weekend"}</span>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {tl.meals?.length>0&&tl.meals.every(m=>!m.source||m.source==="mfp"||m.source==="cronometer")&&(
-            <span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6,background:C.gl,color:C.g}}>Cronometer</span>
+            <span style={{fontSize:11,fontWeight:700,padding:"2px 6px",borderRadius:6,background:C.gl,color:C.g}}>Cronometer</span>
           )}
           <span>{calT} cal · {proT}g pro target</span>
         </div>
       </div>
-      {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:8,fontSize:11,color:C.r,fontWeight:600}}>
+      {viewFatPct>25&&tl.totalCal>0&&(<div style={{marginTop:6,padding:"6px 8px",background:C.rl,borderRadius:8,fontSize:11,color:C.t2,fontWeight:600}}>
         Fat at {viewFatPct}% of calories (target: 20-25%). Watch cooking oil, cheese, and sauces.
       </div>)}
     </X>
 
     {tl.totalCal>0&&(
       <div style={{display:"flex",justifyContent:"space-around",padding:"6px 0",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:600,color:proT-tl.totalProtein>0?C.r:C.g}}>
+        <span style={{fontSize:11,fontWeight:600,color:proT-tl.totalProtein>0?C.t2:C.g}}>
           {Math.max(0,proT-tl.totalProtein)}g protein left
         </span>
-        <span style={{fontSize:11,fontWeight:600,color:calT-tl.totalCal>0?C.t2:C.r}}>
+        <span style={{fontSize:11,fontWeight:600,color:calT-tl.totalCal>0?C.t2:C.t2}}>
           {Math.max(0,calT-tl.totalCal)} cal left
         </span>
       </div>
@@ -260,9 +260,9 @@ const Nutrition=({data,setData})=>{
       <S title="Target logic" collapsible defaultOpen={false}>
         <div style={{padding:"8px 12px",background:C.pl,borderRadius:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.bd}`}}>
           <div style={{fontSize:11,color:C.t2}}>
-            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?`±${nutTDEE.tdee-nutTDEE.tdeeLow}`:""}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.r}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
+            <span style={{fontWeight:600}}>TDEE: {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?`±${nutTDEE.tdee-nutTDEE.tdeeLow}`:""}</span> · Target: {calT} · <span style={{fontWeight:600,color:nutTDEE.deficit>0?C.g:C.t2}}>{Math.abs(nutTDEE.deficit)} cal {nutTDEE.deficit>0?"deficit":"surplus"}</span>
           </div>
-          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.p,color:C.oa,border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
+          <button onClick={()=>setShowTDEEAdjust(true)} style={{background:C.cd,color:C.t,border:`1px solid ${C.bd}`,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Adjust</button>
         </div>
       </S>
     )}
@@ -312,15 +312,15 @@ const Nutrition=({data,setData})=>{
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
         <div>
           <span style={{fontSize:13,fontWeight:700,color:C.t}}>Water </span>
-          <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.p}}>{waterToday}</span>
+          <span style={{fontSize:18,fontWeight:700,color:waterToday>=waterGoal?C.g:C.t}}>{waterToday}</span>
           <span style={{fontSize:13,color:C.t3}}> / {waterGoal} oz</span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {waterToday>0&&<button onClick={resetWater} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Reset</button>}
-          {Object.keys(data.water||{}).length>1&&<button onClick={()=>setShowWaterHist(!showWaterHist)} style={{background:"none",border:"none",color:C.p,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{showWaterHist?"Hide":"7d"}</button>}
+          {Object.keys(data.water||{}).length>1&&<button onClick={()=>setShowWaterHist(!showWaterHist)} style={{background:"none",border:"none",color:C.t,cursor:"pointer",fontSize:11,fontWeight:600,fontFamily:"inherit"}}>{showWaterHist?"Hide":"7d"}</button>}
         </div>
       </div>
-      <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.p} h={8}/>
+      <Br v={waterToday} max={waterGoal} color={waterToday>=waterGoal?C.g:C.t} h={8}/>
       <div style={{display:"flex",gap:6,marginTop:8}}>
         {[24,32,64].map(oz=>(
           <button key={oz} onClick={()=>addWater(oz)} style={{
@@ -337,7 +337,7 @@ const Nutrition=({data,setData})=>{
           {entries.map(([d,v])=>(<div key={d} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
             <span style={{fontSize:12,color:C.t2}}>{fmt(d)}</span>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:60}}><Br v={v} max={waterGoal} color={v>=waterGoal?C.g:C.p} h={4}/></div>
+              <div style={{width:60}}><Br v={v} max={waterGoal} color={v>=waterGoal?C.g:C.t} h={4}/></div>
               <span style={{fontSize:12,fontWeight:600,color:v>=waterGoal?C.g:C.t,width:40,textAlign:"right"}}>{v}oz</span>
             </div>
           </div>))}
@@ -355,7 +355,7 @@ const Nutrition=({data,setData})=>{
           {meals.map((m)=>(<X key={m._idx} onClick={()=>setSelM(m._idx)} style={{padding:10,marginBottom:3,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:4,alignItems:"center"}}><span style={{fontSize:14,fontWeight:600,color:C.t,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.description}</span>
-                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:8,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:8,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
+                {(m.source==="mfp"||m.source==="cronometer")&&<span style={{fontSize:11,fontWeight:700,color:C.g,background:C.gl,padding:"1px 4px",borderRadius:8,flexShrink:0}}>{m.source==="mfp"?"SYNC":"CRON"}</span>}
               </div>
                 <div style={{fontSize:12,color:C.t2,marginTop:1}}>{m.cal} cal · {m.protein}g protein{m.fiber?` · ${m.fiber}g fiber`:""}</div></div>
               <span style={{color:C.t3,fontSize:13}}>→</span>

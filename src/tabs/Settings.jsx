@@ -7,10 +7,10 @@ import { saveNotificationSettings, sb, sv, svSB } from "../core/storage.js";
 import { APP_VERSION, C, FD } from "../core/theme.js";
 import { B, L, N, S, X } from "../ui/atoms.jsx";
 import { ConfirmModal } from "../ui/overlay.jsx";
-import { ProgressView } from "../views/Progress.jsx";
+import { Dashboard } from "../views/ClassicDashboard.jsx";
 
 // ═══ SETTINGS ═══
-const Settings=({data,setData,syncFailures={}})=>{
+const Settings=({data,setData,setTab,syncFailures={}})=>{
   const failedTables=Object.keys(syncFailures);
   const hardTables=failedTables.filter(tb=>!syncFailures[tb]?.transient);
   const blipTables=failedTables.filter(tb=>syncFailures[tb]?.transient);
@@ -21,8 +21,8 @@ const Settings=({data,setData,syncFailures={}})=>{
     trainingCal:""+(st.trainingCal??DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal??DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal??DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
   const [saved,setSaved]=useState(false);
   const [editTargets,setEditTargets]=useState(false);
-  const [showProgress,setShowProgress]=useState(false);
-  useBackClose(showProgress,()=>setShowProgress(false));
+  const [showClassic,setShowClassic]=useState(false);
+  useBackClose(showClassic,()=>setShowClassic(false));
   const [showReset,setShowReset]=useState(false);
   const isTravel=!!(data.travelDays||{})[t];
   const lastPhotoDate=(()=>{const e=Object.entries(data.bodyComp||{}).filter(([_,v])=>v).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[0]||null;})();
@@ -34,10 +34,10 @@ const Settings=({data,setData,syncFailures={}})=>{
     const daysAgo=d=>d?Math.round((new Date(t+"T12:00:00")-new Date(d+"T12:00:00"))/864e5):null;
     const pushOn=typeof Notification!=="undefined"&&Notification.permission==="granted"&&(data.settings.notifications||{}).enabled;
     return[
-      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`SYNCED ${fmt(lastNut).toUpperCase()}`:"No data"},
-      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`SYNCED ${fmt(lastRecRow[0]).toUpperCase()}`:`LAST WORN ${fmt(lastRecRow[0]).toUpperCase()}`):"No data"},
-      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`LAST ${fmt(lastSteps).toUpperCase()}`:"No data"},
-      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} DROPPED, RETRYING`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0].toUpperCase()} · MIGRATION`},
+      {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`Synced ${fmt(lastNut)}`:"No data"},
+      {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`Synced ${fmt(lastRecRow[0])}`:`Last worn ${fmt(lastRecRow[0])}`):"No data"},
+      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
+      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · needs migration`},
       {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"OFF"},
     ];
   })();
@@ -47,7 +47,10 @@ const Settings=({data,setData,syncFailures={}})=>{
     const nd={...data,travelDays:{...data.travelDays,[t]:newVal}};
     setData(nd);sv(nd);svSB.travelDay(t,newVal);
   };
-  if(showProgress)return(<ProgressView data={data} setData={setData} onBack={()=>setShowProgress(false)}/>);
+  if(showClassic)return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <button type="button" onClick={()=>setShowClassic(false)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ You</button>
+    <Dashboard data={data} setData={setData} setTab={setTab}/>
+  </div>);
 
   const saveSettings=()=>{
     // Spread existing settings first so fields not managed by this form
@@ -67,39 +70,35 @@ const Settings=({data,setData,syncFailures={}})=>{
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-      <div style={{fontSize:26,fontWeight:800,color:C.t,fontFamily:FD,lineHeight:1}}>Setup</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:12,marginBottom:6}}>
+      <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>You</h1>
       <div title={syncOk?"All cloud writes ok this session":`Sync failed: ${failedTables.join(", ")}`}
-        style={{display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:700,color:syncOk?C.g:C.r}}>
-        <span style={{width:10,height:10,borderRadius:5,background:syncOk?C.g:C.r,display:"inline-block"}}/>
+        style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:syncOk?C.t3:C.r}}>
+        <span style={{width:7,height:7,borderRadius:4,background:syncOk?C.g:C.r,display:"inline-block"}}/>
         {syncOk?"Sync ok":"Sync failing"}
       </div>
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD}}>Targets & day types</div>
+      <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>Targets & day types</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
-        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"Train cal"},{v:`${f.protein||200}g`,l:"Protein"},{v:f.water||128,l:"Water oz"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"Steps"},{v:"0",l:"Wed fast",ember:true},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"Sat/Sun"}].map(x=>(
-          <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:x.ember?C.pl:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
-            <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:x.ember?C.p:C.t}}>{x.v}</div>
-            <div style={{fontSize:8.5,fontWeight:700,fontFamily:FD,color:x.ember?C.p:C.t3}}>{x.l}</div>
+        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"Train cal"},{v:`${f.protein||200}g`,l:"Protein"},{v:f.water||128,l:"Water oz"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"Steps"},{v:"0",l:"Wed fast"},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"Sat/Sun"}].map(x=>(
+          <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
+            <div style={{fontSize:17,fontWeight:500,fontVariantNumeric:"tabular-nums",color:C.t}}>{x.v}</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:2}}>{x.l}</div>
           </button>))}
       </div>
       <div style={{fontSize:11,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
     </X>
-    <div onClick={()=>setShowProgress(true)} style={{background:C.cd,border:`1px solid ${C.p}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-      <div>
-        <div style={{fontSize:10,fontWeight:700,color:C.p,fontFamily:FD}}>Progress</div>
-        <div style={{fontSize:14,fontWeight:700,color:C.t,marginTop:3}}>Photos · measurements · weekly AI analysis</div>
-        <div style={{fontSize:11.5,color:C.t3,marginTop:2}}>{lastPhotoLine}</div>
-      </div>
-      <div style={{fontSize:18,fontWeight:800,color:C.p,fontFamily:FD}}>→</div>
-    </div>
+    <button type="button" onClick={()=>setShowClassic(true)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:12,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",textAlign:"left"}}>
+      <span><span style={{display:"block",fontSize:15,fontWeight:500,color:C.t}}>Full dashboard</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Every number on one page</span></span>
+      <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
+    </button>
     <X style={{padding:"6px 0"}}>
       {integrations.map((r,i)=>(
         <div key={r.name} style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderBottom:i<integrations.length-1?`1px solid ${C.bg}`:"none"}}>
           <span style={{width:8,height:8,borderRadius:4,background:r.dot,flexShrink:0}}/>
           <span style={{fontSize:13,fontWeight:600,color:C.t,flex:1}}>{r.name}</span>
-          <span style={{fontSize:11,fontWeight:700,fontFamily:FD,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
+          <span style={{fontSize:13,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
         </div>))}
     </X>
     {!syncOk&&(
@@ -179,7 +178,7 @@ const Settings=({data,setData,syncFailures={}})=>{
                       saveNotificationSettings(nextNotifications);
                       const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                       setData(nd);sv(nd);svSB.settings(nd.settings);
-                    }} style={{padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                    }} style={{padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                       border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:"transparent",color:on?C.g:C.t3}}>
                       {on?"On":"Off"}
                     </button>
@@ -212,14 +211,14 @@ const Settings=({data,setData,syncFailures={}})=>{
       <div style={{fontSize:12,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
       <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
         style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:13,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/></div>
-      <div style={{marginTop:8,padding:8,background:C.pl,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.p}`}}>
-        <div style={{fontWeight:700,marginBottom:4,color:C.p}}>Steps + Weight Shortcuts:</div>
+      <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6,fontSize:11,color:C.t2,lineHeight:1.6,border:`1px solid ${C.bd}`}}>
+        <div style={{fontWeight:700,marginBottom:4,color:C.t2}}>Steps + Weight Shortcuts:</div>
         Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
         </span>
         Weight: use latest Body Mass, convert to pounds, then call:<br/>
-        <span style={{fontFamily:"monospace",fontSize:10,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
+        <span style={{fontFamily:"monospace",fontSize:11,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-weight?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;weight=WEIGHT_LBS
         </span>
       </div>
@@ -233,7 +232,7 @@ const Settings=({data,setData,syncFailures={}})=>{
           <div style={{fontSize:12,color:C.t3}}>Toggle for travel/social weekends</div>
         </div>
         <button onClick={toggleTravel} style={{padding:"8px 16px",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-          background:isTravel?C.pl:"transparent",border:`1px solid ${isTravel?C.p:C.bd}`,color:isTravel?C.p:C.t3}}>{isTravel?"ON":"OFF"}</button>
+          background:isTravel?C.bg:"transparent",border:`1px solid ${isTravel?C.t:C.bd}`,color:isTravel?C.t:C.t3}}>{isTravel?"ON":"OFF"}</button>
       </div>
       {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:8}}>
         <div style={{fontSize:11,fontWeight:700,color:C.t,marginBottom:4}}>Travel Protocol</div>
@@ -253,7 +252,7 @@ const Settings=({data,setData,syncFailures={}})=>{
       const tc=data.tdeeCal||{};
       const saveCal=(patch)=>{const nd={...data,tdeeCal:{...tc,...patch,answered:true}};setData(nd);sv(nd);};
       const btn=(active)=>({padding:"7px 10px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
-        background:active?C.pl:"transparent",border:`1px solid ${active?C.p:C.bd}`,color:active?C.p:C.t3});
+        background:active?C.bg:"transparent",border:`1px solid ${active?C.t:C.bd}`,color:active?C.t:C.t3});
       return(
       <X style={{}}>
         <div style={{fontSize:14,fontWeight:700,color:C.t}}>TDEE Calibration</div>
@@ -288,7 +287,7 @@ const Settings=({data,setData,syncFailures={}})=>{
             <div key={c.id||i} style={{padding:"8px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
                 <span style={{fontSize:13,fontWeight:700,color:c.applied?C.t:C.r}}>{c.summary||`${c.type}${c.action?` · ${c.action}`:""}`}</span>
-                <span style={{fontSize:10,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>{c.at?fmt(String(c.at).slice(0,10)).toUpperCase():""}</span>
+                <span style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>{c.at?fmt(String(c.at).slice(0,10)):""}</span>
               </div>
               {c.reason&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{c.reason}</div>}
             </div>))}

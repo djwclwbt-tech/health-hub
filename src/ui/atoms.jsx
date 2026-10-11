@@ -26,10 +26,10 @@ const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
   // Filled = accent (or explicit color). Outline with no explicit color =
   // neutral graphite · secondary actions carry no color of their own.
   <button type="button" onClick={onClick} disabled={disabled} style={{
-    background:outline?"transparent":(color||C.p),color:outline?(color||C.t):C.oa,
+    background:outline?"transparent":disabled?C.bl:(color||C.p),color:outline?(color||C.t):disabled?C.t3:C.oa,
     border:outline?`1px solid ${color||C.bd}`:"none",borderRadius:9,
-    padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:700,fontFamily:FD,
-    cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,boxShadow:outline?"none":C.sh2,
+    padding:small?"8px 14px":"12px 20px",fontSize:small?14:15,fontWeight:500,
+    cursor:disabled?"default":"pointer",opacity:disabled&&outline?0.5:1,boxShadow:outline?"none":C.sh2,
     width:full?"100%":"auto",minHeight:44,...style,
   }}>{children}</button>
 );
@@ -45,7 +45,7 @@ const S=({title,children,collapsible,defaultOpen=true})=>{
     <div onClick={collapsible?()=>setOpen(o=>!o):undefined}
       style={{fontSize:13,fontWeight:500,color:C.t3,marginBottom:6,borderBottom:`1px solid ${C.bl}`,padding:"10px 0 6px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:collapsible?"pointer":"default"}}>
       <span>{title}</span>
-      {collapsible&&<span style={{fontSize:10}}>{open?"▴":"▾"}</span>}
+      {collapsible&&<span style={{fontSize:11}}>{open?"▴":"▾"}</span>}
     </div>
     {open&&children}
   </div>);
@@ -83,7 +83,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
         <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         {pts.map((p,i)=><circle key={i} cx={p[0]} cy={p[1]} r="2" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
       </svg>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:C.t3,marginTop:2}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3,marginTop:2}}>
         <span>{data[0].d||""}</span><span>{data[data.length-1].d||""}</span>
       </div>
     </X>

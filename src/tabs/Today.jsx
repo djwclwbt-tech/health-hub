@@ -250,7 +250,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
       {rows}
     </div>
     {pollen.length>0&&<div style={{fontSize:12,color:C.t3,marginTop:28,textAlign:"center"}}>Pollen · {pollen.map(a=>`${a.name} ${a.level||"○"}`).join(" · ")}</div>}
-    <Sheet open={foodOpen} onClose={()=>setFoodOpen(false)} title="Food" maxHeight="90vh">
+    <Sheet open={foodOpen} onClose={()=>setFoodOpen(false)} maxHeight="90vh">
       {foodOpen&&<Nutrition data={data} setData={setData} addToast={addToast}/>}
     </Sheet>
   </div>);

@@ -4,10 +4,9 @@ import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, syncHealth } from "./core/storage.js";
 import { C } from "./core/theme.js";
 import { Today } from "./tabs/Today.jsx";
-import { Nutrition } from "./tabs/Nutrition.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";
-import { Weight } from "./tabs/Weight.jsx";
+import { Trends } from "./tabs/Trends.jsx";
 import { ToastStack } from "./ui/overlay.jsx";
 import { TabBar, TabPane, TABS, WorkoutTimerBar } from "./ui/shell.jsx";
 
@@ -136,9 +135,8 @@ window.App = function App(){
       <main style={{flex:1,padding:"16px 14px",paddingBottom:"calc(var(--tabbar-h) + var(--safe-b) + 24px)"}}>
         <TabPane active={tab==="dashboard"}><Today data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>
         <TabPane active={tab==="training"}><Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast} active={tab==="training"}/></TabPane>
-        <TabPane active={tab==="nutrition"}><Nutrition data={data} setData={setData} addToast={addToast}/></TabPane>
-        <TabPane active={tab==="weight"}><Weight data={data} setData={setData}/></TabPane>
-        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} syncFailures={syncFailures} addToast={addToast}/></TabPane>
+        <TabPane active={tab==="weight"}><Trends data={data} setData={setData}/></TabPane>
+        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} setTab={setTab} syncFailures={syncFailures} addToast={addToast}/></TabPane>
       </main>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
       <ToastStack toasts={toasts} dismiss={dismissToast}/>
