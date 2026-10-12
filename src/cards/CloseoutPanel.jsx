@@ -41,8 +41,8 @@ const CloseoutPanel=({data,setData})=>{
     <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:4,marginTop:8}}>
       {[["rs","Rec %","72"],["sh","Sleep","7.5"],["steps","Steps","15000"],["wt","Weight","185"],["hrv","HRV","68"],["rhr","RHR","42"]].map(([k,l,ph])=>(
         <div key={k}>
-          <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:2,textAlign:"center"}}>{l}</div>
-          <N value={f[k]} onChange={v=>setF({...f,[k]:v})} placeholder={ph} style={{fontSize:12,padding:"7px 2px",textAlign:"center"}}/>
+          <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:2,textAlign:"center"}}>{l}</div>
+          <N value={f[k]} onChange={v=>setF({...f,[k]:v})} placeholder={ph} style={{fontSize:13,padding:"7px 2px",textAlign:"center"}}/>
         </div>
       ))}
     </div>

@@ -41,30 +41,30 @@ const WeightTrendCard=({trend,compact=false,tdee=null})=>{
   return(
     <X style={{padding:"12px 14px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-        <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>Cut trajectory · week {wkNum}/{PROG.weeks}</div>
-        <div style={{fontSize:12,fontWeight:700,color:compact?st.c:(wtEnd!=null?(wtEnd<=goal+0.75?C.g:C.t2):st.c),fontFamily:FD,whiteSpace:"nowrap"}}>{compact?st.txt:(wtEnd!=null?`Projected ${wtEnd.toFixed(1)} BY ${dLbl(PROG.end)}`:st.txt)}</div>
+        <div style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD,whiteSpace:"nowrap"}}>Cut trajectory · week {wkNum}/{PROG.weeks}</div>
+        <div style={{fontSize:13,fontWeight:700,color:compact?st.c:(wtEnd!=null?(wtEnd<=goal+0.75?C.g:C.t2):st.c),fontFamily:FD,whiteSpace:"nowrap"}}>{compact?st.txt:(wtEnd!=null?`Projected ${wtEnd.toFixed(1)} BY ${dLbl(PROG.end)}`:st.txt)}</div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,marginTop:8,display:"block"}}>
         <line x1="0" y1={gy(goal)} x2={W} y2={gy(goal)} stroke={C.g} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.7"/>
-        <text x="2" y={gy(goal)-4} fontFamily={FD} fontSize="11" fontWeight="800" fill={C.g}>Goal {goal}</text>
-        <text x="2" y={Math.max(padT+8,gy(pts[0].v)-6)} fontFamily={FD} fontSize="11" fontWeight="700" fill={C.t3}>{Math.round(pts[0].v)}</text>
+        <text x="2" y={gy(goal)-4} fontFamily={FD} fontSize="12" fontWeight="800" fill={C.g}>Goal {goal}</text>
+        <text x="2" y={Math.max(padT+8,gy(pts[0].v)-6)} fontFamily={FD} fontSize="12" fontWeight="700" fill={C.t3}>{Math.round(pts[0].v)}</text>
         {showCk&&<line x1={gx(ckD)} y1={padT-4} x2={gx(ckD)} y2={H-padB+4} stroke={C.bd} strokeWidth="1"/>}
-        {showCk&&<text x={gx(ckD)+4} y={padT+4} fontFamily={FD} fontSize="11" fontWeight="700" fill={C.t3}>{`Checkpoint ${dLbl(PROG.checkpoint.date)}${PROG.checkpoint.week===PROG.deload?" · deload":""}`}</text>}
+        {showCk&&<text x={gx(ckD)+4} y={padT+4} fontFamily={FD} fontSize="12" fontWeight="700" fill={C.t3}>{`Checkpoint ${dLbl(PROG.checkpoint.date)}${PROG.checkpoint.week===PROG.deload?" · deload":""}`}</text>}
         <polyline points={rawLine} fill="none" stroke={C.bd} strokeWidth="1.5" strokeDasharray="2,3"/>
         <polyline points={emaLine} fill="none" stroke={C.t} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
         {projY!=null&&<polyline points={`${cx},${cy} ${W-padR},${projY}`} fill="none" stroke={C.t} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.55"/>}
-        {!compact&&projY!=null&&daysToGoal!=null&&daysToGoal<=84&&(<g><rect x={W-92} y={Math.max(padT,projY-22)} width="88" height="15" rx="3" fill={C.gl}/><text x={W-48} y={Math.max(padT,projY-22)+11} textAnchor="middle" fontFamily={FD} fontSize="11" fontWeight="800" fill={C.g}>{projLabel} · {goal}</text></g>)}
+        {!compact&&projY!=null&&daysToGoal!=null&&daysToGoal<=84&&(<g><rect x={W-92} y={Math.max(padT,projY-22)} width="88" height="15" rx="3" fill={C.gl}/><text x={W-48} y={Math.max(padT,projY-22)+11} textAnchor="middle" fontFamily={FD} fontSize="12" fontWeight="800" fill={C.g}>{projLabel} · {goal}</text></g>)}
         <circle cx={cx} cy={cy} r="4.5" fill={C.cd} stroke={C.t} strokeWidth="2.5"/>
         <rect x={tagX} y={tagY} width={tagW} height="16" rx="3" fill={C.t}/>
-        <text x={tagX+tagW/2} y={tagY+11.5} textAnchor="middle" fontFamily={FD} fontSize="11" fontWeight="800" fill={C.oa}>{compact?`${cur.toFixed(1)} today`:`${cur.toFixed(1)} · ${delta>=0?"−":"+"}${Math.abs(delta).toFixed(1)}`}</text>
+        <text x={tagX+tagW/2} y={tagY+11.5} textAnchor="middle" fontFamily={FD} fontSize="12" fontWeight="800" fill={C.oa}>{compact?`${cur.toFixed(1)} today`:`${cur.toFixed(1)} · ${delta>=0?"−":"+"}${Math.abs(delta).toFixed(1)}`}</text>
       </svg>
-      {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>Checkpoint {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · Goal {goal}</span></div>}
-      {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,fontWeight:700,color:C.t2,fontFamily:FD}}><span>{rate>0?"+":""}{rate.toFixed(1)} lb/wk</span><span>{toGo.toFixed(1)} lb to {goal}</span><span>Goal by {projLabel}</span></div>}
+      {!compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}><span>{dLbl(PROG.start)} · {PROG.startWeight}</span><span>Checkpoint {dLbl(PROG.checkpoint.date)}</span><span>{dLbl(PROG.end)} · Goal {goal}</span></div>}
+      {compact&&<div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:12,fontWeight:700,color:C.t2,fontFamily:FD}}><span>{rate>0?"+":""}{rate.toFixed(1)} lb/wk</span><span>{toGo.toFixed(1)} lb to {goal}</span><span>Goal by {projLabel}</span></div>}
       {!compact&&<div style={{display:"flex",gap:7,marginTop:10}}>
         {[[rate.toFixed(1),"Lb/wk pace"],[toGo.toFixed(1),"Lbs to go"],[`${trend.weighIns7}/7`,"Weigh-ins"],tdee?[Math.round(tdee).toLocaleString(),"TDEE est"]:[projLabel,"Goal by"]].map(([v,l])=>(
           <div key={l} style={{flex:1,background:C.bg,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
-            <div style={{fontSize:18,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
-            <div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div>
+            <div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div>
           </div>))}
       </div>}
     </X>

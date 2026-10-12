@@ -17,16 +17,16 @@ const AUTO_END_MS=90*6e4;
 // ═══ TRAINING ═══
 // Train home building blocks (module level so they keep identity across renders).
 const NUMS_T={fontVariantNumeric:"tabular-nums"};
-const H2=({children,right})=>(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:28,minHeight:40}}><h2 style={{fontSize:13,fontWeight:500,color:C.t3}}>{children}</h2>{right}</div>);
+const H2=({children,right})=>(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:28,minHeight:40}}><h2 style={{fontSize:15,fontWeight:500,color:C.t3}}>{children}</h2>{right}</div>);
 const Row=({title,sub,right,onClick,last})=>(<div onClick={onClick} role={onClick?"button":undefined} tabIndex={onClick?0:undefined}
         style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:56,padding:"10px 0",borderTop:`1px solid ${C.bd}`,borderBottom:last?`1px solid ${C.bd}`:"none",cursor:onClick?"pointer":"default"}}>
-        <div style={{minWidth:0}}><div style={{fontSize:15,fontWeight:500,color:C.t}}>{title}</div>{sub&&<div style={{fontSize:13,color:C.t3,marginTop:2,...NUMS_T}}>{sub}</div>}</div>
-        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,fontSize:13,color:C.t3,...NUMS_T}}>{right}</div>
+        <div style={{minWidth:0}}><div style={{fontSize:17,fontWeight:500,color:C.t}}>{title}</div>{sub&&<div style={{fontSize:15,color:C.t3,marginTop:2,...NUMS_T}}>{sub}</div>}</div>
+        <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,fontSize:15,color:C.t3,...NUMS_T}}>{right}</div>
       </div>);
 
 // Session clock in the workout header.
 const Elapsed=({start})=>{const [now,setNow]=useState(Date.now());useEffect(()=>{const iv=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(iv);},[]);
-  return <span style={{fontSize:15,color:C.t2,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(Math.max(0,Math.floor((now-start)/1000)))}</span>;};
+  return <span style={{fontSize:17,color:C.t2,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(Math.max(0,Math.floor((now-start)/1000)))}</span>;};
 
 const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const t=useToday(),dn=dw(t);
@@ -374,26 +374,26 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const renderCardioForm=()=>showCardio&&(<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
       {CARDIO_PRESETS.map(p=>(<button key={p.type} onClick={()=>applyCardioPreset(p)} style={{
-        padding:"7px 4px",borderRadius:6,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+        padding:"7px 4px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
         border:`1px solid ${cardioType===p.type?C.t:C.bd}`,background:cardioType===p.type?C.bg:C.cd,color:cardioType===p.type?C.t:C.t3}}>{p.label}<br/><span style={{fontWeight:500}}>{p.duration}m</span></button>))}
     </div>
     <div style={{display:"flex",gap:4,overflowX:"auto"}}>
       {CARDIO_TYPES.map(ct=>(<button key={ct} onClick={()=>setCardioType(ct)} style={{
-        padding:"6px 9px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+        padding:"6px 9px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
         border:`1px solid ${cardioType===ct?C.t:C.bd}`,background:cardioType===ct?C.bg:"transparent",color:cardioType===ct?C.t:C.t3}}>{cardioLabel(ct)}</button>))}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
-      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
-      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Avg heart rate<N value={cardioHr} onChange={setCardioHr} placeholder="from Watch" max={230}/></label>
-      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
-      <label style={{fontSize:11,color:C.t3,fontWeight:600}}>Intensity
-        <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:14,color:C.t,fontFamily:"inherit"}}>
+      <label style={{fontSize:12,color:C.t3,fontWeight:600}}>Duration min<N value={cardioDur} onChange={setCardioDur} placeholder="20"/></label>
+      <label style={{fontSize:12,color:C.t3,fontWeight:600}}>Distance mi<N value={cardioDistance} onChange={setCardioDistance} placeholder="optional"/></label>
+      <label style={{fontSize:12,color:C.t3,fontWeight:600}}>Avg heart rate<N value={cardioHr} onChange={setCardioHr} placeholder="from Watch" max={230}/></label>
+      <label style={{fontSize:12,color:C.t3,fontWeight:600}}>Calories<N value={cardioCals} onChange={setCardioCals} placeholder="optional"/></label>
+      <label style={{fontSize:12,color:C.t3,fontWeight:600}}>Intensity
+        <select value={cardioIntensity} onChange={e=>setCardioIntensity(e.target.value)} style={{width:"100%",background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"8px",fontSize:16,color:C.t,fontFamily:"inherit"}}>
           {["easy","zone2","tempo","hard","hiit"].map(i=><option key={i} value={i}>{intensityLabel(i)}</option>)}
         </select>
       </label>
     </div>
-    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: incline, speed, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:14,color:C.t,fontFamily:"inherit",outline:"none"}}/>
+    <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: incline, speed, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:16,color:C.t,fontFamily:"inherit",outline:"none"}}/>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       <B small onClick={()=>logCardio()}>{data.cardio?.[t]?.done?"Save changes":"Log Cardio"}</B>
       <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
@@ -425,10 +425,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           {(()=>{const used=new Set(workout.exercises.map(e=>e.id));
             const groups={};EXERCISE_LIBRARY.filter(o=>!o.off&&!used.has(o.id)).forEach(o=>{(groups[o.region]=groups[o.region]||[]).push(o);});
             return Object.entries(groups).map(([rg,opts])=>(<div key={rg} style={{marginBottom:8}}>
-              <div style={{fontSize:11,fontWeight:800,color:C.t3,fontFamily:FD,padding:"4px 0"}}>{rg}</div>
+              <div style={{fontSize:12,fontWeight:800,color:C.t3,fontFamily:FD,padding:"4px 0"}}>{rg}</div>
               {opts.map(o=>(<button type="button" key={o.id} onClick={()=>addManualEx(o)} style={{display:"flex",width:"100%",justifyContent:"space-between",alignItems:"center",minHeight:44,padding:"4px 8px",borderTop:`1px solid ${C.bl}`,border:"none",borderTopStyle:"solid",background:"transparent",cursor:"pointer",textAlign:"left"}}>
-                <span style={{fontSize:14,fontWeight:600,color:C.t}}>{o.name}</span>
-                <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap"}}>{gw(o,o.sw)} {o.unit}</span>
+                <span style={{fontSize:16,fontWeight:600,color:C.t}}>{o.name}</span>
+                <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap"}}>{gw(o,o.sw)} {o.unit}</span>
               </button>))}
             </div>));})()}
       </Sheet>
@@ -437,10 +437,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       {(()=>{const exs=workout.exercises;const {curEi}=sessionCursor(exs,i=>slotAt(i)?.rest);
         return(<div style={{paddingTop:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-            <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
+            <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
             {(workout.date||t)===t&&<Elapsed start={workout.start}/>}
           </div>
-          <div style={{fontSize:13,color:C.t3,marginTop:4,fontVariantNumeric:"tabular-nums"}}>
+          <div style={{fontSize:15,color:C.t3,marginTop:4,fontVariantNumeric:"tabular-nums"}}>
             {exs.length?(curEi>=0?`Lift ${curEi+1} of ${exs.length}`:"All sets done"):"Empty session"}
             {rt>0&&rl>0?` · rest ${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")} left`:""}
             {workout.isDeload?" · deload, half weight":""}
@@ -453,41 +453,41 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <div className="hh-sheet" role="timer" aria-live="off" style={{background:done?C.g:C.t,borderRadius:12,boxShadow:C.sh,padding:"8px 8px 8px 14px",display:"flex",alignItems:"center",gap:8,position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${pct}%`,background:"var(--on-accent-line)",opacity:0.35,transition:"width .5s linear"}}/>
             <div style={{position:"relative",flex:1,minWidth:0}}>
-              <div style={{fontSize:12,color:"var(--on-accent-dim)"}}>{done?"Rest done. Go.":"Rest"}</div>
-              <div style={{fontSize:28,fontWeight:500,color:C.oa,fontVariantNumeric:"tabular-nums",lineHeight:1.1}}>{done?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
+              <div style={{fontSize:13,color:"var(--on-accent-dim)"}}>{done?"Rest done. Go.":"Rest"}</div>
+              <div style={{fontSize:30,fontWeight:500,color:C.oa,fontVariantNumeric:"tabular-nums",lineHeight:1.1}}>{done?"0:00":`${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")}`}</div>
             </div>
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>−30</button>}
-            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>+30</button>}
-            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:14,fontWeight:500,cursor:"pointer"}}>{done?"Dismiss":"Skip"}</button>
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(-30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:16,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>−30</button>}
+            {!done&&<button type="button" onClick={()=>adjustRestTimer(30)} style={{position:"relative",minHeight:44,minWidth:52,background:"transparent",border:"1px solid var(--on-accent-line)",color:C.oa,borderRadius:8,fontSize:16,fontWeight:500,cursor:"pointer",fontVariantNumeric:"tabular-nums"}}>+30</button>}
+            <button type="button" onClick={clearRestTimer} style={{position:"relative",minHeight:44,minWidth:64,background:C.cd,border:"none",color:C.t,borderRadius:8,fontSize:16,fontWeight:500,cursor:"pointer"}}>{done?"Dismiss":"Skip"}</button>
           </div>
         </div></Portal>);})()}
 
 
       {s.warmup&&!wuDone&&(<X style={{padding:14,marginTop:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <div style={{fontSize:15,fontWeight:500,color:C.t}}>Warm-up</div>
+          <div style={{fontSize:17,fontWeight:500,color:C.t}}>Warm-up</div>
           <B small outline onClick={()=>setWuDone(true)}>Done</B>
         </div>
-        <div style={{fontSize:13,color:C.t2,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
-        {s.warmup.note&&<div style={{fontSize:12,color:C.t2,marginBottom:4}}>{s.warmup.note}</div>}
+        <div style={{fontSize:15,color:C.t2,marginBottom:s.warmup.moves.length?6:0}}>{s.warmup.cardio}</div>
+        {s.warmup.note&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>{s.warmup.note}</div>}
         {/mobility/i.test(s.name||"")&&mobExercises.map((m,i)=>(
           <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"5px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
             <div style={{marginRight:8}}>
-              <div style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</div>
-              <div style={{fontSize:11,color:C.t3,marginTop:1}}>{m.cue}</div>
+              <div style={{fontSize:15,fontWeight:600,color:C.t}}>{m.name}</div>
+              <div style={{fontSize:12,color:C.t3,marginTop:1}}>{m.cue}</div>
             </div>
-            <span style={{fontSize:12,color:C.t3,whiteSpace:"nowrap",fontFamily:FD,fontWeight:700}}>{m.sets}×{m.dur}s{m.sides?` · ${m.sides.map(x=>x[0]).join("/")}`:""}</span>
+            <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",fontFamily:FD,fontWeight:700}}>{m.sets}×{m.dur}s{m.sides?` · ${m.sides.map(x=>x[0]).join("/")}`:""}</span>
           </div>
         ))}
         {s.warmup.moves.map((m,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:i>0?`1px solid ${C.bl}`:"none"}}>
-            <span style={{fontSize:13,fontWeight:600,color:C.t}}>{m.name}</span>
-            <span style={{fontSize:12,color:C.t3}}>{m.rx}</span>
+            <span style={{fontSize:15,fontWeight:600,color:C.t}}>{m.name}</span>
+            <span style={{fontSize:13,color:C.t3}}>{m.rx}</span>
           </div>
         ))}
-        {s.warmup.ramp&&<div style={{fontSize:13,color:C.t3,marginTop:4}}>{s.warmup.ramp}</div>}
+        {s.warmup.ramp&&<div style={{fontSize:15,color:C.t3,marginTop:4}}>{s.warmup.ramp}</div>}
       </X>)}
-      {s.warmup&&wuDone&&(<div style={{fontSize:13,color:C.t3,marginTop:14}}>Warm-up <span style={{color:C.g}}>done</span></div>)}
+      {s.warmup&&wuDone&&(<div style={{fontSize:15,color:C.t3,marginTop:14}}>Warm-up <span style={{color:C.g}}>done</span></div>)}
 
       {(()=>{ // ═══ SET TABLE · Strong/Hevy style: Set, Last, lb, Reps, check ═══
         const exs=workout.exercises;
@@ -506,11 +506,11 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         const unskipEx=(ei)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets.forEach(x=>{if(x.skipped){x.skipped=false;delete x.at;}});return n;});
         const anyLogged=exs.some(e=>e.sets.some(x=>x.done||x.skipped));
         const NUMS={fontVariantNumeric:"tabular-nums"};
-        const link={background:"none",border:"none",color:C.t3,fontSize:13,cursor:"pointer",padding:"10px 6px",minHeight:40};
-        const cell={height:40,display:"flex",alignItems:"center",justifyContent:"center",marginRight:6,fontSize:15,...NUMS};
-        const inp={width:"100%",height:40,border:`1.5px solid ${C.p}`,borderRadius:8,background:C.cd,textAlign:"center",fontSize:18,fontWeight:500,outline:"none",...NUMS};
+        const link={background:"none",border:"none",color:C.t3,fontSize:15,cursor:"pointer",padding:"10px 6px",minHeight:40};
+        const cell={height:40,display:"flex",alignItems:"center",justifyContent:"center",marginRight:6,fontSize:17,...NUMS};
+        const inp={width:"100%",height:40,border:`1.5px solid ${C.p}`,borderRadius:8,background:C.cd,textAlign:"center",fontSize:20,fontWeight:500,outline:"none",...NUMS};
         const Chk=({on,onClick,label,dim})=>(<button type="button" onClick={onClick} aria-label={label} aria-pressed={!!on} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:0}}>
-          <span style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${on?C.t:dim?C.bd:C.t4}`,background:on?C.t:"transparent",color:C.oa,fontSize:13,lineHeight:"19px",textAlign:"center"}}>{on?"✓":""}</span>
+          <span style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${on?C.t:dim?C.bd:C.t4}`,background:on?C.t:"transparent",color:C.oa,fontSize:15,lineHeight:"19px",textAlign:"center"}}>{on?"✓":""}</span>
         </button>);
         const summaryOf=i=>{const e=exs[i];const done=e.sets.filter(x=>x.done).length;const w=e.sets[0]?.weight;
           return done===e.sets.length?`${done} of ${done} done`:`${e.sets.length} × ${w>0?w:"BW"}`;};
@@ -524,8 +524,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const ssTag=grp&&grp.length>1?`Superset ${String.fromCharCode(65+grp.indexOf(ei))}`:null;
           if(!open)return(<div style={{borderTop:`1px solid ${C.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <button type="button" onClick={()=>setFocusEi(ei)} style={{flex:1,minWidth:0,display:"flex",justifyContent:"space-between",gap:10,background:"none",border:"none",padding:"14px 0",cursor:"pointer",textAlign:"left"}}>
-              <span style={{fontSize:15,fontWeight:500,color:skippedAll?C.t4:fully?C.t3:C.t,textDecoration:skippedAll?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
-              {!skippedAll&&<span style={{fontSize:13,color:fully?C.g:C.t3,whiteSpace:"nowrap",...NUMS}}>{summaryOf(ei)}</span>}
+              <span style={{fontSize:17,fontWeight:500,color:skippedAll?C.t4:fully?C.t3:C.t,textDecoration:skippedAll?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</span>
+              {!skippedAll&&<span style={{fontSize:15,color:fully?C.g:C.t3,whiteSpace:"nowrap",...NUMS}}>{summaryOf(ei)}</span>}
             </button>
             {skippedAll&&<button type="button" onClick={()=>unskipEx(ei)} style={{...link,color:C.t2}}>Undo skip</button>}
           </div>);
@@ -541,26 +541,26 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const showWu=edSi===0&&e.wu?.some(w=>!w.done);
           return(<div style={{borderTop:`1px solid ${C.bd}`,padding:"14px 0 6px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-              <button type="button" onClick={()=>setExInfo({ex:{...(sl||{}),...(e.swappedTo||{}),name},progKey:e.progKey})} aria-label={`${name} history`} style={{background:"none",border:"none",padding:0,textAlign:"left",fontSize:17,fontWeight:500,color:C.t,cursor:"pointer"}}>{name}</button>
-              {rr&&<span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
+              <button type="button" onClick={()=>setExInfo({ex:{...(sl||{}),...(e.swappedTo||{}),name},progKey:e.progKey})} aria-label={`${name} history`} style={{background:"none",border:"none",padding:0,textAlign:"left",fontSize:19,fontWeight:500,color:C.t,cursor:"pointer"}}>{name}</button>
+              {rr&&<span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
-            <div style={{fontSize:13,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
+            <div style={{fontSize:15,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
               {[sl?.anchor?"Anchor":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&(prev||goal)?" · ":""}
               {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}{prev&&goal?" · ":""}{goal}
             </div>
-            {ssTag&&ei===curEi&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
+            {ssTag&&ei===curEi&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
             <div style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 1fr 40px",alignItems:"center",marginTop:10,rowGap:2}}>
-              {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
+              {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
               {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
-                <span style={{fontSize:13,color:C.t4}}>W</span><span style={{fontSize:13,color:C.t4}}>{w.l}</span>
+                <span style={{fontSize:15,color:C.t4}}>W</span><span style={{fontSize:15,color:C.t4}}>{w.l}</span>
                 <span style={{...cell,color:w.done?C.t4:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t4:C.t2}}>{w.r}</span>
                 <Chk on={w.done} dim label={`Warm-up ${wi+1} done`} onClick={()=>!w.done&&dWU(ei,wi,sl?.rest)}/>
               </React.Fragment>))}
               {e.sets.map((x,si)=>{const isEd=si===edSi;const isNow=isEd&&ei===curEi;const pv=prev?.sets?.[si];
                 const tone=x.skipped?C.t4:x.done?C.t:C.t3;
                 return(<React.Fragment key={si}>
-                  <span style={{fontSize:14,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
-                  <span style={{fontSize:13,color:C.t4,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
+                  <span style={{fontSize:16,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
+                  <span style={{fontSize:15,color:C.t4,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
                   {isEd?(<>
                     <span style={{marginRight:6}}><input aria-label={`Set ${si+1} weight`} inputMode="decimal" value={x.weight??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9.]/g,"");uS(ei,si,"weight",v===""?"":Number(v));}} style={inp}/></span>
                     <span style={{marginRight:6}}><input aria-label={`Set ${si+1} reps`} inputMode="numeric" value={x.reps??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9]/g,"");uS(ei,si,"reps",v===""?"":Number(v));}} style={inp}/></span>
@@ -572,31 +572,31 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                 </React.Fragment>);})}
             </div>
             {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
-              <span style={{fontSize:13,color:C.t3,width:40}}>RIR</span>
-              {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:15,cursor:"pointer",...NUMS}}>{v}</button>);})}
+              <span style={{fontSize:15,color:C.t3,width:40}}>RIR</span>
+              {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:17,cursor:"pointer",...NUMS}}>{v}</button>);})}
               <span style={{display:"flex",gap:4,marginLeft:4}}>
-                <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:18,cursor:"pointer"}}>−</button>
-                <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:18,cursor:"pointer"}}>+</button>
+                <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>−</button>
+                <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>+</button>
               </span>
             </div>)}
-            {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,sl?.rest)} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:15,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
+            {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,sl?.rest)} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:17,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
             <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,marginTop:4}}>
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,edSi)}>Skip set</button>}
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,'all')}>Skip lift</button>}
               {getSwapOptions(sl,e).length>0&&!e.sets.some(x=>x.done)&&<button type="button" style={link} onClick={()=>setSwapModal({ei,exName:name})}>Swap lift</button>}
               {BARBELL_IDS.has(e.id)&&<button type="button" style={link} onClick={()=>setShowPlates(true)}>Plates</button>}
             </div>
-            {cue&&<details style={{marginTop:2}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Form cue</summary><div style={{fontSize:13,color:C.t2,lineHeight:1.5,paddingBottom:6}}>{cue}</div></details>}
+            {cue&&<details style={{marginTop:2}}><summary style={{fontSize:15,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Form cue</summary><div style={{fontSize:15,color:C.t2,lineHeight:1.5,paddingBottom:6}}>{cue}</div></details>}
             <Sheet open={showPlates} onClose={()=>setShowPlates(false)} title="Plates"><PlateCalc weight={e.sets[Math.max(0,edSi)]?.weight||0}/></Sheet>
           </div>);
         };
 
         return(<div style={{marginTop:14}}>
-          {exs.length===0&&<div style={{borderTop:`1px solid ${C.bd}`,padding:"18px 0",fontSize:14,color:C.t3}}>Add your first exercise to start logging.</div>}
+          {exs.length===0&&<div style={{borderTop:`1px solid ${C.bd}`,padding:"18px 0",fontSize:16,color:C.t3}}>Add your first exercise to start logging.</div>}
           {exs.map((_,ei)=><React.Fragment key={ei}>{liftView(ei)}</React.Fragment>)}
           <div style={{borderTop:`1px solid ${C.bd}`}}/>
-          {allDone&&<div style={{fontSize:14,color:C.g,marginTop:14}}>All sets done. {exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} logged.</div>}
-          <button type="button" onClick={()=>setShowFinishConfirm(true)} style={{marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",
+          {allDone&&<div style={{fontSize:16,color:C.g,marginTop:14}}>All sets done. {exs.reduce((a,e)=>a+e.sets.filter(x=>x.done).length,0)} logged.</div>}
+          <button type="button" onClick={()=>setShowFinishConfirm(true)} style={{marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:17,fontWeight:500,cursor:"pointer",
             border:allDone?"none":`1px solid ${C.bd}`,background:allDone?C.p:C.cd,color:allDone?C.oa:C.t}}>Finish workout</button>
           <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,marginTop:6}}>
             <button type="button" style={link} onClick={()=>setShowAddEx(true)}>Add exercise</button>
@@ -611,18 +611,18 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         return(<X style={{padding:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontSize:14,fontWeight:700,color:C.t}}>{plc.label}</div>
-              <div style={{fontSize:12,color:C.t3}}>{plc.duration} min · {intensityLabel(plc.intensity)} post-lift cardio</div>
+              <div style={{fontSize:16,fontWeight:700,color:C.t}}>{plc.label}</div>
+              <div style={{fontSize:13,color:C.t3}}>{plc.duration} min · {intensityLabel(plc.intensity)} post-lift cardio</div>
             </div>
-            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:14,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick Log</B></div>
+            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:16,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick Log</B></div>
               :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
               :<div style={{display:"flex",gap:6}}><B small outline onClick={()=>openCardioLog(plc)}>Log</B><B small outline onClick={()=>startCardioTimer(plc.duration)}>Start</B></div>}
           </div>
           {cardioTimerRunning&&(<div style={{marginTop:10,textAlign:"center"}}>
-            <div style={{fontSize:42,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
-            <div style={{fontSize:11,color:C.t3,marginTop:2}}>remaining</div>
+            <div style={{fontSize:44,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
+            <div style={{fontSize:12,color:C.t3,marginTop:2}}>remaining</div>
           </div>)}
-          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:12,color:C.g,fontWeight:600}}>Post-lift cardio complete · use Details for distance/calories/intensity or Quick Log for just time.</div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:13,color:C.g,fontWeight:600}}>Post-lift cardio complete · use Details for distance/calories/intensity or Quick Log for just time.</div>)}
           {renderCardioForm()}
         </X>);
       })()}
@@ -641,7 +641,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     const rrOf=ex=>{const pe=vSess?.exercises?.find(p=>p.id===ex.id);return pe?.rr||null;};
     const nameOf=ex=>ex.swappedTo?.name||exerciseName(ex.id);
     const NUMS={fontVariantNumeric:"tabular-nums"};
-    const back=<button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Train</button>;
+    const back=<button type="button" onClick={()=>{setEditW(null);setViewW(null);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:16,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Train</button>;
     const grid={display:"grid",gridTemplateColumns:"32px 1fr 1fr 64px",alignItems:"center",columnGap:8};
     if(editW){
       const upd=(fn)=>setEditW(p=>{const n=JSON.parse(JSON.stringify(p));fn(n);return n;});
@@ -651,24 +651,24 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         setViewW([vDate,w]);setEditW(null);addToast?.("Workout updated","success");};
       return(<div style={{paddingTop:4}}>
         {back}
-        <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Edit {title}</h1>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,fontSize:13,color:C.t3}}>{fmt(vDate)} · minutes
+        <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>Edit {title}</h1>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,fontSize:15,color:C.t3}}>{fmt(vDate)} · minutes
           <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:72}}/></div>
         {editW.exercises?.map((ex,ei)=>(<div key={ei} style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:12}}>
-          <div style={{fontSize:15,fontWeight:500}}>{nameOf(ex)}</div>
-          <div style={{...grid,marginTop:6}}>{["Set","lb","Reps",""].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4}}>{h}</span>)}</div>
+          <div style={{fontSize:17,fontWeight:500}}>{nameOf(ex)}</div>
+          <div style={{...grid,marginTop:6}}>{["Set","lb","Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4}}>{h}</span>)}</div>
           {ex.sets?.map((st,si)=>(<div key={si} style={{...grid,padding:"3px 0"}}>
-            <span style={{fontSize:14,color:C.t4,...NUMS}}>{si+1}</span>
+            <span style={{fontSize:16,color:C.t4,...NUMS}}>{si+1}</span>
             <N value={String(st.weight??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].weight=v===""?"":+v||v;})} placeholder="lb"/>
             <N value={String(st.reps??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].reps=v===""?"":+v||v;})} placeholder="reps"/>
-            <button type="button" aria-pressed={!!st.done} onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{minHeight:40,border:`1px solid ${C.bd}`,background:C.cd,color:st.done?C.t:C.t3,borderRadius:8,fontSize:13,cursor:"pointer"}}>{st.done?"Done":"Skipped"}</button>
+            <button type="button" aria-pressed={!!st.done} onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{minHeight:40,border:`1px solid ${C.bd}`,background:C.cd,color:st.done?C.t:C.t3,borderRadius:8,fontSize:15,cursor:"pointer"}}>{st.done?"Done":"Skipped"}</button>
           </div>))}
         </div>))}
         <div style={{display:"flex",gap:8,marginTop:18}}>
           <B full outline onClick={()=>setEditW(null)}>Cancel</B>
           <B full onClick={saveEdit}>Save</B>
         </div>
-        <div style={{fontSize:12,color:C.t3,textAlign:"center",marginTop:8}}>Edits fix the log. Next session's weights still follow the plan.</div>
+        <div style={{fontSize:13,color:C.t3,textAlign:"center",marginTop:8}}>Edits fix the log. Next session's weights still follow the plan.</div>
       </div>);
     }
     const doneSets=(vData.exercises||[]).reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0);
@@ -677,27 +677,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     return(<div style={{paddingTop:4}}>
       {back}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-        <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>{title}</h1>
-        <button type="button" onClick={()=>setEditW(JSON.parse(JSON.stringify(vData)))} style={{background:"none",border:"none",color:C.t2,fontSize:14,cursor:"pointer",padding:"8px 0",minHeight:40}}>Edit</button>
+        <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>{title}</h1>
+        <button type="button" onClick={()=>setEditW(JSON.parse(JSON.stringify(vData)))} style={{background:"none",border:"none",color:C.t2,fontSize:16,cursor:"pointer",padding:"8px 0",minHeight:40}}>Edit</button>
       </div>
-      <div style={{fontSize:13,color:C.t3,marginTop:2,...NUMS}}>{fmt(vDate)}{dur?` · ${dur} min`:""} · {doneSets} sets{vol>0?` · ${Math.round(vol).toLocaleString()} lb moved`:""}</div>
+      <div style={{fontSize:15,color:C.t3,marginTop:2,...NUMS}}>{fmt(vDate)}{dur?` · ${dur} min`:""} · {doneSets} sets{vol>0?` · ${Math.round(vol).toLocaleString()} lb moved`:""}</div>
       {(vData.exercises||[]).map((ex,ei)=>{const rr=rrOf(ex);return(<div key={ei} style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-          <span style={{fontSize:15,fontWeight:500}}>{nameOf(ex)}</span>
-          {rr&&<span style={{fontSize:13,color:C.t3,...NUMS}}>{rrTxt(rr)} reps</span>}
+          <span style={{fontSize:17,fontWeight:500}}>{nameOf(ex)}</span>
+          {rr&&<span style={{fontSize:15,color:C.t3,...NUMS}}>{rrTxt(rr)} reps</span>}
         </div>
-        {ex.swappedFrom&&<div style={{fontSize:13,color:C.t3,marginTop:2}}>Swapped from {ex.swappedFrom.name}</div>}
+        {ex.swappedFrom&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>Swapped from {ex.swappedFrom.name}</div>}
         <div style={{...grid,gridTemplateColumns:"32px 1fr 1fr 1fr",marginTop:6}}>
-          {["Set","lb","Reps","RIR"].map((h,i)=><span key={i} style={{fontSize:12,color:C.t4,textAlign:i?"center":"left"}}>{h}</span>)}
+          {["Set","lb","Reps","RIR"].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4,textAlign:i?"center":"left"}}>{h}</span>)}
           {(ex.sets||[]).map((x,si)=>{const ok=x.done;const top=rr&&ok&&+x.reps>=rr[1];const c=ok?C.t:C.t4;return(<React.Fragment key={si}>
-            <span style={{fontSize:14,color:C.t4,padding:"7px 0",...NUMS}}>{si+1}</span>
-            <span style={{fontSize:15,color:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{+x.weight>0?x.weight:"BW"}</span>
-            <span style={{fontSize:15,color:top?C.g:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{x.reps||"○"}</span>
-            <span style={{fontSize:13,color:C.t3,textAlign:"center",...NUMS}}>{ok?(x.rir!=null&&x.rir!==""?x.rir:""):"skipped"}</span>
+            <span style={{fontSize:16,color:C.t4,padding:"7px 0",...NUMS}}>{si+1}</span>
+            <span style={{fontSize:17,color:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{+x.weight>0?x.weight:"BW"}</span>
+            <span style={{fontSize:17,color:top?C.g:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{x.reps||"○"}</span>
+            <span style={{fontSize:15,color:C.t3,textAlign:"center",...NUMS}}>{ok?(x.rir!=null&&x.rir!==""?x.rir:""):"skipped"}</span>
           </React.Fragment>);})}
         </div>
       </div>);})}
-      <div style={{fontSize:12,color:C.t3,marginTop:16}}>Green reps hit the top of the range.</div>
+      <div style={{fontSize:13,color:C.t3,marginTop:16}}>Green reps hit the top of the range.</div>
     </div>);
   }
 
@@ -707,18 +707,18 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     {exInfo&&<ExerciseHistory data={data} ex={exInfo.ex} progKeyStr={exInfo.progKey} onClose={()=>setExInfo(null)}/>}
     <Sheet open={!!summary} onClose={()=>setSummary(null)} title="Session logged">
       {summary&&(<div>
-        <div style={{fontSize:14,fontWeight:700,color:C.t2}}>{summary.name} · {fmt(summary.date)}</div>
+        <div style={{fontSize:16,fontWeight:700,color:C.t2}}>{summary.name} · {fmt(summary.date)}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
           {[[summary.dur?`${summary.dur}m`:"○","Duration"],[String(summary.sets),`sets · ${summary.exercises} lifts`],[summary.volume?summary.volume.toLocaleString():"○","Lbs volume"]].map(([v,l])=>(
-            <div key={l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:11,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div></div>))}
+            <div key={l} style={{background:C.bg,borderRadius:8,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:C.t,fontFamily:FD}}>{v}</div><div style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>{l}</div></div>))}
         </div>
         {summary.prs.length>0?(<div style={{marginTop:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.g,fontFamily:FD}}>New records</div>
+          <div style={{fontSize:12,fontWeight:700,color:C.g,fontFamily:FD}}>New records</div>
           {summary.prs.map(p=>(<div key={p.name} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderTop:`1px solid ${C.bl}`}}>
-            <span style={{fontSize:14,fontWeight:700,color:C.t}}>{p.name}</span>
-            <span style={{fontSize:13,fontWeight:700,color:C.g,fontFamily:FD}}>{p.weight}×{p.reps} · e1RM {p.e1rm} <span style={{color:C.t3}}>was {p.prev}</span></span>
+            <span style={{fontSize:16,fontWeight:700,color:C.t}}>{p.name}</span>
+            <span style={{fontSize:15,fontWeight:700,color:C.g,fontFamily:FD}}>{p.weight}×{p.reps} · e1RM {p.e1rm} <span style={{color:C.t3}}>was {p.prev}</span></span>
           </div>))}
-        </div>):<div style={{fontSize:12,color:C.t3,marginTop:10}}>No new e1RM records. On a cut, holding is the win.</div>}
+        </div>):<div style={{fontSize:13,color:C.t3,marginTop:10}}>No new e1RM records. On a cut, holding is the win.</div>}
         <div style={{display:"flex",gap:8,marginTop:14}}>
           <B full outline onClick={()=>{setViewW([summary.date,summary.log]);setSummary(null);}}>View log</B>
           <B full onClick={()=>setSummary(null)}>Done</B>
@@ -727,7 +727,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     </Sheet>
     {(()=>{ // ═══ TRAIN HOME · week strip, the selected day's session, also today, progress, history ═══
       const NUMS={fontVariantNumeric:"tabular-nums"};
-      const link={background:"none",border:"none",color:C.t3,fontSize:13,cursor:"pointer",padding:"10px 8px",minHeight:40};
+      const link={background:"none",border:"none",color:C.t3,fontSize:15,cursor:"pointer",padding:"10px 8px",minHeight:40};
       // ── Week strip: 12 weeks back to 1 ahead, swipe sideways (snaps per week).
       const dsOf=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       const PAST_WEEKS=12;
@@ -748,27 +748,27 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       const todayLogged=!!data.wk?.[t];
       const cardioToday=data.cardio?.[t];
       const mobEntry=data.mob?.[t];
-      const bigBtn=(primary)=>({marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:15,fontWeight:500,cursor:"pointer",border:primary?"none":`1px solid ${C.bd}`,background:primary?C.p:C.cd,color:primary?C.oa:C.t});
+      const bigBtn=(primary)=>({marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:17,fontWeight:500,cursor:"pointer",border:primary?"none":`1px solid ${C.bd}`,background:primary?C.p:C.cd,color:primary?C.oa:C.t});
       const liftRows=(exs,dim)=>(<div style={{marginTop:12,borderTop:`1px solid ${C.bd}`}}>
         {exs.map(ex=>{const cw=gw(ex,ex.sw,ex);const ss=supersetLabel(selDow,ex);return(
           <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
             <span style={{minWidth:0}}>
-              <span style={{display:"block",fontSize:15,color:dim?C.t2:C.t}}>{ex.name}</span>
-              <span style={{display:"block",fontSize:13,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`].filter(Boolean).join(" · ")}</span>
+              <span style={{display:"block",fontSize:17,color:dim?C.t2:C.t}}>{ex.name}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`].filter(Boolean).join(" · ")}</span>
             </span>
-            <span style={{fontSize:15,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:12,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
+            <span style={{fontSize:17,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
           </button>);})}
       </div>);
       return(<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:12}}>
-          <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Train</h1>
-          <span style={{fontSize:13,color:C.t3,...NUMS}}>Week {wkn(t)} of {PROG.weeks}{isDeload?" · deload":""}</span>
+          <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>Train</h1>
+          <span style={{fontSize:15,color:C.t3,...NUMS}}>Week {wkn(t)} of {PROG.weeks}{isDeload?" · deload":""}</span>
         </div>
 
         {/* Week strip. Swipe for other weeks. Green dot = logged, ember dot = today. */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,minHeight:32}}>
-          <span style={{fontSize:13,color:C.t3,...NUMS}}>{weekLabel}</span>
-          {(weekOff!==0||selDate!==t)&&<button type="button" onClick={jumpToday} style={{background:"none",border:"none",fontSize:13,color:C.t2,cursor:"pointer",padding:"6px 0",minHeight:32}}>Back to today</button>}
+          <span style={{fontSize:15,color:C.t3,...NUMS}}>{weekLabel}</span>
+          {(weekOff!==0||selDate!==t)&&<button type="button" onClick={jumpToday} style={{background:"none",border:"none",fontSize:15,color:C.t2,cursor:"pointer",padding:"6px 0",minHeight:32}}>Back to today</button>}
         </div>
         <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init){el.dataset.init="1";el.scrollLeft=el.clientWidth*(PAST_WEEKS+weekOff);}}}
           onScroll={e=>{const el=e.currentTarget;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
@@ -777,8 +777,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             {weekOf(off).map(w=>{const on=w.ds===selDate;return(
               <button type="button" role="tab" aria-selected={on} key={w.ds} onClick={()=>setSelDate(w.ds)} aria-label={`${fmt(w.ds)}${w.done?", logged":""}`}
                 style={{minHeight:58,borderRadius:9,border:`1px solid ${on?C.t:"transparent"}`,background:on?C.cd:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
-                <span style={{fontSize:12,color:C.t3}}>{w.dk.charAt(0).toUpperCase()+w.dk.slice(1,3)}</span>
-                <span style={{fontSize:16,fontWeight:w.done||w.today?500:400,color:w.done||w.today||(!w.future&&w.lift)?C.t:C.t4,...NUMS}}>{w.n}</span>
+                <span style={{fontSize:13,color:C.t3}}>{w.dk.charAt(0).toUpperCase()+w.dk.slice(1,3)}</span>
+                <span style={{fontSize:18,fontWeight:w.done||w.today?500:400,color:w.done||w.today||(!w.future&&w.lift)?C.t:C.t4,...NUMS}}>{w.n}</span>
                 <span aria-hidden="true" style={{width:5,height:5,borderRadius:3,background:w.done?C.g:w.today?C.p:"transparent"}}/>
               </button>);})}
           </div>))}
@@ -788,33 +788,33 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             A past day with no log → log it for that date or do it today. Future → preview. */}
         <section style={{marginTop:20}}>
           {selLog?(()=>{const n=(selLog.exercises||[]).reduce((a,e)=>a+(e.sets||[]).filter(saneSet).length,0);const du=cleanDur(selLog.dur);return(<>
-            <div style={{fontSize:13,color:C.g,...NUMS}}>Logged · {selLabel}{du?` · ${du} min`:""} · {n} sets</div>
-            <div style={{fontSize:20,fontWeight:600,marginTop:4}}>{workoutLabel(selLog,data.program)}</div>
+            <div style={{fontSize:15,color:C.g,...NUMS}}>Logged · {selLabel}{du?` · ${du} min`:""} · {n} sets</div>
+            <div style={{fontSize:22,fontWeight:600,marginTop:4}}>{workoutLabel(selLog,data.program)}</div>
             <div style={{marginTop:10,borderTop:`1px solid ${C.bd}`}}>
               {(selLog.exercises||[]).filter(e=>(e.sets||[]).some(saneSet)).map((e,i)=>{const ds=(e.sets||[]).filter(saneSet);const top=Math.max(...ds.map(x=>+x.weight||0));return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",gap:12,minHeight:44,alignItems:"center",borderBottom:`1px solid ${C.bd}`}}>
-                  <span style={{fontSize:15,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.swappedTo?.name||exerciseName(e.id)}</span>
-                  <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{top>0?`${top} × `:"BW × "}{ds.map(x=>x.reps).join(", ")}</span>
+                  <span style={{fontSize:17,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.swappedTo?.name||exerciseName(e.id)}</span>
+                  <span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{top>0?`${top} × `:"BW × "}{ds.map(x=>x.reps).join(", ")}</span>
                 </div>);})}
             </div>
             <button type="button" style={bigBtn(false)} onClick={()=>setViewW([selDate,selLog])}>Open workout</button>
             {isToday&&<div style={{textAlign:"center"}}><button type="button" style={link} onClick={undoWorkout}>Undo today's log</button></div>}
           </>);})()
           :selPlan?(<>
-            <div style={{fontSize:13,color:C.t3,...NUMS}}>{isToday?"Today's plan":isPast?`Nothing logged · ${selLabel}`:`Planned · ${selLabel}`}</div>
+            <div style={{fontSize:15,color:C.t3,...NUMS}}>{isToday?"Today's plan":isPast?`Nothing logged · ${selLabel}`:`Planned · ${selLabel}`}</div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginTop:4}}>
-              <div style={{fontSize:20,fontWeight:600,color:isPast?C.t2:C.t}}>{selPlan.name}</div>
-              <span style={{fontSize:13,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{selPlan.exercises.length} lifts · {estTime(selPlan)} min</span>
+              <div style={{fontSize:22,fontWeight:600,color:isPast?C.t2:C.t}}>{selPlan.name}</div>
+              <span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{selPlan.exercises.length} lifts · {estTime(selPlan)} min</span>
             </div>
             {PROG.variants?.[selDow]&&<div role="group" aria-label="Version" style={{display:"flex",flexWrap:"wrap",marginTop:6,marginLeft:-6}}>
               {[[null,"Standard"],...Object.entries(PROG.variants[selDow]).map(([k,v])=>[k,v.name.replace(data.program[selDow]?.name+" ","").replace(/[()]/g,"")])].map(([k,l])=>{const on=(activeVariant[selDow]||null)===k;return(
-                <button type="button" key={l} aria-pressed={on} onClick={()=>setVariant(selDow,k)} style={{background:"none",border:"none",fontSize:13,color:on?C.t:C.t3,fontWeight:on?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>);})}
+                <button type="button" key={l} aria-pressed={on} onClick={()=>setVariant(selDow,k)} style={{background:"none",border:"none",fontSize:15,color:on?C.t:C.t3,fontWeight:on?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>);})}
             </div>}
-            {selDow==="wednesday"&&<div style={{fontSize:13,color:C.t3,marginTop:4}}>Superset day. Do A then B back to back, rest after B.</div>}
+            {selDow==="wednesday"&&<div style={{fontSize:15,color:C.t3,marginTop:4}}>Superset day. Do A then B back to back, rest after B.</div>}
             {liftRows(selPlan.exercises,isPast)}
-            {selPlan.warmup&&!isPast&&<details style={{marginTop:2}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"10px 0"}}>Warm-up · {selPlan.warmup.cardio}</summary>
-              {selPlan.warmup.moves.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"5px 0"}}><span style={{color:C.t2}}>{m.name}</span><span style={{color:C.t3}}>{m.rx}</span></div>))}
-              {selPlan.warmup.ramp&&<div style={{fontSize:13,color:C.t3,padding:"5px 0"}}>{selPlan.warmup.ramp}</div>}
+            {selPlan.warmup&&!isPast&&<details style={{marginTop:2}}><summary style={{fontSize:15,color:C.t3,cursor:"pointer",padding:"10px 0"}}>Warm-up · {selPlan.warmup.cardio}</summary>
+              {selPlan.warmup.moves.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:15,padding:"5px 0"}}><span style={{color:C.t2}}>{m.name}</span><span style={{color:C.t3}}>{m.rx}</span></div>))}
+              {selPlan.warmup.ramp&&<div style={{fontSize:15,color:C.t3,padding:"5px 0"}}>{selPlan.warmup.ramp}</div>}
             </details>}
             {isToday&&<button type="button" style={bigBtn(true)} onClick={()=>startW(selDow)}>Start workout</button>}
             {isPast&&<>
@@ -824,9 +824,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             {!isToday&&!isPast&&<button type="button" style={bigBtn(false)} onClick={()=>startW(selDow)}>Do it today instead</button>}
             <div style={{textAlign:"center"}}><button type="button" style={link} onClick={()=>setPicker({date:isPast?selDate:t})}>Pick a different session</button></div>
           </>):(<>
-            <div style={{fontSize:13,color:C.t3}}>{isPast?`Nothing logged · ${selLabel}`:selLabel}</div>
-            <div style={{fontSize:20,fontWeight:600,marginTop:4}}>{selDate<PROG.start?"Before this block":"Rest day"}</div>
-            <div style={{fontSize:13,color:C.t3,marginTop:2}}>{selDate<PROG.start?`${PROG.name} started ${fmt(PROG.start)}.`:"No lift on the plan. Steps, stretch and protein still count."}</div>
+            <div style={{fontSize:15,color:C.t3}}>{isPast?`Nothing logged · ${selLabel}`:selLabel}</div>
+            <div style={{fontSize:22,fontWeight:600,marginTop:4}}>{selDate<PROG.start?"Before this block":"Rest day"}</div>
+            <div style={{fontSize:15,color:C.t3,marginTop:2}}>{selDate<PROG.start?`${PROG.name} started ${fmt(PROG.start)}.`:"No lift on the plan. Steps, stretch and protein still count."}</div>
             {isPast?<>
               <button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:selDate})}>Log a session for {selLabel}</button>
             </>:<button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:t})}>Start a session</button>}
@@ -839,18 +839,18 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             dks.forEach(dk=>{const base=data.program?.[dk];if(!base?.exercises?.length)return;opts.push({dk,variant:null,s:base});
               Object.entries(PROG.variants?.[dk]||{}).forEach(([k,v])=>opts.push({dk,variant:k,s:v}));});
             return(<div>
-              {taken&&<div style={{fontSize:13,color:C.t2,background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:10}}>{picker.date===t?"Today":fmt(picker.date)} already has {workoutLabel(taken,data.program)}. Finishing a new one replaces it.</div>}
-              {picker.date!==t&&<div style={{fontSize:13,color:C.t3,marginBottom:8}}>Type the sets you did. The clock is ignored for a past day.</div>}
+              {taken&&<div style={{fontSize:15,color:C.t2,background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:10}}>{picker.date===t?"Today":fmt(picker.date)} already has {workoutLabel(taken,data.program)}. Finishing a new one replaces it.</div>}
+              {picker.date!==t&&<div style={{fontSize:15,color:C.t3,marginBottom:8}}>Type the sets you did. The clock is ignored for a past day.</div>}
               <div style={{borderTop:`1px solid ${C.bd}`}}>
                 {opts.map(o=>(<button type="button" key={`${o.dk}-${o.variant||"std"}`} onClick={()=>startW(o.dk,{date:picker.date,variant:o.variant})}
                   style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:56,background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left",padding:"8px 2px"}}>
-                  <span><span style={{display:"block",fontSize:15,fontWeight:500}}>{o.s.name}</span>
-                    <span style={{display:"block",fontSize:13,color:C.t3,marginTop:2,...NUMS}}>{o.dk.charAt(0).toUpperCase()+o.dk.slice(1)}'s session · {o.s.exercises.length} lifts · {estTime(o.s)} min</span></span>
-                  <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
+                  <span><span style={{display:"block",fontSize:17,fontWeight:500}}>{o.s.name}</span>
+                    <span style={{display:"block",fontSize:15,color:C.t3,marginTop:2,...NUMS}}>{o.dk.charAt(0).toUpperCase()+o.dk.slice(1)}'s session · {o.s.exercises.length} lifts · {estTime(o.s)} min</span></span>
+                  <span aria-hidden="true" style={{color:C.t4,fontSize:20}}>›</span>
                 </button>))}
                 <button type="button" onClick={()=>startManualW(picker.date)} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:56,background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left",padding:"8px 2px"}}>
-                  <span><span style={{display:"block",fontSize:15,fontWeight:500}}>Blank session</span><span style={{display:"block",fontSize:13,color:C.t3,marginTop:2}}>Add lifts as you go</span></span>
-                  <span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>
+                  <span><span style={{display:"block",fontSize:17,fontWeight:500}}>Blank session</span><span style={{display:"block",fontSize:15,color:C.t3,marginTop:2}}>Add lifts as you go</span></span>
+                  <span aria-hidden="true" style={{color:C.t4,fontSize:20}}>›</span>
                 </button>
               </div>
             </div>);})()}
@@ -862,12 +862,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             sub={mobDone?(mobEntry?.skipped?"Skipped today":`Done${mobEntry?.dur?` · ${fmtElapsed(mobEntry.dur)}`:""}`):mobRunning?`In progress · ${fmtElapsed(mobTimer)}`:`${stretchMins} min · ${mobExercises.length} poses`}
             onClick={mobDone?undefined:()=>{if(!mobRunning)startMob();setShowMob(true);}}
             right={mobDone?<button type="button" style={link} onClick={e=>{e.stopPropagation();undoMob();}}>Undo</button>
-              :<><button type="button" style={link} onClick={e=>{e.stopPropagation();skipMob();}}>Skip</button><span style={{color:mobRunning?C.p:C.t2,fontWeight:500,fontSize:14}}>{mobRunning?"Resume":"Start"} ›</span></>}/>
+              :<><button type="button" style={link} onClick={e=>{e.stopPropagation();skipMob();}}>Skip</button><span style={{color:mobRunning?C.p:C.t2,fontWeight:500,fontSize:16}}>{mobRunning?"Resume":"Start"} ›</span></>}/>
           <Row last={!showCardio} title={cardioToday?.done?"Cardio":todayCardioPlan?todayCardioPlan.label:"Cardio"}
             sub={cardioToday?.done?cardioSummary(cardioToday):todayCardioPlan?`${todayCardioPlan.duration} min · ${intensityLabel(todayCardioPlan.intensity)}`:"Treadmill, stairs, bike or a walk"}
             onClick={showCardio||cardioToday?.done?undefined:()=>openCardioLog(todayCardioPlan||undefined)}
             right={cardioToday?.done?<><span style={{color:C.g}}>Done</span><button type="button" style={link} onClick={editCardio}>Edit</button><button type="button" style={link} onClick={undoCardio}>Undo</button></>
-              :showCardio?null:<span style={{color:C.t2,fontWeight:500,fontSize:14}}>Log ›</span>}/>
+              :showCardio?null:<span style={{color:C.t2,fontWeight:500,fontSize:16}}>Log ›</span>}/>
           {showCardio&&<div style={{borderBottom:`1px solid ${C.bd}`,paddingBottom:12}}>{renderCardioForm()}</div>}
         </div>
 
@@ -913,22 +913,22 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       if(!rows.some(r=>(r.vals||[]).length>=2))return null;
       return(<section style={{marginTop:28}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <h2 style={{fontSize:13,fontWeight:500,color:C.t3}}>Lift progress · week {nowWk+1}</h2>
+          <h2 style={{fontSize:15,fontWeight:500,color:C.t3}}>Lift progress · week {nowWk+1}</h2>
           <div role="group" aria-label="Lift group" style={{display:"flex"}}>
-            {["upper","lower"].map(tb=>{const on=liftTab===tb;return(<button type="button" key={tb} aria-pressed={on} onClick={()=>setLiftTab(tb)} style={{background:"none",border:"none",color:on?C.t:C.t3,fontWeight:on?500:400,fontSize:13,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{tb==="upper"?"Upper":"Lower"}</button>);})}
+            {["upper","lower"].map(tb=>{const on=liftTab===tb;return(<button type="button" key={tb} aria-pressed={on} onClick={()=>setLiftTab(tb)} style={{background:"none",border:"none",color:on?C.t:C.t3,fontWeight:on?500:400,fontSize:15,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{tb==="upper"?"Upper":"Lower"}</button>);})}
           </div>
         </div>
         <div style={{borderTop:`1px solid ${C.bd}`}}>
           {rows.map(r=>(<div key={r.name} style={{display:"flex",alignItems:"center",gap:12,minHeight:48,borderBottom:`1px solid ${C.bd}`}}>
-            <div style={{width:72,fontSize:14,color:C.t}}>{r.name}</div>
+            <div style={{width:72,fontSize:16,color:C.t}}>{r.name}</div>
             <svg viewBox="0 0 120 26" preserveAspectRatio="none" style={{flex:1,height:26}} aria-hidden="true">
               {r.exp&&<polyline points={r.exp} fill="none" stroke={C.t4} strokeWidth="1" strokeDasharray="3,3" vectorEffect="non-scaling-stroke"/>}
               {r.pts&&<polyline points={r.pts} fill="none" stroke={r.stroke} strokeWidth="2" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>}
             </svg>
-            <div style={{fontSize:13,color:r.sc,whiteSpace:"nowrap",minWidth:84,textAlign:"right"}}>{r.status}</div>
+            <div style={{fontSize:15,color:r.sc,whiteSpace:"nowrap",minWidth:84,textAlign:"right"}}>{r.status}</div>
           </div>))}
         </div>
-        <div style={{fontSize:12,color:C.t3,marginTop:8}}>Solid line is your best set each week. Dashed is the plan. On a cut, holding is a win.</div>
+        <div style={{fontSize:13,color:C.t3,marginTop:8}}>Solid line is your best set each week. Dashed is the plan. On a cut, holding is a win.</div>
       </section>);})()}
 
         {/* History: one month at a time. Calendar on top (Monday first, like the
@@ -941,28 +941,28 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const cells=[...Array(pad).fill(null),...Array.from({length:days},(_,i)=>i+1)];
           const step=dir=>{let m=calMonth+dir,y=calYear;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);};
           const atNow=calYear===now.getFullYear()&&calMonth===now.getMonth();
-          const navBtn={background:"none",border:"none",color:C.t2,fontSize:18,cursor:"pointer",minWidth:40,minHeight:40};
+          const navBtn={background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",minWidth:40,minHeight:40};
           return(<>
             <H2 right={<div style={{display:"flex",alignItems:"center"}}>
               <button type="button" aria-label="Previous month" style={navBtn} onClick={()=>step(-1)}>‹</button>
-              <span style={{fontSize:14,fontWeight:500,color:C.t,minWidth:72,textAlign:"center"}}>{monthNames[calMonth]} {calYear}</span>
+              <span style={{fontSize:16,fontWeight:500,color:C.t,minWidth:72,textAlign:"center"}}>{monthNames[calMonth]} {calYear}</span>
               <button type="button" aria-label="Next month" style={{...navBtn,opacity:atNow?0.3:1}} disabled={atNow} onClick={()=>step(1)}>›</button>
             </div>}>History</H2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",rowGap:2,marginTop:6,textAlign:"center"}}>
-              {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{fontSize:12,color:C.t4,padding:"4px 0"}}>{d}</div>)}
+              {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{fontSize:13,color:C.t4,padding:"4px 0"}}>{d}</div>)}
               {cells.map((d,i)=>{if(!d)return <div key={`e${i}`}/>;
                 const dk=`${mk}-${String(d).padStart(2,"0")}`;const w=data.wk?.[dk];const mob=!!(data.mob?.[dk]?.done&&!data.mob?.[dk]?.skipped)||data.mob?.[dk]===true;const isT=dk===t;
                 return(<button type="button" key={dk} disabled={!w} onClick={()=>w&&setViewW([dk,w])} aria-label={`${fmt(dk)}${w?`, ${workoutLabel(w,data.program)}`:""}`}
                   style={{minHeight:44,background:"none",border:isT?`1px solid ${C.p}`:"1px solid transparent",borderRadius:8,cursor:w?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
-                  <span style={{fontSize:14,color:w?C.t:dk>t?C.t4:C.t3,fontWeight:w?500:400,fontVariantNumeric:"tabular-nums"}}>{d}</span>
+                  <span style={{fontSize:16,color:w?C.t:dk>t?C.t4:C.t3,fontWeight:w?500:400,fontVariantNumeric:"tabular-nums"}}>{d}</span>
                   <span style={{display:"flex",gap:2,height:5}}>{w&&<span style={{width:5,height:5,borderRadius:3,background:C.g}}/>}{mob&&<span style={{width:5,height:5,borderRadius:3,background:C.t4}}/>}</span>
                 </button>);})}
             </div>
-            <div style={{fontSize:12,color:C.t3,marginTop:4,display:"flex",gap:14}}><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.g,marginRight:5}}/>Workout</span><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.t4,marginRight:5}}/>Stretch</span></div>
+            <div style={{fontSize:13,color:C.t3,marginTop:4,display:"flex",gap:14}}><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.g,marginRight:5}}/>Workout</span><span><span style={{display:"inline-block",width:6,height:6,borderRadius:3,background:C.t4,marginRight:5}}/>Stretch</span></div>
             <div style={{marginTop:10}}>
-              {monthWk.length===0&&<div style={{fontSize:14,color:C.t3,padding:"12px 0",borderTop:`1px solid ${C.bd}`}}>No workouts this month.</div>}
+              {monthWk.length===0&&<div style={{fontSize:16,color:C.t3,padding:"12px 0",borderTop:`1px solid ${C.bd}`}}>No workouts this month.</div>}
               {monthWk.map(([d,w],i)=>{const n=(w.exercises||[]).reduce((s,e)=>s+(e.sets||[]).filter(saneSet).length,0);const du=cleanDur(w.dur);return(
-                <Row key={d} last={i===monthWk.length-1} title={workoutLabel(w,data.program)} sub={`${fmt(d)}${du?` · ${du} min`:""} · ${n} sets`} onClick={()=>setViewW([d,w])} right={<span aria-hidden="true" style={{color:C.t4,fontSize:18}}>›</span>}/>);})}
+                <Row key={d} last={i===monthWk.length-1} title={workoutLabel(w,data.program)} sub={`${fmt(d)}${du?` · ${du} min`:""} · ${n} sets`} onClick={()=>setViewW([d,w])} right={<span aria-hidden="true" style={{color:C.t4,fontSize:20}}>›</span>}/>);})}
             </div>
           </>);})()}
       </>);

@@ -14,7 +14,7 @@ const TabBar=({active,set,hasActiveWorkout})=>(
     {TABS.map(t=>{const on=active===t.id;return(
       <button type="button" key={t.id} aria-current={on?"page":undefined} onClick={()=>{if(!on)haptic(6);set(t.id);}} style={{
         flex:1,background:"transparent",border:"none",cursor:"pointer",color:on?C.t:C.t3,position:"relative",minHeight:"var(--tabbar-h)",
-        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:10,gap:8,fontSize:13,fontWeight:500,
+        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:10,gap:8,fontSize:15,fontWeight:500,
       }}>
         <span aria-hidden="true" style={{width:18,height:2,borderRadius:1,background:on?C.t:"transparent"}}/>
         <span style={{position:"relative"}}>{t.l}
@@ -42,12 +42,12 @@ const WorkoutTimerBar=({workout,onTap,compact,programDays})=>{
   return(
     <div onClick={onTap} role={onTap?"button":undefined} style={{background:C.p,padding:compact?"8px 14px":"9px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:onTap?"pointer":"default",borderRadius:compact?8:0,boxShadow:C.sh}}>
       <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-                <span style={{color:C.oa,fontSize:14,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sess?.name||"Workout"}</span>
-        <span style={{color:"var(--on-accent-dim)",fontSize:13,whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{done} of {total} sets</span>
+                <span style={{color:C.oa,fontSize:16,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sess?.name||"Workout"}</span>
+        <span style={{color:"var(--on-accent-dim)",fontSize:15,whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{done} of {total} sets</span>
       </div>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-        {restLeft>0&&<span style={{color:C.oa,fontSize:13,fontVariantNumeric:"tabular-nums"}}>Rest {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
-        <span style={{color:C.oa,fontSize:17,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
+        {restLeft>0&&<span style={{color:C.oa,fontSize:15,fontVariantNumeric:"tabular-nums"}}>Rest {Math.floor(restLeft/60)}:{String(restLeft%60).padStart(2,"0")}</span>}
+        <span style={{color:C.oa,fontSize:19,fontWeight:500,fontVariantNumeric:"tabular-nums"}}>{fmtElapsed(elapsed)}</span>
       </div>
     </div>
   );

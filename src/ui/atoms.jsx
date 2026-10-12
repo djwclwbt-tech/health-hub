@@ -15,12 +15,12 @@ const N=({value,onChange,placeholder,style={},min=0,max})=>{
   return(
   <input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={handleChange}
     placeholder={placeholder} style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",
-    color:C.t,fontSize:16,fontWeight:700,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:FD,...style}}/>
+    color:C.t,fontSize:18,fontWeight:700,width:"100%",boxSizing:"border-box",outline:"none",textAlign:"center",fontFamily:FD,...style}}/>
 );};
 const T=({value,onChange,placeholder,style={}})=>(
   <input type="text" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
     style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"10px 10px",color:C.t,
-    fontSize:14,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
+    fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",fontFamily:"inherit",...style}}/>
 );
 const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
   // Filled = accent (or explicit color). Outline with no explicit color =
@@ -28,7 +28,7 @@ const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
   <button type="button" onClick={onClick} disabled={disabled} style={{
     background:outline?"transparent":disabled?C.bl:(color||C.p),color:outline?(color||C.t):disabled?C.t3:C.oa,
     border:outline?`1px solid ${color||C.bd}`:"none",borderRadius:9,
-    padding:small?"8px 14px":"12px 20px",fontSize:small?14:15,fontWeight:500,
+    padding:small?"8px 14px":"12px 20px",fontSize:small?16:17,fontWeight:500,
     cursor:disabled?"default":"pointer",opacity:disabled&&outline?0.5:1,boxShadow:outline?"none":C.sh2,
     width:full?"100%":"auto",minHeight:44,...style,
   }}>{children}</button>
@@ -36,18 +36,18 @@ const B=({children,onClick,color,disabled,full,small,outline,style={}})=>(
 const X=({children,style={},...p})=>(
   <div style={{background:C.cd,borderRadius:12,padding:16,border:`1px solid ${C.bd}`,boxShadow:C.sh2,...style}} {...p}>{children}</div>
 );
-const L=({children})=><div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>{children}</div>;
+const L=({children})=><div style={{fontSize:12,fontWeight:600,color:C.t3,marginBottom:4}}>{children}</div>;
 // Section. collapsible = a fold: a full-width row you tap (48px, a real
 // button with aria-expanded), title on the left, an optional `meta` summary and
 // a chevron on the right. Plain sections get a small gray heading.
 const S=({title,meta,children,collapsible,defaultOpen=true})=>{
   const [open,setOpen]=useState(!collapsible||defaultOpen);
   if(!collapsible)return(<section style={{marginTop:20}}>
-    <h2 style={{fontSize:13,fontWeight:500,color:C.t3,margin:"0 0 6px"}}>{title}</h2>{children}</section>);
+    <h2 style={{fontSize:15,fontWeight:500,color:C.t3,margin:"0 0 6px"}}>{title}</h2>{children}</section>);
   return(<section style={{marginTop:12}}>
     <button type="button" aria-expanded={open} onClick={()=>setOpen(o=>!o)} style={{width:"100%",minHeight:48,display:"flex",alignItems:"center",gap:10,background:"none",border:"none",borderTop:`1px solid ${C.bd}`,borderBottom:open?"none":`1px solid ${C.bd}`,padding:"0 2px",cursor:"pointer",textAlign:"left"}}>
-      <span style={{flex:1,fontSize:15,fontWeight:500,color:C.t}}>{title}</span>
-      {meta!=null&&<span style={{fontSize:13,color:C.t3,fontVariantNumeric:"tabular-nums"}}>{meta}</span>}
+      <span style={{flex:1,fontSize:17,fontWeight:500,color:C.t}}>{title}</span>
+      {meta!=null&&<span style={{fontSize:15,color:C.t3,fontVariantNumeric:"tabular-nums"}}>{meta}</span>}
       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{flexShrink:0,transform:open?"rotate(180deg)":"none",transition:"transform .15s"}}><path d="M2 4.5l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{color:C.t3}}/></svg>
     </button>
     {open&&<div style={{paddingBottom:8}}>{children}</div>}
@@ -62,9 +62,9 @@ const Br=({v,max,color=C.p,h=5})=>(
 const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   if(!data||data.length<2){
     if(!empty)return null;
-    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:11,fontWeight:600,color:C.t3,marginBottom:4}}>{label}</div>}
+    return(<X style={{padding:"10px 14px"}}>{label&&<div style={{fontSize:12,fontWeight:600,color:C.t3,marginBottom:4}}>{label}</div>}
       <div style={{height,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <span style={{fontSize:13,color:C.t3}}>{empty}</span>
+        <span style={{fontSize:15,color:C.t3}}>{empty}</span>
       </div></X>);
   }
   const vals=data.map(d=>d.v),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1,pad=rng*0.12;
@@ -75,8 +75,8 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
   return(
     <X style={{padding:"10px 14px"}}>
       {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-        <span style={{fontSize:11,fontWeight:600,color:C.t3}}>{label}</span>
-        <span style={{fontSize:13,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
+        <span style={{fontSize:12,fontWeight:600,color:C.t3}}>{label}</span>
+        <span style={{fontSize:15,fontWeight:700,color}}>{vals[vals.length-1]}{yUnit}</span>
       </div>}
       <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height}} preserveAspectRatio="none">
         <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -86,7 +86,7 @@ const Ch=({data,color=C.p,height=52,label,yUnit="",empty})=>{
         <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         {pts.map((p,i)=><circle key={i} cx={p[0]} cy={p[1]} r="2" fill={C.cd} stroke={color} strokeWidth="1.5"/>)}
       </svg>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t3,marginTop:2}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.t3,marginTop:2}}>
         <span>{data[0].d||""}</span><span>{data[data.length-1].d||""}</span>
       </div>
     </X>

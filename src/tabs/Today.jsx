@@ -27,14 +27,14 @@ const HABIT_LABELS={alcohol:"No alcohol",cannabis:"No cannabis",screensOff:"Scre
 
 // The main action. Ember only here and on the "now" dot.
 const Main=({children,onClick,disabled})=>(
-  <button type="button" onClick={onClick} disabled={disabled} style={{width:"100%",minHeight:48,border:"none",borderRadius:9,background:disabled?C.bl:C.p,color:disabled?C.t3:C.oa,fontSize:15,fontWeight:500,cursor:disabled?"default":"pointer",marginTop:12}}>{children}</button>
+  <button type="button" onClick={onClick} disabled={disabled} style={{width:"100%",minHeight:48,border:"none",borderRadius:9,background:disabled?C.bl:C.p,color:disabled?C.t3:C.oa,fontSize:17,fontWeight:500,cursor:disabled?"default":"pointer",marginTop:12}}>{children}</button>
 );
 const Quiet=({children,onClick,style})=>(
-  <button type="button" onClick={onClick} style={{minHeight:40,border:`1px solid ${C.bd}`,borderRadius:8,background:C.cd,color:C.t,fontSize:14,fontWeight:500,cursor:"pointer",padding:"0 12px",...NUM,...style}}>{children}</button>
+  <button type="button" onClick={onClick} style={{minHeight:40,border:`1px solid ${C.bd}`,borderRadius:8,background:C.cd,color:C.t,fontSize:16,fontWeight:500,cursor:"pointer",padding:"0 12px",...NUM,...style}}>{children}</button>
 );
 const Card=({children,style})=><div style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:12,padding:16,marginTop:10,...style}}>{children}</div>;
 const KV=({k,v,dim})=>(
-  <div style={{display:"flex",justifyContent:"space-between",gap:12,fontSize:13,padding:"6px 0"}}>
+  <div style={{display:"flex",justifyContent:"space-between",gap:12,fontSize:15,padding:"6px 0"}}>
     <span style={{color:C.t3}}>{k}</span><span style={{color:dim?C.t3:C.t,...NUM,whiteSpace:"nowrap"}}>{v}</span>
   </div>
 );
@@ -43,13 +43,13 @@ const KV=({k,v,dim})=>(
 const Ev=({time,state,title,sub,open,onToggle,children,last})=>{
   const isNow=state==="now";
   return(<div style={{position:"relative",paddingLeft:58,paddingBottom:last?0:22}}>
-    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:12,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUM}}>{time}</span>
+    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:13,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUM}}>{time}</span>
     <span aria-hidden="true" style={{position:"absolute",left:41,top:6,width:7,height:7,borderRadius:"50%",boxSizing:"border-box",
       background:isNow?C.p:state==="done"?C.t:C.bg,border:`1.5px solid ${isNow?C.p:state==="done"?C.t:C.t4}`,
       boxShadow:isNow?"0 0 0 4px var(--accent-soft)":"none"}}/>
     <button type="button" onClick={onToggle} aria-expanded={children?!!open:undefined} style={{display:"block",width:"100%",textAlign:"left",background:"none",border:"none",padding:0,cursor:onToggle?"pointer":"default",color:"inherit"}}>
-      <div style={{fontSize:15,fontWeight:500,color:state==="later"?C.t2:C.t}}>{title}</div>
-      {sub&&<div style={{fontSize:13,color:C.t3,marginTop:2,lineHeight:1.4}}>{sub}</div>}
+      <div style={{fontSize:17,fontWeight:500,color:state==="later"?C.t2:C.t}}>{title}</div>
+      {sub&&<div style={{fontSize:15,color:C.t3,marginTop:2,lineHeight:1.4}}>{sub}</div>}
     </button>
     {open&&children}
   </div>);
@@ -109,7 +109,8 @@ const Today=({data,setData,setTab,workout,addToast})=>{
     :isFast?"fast"
     :"food";
   const isOpen=id=>openId==null?nowId===id:openId===id;
-  const toggle=id=>()=>setOpenId(isOpen(id)?"__none":id);
+  // Closing another row hands the screen back to "now"; only closing the Now row itself leaves nothing open.
+  const toggle=id=>()=>setOpenId(isOpen(id)?(id===nowId?"__none":null):id);
   const stateOf=(id,done)=>nowId===id?"now":done?"done":"later";
 
   const rows=[];
@@ -136,7 +137,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   // ── Lift ──
   if(adj?.type==="mobilitySwap"){
     rows.push(<Ev key="lift" time="AM" state={stretchDone?"done":"later"} title="Mobility instead of lifting" sub="Recovery was low. The program is untouched." open={isOpen("lift")} onToggle={toggle("lift")}>
-      <Card><div style={{fontSize:13,color:C.t2}}>The 12 minute stretch block and a walk.</div><Main onClick={()=>openStretch(setTab)}>Open stretch</Main></Card>
+      <Card><div style={{fontSize:15,color:C.t2}}>The 12 minute stretch block and a walk.</div><Main onClick={()=>openStretch(setTab)}>Open stretch</Main></Card>
     </Ev>);
   }else if(sess){
     const exs=sess.exercises||[];
@@ -149,8 +150,8 @@ const Today=({data,setData,setTab,workout,addToast})=>{
         const accs=exs.filter(e=>!e.anchor);const mob=autoreg.score<40;
         const before=exs.reduce((s,e)=>s+e.sets,0),after=before-accs.length;
         return(<Card>
-          <div style={{fontSize:15,fontWeight:500}}>Recovery is <span style={NUM}>{autoreg.score}%</span></div>
-          <div style={{fontSize:13,color:C.t2,marginTop:4,lineHeight:1.45}}>{mob?"Swap today for the 12 minute stretch and a walk. Lifting waits a day.":<>Drop one set from each accessory. <span style={NUM}>{before}</span> sets become <span style={NUM}>{after}</span>. Anchors stay as written.</>}</div>
+          <div style={{fontSize:17,fontWeight:500}}>Recovery is <span style={NUM}>{autoreg.score}%</span></div>
+          <div style={{fontSize:15,color:C.t2,marginTop:4,lineHeight:1.45}}>{mob?"Swap today for the 12 minute stretch and a walk. Lifting waits a day.":<>Drop one set from each accessory. <span style={NUM}>{before}</span> sets become <span style={NUM}>{after}</span>. Anchors stay as written.</>}</div>
           <div style={{display:"flex",gap:8,marginTop:12}}>
             <Quiet style={{flex:1}} onClick={()=>decideAutoreg(mob?"mobilitySwap":"minusOneSet")}>{mob?"Take the swap":"Take the cut"}</Quiet>
             <Quiet style={{flex:1,color:C.t3}} onClick={()=>decideAutoreg("dismissed")}>As written</Quiet>
@@ -196,11 +197,11 @@ const Today=({data,setData,setTab,workout,addToast})=>{
       open={isOpen("food")} onToggle={toggle("food")}>
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13,color:C.t3}}>Water</span>
+          <span style={{fontSize:15,color:C.t3}}>Water</span>
           <div style={{display:"flex",gap:6}}>{[24,32,64].map(oz=><Quiet key={oz} onClick={()=>{haptic();addWater(oz);}}>+{oz}</Quiet>)}</div>
         </div>
         {nowId==="food"?<Main onClick={()=>setFoodOpen(true)}>Log food</Main>:<Quiet style={{width:"100%",marginTop:12}} onClick={()=>setFoodOpen(true)}>Log food</Quiet>}
-        <div style={{fontSize:12,color:C.t3,marginTop:8}}>Cronometer fills this in through the day.</div>
+        <div style={{fontSize:13,color:C.t3,marginTop:8}}>Cronometer fills this in through the day.</div>
       </Card>
     </Ev>);
   }else{
@@ -222,12 +223,12 @@ const Today=({data,setData,setTab,workout,addToast})=>{
     sub={closed?`Clean day ${held} of 7`:`Stretch${stretchDone?" done":""} · clean day check`}
     open={isOpen("close")} onToggle={toggle("close")}>
     <Card>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.t3}}>What held today</span><span style={{...NUM}}>{held} of 7</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:15}}><span style={{color:C.t3}}>What held today</span><span style={{...NUM}}>{held} of 7</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10}}>
         {SYSTEM_HABITS.map(x=>{const on=habits[x.field]===x.target;return(
-          <button type="button" key={x.field} onClick={()=>toggleHabit(x)} aria-pressed={on} style={{minHeight:42,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t2,fontSize:13,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":""}</span></button>);})}
+          <button type="button" key={x.field} onClick={()=>toggleHabit(x)} aria-pressed={on} style={{minHeight:42,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t2,fontSize:15,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":""}</span></button>);})}
       </div>
-      {closed?<div style={{fontSize:13,color:C.g,marginTop:12}}>Closed. See you tomorrow.</div>
+      {closed?<div style={{fontSize:15,color:C.g,marginTop:12}}>Closed. See you tomorrow.</div>
         :<Main onClick={closeDay} disabled={held<6}>{held>=6?"Close the day":`Tap what held · ${held} of 7`}</Main>}
       <div style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:6}}>
         <KV k="Steps" v={<span style={{color:stepsNow>=stepsT?C.g:C.t}}>{stepsNow?n(stepsNow):"○"}</span>}/>
@@ -236,7 +237,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
         <KV k="Tomorrow" v={tmrSess?tmrSess.name:"Rest day"}/>
       </div>
       {!stretchDone&&<Quiet style={{width:"100%",marginTop:8}} onClick={()=>openStretch(setTab)}>Evening stretch</Quiet>}
-      <details style={{marginTop:10}}><summary style={{fontSize:13,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Type a missing number</summary><CloseoutPanel data={data} setData={setData}/></details>
+      <details style={{marginTop:10}}><summary style={{fontSize:15,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Type a missing number</summary><CloseoutPanel data={data} setData={setData}/></details>
     </Card>
   </Ev>);
 
@@ -244,14 +245,14 @@ const Today=({data,setData,setTab,workout,addToast})=>{
 
   return(<div style={{paddingTop:12}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
-      <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>{cap(dayName)}</h1>
-      <span style={{fontSize:13,color:C.t3,...NUM}}>{fmt(t)} · Week {wkn(t)} of {PROG.weeks}</span>
+      <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>{cap(dayName)}</h1>
+      <span style={{fontSize:15,color:C.t3,...NUM}}>{fmt(t)} · Week {wkn(t)} of {PROG.weeks}</span>
     </div>
     <div style={{position:"relative",marginTop:22}}>
       <span aria-hidden="true" style={{position:"absolute",left:44,top:6,bottom:6,width:1,background:C.bd}}/>
       {rows}
     </div>
-    {pollen.length>0&&<div style={{fontSize:12,color:C.t3,marginTop:28,textAlign:"center"}}>Pollen · {pollen.map(a=>`${a.name} ${a.level||"○"}`).join(" · ")}</div>}
+    {pollen.length>0&&<div style={{fontSize:13,color:C.t3,marginTop:28,textAlign:"center"}}>Pollen · {pollen.map(a=>`${a.name} ${a.level||"○"}`).join(" · ")}</div>}
     <Sheet open={foodOpen} onClose={()=>setFoodOpen(false)} maxHeight="90vh">
       {foodOpen&&<Nutrition data={data} setData={setData} addToast={addToast}/>}
     </Sheet>

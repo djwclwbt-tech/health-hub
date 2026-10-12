@@ -52,35 +52,35 @@ const ProgressView=({data,setData,onBack})=>{
   })();
   const shortDate=d=>fmt(d).replace(/^[A-Za-z]+, /,"");
   return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-    <button type="button" onClick={onBack} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:14,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Trends</button>
+    <button type="button" onClick={onBack} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:16,textAlign:"left",padding:"8px 0",minHeight:40}}>‹ Trends</button>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
       <div>
-        <h1 style={{fontSize:22,fontWeight:600,letterSpacing:"-0.2px"}}>Body</h1>
-        <div style={{fontSize:13,color:C.t3,marginTop:3}}>Week {wkn(t)} of {PROG.weeks} · photos every 2 weeks</div>
+        <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>Body</h1>
+        <div style={{fontSize:15,color:C.t3,marginTop:3}}>Week {wkn(t)} of {PROG.weeks} · photos every 2 weeks</div>
       </div>
-      <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:13,fontWeight:700,cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
+      <button onClick={()=>takePhoto(SLOTS.find(s=>!slots[s]||daysAgo(slots[s])>=14)||"front")} disabled={loading} style={{border:"none",background:C.p,color:C.oa,borderRadius:8,padding:"11px 14px",fontFamily:FD,fontSize:15,fontWeight:700,cursor:"pointer",minHeight:44,opacity:loading?0.5:1}}>{loading?"Analyzing…":"New photos"}</button>
     </div>
     <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:"none"}}/>
-    {err&&<div style={{fontSize:12,color:C.r}}>{err}</div>}
+    {err&&<div style={{fontSize:13,color:C.r}}>{err}</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
       {SLOTS.map(s=>{const d=slots[s];const due=!d||daysAgo(d)>=14;return(
         <button key={s} onClick={()=>takePhoto(s)} style={{aspectRatio:"3/4",border:`1px ${due?"dashed":"solid"} ${C.bd}`,background:C.cd,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
-          <span style={{fontSize:15,fontWeight:500,color:C.t}}>{s.charAt(0).toUpperCase()+s.slice(1)}</span>
-          <span style={{fontSize:12,color:due?C.p:C.t3}}>{due?(d?`Due · last ${shortDate(d)}`:"Due"):shortDate(d)}</span>
+          <span style={{fontSize:17,fontWeight:500,color:C.t}}>{s.charAt(0).toUpperCase()+s.slice(1)}</span>
+          <span style={{fontSize:13,color:due?C.p:C.t3}}>{due?(d?`Due · last ${shortDate(d)}`:"Due"):shortDate(d)}</span>
         </button>);})}
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:15,fontWeight:500,color:C.t}}>Measurements{baseMeas?<span style={{fontSize:13,fontWeight:400,color:C.t3}}> · vs {shortDate(baseMeas[0])}</span>:null}</div>
+      <div style={{fontSize:17,fontWeight:500,color:C.t}}>Measurements{baseMeas?<span style={{fontSize:15,fontWeight:400,color:C.t3}}> · vs {shortDate(baseMeas[0])}</span>:null}</div>
       {curMeas?(<React.Fragment>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
           {MEAS.map(m=>{const d=m.cur!=null&&m.base!=null?m.cur-m.base:null;const good=d!=null&&(m.goodDown?d<0:d>0);return(
             <div key={m.l} style={{background:C.bg,borderRadius:8,padding:"9px 6px",textAlign:"center"}}>
-              <div style={{fontSize:17,fontWeight:800,fontFamily:FD,color:C.t}}>{m.cur!=null?`${m.cur.toFixed(1)}"`:"○"}</div>
-              <div style={{fontSize:11,fontWeight:700,fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
+              <div style={{fontSize:19,fontWeight:800,fontFamily:FD,color:C.t}}>{m.cur!=null?`${m.cur.toFixed(1)}"`:"○"}</div>
+              <div style={{fontSize:12,fontWeight:700,fontFamily:FD,color:good?C.g:C.t3}}>{m.l}{d!=null?` ${d>0?"+":""}${d.toFixed(1)}`:""}</div>
             </div>);})}
         </div>
-        <div style={{fontSize:11.5,lineHeight:1.5,color:C.t3,marginTop:9}}>{measLine}</div>
-      </React.Fragment>):(<div style={{fontSize:12,color:C.t3,marginTop:8}}>No measurements yet. Log the first set below.</div>)}
+        <div style={{fontSize:13,lineHeight:1.5,color:C.t3,marginTop:9}}>{measLine}</div>
+      </React.Fragment>):(<div style={{fontSize:13,color:C.t3,marginTop:8}}>No measurements yet. Log the first set below.</div>)}
       <S title="Update measurements" collapsible defaultOpen={false}>
         {(()=>{
           const cur=data.bodyMeas&&data.bodyMeas[t]||{};

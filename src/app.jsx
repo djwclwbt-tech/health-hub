@@ -132,7 +132,7 @@ window.App = function App(){
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Libre Franklin',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
-      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
+      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:13,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<div style={{position:"sticky",top:0,zIndex:90}}><WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/></div>}
       <main style={{flex:1,padding:"16px 14px",paddingBottom:"calc(var(--tabbar-h) + var(--safe-b) + 24px)"}}>
         <TabPane active={tab==="dashboard"}><Today data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>
@@ -154,11 +154,11 @@ class ErrorBoundary extends React.Component{
     if(!this.state.err)return this.props.children;
     const msg=this.state.err&&(this.state.err.message||String(this.state.err))||"Unknown error";
     return React.createElement("div",{style:{padding:20,maxWidth:480,margin:"40px auto",fontFamily:"'Libre Franklin',sans-serif"}},
-      React.createElement("h2",{style:{fontSize:18,fontWeight:700,marginBottom:8}},"Something went wrong"),
-      React.createElement("p",{style:{fontSize:14,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe. Clear the cache and reload."),
-      React.createElement("pre",{style:{fontSize:11,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid var(--line)",color:"var(--danger)"}},msg),
+      React.createElement("h2",{style:{fontSize:20,fontWeight:700,marginBottom:8}},"Something went wrong"),
+      React.createElement("p",{style:{fontSize:16,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe. Clear the cache and reload."),
+      React.createElement("pre",{style:{fontSize:12,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid var(--line)",color:"var(--danger)"}},msg),
       React.createElement("button",{onClick:()=>{try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch{}setTimeout(()=>location.reload(),300);},
-        style:{marginTop:14,padding:"10px 18px",background:"var(--ink)",color:"var(--on-accent)",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:"pointer"}},"Clear cache & reload")
+        style:{marginTop:14,padding:"10px 18px",background:"var(--ink)",color:"var(--on-accent)",border:"none",borderRadius:8,fontSize:16,fontWeight:600,cursor:"pointer"}},"Clear cache & reload")
     );
   }
 }

@@ -100,7 +100,7 @@ const AnalysisSection=({data})=>{
 
   const ScoreBar=({label,score,color})=>(
     <div style={{marginBottom:8}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:15,marginBottom:3}}>
         <span style={{color:C.t2,fontWeight:600}}>{label}</span>
         <span style={{color,fontWeight:700}}>{score}/100</span>
       </div>
@@ -113,11 +113,11 @@ const AnalysisSection=({data})=>{
   return(
     <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div style={{fontSize:15,fontWeight:500,color:C.t}}>Weekly analysis</div>
+        <div style={{fontSize:17,fontWeight:500,color:C.t}}>Weekly analysis</div>
         <div style={{display:"flex",gap:3}}>
           {["7d","14d","30d"].map(r=>(
             <button key={r} onClick={()=>setRange(r)} style={{
-              padding:"5px 10px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              padding:"5px 10px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
               border:`1px solid ${range===r?C.t:C.bd}`,background:range===r?C.bg:"transparent",color:range===r?C.t:C.t3,
             }}>{r}</button>
           ))}
@@ -128,14 +128,14 @@ const AnalysisSection=({data})=>{
         {loading?"Analyzing…":`Analyze the last ${range.replace("d"," days")}`}
       </B>
 
-      {error&&<div style={{fontSize:13,color:C.r,padding:"8px 10px",background:C.rl,borderRadius:6,marginBottom:8}}>{error}</div>}
+      {error&&<div style={{fontSize:15,color:C.r,padding:"8px 10px",background:C.rl,borderRadius:6,marginBottom:8}}>{error}</div>}
 
       {result&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {/* Scores */}
           {result.scores&&(
             <X style={{padding:12}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:10}}>Scores · Last {range}</div>
+              <div style={{fontSize:13,fontWeight:700,color:C.t3,marginBottom:10}}>Scores · Last {range}</div>
               {result.scores.overall!=null&&<ScoreBar label="Overall" score={result.scores.overall} color={scoreColor(result.scores.overall)}/>}
               {result.scores.training!=null&&<ScoreBar label="Training" score={result.scores.training} color={scoreColor(result.scores.training)}/>}
               {result.scores.nutrition!=null&&<ScoreBar label="Nutrition" score={result.scores.nutrition} color={scoreColor(result.scores.nutrition)}/>}
@@ -147,7 +147,7 @@ const AnalysisSection=({data})=>{
           {/* Summary */}
           {result.summary&&(
             <X style={{padding:12}}>
-              <div style={{fontSize:13,color:C.t,lineHeight:1.6}}>{result.summary}</div>
+              <div style={{fontSize:15,color:C.t,lineHeight:1.6}}>{result.summary}</div>
             </X>
           )}
 
@@ -155,17 +155,17 @@ const AnalysisSection=({data})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {result.wins&&result.wins.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.g}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.g,marginBottom:6}}>Wins</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.g,marginBottom:6}}>Wins</div>
                 {result.wins.map((w,i)=>(
-                  <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.gl}`}}>{w}</div>
+                  <div key={i} style={{fontSize:13,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.gl}`}}>{w}</div>
                 ))}
               </X>
             )}
             {result.gaps&&result.gaps.length>0&&(
               <X style={{padding:10,borderTop:`3px solid ${C.r}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.r,marginBottom:6}}>Gaps</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.r,marginBottom:6}}>Gaps</div>
                 {result.gaps.map((g,i)=>(
-                  <div key={i} style={{fontSize:12,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
+                  <div key={i} style={{fontSize:13,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
                 ))}
               </X>
             )}
@@ -174,9 +174,9 @@ const AnalysisSection=({data})=>{
           {/* Trends */}
           {result.trends&&result.trends.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Trends</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6}}>Trends</div>
               {result.trends.map((t,i)=>(
-                <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
+                <div key={i} style={{fontSize:15,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.t3,fontWeight:700,minWidth:14}}>→</span>
                   <span>{t}</span>
                 </div>
@@ -187,9 +187,9 @@ const AnalysisSection=({data})=>{
           {/* Correlations */}
           {result.correlations&&result.correlations.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t3,marginBottom:6}}>Correlations</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t3,marginBottom:6}}>Correlations</div>
               {result.correlations.map((c,i)=>(
-                <div key={i} style={{fontSize:13,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
+                <div key={i} style={{fontSize:15,color:C.t2,marginBottom:5,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <span style={{color:C.t2,fontWeight:700,minWidth:14}}>↔</span>
                   <span>{c}</span>
                 </div>
@@ -200,9 +200,9 @@ const AnalysisSection=({data})=>{
           {/* Recommendations */}
           {result.recommendations&&result.recommendations.length>0&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6}}>Recommendations</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:6}}>Recommendations</div>
               {result.recommendations.map((r,i)=>(
-                <div key={i} style={{fontSize:13,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
+                <div key={i} style={{fontSize:15,color:C.t,marginBottom:6,paddingBottom:6,borderBottom:i<result.recommendations.length-1?`1px solid ${C.bl}`:"none"}}>
                   <span style={{fontWeight:700,color:C.t2}}>{i+1}. </span>{r}
                 </div>
               ))}
@@ -212,19 +212,19 @@ const AnalysisSection=({data})=>{
           {/* Next Week Focus */}
           {result.nextWeekFocus&&(
             <X style={{padding:12,background:C.bg,border:`1px solid ${C.p}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:4}}>Next Week Focus</div>
-              <div style={{fontSize:14,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:4}}>Next Week Focus</div>
+              <div style={{fontSize:16,color:C.t,fontWeight:600,lineHeight:1.5}}>{result.nextWeekFocus}</div>
             </X>
           )}
 
           {/* Body Composition */}
           {result.bodyComposition&&(
             <X style={{padding:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6}}>Body Composition</div>
-              {result.bodyComposition.bfTrend&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
-              {result.bodyComposition.recompSignal&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
-              {result.bodyComposition.muscleQuality&&<div style={{fontSize:13,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
-              {result.bodyComposition.photoReminder&&<div style={{fontSize:13,color:C.t2}}>{result.bodyComposition.photoReminder}</div>}
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:6}}>Body Composition</div>
+              {result.bodyComposition.bfTrend&&<div style={{fontSize:15,color:C.t2,marginBottom:4}}>BF% Trend: {result.bodyComposition.bfTrend}</div>}
+              {result.bodyComposition.recompSignal&&<div style={{fontSize:15,color:C.t2,marginBottom:4}}>Cut Signal: {result.bodyComposition.recompSignal}</div>}
+              {result.bodyComposition.muscleQuality&&<div style={{fontSize:15,color:C.t2,marginBottom:4}}>Muscle Quality: {result.bodyComposition.muscleQuality}</div>}
+              {result.bodyComposition.photoReminder&&<div style={{fontSize:15,color:C.t2}}>{result.bodyComposition.photoReminder}</div>}
             </X>
           )}
         </div>
