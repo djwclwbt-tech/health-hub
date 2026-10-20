@@ -42,7 +42,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/cronometer-sync.js` — Cronometer nutrition sync (cron 3x daily; source of truth for food)
 - Crons are UTC. Only Vercel's `Bearer CRON_SECRET` counts as a cron call; without `CRON_SECRET` crons are refused.
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
-- `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing).
+- `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing). The app's own page passes by Origin (`sameOrigin`), so no token is needed on the phone; scripts send `x-notify-token`.
 - `api/allergies.js` — Austin pollen/mold counts
 - `sw.js` — Service worker: network-first (2.5 s timeout, cache fallback) for `/`, `/index.html`, `/app.js`; cache-first for `/vendor`, `/fonts`, icons; push display; notification tap deep-links to a tab
 - `supabase/*.sql` — Database migrations (run in Supabase SQL editor)
@@ -84,6 +84,9 @@ All data is stored in localStorage under key `dhub6` and synced to Supabase:
 ## Weight trend
 `slopePerWeek()` (least-squares line through the raw weigh-ins; fitting the EWMA series under-read the rate by ~15%) is the **only** slope; `getTrend()` applies it to the last 14 days, `calcAdaptiveTDEE` to its estimate window. Do not add another.
 
+## Rest timers
+`ruleRest()` in `progression.mjs` is the one rule: lower compound 180 s (5-8) / 150 s (8-12+), upper compound 150 / 120, leg isolation or any 5-8 isolation 90, other isolation 60. `rest:0` chains a superset. `PROG.days` rest values must match the rule (a test pins them). `restFor(slot, swappedTo)` gives a swapped lift its own rest, never the old lift's. Train reads rest only through `restAt(ei)`.
+
 ## Program versioning
 `PROG.start`/`end`/`weeks`/`deload`/`targetWeight` describe the current block (PF Austin Cut: 2026-10-05 → 11-29, goal 175, no fixed deload). They drive week numbers, the TDEE "current" window and the trajectory card, so update them when a new block starts. Engine tests pin the frozen Summer Cut block themselves.
 `PROG.version` in `lib/engine.mjs` names the block. The stored `program` row (coach edits: swap/add/remove/update) is kept only while its `version` matches; a different version resets to the code's days. **Bump `PROG.version` whenever you edit `PROG.days`.**
@@ -115,7 +118,7 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (required: cron proof).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (78 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (81 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message

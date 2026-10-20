@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
+import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -416,6 +416,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   if(workout){
     const s=sessOf(workout);
     const slotAt=ei=>s.exercises?.[ei]||workout.exercises[ei]?.slot;
+    // Rest comes from the lift actually on the bar: a swap gets its own rest, not the old lift's.
+    const restAt=ei=>restFor(slotAt(ei),workout.exercises[ei]?.swappedTo);
     const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false,reps:0,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
@@ -434,7 +436,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       </Sheet>
       {exInfo&&<ExerciseHistory data={data} ex={exInfo.ex} progKeyStr={exInfo.progKey} onClose={()=>setExInfo(null)}/>}
 
-      {(()=>{const exs=workout.exercises;const {curEi}=sessionCursor(exs,i=>slotAt(i)?.rest);
+      {(()=>{const exs=workout.exercises;const {curEi}=sessionCursor(exs,restAt);
         return(<div style={{paddingTop:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
             <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
@@ -494,7 +496,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         // Supersets: rest:0 chains an exercise to the next one (1A → 1B). Sets
         // inside a group interleave round-robin (A1, B1, A2, B2 …); the cursor
         // follows that order and the last member's rest runs the timer.
-        const restOf=i=>slotAt(i)?.rest;
+        const restOf=restAt;
         const {groups,curEi,curSi}=sessionCursor(exs,restOf);
         const allDone=exs.length>0&&curEi<0;
         const openEi=focusEi!=null&&exs[focusEi]?focusEi:curEi;
@@ -554,7 +556,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
                 <span style={{fontSize:15,color:C.t4}}>W</span><span style={{fontSize:15,color:C.t4}}>{w.l}</span>
                 <span style={{...cell,color:w.done?C.t4:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t4:C.t2}}>{w.r}</span>
-                <Chk on={w.done} dim label={`Warm-up ${wi+1} done`} onClick={()=>!w.done&&dWU(ei,wi,sl?.rest)}/>
+                <Chk on={w.done} dim label={`Warm-up ${wi+1} done`} onClick={()=>!w.done&&dWU(ei,wi,restAt(ei))}/>
               </React.Fragment>))}
               {e.sets.map((x,si)=>{const isEd=si===edSi;const isNow=isEd&&ei===curEi;const pv=prev?.sets?.[si];
                 const tone=x.skipped?C.t4:x.done?C.t:C.t3;
@@ -568,7 +570,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                     <span style={{...cell,color:tone,textDecoration:x.skipped?"line-through":"none"}}>{x.weight>0?x.weight:"BW"}</span>
                     <span style={{...cell,color:tone,textDecoration:x.skipped?"line-through":"none"}}>{x.reps||"○"}</span>
                   </>)}
-                  <Chk on={x.done} label={x.done?`Undo set ${si+1}`:x.skipped?`Unskip set ${si+1}`:`Log set ${si+1}`} onClick={()=>{if(x.done||x.skipped)undoSet(ei,si);else dS(ei,si,sl?.rest);}}/>
+                  <Chk on={x.done} label={x.done?`Undo set ${si+1}`:x.skipped?`Unskip set ${si+1}`:`Log set ${si+1}`} onClick={()=>{if(x.done||x.skipped)undoSet(ei,si);else dS(ei,si,restAt(ei));}}/>
                 </React.Fragment>);})}
             </div>
             {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
@@ -579,7 +581,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                 <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>+</button>
               </span>
             </div>)}
-            {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,sl?.rest)} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:17,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
+            {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,restAt(curEi))} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:17,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
             <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,marginTop:4}}>
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,edSi)}>Skip set</button>}
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,'all')}>Skip lift</button>}

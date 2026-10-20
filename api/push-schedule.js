@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 import { waitUntil } from '@vercel/functions';
 import { createHash } from 'node:crypto';
-import { preflight, requireToken, bodyOf, supabaseEnv } from '../lib/http.mjs';
+import { preflight, requireToken, sameOrigin, bodyOf, supabaseEnv } from '../lib/http.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const MAX_DELAY_MS = 30 * 60 * 1000;
@@ -98,7 +98,10 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!requireToken(req, res, 'NOTIFY_TOKEN', { header: 'x-notify-token', unsetStatus: 503 })) return;
+  // The app's own page may book its alert without the token (a phone that never
+  // had NOTIFY_TOKEN typed in got 401 on every rest and fell back to a timer iOS
+  // freezes). Scripts and the server's own hops still use the token.
+  if (!sameOrigin(req) && !requireToken(req, res, 'NOTIFY_TOKEN', { header: 'x-notify-token', unsetStatus: 503 })) return;
   if (!configureWebPush()) return res.status(500).json({ error: 'VAPID keys not configured' });
 
   try {

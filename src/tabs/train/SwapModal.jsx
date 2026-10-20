@@ -7,7 +7,7 @@ import { Sheet } from "../../ui/overlay.jsx";
 const SwapModal=({exName,slot,options,onSelect,onClose,getWeight})=>(
   <Sheet open onClose={onClose} title="Swap exercise">
       <div style={{fontSize:15,color:C.t3,marginBottom:6}}>Replacing: <span style={{color:C.t,fontWeight:600}}>{exName}</span></div>
-      {slot&&<div style={{fontSize:13,color:C.t2,background:C.bg,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{rrTxt(slot.rr)} · rest {slot.rest}s. Progression is tracked separately for this rep range.</div>}
+      {slot&&<div style={{fontSize:13,color:C.t2,background:C.bg,borderRadius:6,padding:"6px 8px",marginBottom:12}}>Plan slot stays: {slot.sets}×{rrTxt(slot.rr)}. Rest follows the lift you pick. Progression is tracked separately for this rep range.</div>}
       {options.length===0&&<div style={{fontSize:15,color:C.t3,textAlign:"center",padding:"12px 0"}}>No plan-safe alternatives found for this lift.</div>}
       {options.map((opt,idx)=>{
         const lw=getWeight(opt,opt.sw,slot);

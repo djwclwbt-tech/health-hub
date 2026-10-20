@@ -194,7 +194,36 @@ test('swapOptions: same or related pattern, excludes the lift itself and anythin
 
 test('manualSlot gives a library lift a sane 3×8-12 slot', () => {
   const s = E.manualSlot(E.exLibById['db-shoulder-press']);
-  assert.deepEqual([s.sets, s.rr, s.rest, s.unit], [3, [8, 12], 90, 'lbs/hand']);
+  assert.deepEqual([s.sets, s.rr, s.rest, s.unit], [3, [8, 12], 120, 'lbs/hand']);
+});
+
+// ── rest between sets ───────────────────────────────────────────────────────
+test('ruleRest: compounds longest, lower > upper, 5-8 > 8-12, isolation 60 (90 for legs or a 5-8 range)', () => {
+  const r = (id, rr) => E.ruleRest({ id }, rr);
+  assert.equal(r('leg-press', [5, 8]), 180);
+  assert.equal(r('machine-leg-press', [10, 12]), 150);
+  assert.equal(r('machine-chest-press', [5, 8]), 150);
+  assert.equal(r('db-incline-press', [10, 12]), 120);
+  assert.equal(r('lying-leg-curl', [5, 8]), 90);
+  assert.equal(r('leg-extension', [10, 12]), 90);
+  assert.equal(r('db-lateral-raise', [10, 12]), 60);
+  assert.equal(r('seated-calf', [10, 12]), 60);
+});
+
+test('the shipped program follows the rest rule (supersets chain with 0)', () => {
+  for (const [day, s] of Object.entries(E.PROG.days)) for (const ex of s.exercises)
+    assert.equal(ex.rest, ex.rest === 0 ? 0 : E.ruleRest(ex), `${day} ${ex.id}`);
+});
+
+test('restFor: a swapped lift gets its own rest, never the old lift\'s; superset chains stay 0', () => {
+  const slot = { id: 'pec-deck', rr: [12, 15], rest: 60 };
+  assert.equal(E.restFor(slot), 60, 'planned lift keeps the plan number');
+  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 120 }, { id: 'hack-squat' }), 180, 'heavy squat swap');
+  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 180 }, { id: 'leg-extension' }), 90, 'isolation swap is shorter');
+  assert.equal(E.restFor({ id: 'incline-db-curl', rr: [10, 12], rest: 0 }, { id: 'cable-curl' }), 0);
+  const mon = E.PROG.days.monday;
+  const opts = E.swapOptions(base(), { exercises: [] }, mon.exercises[0], mon.exercises[0]);
+  assert.ok(opts.every(o => o.rest === 150), 'chest press swaps rest like a heavy press');
 });
 
 // ── history repair ──────────────────────────────────────────────────────────
