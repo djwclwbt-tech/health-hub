@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
+import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -58,7 +58,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const [cardioHr,setCardioHr]=useState("");
   const [editW,setEditW]=useState(null);
   const mobEntry=data.mob?.[t];
-  const [mobDone,setMobDone]=useState(mobEntry===true||!!mobEntry?.done);
+  const mobDone=mobEntry===true||!!mobEntry?.done;
+  const setMobDone=()=>{};   // derived from data.mob; writers update data
   const [mobRunning,setMobRunning]=useState(false);
   const [mobTimer,setMobTimer]=useState(0);
   const mobStartRef=useRef(null);
@@ -74,10 +75,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const [cardioTimerRunning,setCardioTimerRunning]=useState(false);
   const [cardioTimerDone,setCardioTimerDone]=useState(false);
   const cardioIvRef=useRef(null);
+  const cardioRunRef=useRef(false);
   const cardioEndRef=useRef(0);
   const getPostLiftCardio=(day)=>{if(day==="monday"||day==="thursday")return{type:"stairs",label:"Stairstepper",duration:20,intensity:"zone2"};if(day==="tuesday"||day==="friday")return{type:"incline-walk",label:"Incline Walk (10-15%)",duration:20,intensity:"zone2"};if(day==="wednesday")return{type:"stairs",label:"Stairstepper (optional)",duration:20,intensity:"zone2"};return null;};
   const startCardioTimer=(dur)=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);const end=Date.now()+dur*60*1000;cardioEndRef.current=end;setCardioTimerLeft(dur*60);setCardioTimerRunning(true);setCardioTimerDone(false);
     cardioIvRef.current=setInterval(()=>{const left=Math.round((cardioEndRef.current-Date.now())/1000);if(left<=0){clearInterval(cardioIvRef.current);setCardioTimerLeft(0);setCardioTimerRunning(false);setCardioTimerDone(true);if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);}else{setCardioTimerLeft(left);}},500);};
+  cardioRunRef.current=cardioTimerRunning||cardioTimerDone;
   const stopCardioTimer=()=>{if(cardioIvRef.current)clearInterval(cardioIvRef.current);setCardioTimerRunning(false);setCardioTimerLeft(0);cardioEndRef.current=0;};
 
   const [showFinishConfirm,setShowFinishConfirm]=useState(false);
@@ -112,6 +115,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const sessOf=w=>w?.manual?{name:"Manual Session",focus:"Ad-hoc · add exercises as you go",exercises:[]}:getSess(w.day,w.variant);
 
   const gw=(exOrId,def,slot=null)=>resolveWeight(data,exOrId,def,slot);
+  // A backfill is chosen at start, not inferred from the clock, so a session that runs past midnight keeps its timers.
+  const isBackfill=w=>!!w&&(w.backfill??(!!w.date&&w.date<lds(new Date(w.start||Date.now()))));
 
   const getSwapOptions=(slotEx,currentEx)=>swapOptions(data,workout,slotEx,currentEx);
 
@@ -124,7 +129,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
 
   // Manual workout: start empty, add exercises from the library mid-session.
   // Weights come from gw() (progression + history), rest timers work as normal.
-  const startManualW=(date=t)=>{setWorkout({day:dw(date),date,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);setPicker(null);};
+  const startManualW=(date=t)=>{setWorkout({day:dw(date),date,backfill:date<t,manual:true,exercises:[],start:Date.now(),isDeload:false});setWuDone(true);setShowAddEx(true);setPicker(null);};
   const addManualEx=(opt)=>{
     const slot=manualSlot(opt);
     setWorkout(p=>({...p,exercises:[...p.exercises,buildExerciseEntry(data,slot,{isDeload:!!p.isDeload,withWarmup:p.exercises.length===0,extra:{slot}})]}));
@@ -139,9 +144,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const dS=(ei,si,rest)=>{
     const cur=workout?.exercises?.[ei]?.sets?.[si];
     if(!cur||Number(cur.reps)<=0){if(addToast)addToast("Enter reps before logging the set","error");return;}
+    // Blank weight = bodyweight (0). Anything that is not a number is refused, never logged as BW.
+    const w=cur.weight===""||cur.weight==null?0:Number(cur.weight);
+    if(!Number.isFinite(w)||w<0){if(addToast)addToast("Check the weight before logging the set","error");return;}
     haptic(30);setFocusEi(null);
-    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets[si].done=true;n.exercises[ei].sets[si].at=Date.now();return n;});
-    if(rest>0&&(workout?.date||t)===t)startRestTimer(rest);   // no rest timer while backfilling a past day
+    setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const x=n.exercises[ei].sets[si];x.weight=w;x.done=true;x.at=Date.now();return n;});
+    if(rest>0&&!isBackfill(workout))startRestTimer(rest);   // no rest timer while backfilling a past day
   };
 
   const armRestAudio=()=>{
@@ -201,7 +209,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const adjustRestTimer=(delta)=>{
     if(restEndRef.current<=0)return;
     const endTime=restEndRef.current+delta*1000;
-    if(endTime<=Date.now()+250){completeRestTimer();return;}
+    if(endTime<=Date.now()+250){try{const sv0=JSON.parse(localStorage.getItem(REST_TIMER_KEY));if(sv0?.tag){cancelDeviceNotification(sv0.tag);cancelServerPush(sv0.tag);}}catch{}completeRestTimer();return;}
     let old=null;try{old=JSON.parse(localStorage.getItem(REST_TIMER_KEY));}catch{}
     const total=Math.max(1,(old?.total||rt||0)+delta);
     const tag=`rest-timer-${endTime}`;
@@ -291,7 +299,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     // (or is finished from a stale tab) cannot overwrite the next day's workout.
     const d=workout.date||t;
     const {data:nd,prs,touched,log}=applyWorkout(data,workout,s,d,endAt);
-    if(d<t){log.dur=null;if(nd.wk?.[d])nd.wk[d]={...nd.wk[d],dur:null};}  // backfilled: no real duration
+    if(isBackfill(workout)){log.dur=null;if(nd.wk?.[d])nd.wk[d]={...nd.wk[d],dur:null};}  // backfilled: no real duration
+    // Remember the lift rows this finish replaced, so "Undo today's log" can put them back.
+    try{localStorage.setItem("dhub6_undo_prog",JSON.stringify({date:d,rows:Object.fromEntries(touched.map(a=>[a,data.prog?.[a]??null]))}));}catch{}
     setData(nd);sv(nd);svSB.workout(d,log);touched.forEach(aid=>svSB.progression(aid,nd.prog[aid]));
     setWorkout(null);clearRestTimer();stopCardioTimer();setCardioTimerDone(false);setShowFinishConfirm(false);
     haptic([40,60,40]);
@@ -306,13 +316,14 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     const check=()=>{
       const now=Date.now();
       if(now-workout.start<AUTO_END_MS)return;
+      if(cardioRunRef.current)return;   // post-lift cardio in progress or not yet logged
       const lastAt=Math.max(0,...workout.exercises.flatMap(e=>(e.sets||[]).filter(x=>x.done&&x.at).map(x=>x.at)));
       if(lastAt&&now-lastAt<15*6e4)return;
       const anyDone=workout.exercises.some(e=>(e.sets||[]).some(saneSet));
-      if(!anyDone){cancelWorkout();addToast?.("Workout auto-closed after 90 min · nothing was logged","info");return;}
+      if(!anyDone){cancelWorkout();addToast?.("Workout closed after 90 min. Nothing was logged.","info");return;}
       const endAt=lastAt?Math.min(now,lastAt+2*6e4):workout.start+AUTO_END_MS;
       finishWorkout({endAt});
-      addToast?.("Workout auto-ended · tap View to fix anything","info");
+      addToast?.("Workout ended on its own. Open it to fix anything.","info");
     };
     check();const iv=setInterval(check,60000);
     document.addEventListener("visibilitychange",check);
@@ -331,7 +342,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
   const editCardio=()=>{const c=data.cardio?.[t];if(!c)return;setCardioType(c.type||"incline-walk");setCardioDur(String(c.duration||20));setCardioIntensity(c.intensity||"zone2");
     setCardioDistance(c.distance?String(c.distance):"");setCardioCals(c.calories?String(c.calories):"");
     const m=/^Avg HR (\d+)/.exec(c.notes||"");setCardioHr(c.hr?String(c.hr):m?m[1]:"");setCardioNotes((c.notes||"").replace(/^Avg HR \d+( · )?/,""));setShowCardio(true);};
-  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];setData(nd);sv(nd);svSB.delWorkout(t);};
+  const undoWorkout=()=>{const nd={...data,wk:{...data.wk}};delete nd.wk[t];
+    // Roll the weights back too, or re-logging would stack a second increase.
+    let snap=null;try{snap=JSON.parse(localStorage.getItem("dhub6_undo_prog"));}catch{}
+    const back=snap?.date===t?Object.entries(snap.rows||{}).filter(([,r])=>r):[];
+    if(back.length){nd.prog={...nd.prog};back.forEach(([a,r])=>{nd.prog[a]=r;});}
+    setData(nd);sv(nd);svSB.delWorkout(t);back.forEach(([a,r])=>svSB.progression(a,r));
+    try{localStorage.removeItem("dhub6_undo_prog");}catch{}};
   const mobExercises=PROG.mobility._default||[];
   const stretchMins=Math.round(mobExercises.reduce((t,ex)=>t+ex.dur*ex.sets,0)/60);
 
@@ -395,7 +412,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     </div>
     <input value={cardioNotes} onChange={e=>setCardioNotes(e.target.value)} placeholder="Notes: incline, speed, how it felt..." style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:6,padding:"9px 10px",fontSize:16,color:C.t,fontFamily:"inherit",outline:"none"}}/>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-      <B small onClick={()=>logCardio()}>{data.cardio?.[t]?.done?"Save changes":"Log Cardio"}</B>
+      <B small onClick={()=>logCardio()}>{data.cardio?.[t]?.done?"Save changes":"Log cardio"}</B>
       <B small outline onClick={()=>setShowCardio(false)}>Cancel</B>
     </div>
   </div>);
@@ -418,10 +435,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     const slotAt=ei=>s.exercises?.[ei]||workout.exercises[ei]?.slot;
     // Rest comes from the lift actually on the bar: a swap gets its own rest, not the old lift's.
     const restAt=ei=>restFor(slotAt(ei),workout.exercises[ei]?.swappedTo);
-    const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));wkEx.sets=wkEx.sets.map(s=>({...s,weight:wt,done:false,reps:0,rir:""}));return n;});setSwapModal(null);};
+    const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));const lastReps=data.prog?.[key]?.lastReps||[];wkEx.sets=wkEx.sets.map((s,si)=>({...s,weight:wt,done:false,reps:lastReps[si]||lastReps[0]||slot.rr?.[0]||0,prefilled:true,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
-      {showFinishConfirm&&<ConfirmModal title="Finish Workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
-      {showCancelConfirm&&<ConfirmModal title="Cancel Workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
+      {showFinishConfirm&&<ConfirmModal title="Finish the workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
+      {showCancelConfirm&&<ConfirmModal title="Discard this workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
       {swapModal&&<SwapModal exName={swapModal.exName} slot={slotAt(swapModal.ei)} options={getSwapOptions(slotAt(swapModal.ei),workout.exercises[swapModal.ei])} onSelect={opt=>swapExercise(swapModal.ei,opt)} onClose={()=>setSwapModal(null)} getWeight={gw}/>}
       <Sheet open={showAddEx} onClose={()=>setShowAddEx(false)} title="Add exercise" right={<B small outline onClick={()=>setShowAddEx(false)}>Close</B>}>
           {(()=>{const used=new Set(workout.exercises.map(e=>e.id));
@@ -440,13 +457,13 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         return(<div style={{paddingTop:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
             <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</h1>
-            {(workout.date||t)===t&&<Elapsed start={workout.start}/>}
+            {!isBackfill(workout)&&<Elapsed start={workout.start}/>}
           </div>
           <div style={{fontSize:15,color:C.t3,marginTop:4,fontVariantNumeric:"tabular-nums"}}>
             {exs.length?(curEi>=0?`Lift ${curEi+1} of ${exs.length}`:"All sets done"):"Empty session"}
             {rt>0&&rl>0?` · rest ${Math.floor(rl/60)}:${String(rl%60).padStart(2,"0")} left`:""}
             {workout.isDeload?" · deload, half weight":""}
-            {workout.date&&workout.date!==t?<div style={{color:C.t2,marginTop:2}}>Logging for {fmt(workout.date)}. The clock is ignored.</div>:null}
+            {isBackfill(workout)?<div style={{color:C.t2,marginTop:2}}>Logging for {fmt(workout.date)}. The clock is ignored.</div>:null}
           </div>
         </div>);})()}
 
@@ -508,10 +525,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         const unskipEx=(ei)=>setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));n.exercises[ei].sets.forEach(x=>{if(x.skipped){x.skipped=false;delete x.at;}});return n;});
         const anyLogged=exs.some(e=>e.sets.some(x=>x.done||x.skipped));
         const NUMS={fontVariantNumeric:"tabular-nums"};
-        const link={background:"none",border:"none",color:C.t3,fontSize:15,cursor:"pointer",padding:"10px 6px",minHeight:40};
+        const link={background:"none",border:"none",color:C.t3,fontSize:15,cursor:"pointer",padding:"10px 8px",minHeight:44};
         const cell={height:40,display:"flex",alignItems:"center",justifyContent:"center",marginRight:6,fontSize:17,...NUMS};
-        const inp={width:"100%",height:40,border:`1.5px solid ${C.p}`,borderRadius:8,background:C.cd,textAlign:"center",fontSize:20,fontWeight:500,outline:"none",...NUMS};
-        const Chk=({on,onClick,label,dim})=>(<button type="button" onClick={onClick} aria-label={label} aria-pressed={!!on} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:0}}>
+        const inp={width:"100%",height:44,border:`1.5px solid ${C.p}`,borderRadius:8,background:C.cd,textAlign:"center",fontSize:20,fontWeight:500,outline:"none",...NUMS};
+        const Chk=({on,onClick,label,dim})=>(<button type="button" onClick={onClick} aria-label={label} aria-pressed={!!on} style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",padding:0}}>
           <span style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${on?C.t:dim?C.bd:C.t4}`,background:on?C.t:"transparent",color:C.oa,fontSize:15,lineHeight:"19px",textAlign:"center"}}>{on?"✓":""}</span>
         </button>);
         const summaryOf=i=>{const e=exs[i];const done=e.sets.filter(x=>x.done).length;const w=e.sets[0]?.weight;
@@ -551,7 +568,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}{prev&&goal?" · ":""}{goal}
             </div>
             {ssTag&&ei===curEi&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
-            <div style={{display:"grid",gridTemplateColumns:"32px 1fr 1fr 1fr 40px",alignItems:"center",marginTop:10,rowGap:2}}>
+            <div style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr 44px",alignItems:"center",marginTop:10,rowGap:2}}>
               {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
               {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
                 <span style={{fontSize:15,color:C.t4}}>W</span><span style={{fontSize:15,color:C.t4}}>{w.l}</span>
@@ -564,7 +581,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                   <span style={{fontSize:16,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
                   <span style={{fontSize:15,color:C.t4,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
                   {isEd?(<>
-                    <span style={{marginRight:6}}><input aria-label={`Set ${si+1} weight`} inputMode="decimal" value={x.weight??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9.]/g,"");uS(ei,si,"weight",v===""?"":Number(v));}} style={inp}/></span>
+                    <span style={{marginRight:6}}><input aria-label={`Set ${si+1} weight`} inputMode="decimal" value={x.weight??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1");uS(ei,si,"weight",/^\d+$/.test(v)?Number(v):v);}} style={inp}/></span>
                     <span style={{marginRight:6}}><input aria-label={`Set ${si+1} reps`} inputMode="numeric" value={x.reps??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9]/g,"");uS(ei,si,"reps",v===""?"":Number(v));}} style={inp}/></span>
                   </>):(<>
                     <span style={{...cell,color:tone,textDecoration:x.skipped?"line-through":"none"}}>{x.weight>0?x.weight:"BW"}</span>
@@ -575,10 +592,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             </div>
             {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
               <span style={{fontSize:15,color:C.t3,width:40}}>RIR</span>
-              {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:40,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:17,cursor:"pointer",...NUMS}}>{v}</button>);})}
-              <span style={{display:"flex",gap:4,marginLeft:4}}>
-                <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>−</button>
-                <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:40,minHeight:40,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>+</button>
+              {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:44,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:17,cursor:"pointer",...NUMS}}>{v}</button>);})}
+              <span style={{display:"flex",gap:6,marginLeft:8}}>
+                <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:44,minHeight:44,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>−</button>
+                <button type="button" aria-label={`Weight up ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",(Number(e.sets[edSi].weight)||0)+inc);}} style={{width:44,minHeight:44,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>+</button>
               </span>
             </div>)}
             {ei===curEi&&e.sets[curSi]&&(<button type="button" onClick={()=>dS(curEi,curSi,restAt(curEi))} style={{marginTop:12,width:"100%",minHeight:48,border:"none",borderRadius:9,background:C.p,color:C.oa,fontSize:17,fontWeight:500,cursor:"pointer",...NUMS}}>Log set {curSi+1} · {e.sets[curSi].weight||0} × {e.sets[curSi].reps||0}</button>)}
@@ -616,7 +633,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               <div style={{fontSize:16,fontWeight:700,color:C.t}}>{plc.label}</div>
               <div style={{fontSize:13,color:C.t3}}>{plc.duration} min · {intensityLabel(plc.intensity)} post-lift cardio</div>
             </div>
-            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:16,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick Log</B></div>
+            {cardioTimerDone?<div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:16,fontWeight:700,color:C.g}}>Done ✓</span><B small outline onClick={()=>openCardioLog(plc)}>Details</B><B small onClick={()=>logCardio(plc)} color={C.g}>Quick log</B></div>
               :cardioTimerRunning?<B small outline onClick={stopCardioTimer} color={C.r}>Stop</B>
               :<div style={{display:"flex",gap:6}}><B small outline onClick={()=>openCardioLog(plc)}>Log</B><B small outline onClick={()=>startCardioTimer(plc.duration)}>Start</B></div>}
           </div>
@@ -624,7 +641,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             <div style={{fontSize:44,fontWeight:700,color:C.t,fontVariantNumeric:"tabular-nums"}}>{Math.floor(cardioTimerLeft/60)}:{String(cardioTimerLeft%60).padStart(2,"0")}</div>
             <div style={{fontSize:12,color:C.t3,marginTop:2}}>remaining</div>
           </div>)}
-          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:13,color:C.g,fontWeight:600}}>Post-lift cardio complete · use Details for distance/calories/intensity or Quick Log for just time.</div>)}
+          {cardioTimerDone&&(<div style={{marginTop:6,fontSize:13,color:C.g,fontWeight:600}}>Cardio done. Use Details for distance and calories, or Quick log for time only.</div>)}
           {renderCardioForm()}
         </X>);
       })()}
@@ -772,7 +789,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <span style={{fontSize:15,color:C.t3,...NUMS}}>{weekLabel}</span>
           {(weekOff!==0||selDate!==t)&&<button type="button" onClick={jumpToday} style={{background:"none",border:"none",fontSize:15,color:C.t2,cursor:"pointer",padding:"6px 0",minHeight:32}}>Back to today</button>}
         </div>
-        <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init){el.dataset.init="1";el.scrollLeft=el.clientWidth*(PAST_WEEKS+weekOff);}}}
+        <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init&&el.clientWidth>0){el.dataset.init="1";el.scrollLeft=el.clientWidth*(PAST_WEEKS+weekOff);}}}
           onScroll={e=>{const el=e.currentTarget;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
           style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:4}}>
           {pages.map(off=>(<div key={off} role="tablist" aria-label={off===0?"This week":`Week ${off>0?"+":""}${off}`} style={{flex:"0 0 100%",scrollSnapAlign:"start",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
@@ -841,7 +858,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             dks.forEach(dk=>{const base=data.program?.[dk];if(!base?.exercises?.length)return;opts.push({dk,variant:null,s:base});
               Object.entries(PROG.variants?.[dk]||{}).forEach(([k,v])=>opts.push({dk,variant:k,s:v}));});
             return(<div>
-              {taken&&<div style={{fontSize:15,color:C.t2,background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:10}}>{picker.date===t?"Today":fmt(picker.date)} already has {workoutLabel(taken,data.program)}. Finishing a new one replaces it.</div>}
+              {taken&&<div style={{fontSize:15,color:C.t2,background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:10}}>{picker.date===t?"Today":fmt(picker.date)} already has {workoutLabel(taken,data.program)}. Finishing this one adds it to that day.</div>}
               {picker.date!==t&&<div style={{fontSize:15,color:C.t3,marginBottom:8}}>Type the sets you did. The clock is ignored for a past day.</div>}
               <div style={{borderTop:`1px solid ${C.bd}`}}>
                 {opts.map(o=>(<button type="button" key={`${o.dk}-${o.variant||"std"}`} onClick={()=>startW(o.dk,{date:picker.date,variant:o.variant})}

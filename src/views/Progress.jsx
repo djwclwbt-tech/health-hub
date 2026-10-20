@@ -5,6 +5,16 @@ import { C, FD } from "../core/theme.js";
 import { L, N, S, X } from "../ui/atoms.jsx";
 import { AnalysisSection } from "./Analysis.jsx";
 
+// Keeps the typed text (so "34." can become "34.5") and saves once, on blur.
+const MeasInput=({value,onSave})=>{
+  const [draft,setDraft]=useState(value==null?"":String(value));
+  useEffect(()=>{setDraft(value==null?"":String(value));},[value]);
+  return <input inputMode="decimal" value={draft} placeholder="in"
+    onChange={e=>setDraft(e.target.value.replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1"))}
+    onBlur={()=>{const n=parseFloat(draft);const v=Number.isFinite(n)&&n>0?n:null;if(v!==(value??null))onSave(v);}}
+    style={{width:"100%",padding:"10px 12px",minHeight:44,border:`1px solid ${C.bd}`,borderRadius:6,fontSize:17,background:C.cd,color:C.t,boxSizing:"border-box",textAlign:"center",fontVariantNumeric:"tabular-nums"}}/>;
+};
+
 // ═══ PROGRESS · photos, measurements, weekly AI analysis (mock 6c) ═══
 const ProgressView=({data,setData,onBack})=>{
   const t=td();
@@ -84,10 +94,10 @@ const ProgressView=({data,setData,onBack})=>{
       <S title="Update measurements" collapsible defaultOpen={false}>
         {(()=>{
           const cur=data.bodyMeas&&data.bodyMeas[t]||{};
-          const fields=[{k:"chest",l:"Chest"},{k:"waist",l:"Waist"},{k:"armL",l:"Left Arm"},{k:"armR",l:"Right Arm"},{k:"thighL",l:"Left Thigh"},{k:"thighR",l:"Right Thigh"}];
-          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),[k]:v?parseFloat(v):null}}};setData(nd);sv(nd);svSB.bodyMeas(t,nd.bodyMeas[t]);};
+          const fields=[{k:"chest",l:"Chest"},{k:"waist",l:"Waist"},{k:"armL",l:"Left arm"},{k:"armR",l:"Right arm"},{k:"thighL",l:"Left thigh"},{k:"thighR",l:"Right thigh"}];
+          const saveMeas=(k,v)=>{const nd={...data,bodyMeas:{...data.bodyMeas,[t]:{...(data.bodyMeas[t]||{}),[k]:v}}};setData(nd);sv(nd);svSB.bodyMeas(t,nd.bodyMeas[t]);};
           return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            {fields.map(fd=>(<div key={fd.k}><L>{fd.l}</L><N value={cur[fd.k]||""} onChange={v=>saveMeas(fd.k,v)} placeholder="in"/></div>))}
+            {fields.map(fd=>(<div key={fd.k}><L>{fd.l}</L><MeasInput value={cur[fd.k]??null} onSave={v=>saveMeas(fd.k,v)}/></div>))}
           </div>);
         })()}
       </S>

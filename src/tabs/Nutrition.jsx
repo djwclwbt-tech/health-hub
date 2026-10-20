@@ -58,7 +58,7 @@ const Nutrition=({data,setData})=>{
   const nutTDEE=React.useMemo(()=>calcAdaptiveTDEE(data.wt,data.nut,st,data.travelDays,data.tdeeExclude||{},data.tdeeCal),[data.wt,data.nut,st,data.travelDays,data.tdeeExclude,data.tdeeCal,t]);
 
   const calRemaining=calT===null?null:Math.max(0,calT-(tl.totalCal||0));
-  const proRemaining=Math.max(0,proT-(tl.totalProtein||0));
+  const proRemaining=Math.max(0,Math.round(proT-(tl.totalProtein||0)));
   // One plain line: protein left or hit, calories left or over.
   const needText=(()=>{
     const pro=proRemaining>0?`${proRemaining} g protein left`:"Protein hit";
@@ -66,7 +66,7 @@ const Nutrition=({data,setData})=>{
     const over=Math.round((tl.totalCal||0)-calT);
     return`${pro} · ${over>0?`${over.toLocaleString()} cal over`:`${Math.round(calRemaining).toLocaleString()} cal left`}`;
   })();
-  const quickMealType=(()=>{const h=new Date().getHours();return h<11?"Breakfast":h<15?"Lunch":h<20?"Dinner":"Snack";})();
+  const quickMealType=!isViewingToday?"Snack":(()=>{const h=new Date().getHours();return h<11?"Breakfast":h<15?"Lunch":h<20?"Dinner":"Snack";})();
   const addQuickMeal=(preset)=>{
     const cal=+(preset?.cal??quickCal)||0, protein=+(preset?.protein??quickPro)||0;
     if(!cal&&!protein)return;
@@ -102,9 +102,12 @@ const Nutrition=({data,setData})=>{
           </div>
         </div>
         {editing==="macros"?(<div style={{margin:"8px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:3}}>
-            {[{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
-              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>{const updated={...meal,[f.k]:+v||0};const cal=(updated.protein||0)*4+(updated.carbs||0)*4+(updated.fat||0)*9;updateMeal(selM,{[f.k]:+v||0,cal});}} placeholder={f.l}/><div style={{fontSize:12,color:C.t3,textAlign:"center",fontWeight:600,marginTop:2}}>{f.l}</div></div>))}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4}}>
+            {[{k:"cal",l:"Cal"},{k:"protein",l:"Pro"},{k:"carbs",l:"Carb"},{k:"fat",l:"Fat"},{k:"fiber",l:"Fib"}].map(f=>(
+              <div key={f.k}><N value={meal[f.k]||0} onChange={v=>{const updated={...meal,[f.k]:+v||0};
+                // Calories follow the macros only when carbs or fat are known; a quick log keeps its typed calories.
+                const derive=f.k!=="cal"&&f.k!=="fiber"&&((updated.carbs||0)+(updated.fat||0))>0;
+                updateMeal(selM,derive?{[f.k]:+v||0,cal:(updated.protein||0)*4+(updated.carbs||0)*4+(updated.fat||0)*9}:{[f.k]:+v||0});}} placeholder={f.l}/><div style={{fontSize:13,color:C.t3,textAlign:"center",fontWeight:500,marginTop:2}}>{f.l}</div></div>))}
           </div>
           <B full small style={{marginTop:6}} onClick={()=>setEditing(null)}>Done</B>
         </div>):(<div>
@@ -237,7 +240,7 @@ const Nutrition=({data,setData})=>{
       </S>
 
       {nutTDEE&&nutTDEE.tdee&&(<S title="Target logic" meta={`burn ≈ ${nutTDEE.tdee.toLocaleString()}`} collapsible defaultOpen={false}>
-        <div style={{fontSize:16,color:C.t2,lineHeight:1.5,...NUMS}}>Estimated burn {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?` ± ${nutTDEE.tdee-nutTDEE.tdeeLow}`:""} cal a day. {calT!=null?<>Today's target {calT.toLocaleString()} is a {Math.abs(nutTDEE.tdee-calT).toLocaleString()} cal {nutTDEE.tdee>=calT?"deficit":"surplus"}.</>:null}</div>
+        <div style={{fontSize:16,color:C.t2,lineHeight:1.5,...NUMS}}>Estimated burn {nutTDEE.tdee.toLocaleString()}{nutTDEE.tdeeLow!=null?` ± ${nutTDEE.tdee-nutTDEE.tdeeLow}`:""} cal a day. {calT!=null?<>{isViewingToday?"Today's":"That day's"} target {calT.toLocaleString()} is a {Math.abs(nutTDEE.tdee-calT).toLocaleString()} cal {nutTDEE.tdee>=calT?"deficit":"surplus"}.</>:null}</div>
         {!showTDEEAdjust&&<button type="button" style={link} onClick={()=>setShowTDEEAdjust(true)}>Change targets from this estimate</button>}
         {showTDEEAdjust&&(<div style={{marginTop:8}}>
           {[{id:"aggressive_cut",label:"Faster cut",offset:-500,desc:"about 1 lb a week"},{id:"moderate_cut",label:"Steady cut",offset:-250,desc:"about 0.5 lb a week"},{id:"maintenance",label:"Hold",offset:0,desc:"pause loss if recovery needs it"}].map(opt=>{const on=tdeeGoal===opt.id;return(

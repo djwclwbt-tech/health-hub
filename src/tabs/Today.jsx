@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-import { PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, wkn, estTime, getDayCalTarget, getDayProTarget, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
+import { PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
 import { CloseoutPanel, SYSTEM_HABITS } from "../cards/CloseoutPanel.jsx";
 import { ScalePad } from "../cards/ScalePad.jsx";
 import { haptic } from "../core/device.js";
@@ -30,7 +30,7 @@ const Main=({children,onClick,disabled})=>(
   <button type="button" onClick={onClick} disabled={disabled} style={{width:"100%",minHeight:48,border:"none",borderRadius:9,background:disabled?C.bl:C.p,color:disabled?C.t3:C.oa,fontSize:17,fontWeight:500,cursor:disabled?"default":"pointer",marginTop:12}}>{children}</button>
 );
 const Quiet=({children,onClick,style})=>(
-  <button type="button" onClick={onClick} style={{minHeight:40,border:`1px solid ${C.bd}`,borderRadius:8,background:C.cd,color:C.t,fontSize:16,fontWeight:500,cursor:"pointer",padding:"0 12px",...NUM,...style}}>{children}</button>
+  <button type="button" onClick={onClick} style={{minHeight:44,border:`1px solid ${C.bd}`,borderRadius:8,background:C.cd,color:C.t,fontSize:16,fontWeight:500,cursor:"pointer",padding:"0 12px",...NUM,...style}}>{children}</button>
 );
 const Card=({children,style})=><div style={{background:C.cd,border:`1px solid ${C.bd}`,borderRadius:12,padding:16,marginTop:10,...style}}>{children}</div>;
 const KV=({k,v,dim})=>(
@@ -76,13 +76,13 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   const cardioDone=!!data.cardio?.[t]?.done;
   const habits=data.habits?.[t]||{};
   const held=SYSTEM_HABITS.filter(x=>habits[x.field]===x.target).length;
-  const closed=!!data.debrief?.[t]&&held>=6;
+  const closed=!!data.debrief?.[t];
   const stretchDone=!!(data.mob?.[t]?.done||data.mob?.[t]===true);
-  const isFast=dayName==="wednesday";
+  const isFast=dayName==="wednesday"&&getDayType(t,data.travelDays)!=="travel";
   const nut=data.nut?.[t];
   const calNow=Math.round(nut?.totalCal||0),proNow=Math.round(nut?.totalProtein||0);
   const calT=getDayCalTarget(t,st,data.travelDays,data.socialWeekend);
-  const proT=getDayProTarget(t,st,data.travelDays,data.socialWeekend)||st.protein||200;
+  const proT=getDayProTarget(t,st,data.travelDays,data.socialWeekend)??st.protein??200;
   const water=data.water?.[t]||0;
   const {add:addWater}=waterOps(setData,t);
   const yesterdayWt=(()=>{const e=Object.entries(data.wt||{}).filter(([d])=>d<t).sort((a,b)=>b[0].localeCompare(a[0]));return e[0]?.[1]||null;})();
@@ -118,7 +118,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   // ── Scale ──
   const trendV=trend?.points?.length?trend.points[trend.points.length-1].v:null;
   // Green only inside the planned cut pace (same band as Trends).
-  const pace=trend&&!trend.reliable?`${trend.n} weigh-ins in 2 weeks, too few for a rate`:trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
+  const pace=trend&&!trend.reliable?(trend.n>=4?"needs a week of weigh-ins for a rate":`${trend.n} weigh-ins in 2 weeks, too few for a rate`):trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
   rows.push(<Ev key="scale" time={nowId==="scale"?"Now":"AM"} state={stateOf("scale",wt!=null)}
     title={wt!=null?<>Weighed in <span style={NUM}>{Number(wt).toFixed(1)}</span></>:"Weigh in"}
     sub={trendV!=null?<>Trend <span style={NUM}>{trendV.toFixed(1)}</span>{pace?<> · {pace}</>:null}</>:"A couple of weigh-ins start the trend"}
@@ -166,6 +166,15 @@ const Today=({data,setData,setTab,workout,addToast})=>{
     </Ev>);
   }
 
+  else if(workout||lifted){
+    const wl=data.wk?.[t];
+    rows.push(<Ev key="lift" time={nowId==="lift"?"Now":"Day"} state={stateOf("lift",lifted&&!workout)}
+      title={lifted&&!workout?<>Lifted · {workoutLabel(wl,data.program)}</>:"Session in progress"} sub={lifted&&!workout?`${(wl?.exercises||[]).length} lifts logged`:"Not on today's plan"}
+      open={isOpen("lift")} onToggle={toggle("lift")}>
+      <Card><Main onClick={()=>setTab("training")}>{workout?"Resume session":"View workout"}</Main></Card>
+    </Ev>);
+  }
+
   // ── Wednesday fast ──
   if(isFast){
     const start=(()=>{const d=new Date(t+"T20:00:00");d.setDate(d.getDate()-1);return d.getTime();})();
@@ -173,13 +182,14 @@ const Today=({data,setData,setTab,workout,addToast})=>{
     const ly=(data.lytes||{})[t]||{na:0,k:0,mg:0};
     const addLyte=(na,k,mg)=>setData(prev=>{const cur=(prev.lytes||{})[t]||{na:0,k:0,mg:0};const nl={na:(cur.na||0)+na,k:(cur.k||0)+k,mg:(cur.mg||0)+mg};const nd={...prev,lytes:{...(prev.lytes||{}),[t]:nl}};sv(nd);svSB.lytes(t,nl);return nd;});
     const LY=[{k:"na",l:"Sodium",target:5000},{k:"k",l:"Potassium",target:3500},{k:"mg",l:"Magnesium",target:400}];
+    const ate=calNow>0;
     rows.push(<Ev key="fast" time={nowId==="fast"?"Now":"Day"} state={stateOf("fast",false)}
-      title={<>Fasted <span style={NUM}>{hrs}:{String(mins).padStart(2,"0")}</span> of 36 h</>}
-      sub="Tuesday dinner to Thursday breakfast. Salt is the job today."
+      title={ate?"Fast day · electrolytes":<>Fasted <span style={NUM}>{hrs}:{String(mins).padStart(2,"0")}</span> of 36 h</>}
+      sub={ate?"Food is logged today, so the fast clock is off. Salt still matters.":"Tuesday dinner to Thursday breakfast. Salt is the job today."}
       open={isOpen("fast")} onToggle={toggle("fast")}>
       <Card>
-        <Br v={hrs} max={36} color={C.t} h={4}/>
-        <div style={{marginTop:12}}>{LY.map(x=>{const v=ly[x.k]||0;return <KV key={x.k} k={x.l} v={<span style={{color:v>=x.target?C.g:C.t}}>{n(v)} of {n(x.target)} mg</span>}/>;})}</div>
+        {!ate&&<Br v={hrs} max={36} color={C.t} h={4}/>}
+        <div style={{marginTop:ate?0:12}}>{LY.map(x=>{const v=ly[x.k]||0;return <KV key={x.k} k={x.l} v={<span style={{color:v>=x.target?C.g:C.t}}>{n(v)} of {n(x.target)} mg</span>}/>;})}</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:10}}>
           <Quiet onClick={()=>addLyte(810,400,50)}>Re-Lyte</Quiet>
           <Quiet onClick={()=>addLyte(1150,0,0)}>½ tsp salt</Quiet>
@@ -190,7 +200,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   }
 
   // ── Food and water (Cronometer fills it; quick-log lives in the sheet) ──
-  if(!isFast){
+  {
     rows.push(<Ev key="food" time={nowId==="food"?"Now":"Day"} state={stateOf("food",proNow>=proT)}
       title={<>Food <span style={NUM}>{proNow}</span> of <span style={NUM}>{proT}</span> g protein</>}
       sub={<span style={NUM}>{n(calNow)}{calT?` of ${n(calT)}`:""} cal · water {water} of {st.water||128} oz</span>}
@@ -204,10 +214,6 @@ const Today=({data,setData,setTab,workout,addToast})=>{
         <div style={{fontSize:13,color:C.t3,marginTop:8}}>Cronometer fills this in through the day.</div>
       </Card>
     </Ev>);
-  }else{
-    rows.push(<Ev key="water" time="Day" state={water>=(st.water||128)?"done":"later"} title={<>Water <span style={NUM}>{water}</span> of <span style={NUM}>{st.water||128}</span> oz</>} open={isOpen("water")} onToggle={toggle("water")}>
-      <div style={{display:"flex",gap:6,marginTop:10}}>{[24,32,64].map(oz=><Quiet key={oz} onClick={()=>{haptic();addWater(oz);}}>+{oz}</Quiet>)}</div>
-    </Ev>);
   }
 
   // ── Cardio ──
@@ -220,16 +226,16 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   const stepsNow=data.steps?.[t]||0,stepsT=cutStepsTarget(st);
   rows.push(<Ev key="close" last time={nowId==="close"?"Now":"19:30"} state={closed?"done":stateOf("close",false)}
     title={closed?"Day closed":"Close the day"}
-    sub={closed?`Clean day ${held} of 7`:`Stretch${stretchDone?" done":""} · clean day check`}
+    sub={closed?(held>=6?`Clean day · ${held} of 7`:`${held} of 7 held`):`Stretch${stretchDone?" done":""} · clean day check`}
     open={isOpen("close")} onToggle={toggle("close")}>
     <Card>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:15}}><span style={{color:C.t3}}>What held today</span><span style={{...NUM}}>{held} of 7</span></div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:10}}>
         {SYSTEM_HABITS.map(x=>{const on=habits[x.field]===x.target;return(
-          <button type="button" key={x.field} onClick={()=>toggleHabit(x)} aria-pressed={on} style={{minHeight:42,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t2,fontSize:15,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":""}</span></button>);})}
+          <button type="button" key={x.field} onClick={()=>toggleHabit(x)} aria-pressed={on} style={{minHeight:44,borderRadius:8,border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:C.cd,color:on?C.g:C.t2,fontSize:15,fontWeight:500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px"}}><span>{HABIT_LABELS[x.field]}</span><span>{on?"✓":""}</span></button>);})}
       </div>
       {closed?<div style={{fontSize:15,color:C.g,marginTop:12}}>Closed. See you tomorrow.</div>
-        :<Main onClick={closeDay} disabled={held<6}>{held>=6?"Close the day":`Tap what held · ${held} of 7`}</Main>}
+        :<><Main onClick={closeDay}>Close the day</Main><div style={{fontSize:13,color:C.t3,marginTop:8}}>{held>=6?"Counts as a clean day.":"Tap what held first. Six of seven is a clean day."}</div></>}
       <div style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:6}}>
         <KV k="Steps" v={<span style={{color:stepsNow>=stepsT?C.g:C.t}}>{stepsNow?n(stepsNow):"○"}</span>}/>
         <KV k="Calories" v={calNow?n(calNow):"○"}/>

@@ -2,7 +2,7 @@ const { useState, useEffect, useRef, useCallback } = React;
 import { bl, migrate, seedHistorical, backfillData, pruneProgression, repairDeloadProgression, applyBlockV2, mergeProgression } from "../lib/engine.mjs";
 import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, syncHealth } from "./core/storage.js";
-import { C } from "./core/theme.js";
+import { APP_VERSION, C } from "./core/theme.js";
 import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";
@@ -36,6 +36,8 @@ window.App = function App(){
   const [missingTables,setMissingTables]=useState([]);
   useEffect(()=>{
     (async()=>{
+      // Send queued writes first, so a delete made offline cannot be merged back from the cloud.
+      try{if(navigator.onLine!==false)await flushOutbox();}catch{}
       const sbData=await loadFromSB();
       setMissingTables(sbData?.__missing||[]);   // tables that do not exist in the cloud (migration not run)
       let finalData;
@@ -120,6 +122,52 @@ window.App = function App(){
     document.addEventListener("visibilitychange",flush);window.addEventListener("pagehide",flush);
     return()=>{document.removeEventListener("visibilitychange",flush);window.removeEventListener("pagehide",flush);};},[]);
 
+  // Coming back to the app: pull what outside syncs wrote while it sat in the background
+  // (Cronometer food, Oura recovery, Shortcut steps and weight). An iPhone can keep the app
+  // suspended for hours, and boot is the only other pull. Cloud wins per date, as at boot.
+  const lastPull=useRef(Date.now());
+  useEffect(()=>{
+    const EXTERNAL=["nut","rec","steps","wt"];
+    const pull=async()=>{
+      if(document.visibilityState!=="visible"||navigator.onLine===false)return;
+      if(Date.now()-lastPull.current<3*60*1000)return;
+      lastPull.current=Date.now();
+      try{await flushOutbox();}catch{}
+      const sb=await loadFromSB();if(!sb||sb.__loadError)return;
+      const failed=new Set(sb.__failed||[]);
+      setData(prev=>{
+        const nd={...prev};let changed=false;
+        for(const k of EXTERNAL){
+          if(failed.has(k)||!sb[k]||typeof sb[k]!=="object")continue;
+          const merged={...(prev[k]||{}),...sb[k]};
+          if(JSON.stringify(merged)!==JSON.stringify(prev[k]||{})){nd[k]=merged;changed=true;}
+        }
+        if(!changed)return prev;
+        sv(nd);return nd;
+      });
+    };
+    document.addEventListener("visibilitychange",pull);window.addEventListener("focus",pull);
+    return()=>{document.removeEventListener("visibilitychange",pull);window.removeEventListener("focus",pull);};
+  },[]);
+
+  // A deploy reaches an open app only on a cold start. On returning to the foreground,
+  // ask the server which build is live and offer a reload when it is newer.
+  const updateOffered=useRef(false);
+  useEffect(()=>{
+    const check=async()=>{
+      if(document.visibilityState!=="visible"||updateOffered.current||APP_VERSION==="dev")return;
+      try{
+        const r=await fetch(`/build.json?t=${Date.now()}`,{cache:"no-store"});if(!r.ok)return;
+        const {build}=await r.json();
+        if(build&&build!==APP_VERSION){updateOffered.current=true;
+          navigator.serviceWorker?.getRegistration?.().then(g=>g?.update()).catch(()=>{});
+          addToast("A new version is ready","info",{label:"Reload",fn:()=>location.reload()});}
+      }catch{}
+    };
+    document.addEventListener("visibilitychange",check);
+    return()=>document.removeEventListener("visibilitychange",check);
+  },[addToast]);
+
   // Retry only row-level writes that failed in a dead spot. Never do full-object foreground writes.
   useEffect(()=>{
     const flush=()=>{if(navigator.onLine!==false)flushOutbox();};
@@ -132,7 +180,7 @@ window.App = function App(){
 
   return(
     <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Libre Franklin',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
-      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:13,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
+      {syncStatus&&<div style={{background:C.bl,padding:"6px 14px",fontSize:13,color:C.t2,fontWeight:500,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<div style={{position:"sticky",top:0,zIndex:90}}><WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/></div>}
       <main style={{flex:1,padding:"16px 14px",paddingBottom:"calc(var(--tabbar-h) + var(--safe-b) + 24px)"}}>
         <TabPane active={tab==="dashboard"}><Today data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>

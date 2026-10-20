@@ -14,7 +14,7 @@ const ExerciseHistory=({data,ex,progKeyStr,onClose})=>{
   return(<Sheet open onClose={onClose} title={ex.name} right={pr?<span style={{fontSize:12,fontWeight:800,color:C.g,fontFamily:FD,whiteSpace:"nowrap"}}>PR {pr.weight}×{pr.reps} · e1RM {pr.e1rm}</span>:null}>
     {(lib?.cue||ex.cue)&&<div style={{fontSize:13,color:C.t2,lineHeight:1.5,marginBottom:10}}>{ex.cue||lib.cue}</div>}
     {hist.length>=2?(<div style={{marginBottom:10}}>
-      <div style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>E1RM · LAST {hist.length} SESSIONS</div>
+      <div style={{fontSize:13,fontWeight:500,color:C.t3}}>e1RM over the last {hist.length} sessions</div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,display:"block"}}>
         <polyline points={hist.map((h,i)=>`${xOf(i).toFixed(1)},${yOf(h.e1rm).toFixed(1)}`).join(" ")} fill="none" stroke={C.p} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         {hist.map((h,i)=><circle key={h.date} cx={xOf(i)} cy={yOf(h.e1rm)} r={i===prIdx?4.5:2.5} fill={i===prIdx?C.g:C.cd} stroke={i===prIdx?C.g:C.p} strokeWidth="1.5"/>)}
