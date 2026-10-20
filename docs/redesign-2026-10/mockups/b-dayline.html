@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Option B · Day line</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600&family=Albert+Sans:wght@400;500;600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F6F7;--card:#FFFFFF;--ink:#17191C;--t2:#62666D;--t3:#9EA3AA;--line:#E3E5E8;--now:#C2410C;--now-soft:#FBEDE5;--good:#2F7A3E;
+--w:'Libre Franklin',system-ui,sans-serif;--n:'Libre Franklin',system-ui,sans-serif}
+body.f2{--w:'Schibsted Grotesk',system-ui,sans-serif;--n:'Barlow',system-ui,sans-serif}
+body.f3{--w:'Albert Sans',system-ui,sans-serif;--n:'Albert Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#DADCDF;font-family:var(--w);color:var(--ink);-webkit-font-smoothing:antialiased}
+.row-of-phones{display:flex;gap:28px;padding:28px;flex-wrap:wrap}
+.phone{width:390px;height:844px;background:var(--bg);position:relative;overflow:hidden;flex:none}
+.scroll{padding:56px 20px 100px}
+.n{font-family:var(--n);font-variant-numeric:tabular-nums}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.top h1{font-size:22px;font-weight:600;letter-spacing:-.2px}
+.top span{font-size:13px;color:var(--t2)}
+.line{position:relative;margin-top:22px;padding-left:58px}
+.line:before{content:"";position:absolute;left:44px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.ev{position:relative;padding:0 0 22px}
+.ev .t{position:absolute;left:-60px;top:1px;width:34px;text-align:right;font:400 12px var(--n);color:var(--t3)}
+.ev:before{content:"";position:absolute;left:-17px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--bg);border:1.5px solid var(--t3)}
+.ev.done:before{background:var(--ink);border-color:var(--ink)}
+.ev.now:before{background:var(--now);border-color:var(--now);box-shadow:0 0 0 4px var(--now-soft)}
+.ev.now .t{color:var(--now);font-weight:500}
+.ev .h{font-size:15px;font-weight:500}
+.ev .s{font-size:13px;color:var(--t2);margin-top:2px}
+.ev.later .h{color:var(--t2)}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-top:10px;border:1px solid var(--line)}
+.btn{background:var(--now);color:#fff;border:0;border-radius:9px;font:500 15px var(--w);height:46px;width:100%}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:6px 0}
+.kv span:first-child{color:var(--t2)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:82px;background:rgba(245,246,247,.86);backdrop-filter:blur(18px);border-top:1px solid var(--line);display:flex;padding:10px 24px 0}
+.tab{flex:1;text-align:center;font-size:12px;font-weight:500;color:var(--t3)}
+.tab.on{color:var(--ink)}
+.tab.on:before{content:"";display:block;width:18px;height:2px;background:var(--ink);margin:0 auto 8px;border-radius:1px}
+.tab:not(.on):before{content:"";display:block;height:2px;margin-bottom:8px}
+.lift{padding:14px 0;border-top:1px solid var(--line)}
+.lift .h{display:flex;justify-content:space-between;font-size:15px;font-weight:500}
+.sets{display:grid;grid-template-columns:28px 1fr 1fr 1fr 28px;row-gap:2px;margin-top:10px;font-size:14px;align-items:center}
+.sets .hd{font-size:12px;color:var(--t3)}
+.cell{height:40px;display:flex;align-items:center;justify-content:center;margin-right:6px}
+.cur{background:var(--card);border:1.5px solid var(--now);border-radius:8px;font:500 18px var(--n)}
+.chk{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--t3)}
+.chk.on{background:var(--ink);border-color:var(--ink);position:relative}
+.chk.on:after{content:"";position:absolute;left:6px;top:2px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dim{color:var(--t3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);margin-top:16px}
+.grid2>div{padding:14px 0;border-bottom:1px solid var(--line)}
+.grid2>div:nth-child(odd){padding-right:12px;border-right:1px solid var(--line)}
+.grid2>div:nth-child(even){padding-left:16px}
+.grid2 .k{font-size:12px;color:var(--t2)}
+.grid2 .v{font:500 20px var(--n);margin-top:4px}
+</style></head><body><div class="row-of-phones">
+
+<!-- TODAY (10:00) -->
+<div class="phone"><div class="scroll">
+  <div class="top"><h1>Sunday</h1><span>Oct 11 · Week 1 of 8</span></div>
+  <div class="line">
+    <div class="ev done"><span class="t">7:12</span><div class="h">Weighed in <span class="n">182.6</span></div><div class="s">Trend <span class="n">183.1</span> · <span style="color:var(--good)">−1.4 lb/wk, on pace</span></div></div>
+    <div class="ev done"><span class="t">7:30</span><div class="h">Recovery <span class="n">72%</span></div><div class="s">HRV <span class="n">61</span> · sleep <span class="n">7:12</span> · full session</div></div>
+    <div class="ev now"><span class="t">Now</span><div class="h">Upper A · Strength</div><div class="s">5 lifts · about 51 min</div>
+      <div class="card">
+        <div class="kv"><span>Machine Chest Press</span><span class="n">3 × 140</span></div>
+        <div class="kv"><span>Seated Row Machine</span><span class="n">2 × 160</span></div>
+        <div class="kv"><span>Shoulder Press</span><span class="n">2 × 95</span></div>
+        <div class="kv"><span>Pull-ups</span><span class="n">3 × BW</span></div>
+        <div class="kv" style="margin-bottom:12px"><span>Pec Deck</span><span class="n">2 × 90</span></div>
+        <button class="btn">Start session</button>
+      </div>
+    </div>
+    <div class="ev later"><span class="t">Day</span><div class="h">Food <span class="n">142</span> of <span class="n">200</span> g protein</div><div class="s"><span class="n">1,420</span> of <span class="n">1,900</span> cal · water <span class="n">48</span> of <span class="n">128</span> oz</div></div>
+    <div class="ev later"><span class="t">19:30</span><div class="h">Close the day</div><div class="s">Stretch · clean day check</div></div>
+  </div>
+</div>
+<div class="tabbar"><div class="tab on">Today</div><div class="tab">Train</div><div class="tab">Trends</div><div class="tab">You</div></div></div>
+
+<!-- WORKOUT -->
+<div class="phone"><div class="scroll">
+  <div class="top"><h1>Upper A</h1><span class="n" style="color:var(--now)">12:40</span></div>
+  <div style="font-size:13px;color:var(--t2);margin-top:4px">Lift 1 of 5 · rest <span class="n">1:48</span> left</div>
+  <div class="lift" style="margin-top:18px">
+    <div class="h"><span>Machine Chest Press</span><span class="n dim" style="font-size:13px">5–8</span></div>
+    <div style="font-size:13px;color:var(--t2);margin-top:2px">Last <span class="n">135 × 8, 8, 7</span> · all 8s moves it to <span class="n">145</span></div>
+    <div class="sets">
+      <span class="hd">Set</span><span class="hd">Last</span><span class="hd" style="text-align:center">lb</span><span class="hd" style="text-align:center">Reps</span><span></span>
+      <span class="n dim">1</span><span class="n dim">135×8</span><span class="cell n">140</span><span class="cell n">8</span><span class="chk on"></span>
+      <span class="n" style="color:var(--now)">2</span><span class="n dim">135×8</span><span class="cell cur">140</span><span class="cell cur">8</span><span class="chk"></span>
+      <span class="n dim">3</span><span class="n dim">135×7</span><span class="cell n dim">140</span><span class="cell n dim">8</span><span class="chk"></span>
+    </div>
+  </div>
+  <div class="lift"><div class="h"><span>Seated Row Machine</span><span class="n dim" style="font-size:13px">2 × 160</span></div></div>
+  <div class="lift"><div class="h"><span>Machine Shoulder Press</span><span class="n dim" style="font-size:13px">2 × 95</span></div></div>
+  <div class="lift"><div class="h"><span>Pull-ups</span><span class="n dim" style="font-size:13px">3 × BW</span></div></div>
+  <div class="lift" style="border-bottom:1px solid var(--line)"><div class="h"><span>Pec Deck</span><span class="n dim" style="font-size:13px">2 × 90</span></div></div>
+  <div style="display:flex;gap:10px;margin-top:22px"><button class="btn">Log set 2</button></div>
+  <div style="text-align:center;font-size:13px;color:var(--t2);margin-top:14px">Skip set · Swap lift</div>
+</div>
+<div class="tabbar"><div class="tab">Today</div><div class="tab on">Train</div><div class="tab">Trends</div><div class="tab">You</div></div></div>
+
+<!-- TRENDS -->
+<div class="phone"><div class="scroll" style="padding-left:0;padding-right:0">
+  <div style="padding:0 20px"><div class="top"><h1>Weight</h1><span>2W · <span style="color:var(--ink)">8W</span> · All</span></div>
+  <div style="margin-top:18px;display:flex;align-items:baseline;gap:8px"><span class="n" style="font-size:40px;font-weight:600;letter-spacing:-.5px">183.1</span><span style="font-size:13px;color:var(--t2)">lb trend</span></div>
+  <div style="font-size:13px;color:var(--good);margin-top:2px">−1.4 lb/wk · on pace for Nov 22</div></div>
+  <div id="b1" style="margin-top:18px;padding-left:20px"></div>
+  <div style="padding:0 20px">
+  <div class="grid2">
+    <div><div class="k">To goal</div><div class="v">8.1 lb</div></div>
+    <div><div class="k">Burn estimate</div><div class="v">2,405</div></div>
+    <div><div class="k">Weigh-ins, week</div><div class="v">5/7</div></div>
+    <div><div class="k">Protein, 7-day</div><div class="v">184 g</div></div>
+  </div>
+  <div style="font-size:13px;color:var(--t2);margin-top:16px;line-height:1.45">Scale moves with water. The line is what counts.</div>
+  </div>
+</div>
+<div class="tabbar"><div class="tab">Today</div><div class="tab">Train</div><div class="tab on">Trends</div><div class="tab">You</div></div></div>
+
+</div>
+<script src="kit.js"></script>
+<script>
+const f=new URLSearchParams(location.search).get("f");if(f)document.body.classList.add("f"+f);
+weightChart(document.getElementById('b1'),{numFont:getComputedStyle(document.body).getPropertyValue("--n"),bg:"#F5F6F7",gridC:"#E3E5E8",labelC:"#9EA3AA",goalC:"#2F7A3E",lineC:"#17191C",dotC:"#B4B8BE",dotR:2.2,crossC:"#9EA3AA",w:370,h:260,grid:[180,185],goal:175,ahead:5,xlabels:[[0,'Sep 28'],[13,'Today'],[18,'Oct 16']],padR:38});
+</script></body></html>

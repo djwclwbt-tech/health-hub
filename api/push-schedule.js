@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 import { waitUntil } from '@vercel/functions';
 import { createHash } from 'node:crypto';
-import { preflight, requireToken, bodyOf, supabaseEnv } from '../lib/http.mjs';
+import { preflight, requireToken, sameOrigin, bodyOf, supabaseEnv } from '../lib/http.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const MAX_DELAY_MS = 30 * 60 * 1000;
@@ -38,7 +38,7 @@ const sendPush = async ({ subscription, title, body, tag, url }) => {
 // skipping a rest clears it. Just before sending, the server checks that its job
 // is still the current one, so a skipped or re-timed rest never buzzes later.
 // If the table is missing or Supabase is down, alerts send as before (fail open).
-const deviceOf = (sub) => createHash('sha256').update(String(sub?.endpoint || '')).digest('hex').slice(0, 32);
+const deviceOf = (sub) => createHash('sha256').update(String(pushEndpointOk(sub?.endpoint) || sub?.endpoint || '')).digest('hex').slice(0, 32);
 const ledger = async (method, query = '', body) => {
   const { url, key } = supabaseEnv();
   return fetch(`${url}/rest/v1/push_jobs${query}`, { method, signal: AbortSignal.timeout(5000),
@@ -56,6 +56,20 @@ export const stillCurrent = async (job) => {
     const rows = await r.json();
     return !Array.isArray(rows) || !rows.length || rows[0].tag === job.tag;
   } catch { return true; }
+};
+
+// Only real browser push services. Without this a caller could aim the server's
+// signed POST at any URL (the Origin gate is spoofable by scripts).
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.apple\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
+// Returns the normalized endpoint (sent on instead of the raw string, so web-push's
+// parser cannot read a different host than this check did), or null.
+export const pushEndpointOk = (endpoint) => {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== 'https:' || u.username || u.password || u.port || !/^[a-z0-9.-]+$/.test(u.hostname)) return null;
+    return PUSH_HOSTS.some((re) => re.test(u.hostname)) ? u.origin + u.pathname + u.search : null;
+  } catch { return null; }
 };
 
 // 404/410 from the push service = the browser dropped this subscription.
@@ -76,9 +90,9 @@ export const scheduleOrSend = async (req, job) => {
 
   await sleep(HOP_MS);
   if (!(await stillCurrent(job))) return;
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers.host;
-  await fetch(`${proto}://${host}/api/push-schedule`, {
+  // The hop carries NOTIFY_TOKEN, so its address comes from Vercel's env, never from request headers.
+  const host = (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) || process.env.VERCEL_URL || req.headers.host;
+  await fetch(`https://${host}/api/push-schedule`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -98,7 +112,10 @@ export default async function handler(req, res) {
     });
   }
 
-  if (!requireToken(req, res, 'NOTIFY_TOKEN', { header: 'x-notify-token', unsetStatus: 503 })) return;
+  // The app's own page may book its alert without the token (a phone that never
+  // had NOTIFY_TOKEN typed in got 401 on every rest and fell back to a timer iOS
+  // freezes). Scripts and the server's own hops still use the token.
+  if (!sameOrigin(req) && !requireToken(req, res, 'NOTIFY_TOKEN', { header: 'x-notify-token', unsetStatus: 503 })) return;
   if (!configureWebPush()) return res.status(500).json({ error: 'VAPID keys not configured' });
 
   try {
@@ -110,6 +127,9 @@ export default async function handler(req, res) {
     if (!job.subscription?.endpoint || !job.subscription?.keys?.p256dh || !job.subscription?.keys?.auth) {
       return res.status(400).json({ error: 'Valid push subscription required' });
     }
+    const endpoint = pushEndpointOk(job.subscription.endpoint);
+    if (!endpoint) return res.status(400).json({ error: 'Unknown push service' });
+    job.subscription = { ...job.subscription, endpoint };
     const dueAt = Number(job.dueAt || Date.now());
     if (!Number.isFinite(dueAt)) return res.status(400).json({ error: 'Valid dueAt required' });
     if (dueAt - Date.now() > MAX_DELAY_MS) return res.status(400).json({ error: 'Delay too long' });

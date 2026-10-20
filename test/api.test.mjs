@@ -292,7 +292,18 @@ test('push-schedule: reports configuration, validates jobs, enforces NOTIFY_TOKE
   let r = res(); await handler(req({}), r); assert.equal(r.body.ok, false);
   r = res(); await handler(req({ method: 'POST', body: {} }), r); assert.equal(r.statusCode, 401);
   r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: { subscription: {} } }), r); assert.equal(r.statusCode, 500, 'no VAPID keys → 500');
+  r = res(); await handler(req({ method: 'POST', headers: { host: 'hh.app', origin: 'https://hh.app' }, body: { subscription: {} } }), r); assert.equal(r.statusCode, 500, 'same-origin app page passes without the token');
+  r = res(); await handler(req({ method: 'POST', headers: { host: 'hh.app', origin: 'https://evil.example' }, body: {} }), r); assert.equal(r.statusCode, 401, 'other sites still need the token');
 }));
+
+test('push-schedule: only real push services are accepted as endpoints', async () => {
+  const { pushEndpointOk } = await import('../api/push-schedule.js');
+  assert.equal(pushEndpointOk('https://web.push.apple.com/abc'), 'https://web.push.apple.com/abc');
+  assert.ok(pushEndpointOk('https://fcm.googleapis.com/fcm/send/abc'));
+  for (const bad of ['https://evil.example/x', 'http://web.push.apple.com/abc', 'https://push.apple.com.evil.example/x',
+    'https://user@web.push.apple.com/x', 'https://web.push.apple.com:8443/x', 'https://evil.example\\@web.push.apple.com/x'])
+    assert.equal(pushEndpointOk(bad), null, bad);
+});
 
 test('push-schedule: refuses scheduling when NOTIFY_TOKEN is not configured', env({ VAPID_PUBLIC_KEY: 'pk', VAPID_PRIVATE_KEY: 'sk', NOTIFY_TOKEN: null }, async () => {
   const { default: handler } = await import('../api/push-schedule.js?no-token');
@@ -306,7 +317,7 @@ test('push-schedule: an expired subscription (404/410) comes back as a clear 410
   await env({ VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, NOTIFY_TOKEN: 'nt' }, async () => {
     const { default: handler } = await import('../api/push-schedule.js');
     const real = webpush.sendNotification;
-    const job = { subscription: { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } }, dueAt: Date.now() - 1 };
+    const job = { subscription: { endpoint: 'https://web.push.apple.com/x', keys: { p256dh: 'p', auth: 'a' } }, dueAt: Date.now() - 1 };
     try {
       webpush.sendNotification = async () => { throw Object.assign(new Error('Received unexpected response code'), { statusCode: 410 }); };
       let r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: job }), r);
@@ -345,7 +356,7 @@ test('push-schedule: a skipped or replaced rest alert never sends (latest-wins l
     const { default: handler, scheduleOrSend, stillCurrent } = await import('../api/push-schedule.js');
     const real = webpush.sendNotification; let sent = 0;
     webpush.sendNotification = async () => { sent++; return { statusCode: 201 }; };
-    const sub = { endpoint: 'https://push.example/x', keys: { p256dh: 'p', auth: 'a' } };
+    const sub = { endpoint: 'https://web.push.apple.com/x', keys: { p256dh: 'p', auth: 'a' } };
     try {
       // cancel: conditional PATCH on (device, tag), so it cannot wipe a newer alert
       mockFetch('/rest/v1/push_jobs', (u, init) => init.method === 'PATCH' ? new Response(null, { status: 204 }) : json([{ tag: 'rest-timer-2' }]));

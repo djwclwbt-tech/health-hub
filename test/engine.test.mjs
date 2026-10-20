@@ -194,7 +194,36 @@ test('swapOptions: same or related pattern, excludes the lift itself and anythin
 
 test('manualSlot gives a library lift a sane 3×8-12 slot', () => {
   const s = E.manualSlot(E.exLibById['db-shoulder-press']);
-  assert.deepEqual([s.sets, s.rr, s.rest, s.unit], [3, [8, 12], 90, 'lbs/hand']);
+  assert.deepEqual([s.sets, s.rr, s.rest, s.unit], [3, [8, 12], 120, 'lbs/hand']);
+});
+
+// ── rest between sets ───────────────────────────────────────────────────────
+test('ruleRest: compounds longest, lower > upper, 5-8 > 8-12, isolation 60 (90 for legs or a 5-8 range)', () => {
+  const r = (id, rr) => E.ruleRest({ id }, rr);
+  assert.equal(r('leg-press', [5, 8]), 180);
+  assert.equal(r('machine-leg-press', [10, 12]), 150);
+  assert.equal(r('machine-chest-press', [5, 8]), 150);
+  assert.equal(r('db-incline-press', [10, 12]), 120);
+  assert.equal(r('lying-leg-curl', [5, 8]), 90);
+  assert.equal(r('leg-extension', [10, 12]), 90);
+  assert.equal(r('db-lateral-raise', [10, 12]), 60);
+  assert.equal(r('seated-calf', [10, 12]), 60);
+});
+
+test('the shipped program follows the rest rule (supersets chain with 0)', () => {
+  for (const [day, s] of Object.entries(E.PROG.days)) for (const ex of s.exercises)
+    assert.equal(ex.rest, ex.rest === 0 ? 0 : E.ruleRest(ex), `${day} ${ex.id}`);
+});
+
+test('restFor: a swapped lift gets its own rest, never the old lift\'s; superset chains stay 0', () => {
+  const slot = { id: 'pec-deck', rr: [12, 15], rest: 60 };
+  assert.equal(E.restFor(slot), 60, 'planned lift keeps the plan number');
+  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 120 }, { id: 'hack-squat' }), 180, 'heavy squat swap');
+  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 180 }, { id: 'leg-extension' }), 90, 'isolation swap is shorter');
+  assert.equal(E.restFor({ id: 'incline-db-curl', rr: [10, 12], rest: 0 }, { id: 'cable-curl' }), 0);
+  const mon = E.PROG.days.monday;
+  const opts = E.swapOptions(base(), { exercises: [] }, mon.exercises[0], mon.exercises[0]);
+  assert.ok(opts.every(o => o.rest === 150), 'chest press swaps rest like a heavy press');
 });
 
 // ── history repair ──────────────────────────────────────────────────────────
@@ -467,4 +496,38 @@ test('sessionCursor treats skipped sets as handled', () => {
   assert.deepEqual([c.curEi, c.curSi], [2, 0]);
   exs[2].sets[0].skipped = true;
   assert.equal(E.sessionCursor(exs, () => 90).curEi, -1);
+});
+
+test('workoutLabel names a log from its own lifts, not the current program by position', () => {
+  const program = { monday: { name: 'Upper A', exercises: [{ id: 'machine-chest-press' }, { id: 'seated-row-machine' }] } };
+  // matches the current Monday → its name
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: [{ id: 'machine-chest-press' }, { id: 'seated-row-machine' }] }, program), 'Upper A');
+  // an old Monday from another block → derived from patterns, not "Upper A"
+  const lower = Object.values(E.exLibById).filter(e => ['squat', 'hinge', 'leg-curl'].includes(e.pattern)).slice(0, 3).map(e => ({ id: e.id }));
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: lower }, program), 'Lower body');
+  // a stored name wins; unknown ids fall back to "Workout"
+  assert.equal(E.workoutLabel({ name: 'Manual', day: 'monday', exercises: lower }, program), 'Manual');
+  assert.equal(E.workoutLabel({ day: 'monday', exercises: [{ id: 'cable-crunch' }] }, program), 'Workout');
+  assert.equal(E.exerciseName('cable-crunch'), 'Cable crunch');
+});
+
+test('cleanDur hides forgotten-finish durations', () => {
+  assert.equal(E.cleanDur(52), 52);
+  assert.equal(E.cleanDur(658), null);
+  assert.equal(E.cleanDur(null), null);
+  assert.equal(E.cleanDur(0), null);
+});
+
+test('getTrend flags a rate from too few weigh-ins as unreliable', () => {
+  const few = E.getTrend({ '2026-10-05': 186, '2026-10-06': 182.4, '2026-10-08': 181.4 }, '2026-10-11');
+  assert.equal(few.reliable, false);
+  const enough = E.getTrend({ '2026-10-01': 186, '2026-10-03': 185.6, '2026-10-06': 185.2, '2026-10-09': 184.8, '2026-10-11': 184.6 }, '2026-10-11');
+  assert.equal(enough.reliable, true);
+  assert.equal(enough.spanDays, 10);
+});
+
+test('describeChange turns Coach payloads into plain words', () => {
+  assert.equal(E.describeChange({ payload: { type: 'settings', field: 'weekendCal', value: 2000 } }), 'Weekend calories → 2,000');
+  assert.equal(E.describeChange({ payload: { type: 'exercise', action: 'swap', oldExerciseId: 'lat-pulldown', newExercise: { id: 'pull-ups', name: 'Pull-ups' } } }).startsWith('Swap '), true);
+  assert.equal(E.describeChange({ summary: 'Set protein to 200', payload: {} }), 'Set protein to 200');
 });

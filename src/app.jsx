@@ -3,11 +3,10 @@ import { bl, migrate, seedHistorical, backfillData, pruneProgression, repairDelo
 import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, syncHealth } from "./core/storage.js";
 import { C } from "./core/theme.js";
-import { Moments } from "./tabs/Moments.jsx";
-import { Nutrition } from "./tabs/Nutrition.jsx";
+import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";
-import { Weight } from "./tabs/Weight.jsx";
+import { Trends } from "./tabs/Trends.jsx";
 import { ToastStack } from "./ui/overlay.jsx";
 import { TabBar, TabPane, TABS, WorkoutTimerBar } from "./ui/shell.jsx";
 
@@ -34,9 +33,11 @@ window.App = function App(){
     if(first&&f&&!f.transient)addToast(`Sync failed: ${table} · not backed up`,"error");
   }),[addToast]);
 
+  const [missingTables,setMissingTables]=useState([]);
   useEffect(()=>{
     (async()=>{
       const sbData=await loadFromSB();
+      setMissingTables(sbData?.__missing||[]);   // tables that do not exist in the cloud (migration not run)
       let finalData;
       if(sbData){
         const local=ld();
@@ -130,15 +131,14 @@ window.App = function App(){
   },[]);
 
   return(
-    <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Barlow',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
-      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:12,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
+    <div style={{background:C.bg,color:C.t,minHeight:"100dvh",fontFamily:"'Libre Franklin',-apple-system,BlinkMacSystemFont,sans-serif",display:"flex",flexDirection:"column",maxWidth:520,margin:"0 auto"}}>
+      {syncStatus&&<div style={{background:C.pl,padding:"6px 14px",fontSize:13,color:C.p,fontWeight:600,textAlign:"center"}}>{syncStatus}</div>}
       {workout&&tab!=="training"&&<div style={{position:"sticky",top:0,zIndex:90}}><WorkoutTimerBar workout={workout} onTap={()=>setTab("training")} programDays={data.program}/></div>}
       <main style={{flex:1,padding:"16px 14px",paddingBottom:"calc(var(--tabbar-h) + var(--safe-b) + 24px)"}}>
-        <TabPane active={tab==="dashboard"}><Moments data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>
+        <TabPane active={tab==="dashboard"}><Today data={data} setData={setData} setTab={setTab} workout={workout} addToast={addToast}/></TabPane>
         <TabPane active={tab==="training"}><Training data={data} setData={setData} workout={workout} setWorkout={setWorkout} setTab={setTab} addToast={addToast} active={tab==="training"}/></TabPane>
-        <TabPane active={tab==="nutrition"}><Nutrition data={data} setData={setData} addToast={addToast}/></TabPane>
-        <TabPane active={tab==="weight"}><Weight data={data} setData={setData}/></TabPane>
-        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} syncFailures={syncFailures} addToast={addToast}/></TabPane>
+        <TabPane active={tab==="weight"}><Trends data={data} setData={setData}/></TabPane>
+        <TabPane active={tab==="settings"}><Settings data={data} setData={setData} setTab={setTab} missingTables={missingTables} syncFailures={syncFailures} addToast={addToast}/></TabPane>
       </main>
       <TabBar active={tab} set={setTab} hasActiveWorkout={!!workout}/>
       <ToastStack toasts={toasts} dismiss={dismissToast}/>
@@ -153,12 +153,12 @@ class ErrorBoundary extends React.Component{
   render(){
     if(!this.state.err)return this.props.children;
     const msg=this.state.err&&(this.state.err.message||String(this.state.err))||"Unknown error";
-    return React.createElement("div",{style:{padding:20,maxWidth:480,margin:"40px auto",fontFamily:"'Barlow',sans-serif"}},
-      React.createElement("h2",{style:{fontSize:18,fontWeight:700,marginBottom:8}},"Something went wrong"),
-      React.createElement("p",{style:{fontSize:14,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe. Clear the cache and reload."),
-      React.createElement("pre",{style:{fontSize:11,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid var(--line)",color:"var(--danger)"}},msg),
+    return React.createElement("div",{style:{padding:20,maxWidth:480,margin:"40px auto",fontFamily:"'Libre Franklin',sans-serif"}},
+      React.createElement("h2",{style:{fontSize:20,fontWeight:700,marginBottom:8}},"Something went wrong"),
+      React.createElement("p",{style:{fontSize:16,opacity:.7,marginBottom:14}},"The app hit an error while rendering. Your data is safe. Clear the cache and reload."),
+      React.createElement("pre",{style:{fontSize:12,padding:10,borderRadius:4,overflow:"auto",whiteSpace:"pre-wrap",border:"1px solid var(--line)",color:"var(--danger)"}},msg),
       React.createElement("button",{onClick:()=>{try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch{}setTimeout(()=>location.reload(),300);},
-        style:{marginTop:14,padding:"10px 18px",background:"var(--ink)",color:"var(--on-accent)",border:"none",borderRadius:8,fontSize:14,fontWeight:600,cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.04em"}},"Clear cache & reload")
+        style:{marginTop:14,padding:"10px 18px",background:"var(--ink)",color:"var(--on-accent)",border:"none",borderRadius:8,fontSize:16,fontWeight:600,cursor:"pointer"}},"Clear cache & reload")
     );
   }
 }

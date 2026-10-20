@@ -157,3 +157,15 @@ test('makeClient: patch/deleteRow/deleteAll report failures instead of throwing 
   const server = makeClient({ fetchImpl: async () => { throw new Error('offline'); } });
   await assert.rejects(() => server.patch('settings', 'id=eq.user', {}), /offline/);
 });
+
+test('loadAll names tables that do not exist (404 PGRST205) in __missing, not offline ones', async () => {
+  const fetchImpl = async (u) => {
+    if (u.includes('/lytes?')) return res(404, { code: 'PGRST205', message: "Could not find the table 'public.lytes' in the schema cache" });
+    if (u.includes('/settings?')) throw new Error('offline');
+    return res(200, []);
+  };
+  const d = await loadAll(makeClient({ fetchImpl, onFailure: () => {}, retryMs: 1 }));
+  assert.deepEqual(d.__missing, ['lytes']);
+  assert.ok(d.__failed.includes('lytes') && d.__failed.includes('settings'));
+  assert.ok(!Object.keys(d).includes('__missing'));
+});
