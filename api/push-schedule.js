@@ -38,7 +38,7 @@ const sendPush = async ({ subscription, title, body, tag, url }) => {
 // skipping a rest clears it. Just before sending, the server checks that its job
 // is still the current one, so a skipped or re-timed rest never buzzes later.
 // If the table is missing or Supabase is down, alerts send as before (fail open).
-const deviceOf = (sub) => createHash('sha256').update(String(sub?.endpoint || '')).digest('hex').slice(0, 32);
+const deviceOf = (sub) => createHash('sha256').update(String(pushEndpointOk(sub?.endpoint) || sub?.endpoint || '')).digest('hex').slice(0, 32);
 const ledger = async (method, query = '', body) => {
   const { url, key } = supabaseEnv();
   return fetch(`${url}/rest/v1/push_jobs${query}`, { method, signal: AbortSignal.timeout(5000),
@@ -62,8 +62,14 @@ export const stillCurrent = async (job) => {
 // signed POST at any URL (the Origin gate is spoofable by scripts).
 const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.apple\.com$/,
   /^updates\.push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
+// Returns the normalized endpoint (sent on instead of the raw string, so web-push's
+// parser cannot read a different host than this check did), or null.
 export const pushEndpointOk = (endpoint) => {
-  try { const u = new URL(endpoint); return u.protocol === 'https:' && PUSH_HOSTS.some((re) => re.test(u.hostname)); } catch { return false; }
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== 'https:' || u.username || u.password || u.port || !/^[a-z0-9.-]+$/.test(u.hostname)) return null;
+    return PUSH_HOSTS.some((re) => re.test(u.hostname)) ? u.origin + u.pathname + u.search : null;
+  } catch { return null; }
 };
 
 // 404/410 from the push service = the browser dropped this subscription.
@@ -121,7 +127,9 @@ export default async function handler(req, res) {
     if (!job.subscription?.endpoint || !job.subscription?.keys?.p256dh || !job.subscription?.keys?.auth) {
       return res.status(400).json({ error: 'Valid push subscription required' });
     }
-    if (!pushEndpointOk(job.subscription.endpoint)) return res.status(400).json({ error: 'Unknown push service' });
+    const endpoint = pushEndpointOk(job.subscription.endpoint);
+    if (!endpoint) return res.status(400).json({ error: 'Unknown push service' });
+    job.subscription = { ...job.subscription, endpoint };
     const dueAt = Number(job.dueAt || Date.now());
     if (!Number.isFinite(dueAt)) return res.status(400).json({ error: 'Valid dueAt required' });
     if (dueAt - Date.now() > MAX_DELAY_MS) return res.status(400).json({ error: 'Delay too long' });

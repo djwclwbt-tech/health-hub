@@ -298,11 +298,11 @@ test('push-schedule: reports configuration, validates jobs, enforces NOTIFY_TOKE
 
 test('push-schedule: only real push services are accepted as endpoints', async () => {
   const { pushEndpointOk } = await import('../api/push-schedule.js');
-  assert.equal(pushEndpointOk('https://web.push.apple.com/abc'), true);
-  assert.equal(pushEndpointOk('https://fcm.googleapis.com/fcm/send/abc'), true);
-  assert.equal(pushEndpointOk('https://evil.example/x'), false);
-  assert.equal(pushEndpointOk('http://web.push.apple.com/abc'), false);
-  assert.equal(pushEndpointOk('https://push.apple.com.evil.example/x'), false);
+  assert.equal(pushEndpointOk('https://web.push.apple.com/abc'), 'https://web.push.apple.com/abc');
+  assert.ok(pushEndpointOk('https://fcm.googleapis.com/fcm/send/abc'));
+  for (const bad of ['https://evil.example/x', 'http://web.push.apple.com/abc', 'https://push.apple.com.evil.example/x',
+    'https://user@web.push.apple.com/x', 'https://web.push.apple.com:8443/x', 'https://evil.example\\@web.push.apple.com/x'])
+    assert.equal(pushEndpointOk(bad), null, bad);
 });
 
 test('push-schedule: refuses scheduling when NOTIFY_TOKEN is not configured', env({ VAPID_PUBLIC_KEY: 'pk', VAPID_PRIVATE_KEY: 'sk', NOTIFY_TOKEN: null }, async () => {
