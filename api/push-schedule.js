@@ -2,6 +2,7 @@ import webpush from 'web-push';
 import { waitUntil } from '@vercel/functions';
 import { createHash } from 'node:crypto';
 import { preflight, requireToken, sameOrigin, bodyOf, supabaseEnv } from '../lib/http.mjs';
+import { makeClient } from '../lib/supabase.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const MAX_DELAY_MS = 30 * 60 * 1000;
@@ -39,22 +40,22 @@ const sendPush = async ({ subscription, title, body, tag, url }) => {
 // is still the current one, so a skipped or re-timed rest never buzzes later.
 // If the table is missing or Supabase is down, alerts send as before (fail open).
 const deviceOf = (sub) => createHash('sha256').update(String(pushEndpointOk(sub?.endpoint) || sub?.endpoint || '')).digest('hex').slice(0, 32);
-const ledger = async (method, query = '', body) => {
-  const { url, key } = supabaseEnv();
-  return fetch(`${url}/rest/v1/push_jobs${query}`, { method, signal: AbortSignal.timeout(5000),
-    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: body ? JSON.stringify(body) : undefined });
-};
-const registerJob = async (job) => { try { await ledger('POST', '?on_conflict=device', { device: deviceOf(job.subscription), tag: job.tag, due_at: Math.round(job.dueAt) }); } catch {} };
+// The ledger lives as `program` rows (id `push:<device>`, see VIRTUAL in lib/supabase.mjs).
+const ledgerClient = () => { const { url, key } = supabaseEnv(); return makeClient({ url, key }); };
+const registerJob = async (job) => { try { await ledgerClient().upsert('push_jobs', { device: deviceOf(job.subscription), tag: job.tag, due_at: Math.round(job.dueAt) }, 'device'); } catch {} };
 // Clears only the named job, so a cancel that lands after the next rest's schedule cannot wipe it.
-const cancelJob = async (sub, tag) => { try { const r = await ledger('PATCH', `?device=eq.${deviceOf(sub)}&tag=eq.${encodeURIComponent(tag)}`, { tag: null }); return r.ok; } catch { return false; } };
+const cancelJob = async (sub, tag) => {
+  try {
+    const device = deviceOf(sub);
+    const c = ledgerClient();
+    return await c.patch('program', `id=eq.${encodeURIComponent('push:' + device)}&data->>tag=eq.${encodeURIComponent(tag)}`, { data: { device, tag: null, due_at: null } });
+  } catch { return false; }
+};
 export const stillCurrent = async (job) => {
   if (!job.tag) return true;
   try {
-    const r = await ledger('GET', `?device=eq.${deviceOf(job.subscription)}&select=tag`);
-    if (!r.ok) return true;
-    const rows = await r.json();
-    return !Array.isArray(rows) || !rows.length || rows[0].tag === job.tag;
+    const rows = await ledgerClient().select('push_jobs', 'device', 'desc', 1, `device=eq.${deviceOf(job.subscription)}`);
+    return !rows.length || rows[0].tag === job.tag;
   } catch { return true; }
 };
 

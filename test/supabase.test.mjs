@@ -106,7 +106,7 @@ test('loadAll: a failed read is not empty data · keys listed in non-enumerable 
     return res(200, []);
   };
   const d = await loadAll(makeClient({ fetchImpl, onFailure: (t, s, b, tr) => failures.push([t, s, tr]), retryMs: 1 }));
-  assert.deepEqual([...d.__failed].sort(), ['program', 'programVersion', 'settings']);
+  assert.deepEqual([...d.__failed].sort(), ['bodyMeas', 'lytes', 'program', 'programVersion', 'settings'], 'virtual stores ride on the program read');
   assert.ok(!Object.keys(d).includes('__failed'), 'not enumerable, so a key-merge loop never sees it');
   assert.equal(JSON.stringify(d).includes('__failed'), false);
   assert.equal(d.wt['2026-10-06'], 190);
@@ -160,12 +160,29 @@ test('makeClient: patch/deleteRow/deleteAll report failures instead of throwing 
 
 test('loadAll names tables that do not exist (404 PGRST205) in __missing, not offline ones', async () => {
   const fetchImpl = async (u) => {
-    if (u.includes('/lytes?')) return res(404, { code: 'PGRST205', message: "Could not find the table 'public.lytes' in the schema cache" });
+    if (u.includes('/recovery?')) return res(404, { code: 'PGRST205', message: "Could not find the table 'public.lytes' in the schema cache" });
     if (u.includes('/settings?')) throw new Error('offline');
     return res(200, []);
   };
   const d = await loadAll(makeClient({ fetchImpl, onFailure: () => {}, retryMs: 1 }));
-  assert.deepEqual(d.__missing, ['lytes']);
-  assert.ok(d.__failed.includes('lytes') && d.__failed.includes('settings'));
+  assert.deepEqual(d.__missing, ['recovery']);
+  assert.ok(d.__failed.includes('rec') && d.__failed.includes('settings'));
   assert.ok(!Object.keys(d).includes('__missing'));
+});
+
+test('lytes, measurements and push jobs live as program rows; the program read takes only id=user', async () => {
+  const calls = [];
+  const fetchImpl = async (u, init = {}) => { calls.push({ u, m: init.method || 'GET', b: init.body && JSON.parse(init.body) });
+    if (u.includes('id=like.lytes')) return res(200, [{ id: 'lytes:2026-10-21', data: { date: '2026-10-21', na: 810, k: 400, mg: 50 } }]);
+    if (u.includes('id=like.meas')) return res(200, [{ id: 'meas:2026-10-20', data: toRow.bodyMeas('2026-10-20', { waist: 34.5 }) }]);
+    return res(200, []); };
+  const c = makeClient({ fetchImpl, onFailure: () => {} });
+  const d = await loadAll(c);
+  assert.deepEqual(d.lytes['2026-10-21'], { na: 810, k: 400, mg: 50 });
+  assert.equal(d.bodyMeas['2026-10-20'].waist, 34.5);
+  assert.ok(calls.some(x => /\/program\?.*id=eq\.user/.test(x.u)), 'program row filtered to id=user');
+  await c.upsert('lytes', toRow.lytes('2026-10-21', { na: 1, k: 2, mg: 3 }));
+  const up = calls.at(-1); assert.match(up.u, /\/program\?on_conflict=id/); assert.deepEqual(up.b, { id: 'lytes:2026-10-21', data: { date: '2026-10-21', na: 1, k: 2, mg: 3 } });
+  await c.deleteRow('body_measurements', 'date', '2026-10-20');
+  assert.match(calls.at(-1).u, /\/program\?id=eq\.meas%3A2026-10-20/); assert.equal(calls.at(-1).m, 'DELETE');
 });
