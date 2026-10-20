@@ -58,6 +58,14 @@ export const stillCurrent = async (job) => {
   } catch { return true; }
 };
 
+// Only real browser push services. Without this a caller could aim the server's
+// signed POST at any URL (the Origin gate is spoofable by scripts).
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.apple\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
+export const pushEndpointOk = (endpoint) => {
+  try { const u = new URL(endpoint); return u.protocol === 'https:' && PUSH_HOSTS.some((re) => re.test(u.hostname)); } catch { return false; }
+};
+
 // 404/410 from the push service = the browser dropped this subscription.
 const isExpired = (err) => err?.statusCode === 404 || err?.statusCode === 410;
 
@@ -76,9 +84,9 @@ export const scheduleOrSend = async (req, job) => {
 
   await sleep(HOP_MS);
   if (!(await stillCurrent(job))) return;
-  const proto = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers.host;
-  await fetch(`${proto}://${host}/api/push-schedule`, {
+  // The hop carries NOTIFY_TOKEN, so its address comes from Vercel's env, never from request headers.
+  const host = (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) || process.env.VERCEL_URL || req.headers.host;
+  await fetch(`https://${host}/api/push-schedule`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -113,6 +121,7 @@ export default async function handler(req, res) {
     if (!job.subscription?.endpoint || !job.subscription?.keys?.p256dh || !job.subscription?.keys?.auth) {
       return res.status(400).json({ error: 'Valid push subscription required' });
     }
+    if (!pushEndpointOk(job.subscription.endpoint)) return res.status(400).json({ error: 'Unknown push service' });
     const dueAt = Number(job.dueAt || Date.now());
     if (!Number.isFinite(dueAt)) return res.status(400).json({ error: 'Valid dueAt required' });
     if (dueAt - Date.now() > MAX_DELAY_MS) return res.status(400).json({ error: 'Delay too long' });

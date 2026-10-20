@@ -39,7 +39,9 @@ talks to Supabase directly, so this stays the first thing to fix.
   app's own page passes by Origin (`sameOrigin`, 2026-10-20: the phone had no
   token and every rest alert got 401); scripts and the server's hops send
   `x-notify-token`. A forged Origin can only push to a subscription the caller
-  already holds.
+  already holds, and endpoints must be a known push service (Apple, Google,
+  Mozilla, Microsoft), so the route cannot be aimed at arbitrary URLs. A script
+  could still book many 30-min hop chains (function cost); accepted for now.
 - `/api/analyze` and `/api/bodycomp` (Claude API spend) require `x-sync-token`
   equal to `SYNC_TOKEN` when `SYNC_TOKEN` is set. The app sends Setup → Sync
   Token as that header, so the AI features need the token entered on the phone.
