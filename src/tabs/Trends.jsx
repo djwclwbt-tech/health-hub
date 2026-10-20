@@ -43,7 +43,7 @@ const WeightChart=({pts,goal,rate,onScrub,scrub,startDate})=>{
     onPointerDown={pick} onPointerMove={e=>{if(e.pointerType==="mouse"||e.buttons)pick(e);}} onPointerLeave={()=>onScrub(null)} onPointerUp={e=>{if(e.pointerType!=="mouse")onScrub(null);}}
     style={{display:"block",overflow:"visible",touchAction:"pan-y",cursor:"crosshair"}}>
     {grid.map(g=><g key={g}><line x1={pad.l} x2={W-pad.r} y1={y(g)} y2={y(g)} stroke={C.bd} strokeWidth="1"/>
-      <text x={W-pad.r+6} y={y(g)+4} fontSize="12" fill={C.t4} style={NUM}>{g}</text></g>)}
+      <text x={W-pad.r+6} y={y(g)+4} fontSize="12" fill={C.t3} style={NUM}>{g}</text></g>)}
     {showGoal&&<g><line x1={pad.l} x2={W-pad.r} y1={y(goal)} y2={y(goal)} stroke={C.g} strokeWidth="1" strokeDasharray="3 4"/>
       <text x={W-pad.r+6} y={y(goal)+4} fontSize="12" fill={C.g} style={NUM}>{goal}</text></g>}
     {projEnd!=null&&<path d={`M${xi(last)},${y(pts[last].v)}L${x(n)},${y(projEnd)}`} stroke={C.t} strokeWidth="1.5" strokeDasharray="2 4" fill="none" opacity=".5"/>}
@@ -53,7 +53,7 @@ const WeightChart=({pts,goal,rate,onScrub,scrub,startDate})=>{
         <circle cx={xi(scrub)} cy={y(s.raw)} r="3" fill={C.t3}/>
         <circle cx={xi(scrub)} cy={y(s.v)} r="4.5" fill={C.bg} stroke={C.t} strokeWidth="2"/></g>
       :<circle cx={xi(last)} cy={y(pts[last].v)} r="4" fill={C.bg} stroke={C.t} strokeWidth="2"/>}
-    {lbl.map(([lx,t,a])=><text key={t} x={lx} y={H-4} fontSize="12" fill={C.t4} textAnchor={a}>{t}</text>)}
+    {lbl.map(([lx,t,a])=><text key={t} x={lx} y={H-4} fontSize="12" fill={C.t3} textAnchor={a}>{t}</text>)}
   </svg>);
 };
 

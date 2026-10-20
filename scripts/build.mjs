@@ -3,7 +3,7 @@
 // then copied into ./public so Vercel serves only the app shell and static assets.
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
-import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +50,9 @@ for (const file of ['index.html', 'app.js', 'manifest.json', 'sw.js', 'icon-192.
   copyFileSync(join(root, file), join(pub, file));
 }
 for (const dir of ['vendor', 'fonts']) cpSync(join(root, dir), join(pub, dir), { recursive: true });
+// The running app compares this with its own build id when it comes back to the foreground.
+writeFileSync(join(pub, 'build.json'), JSON.stringify({ build: hash }));
+writeFileSync(join(root, 'build.json'), JSON.stringify({ build: hash }));
 
 const kb = (f) => (statSync(f).size / 1024).toFixed(1) + ' KB';
 console.log(`app.js ${kb(out)} · source ${kb(src)} · build ${hash}`);

@@ -127,6 +127,24 @@ test('applyWorkout: anchors progress on a full top-of-range session, accessories
   assert.deepEqual(Object.keys(d.prog), ['leg-press__5-8'], 'input data untouched');
 });
 
+test('applyWorkout: backfilling an older session never rolls the current weight back', () => {
+  const tue = PROG.days.tuesday;
+  const d = base({ prog: { 'deadlift__5-5': { currentWeight: 255, lastDate: '2026-10-20', lastReps: [5, 5, 5], e1rmHistory: [{ date: '2026-10-20', e1rm: 290 }] } } });
+  const w = E.buildSession(d, 'tuesday', tue, { date: '2026-10-13', now: 0 });
+  w.exercises[0].sets = sets(235, [5, 5, 5]);
+  const { data: nd } = E.applyWorkout(d, w, tue, '2026-10-13', 60 * 60000);
+  const row = nd.prog['deadlift__5-5'];
+  assert.equal(row.currentWeight, 255, 'newer weight kept');
+  assert.equal(row.lastDate, '2026-10-20');
+  assert.deepEqual(row.e1rmHistory.map(x => x.date), ['2026-10-13', '2026-10-20'], 'old point filed in date order');
+  assert.ok(nd.wk['2026-10-13'], 'the log is still written');
+});
+
+test('buildSession pins each lift to its own slot', () => {
+  const w = E.buildSession(base(), 'tuesday', PROG.days.tuesday, { date: TODAY, now: 0 });
+  assert.equal(w.exercises[0].slot.id, PROG.days.tuesday.exercises[0].id);
+});
+
 test('applyWorkout appends a second same-day session instead of overwriting the first', () => {
   const monday = PROG.days.monday;
   const thursday = PROG.days.thursday;

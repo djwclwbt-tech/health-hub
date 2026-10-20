@@ -108,7 +108,7 @@ const AnalysisSection=({data})=>{
     </div>
   );
 
-  const scoreColor=(s)=>s>=70?C.g:s>=45?C.t2:C.r;
+  const scoreColor=(s)=>s>=70?C.g:s>=45?C.t2:C.t;
 
   return(
     <div style={{marginTop:8,borderTop:`1px solid ${C.bl}`,paddingTop:10}}>
@@ -162,8 +162,8 @@ const AnalysisSection=({data})=>{
               </X>
             )}
             {result.gaps&&result.gaps.length>0&&(
-              <X style={{padding:10,borderTop:`3px solid ${C.r}`}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.r,marginBottom:6}}>Gaps</div>
+              <X style={{padding:10,borderTop:`3px solid ${C.bd}`}}>
+                <div style={{fontSize:13,fontWeight:500,color:C.t2,marginBottom:6}}>Gaps</div>
                 {result.gaps.map((g,i)=>(
                   <div key={i} style={{fontSize:13,color:C.t2,marginBottom:4,paddingLeft:8,borderLeft:`2px solid ${C.rl}`}}>{g}</div>
                 ))}

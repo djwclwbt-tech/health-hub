@@ -30,6 +30,10 @@
     {
       "path": "/api/cronometer-sync",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cronometer-sync",
+      "schedule": "0 3 * * *"
     }
   ],
   "headers": [

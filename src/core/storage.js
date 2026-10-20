@@ -38,23 +38,33 @@ const sb=makeClient({onFailure:reportSyncFailure,onSuccess:reportSyncSuccess});
 const SB_OUTBOX_KEY="dhub6_sb_outbox";
 const readOutbox=()=>{try{return JSON.parse(localStorage.getItem(SB_OUTBOX_KEY)||"[]")}catch{return[]}};
 const writeOutbox=(items)=>{try{localStorage.setItem(SB_OUTBOX_KEY,JSON.stringify(items.slice(-200)))}catch{}};
+// One queued job per row: a later write (upsert or delete) replaces an earlier one,
+// so a retried upsert can never bring back a row that was deleted after it.
+const rowKey=j=>JSON.stringify([j.table,j.conflict||"",j.col||"",j.val??j.data?.date??j.data?.exercise_id??j.data?.id??""]);
 const enqueueOutbox=(job)=>{
-  const key=JSON.stringify([job.op,job.table,job.conflict||"",job.col||"",job.val??"",job.data?.date??job.data?.exercise_id??job.data?.id??""]);
-  const items=readOutbox().filter(j=>JSON.stringify([j.op,j.table,j.conflict||"",j.col||"",j.val??"",j.data?.date??j.data?.exercise_id??j.data?.id??""])!==key);
+  const key=rowKey(job);
+  const items=readOutbox().filter(j=>rowKey(j)!==key);
   items.push({...job,queuedAt:Date.now()});writeOutbox(items);
 };
-const trackedUpsert=(table,data,conflict="date")=>sb.upsert(table,data,conflict).then(ok=>{if(!ok&&syncHealth.failures[table]?.transient)enqueueOutbox({op:"upsert",table,data,conflict});return ok;});
-const trackedDelete=(table,col,val)=>sb.deleteRow(table,col,val).then(ok=>{if(!ok)enqueueOutbox({op:"delete",table,col,val});return ok;});
-const flushOutbox=async()=>{
-  const items=readOutbox();if(!items.length)return;
-  const keep=[];
-  for(const job of items){
-    const ok=job.op==="delete"?await sb.deleteRow(job.table,job.col,job.val):await sb.upsert(job.table,job.data,job.conflict||"date");
-    if(!ok&&syncHealth.failures[job.table]?.transient)keep.push(job);
-    if(!ok&&!syncHealth.failures[job.table]?.transient)keep.push(job); // keep hard failures visible until schema/auth is fixed.
-  }
-  writeOutbox(keep);
-};
+// A write that lands supersedes anything still queued for that row.
+const dropQueued=(job)=>{const key=rowKey(job);const items=readOutbox();const left=items.filter(j=>rowKey(j)!==key);if(left.length!==items.length)writeOutbox(left);};
+const trackedUpsert=(table,data,conflict="date")=>{const job={op:"upsert",table,data,conflict};
+  return sb.upsert(table,data,conflict).then(ok=>{if(ok)dropQueued(job);else enqueueOutbox(job);return ok;});};
+const trackedDelete=(table,col,val)=>{const job={op:"delete",table,col,val};
+  return sb.deleteRow(table,col,val).then(ok=>{if(ok)dropQueued(job);else enqueueOutbox(job);return ok;});};
+let flushing=null;
+const flushOutbox=()=>flushing||(flushing=(async()=>{
+  try{
+    const items=readOutbox();if(!items.length)return;
+    const sent=new Set();
+    for(const job of items){
+      const ok=job.op==="delete"?await sb.deleteRow(job.table,job.col,job.val):await sb.upsert(job.table,job.data,job.conflict||"date");
+      if(ok)sent.add(job.queuedAt+"|"+rowKey(job));   // failed jobs stay queued (hard failures stay visible until schema/auth is fixed)
+    }
+    // Re-read: jobs queued while this flush ran must survive it.
+    writeOutbox(readOutbox().filter(j=>!sent.has(j.queuedAt+"|"+rowKey(j))));
+  }finally{flushing=null;}
+})());
 const svSB={
   weight:(date,value)=>trackedUpsert("weight",toRow.weight(date,value)),
   steps:(date,value)=>trackedUpsert("steps",toRow.steps(date,value)),

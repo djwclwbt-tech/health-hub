@@ -17,10 +17,15 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
   const syncOk=hardTables.length===0;
   const t=td();
   const st=data.settings||DEFAULTS;
-  const [f,setF]=useState({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
+  const formOf=st=>({calories:""+st.calories,protein:""+st.protein,water:""+st.water,steps:""+cutStepsTarget(st),sleep:""+st.sleep,fiber:""+(st.fiber||30),
     trainingCal:""+(st.trainingCal??DEFAULTS.trainingCal),wednesdayCal:""+(st.wednesdayCal??DEFAULTS.wednesdayCal),weekendCal:""+(st.weekendCal??DEFAULTS.weekendCal),syncToken:st.syncToken||"",notifyToken:st.notifyToken||""});
+  const [f,setF]=useState(()=>formOf(st));
   const [saved,setSaved]=useState(false);
   const [editTargets,setEditTargets]=useState(false);
+  // While the editor is closed, the tiles follow the stored settings (cloud merge, Coach edits),
+  // so opening it and saving can never push old numbers back over newer ones.
+  useEffect(()=>{if(!editTargets)setF(formOf(data.settings||DEFAULTS));},[data.settings,editTargets]);
+  const saveToken=v=>{const nd={...data,settings:{...data.settings,syncToken:v.trim()}};setData(nd);sv(nd);};
   const [showClassic,setShowClassic]=useState(false);
   useBackClose(showClassic,()=>setShowClassic(false));
   const [showReset,setShowReset]=useState(false);
@@ -37,7 +42,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
       {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`Synced ${fmt(lastNut)}`:"No data"},
       {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`Synced ${fmt(lastRecRow[0])}`:`Last worn ${fmt(lastRecRow[0])}`):"No data"},
       {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
-      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · needs migration`},
+      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · ${/^404/.test(syncFailures[hardTables[0]]?.msg||"")?"table missing":"write failed"}`},
       {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"Off"},
     ];
   })();
@@ -79,15 +84,15 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
       </div>
     </div>
     <X style={{padding:"14px 16px"}}>
-      <div style={{fontSize:12,fontWeight:700,color:C.t3,fontFamily:FD}}>Targets & day types</div>
+      <div style={{fontSize:13,fontWeight:500,color:C.t3}}>Targets and day types</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:10}}>
-        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"Train cal"},{v:`${f.protein||200}g`,l:"Protein"},{v:f.water||128,l:"Water oz"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"Steps"},{v:"0",l:"Wed fast"},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"Sat/Sun"}].map(x=>(
+        {[{v:(+f.trainingCal||2000).toLocaleString(),l:"Train cal"},{v:`${f.protein||200}g`,l:"Protein"},{v:f.water||128,l:"Water oz"},{v:`${Math.round((+f.steps||15000)/1000)}k`,l:"Steps"},{v:(+f.wednesdayCal||0).toLocaleString(),l:"Wed cal"},{v:`${(((+f.weekendCal||1800)+100)/1000).toFixed(1)}/${(((+f.weekendCal||1800)-100)/1000).toFixed(1)}k`,l:"Sat/Sun"}].map(x=>(
           <button key={x.l} onClick={()=>setEditTargets(v=>!v)} style={{background:C.bg,border:"none",borderRadius:8,padding:"9px 6px",textAlign:"center",cursor:"pointer"}}>
             <div style={{fontSize:19,fontWeight:500,fontVariantNumeric:"tabular-nums",color:C.t}}>{x.v}</div>
             <div style={{fontSize:13,color:C.t3,marginTop:2}}>{x.l}</div>
           </button>))}
       </div>
-      <div style={{fontSize:12,color:C.t3,marginTop:8}}>tap any tile to edit · day types drive Food and the fast clock</div>
+      <div style={{fontSize:13,color:C.t3,marginTop:8}}>Tap any tile to edit. Day types drive Food and the fast clock.</div>
     </X>
     {/* ═══ TRAVEL DAY ═══ */}
     <X style={{}}>
@@ -124,7 +129,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
           <span style={{fontSize:15,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
         </div>))}
     </X>
-    {missingTables.length>0&&(()=>{const MIG={lytes:"2026-07-26-lytes.sql",body_measurements:"2026-09-08_coach.sql",program_updates:"2026-09-08_coach.sql",push_jobs:"2026-10-08_push_jobs.sql"};
+    {missingTables.length>0&&(()=>{const MIG={lytes:"2026-10-20_missing_tables.sql",body_measurements:"2026-10-20_missing_tables.sql",program_updates:"2026-09-08_coach.sql",push_jobs:"2026-10-20_missing_tables.sql"};
       const files=[...new Set(missingTables.map(tb=>MIG[tb]||"the matching file"))];return(
       <div style={{border:`1px solid ${C.r}`,borderRadius:12,padding:"12px 16px",background:C.cd}}>
         <div style={{fontSize:17,fontWeight:500,color:C.r}}>Missing in the cloud: {missingTables.join(", ")}</div>
@@ -183,12 +188,12 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
     <S title="Apple Health sync setup" collapsible defaultOpen={false}>
     {/* ═══ HEALTH SYNC ═══ */}
     <X style={{}}>
-      <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:4}}>Steps + Weight Sync (via Apple Health)</div>
+      <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:4}}>Steps and weight from Apple Health</div>
       <div style={{fontSize:13,color:C.t3,marginBottom:8}}>Food comes from Cronometer automatically (nightly). Steps and weight sync via Apple Shortcut. Set the same token in Vercel env var SYNC_TOKEN.</div>
-      <div><L>Sync Token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} placeholder="Set a secret token"
+      <div><L>Sync token</L><input value={f.syncToken} onChange={e=>setF({...f,syncToken:e.target.value})} onBlur={e=>saveToken(e.target.value)} placeholder="Set a secret token"
         style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:15,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/></div>
       <div style={{marginTop:8,padding:8,background:C.bg,borderRadius:6,fontSize:12,color:C.t2,lineHeight:1.6,border:`1px solid ${C.bd}`}}>
-        <div style={{fontWeight:700,marginBottom:4,color:C.t2}}>Steps + Weight Shortcuts:</div>
+        <div style={{fontWeight:700,marginBottom:4,color:C.t2}}>Shortcuts for steps and weight</div>
         Steps: sum today's Step Count samples, round to a whole number, then call:<br/>
         <span style={{fontFamily:"monospace",fontSize:12,wordBreak:"break-all",display:"block",marginTop:4,padding:"4px 6px",background:C.cd,borderRadius:6,border:`1px solid ${C.bd}`}}>
           https://your-domain.vercel.app/api/sync-steps?token=YOUR_TOKEN&amp;date=YYYY-MM-DD&amp;steps=STEP_SUM
@@ -287,17 +292,10 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
             {(data.settings.notifications||{}).enabled&&(
               <div style={{display:"flex",gap:6,marginTop:8}}>
                 <B small outline onClick={()=>{notifyDevice("Health Hub test",{body:"Notifications reach this phone.",tag:"notification-test",requireInteraction:false});}}>Test now</B>
-                <B small outline onClick={()=>{scheduleServerPush({title:"Health Hub push test",body:"Closed-app push works. Rest timers will reach you.",tag:"server-push-test",dueAt:Date.now()+8000,url:"/"}).then(ok=>{if(!ok)notifyDevice("Server push unavailable",{body:"VAPID keys or the push token are missing. Rest alerts fire only while the app is open.",tag:"server-push-test",requireInteraction:false});});}}>Test closed-app push in 8s</B>
+                <B small outline onClick={()=>{scheduleServerPush({title:"Health Hub push test",body:"Closed-app push works. Rest timers will reach you.",tag:"server-push-test",dueAt:Date.now()+8000,url:"/"}).then(ok=>{if(!ok)notifyDevice("Server push unavailable",{body:"The server could not book it. Rest alerts fire only while the app is open.",tag:"server-push-test",requireInteraction:false});});}}>Test closed-app push in 8s</B>
               </div>
             )}
-            {(data.settings.notifications||{}).enabled&&(
-              <div style={{marginTop:8}}>
-                <L>Push token</L>
-                <input value={f.notifyToken} onChange={e=>setF({...f,notifyToken:e.target.value})} placeholder="Same value as Vercel env NOTIFY_TOKEN"
-                  style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.bd}`,borderRadius:6,fontSize:15,fontFamily:"inherit",background:C.cd,color:C.t,boxSizing:"border-box"}}/>
-                <div style={{fontSize:12,color:C.t3,marginTop:3}}>Authorizes closed-app rest-timer push. Saved with Save Targets.</div>
-              </div>
-            )}
+
           </>
         )}
       </X>
@@ -325,7 +323,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
       <div style={{fontSize:13,color:C.t3}}>~{PROG.startWeight} → under {PROG.targetWeight} lbs · Checkpoint week {PROG.checkpoint.week} ({fmt(PROG.checkpoint.date)})</div>
     </X>
 
-    <div style={{textAlign:"center",padding:"12px 0",fontSize:12,color:C.t3,opacity:0.6,fontFamily:FD}}>Health Hub · BUILD {APP_VERSION}{isStandalone()?" · INSTALLED":""}</div>
+    <div style={{textAlign:"center",padding:"12px 0",fontSize:12,color:C.t3,opacity:0.6,fontFamily:FD}}>Health Hub · build {APP_VERSION}{isStandalone()?" · installed":""}</div>
   </div>);
 };
 
