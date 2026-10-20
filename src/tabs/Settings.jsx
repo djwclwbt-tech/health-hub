@@ -129,7 +129,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
           <span style={{fontSize:15,color:r.dot===C.r?C.r:C.t3}}>{r.status}</span>
         </div>))}
     </X>
-    {missingTables.length>0&&(()=>{const MIG={lytes:"2026-10-20_missing_tables.sql",body_measurements:"2026-10-20_missing_tables.sql",program_updates:"2026-09-08_coach.sql",push_jobs:"2026-10-20_missing_tables.sql"};
+    {missingTables.length>0&&(()=>{const MIG={program_updates:"2026-09-08_coach.sql"};
       const files=[...new Set(missingTables.map(tb=>MIG[tb]||"the matching file"))];return(
       <div style={{border:`1px solid ${C.r}`,borderRadius:12,padding:"12px 16px",background:C.cd}}>
         <div style={{fontSize:17,fontWeight:500,color:C.r}}>Missing in the cloud: {missingTables.join(", ")}</div>

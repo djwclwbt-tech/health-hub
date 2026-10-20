@@ -105,7 +105,7 @@ const seedRows = () => {
   mockFetch(/\/rest\/v1\/weight\?select/, json(wt)); mockFetch(/\/rest\/v1\/nutrition\?select=\*/, json(nut)); mockFetch(/\/rest\/v1\/recovery\?select/, json(rec)); mockFetch(/\/rest\/v1\/workouts\?select/, json(wk)); mockFetch(/\/rest\/v1\/steps\?select/, json(steps));
   liveRows();
   mockFetch(/\/rest\/v1\/[a-z_]+\?select/, json([]));
-  mockFetch(/\/rest\/v1\/(weight|nutrition|cardio|steps|water|habits|body_measurements|travel_days)(\?on_conflict|$)/, json([{}], 201));
+  mockFetch(/\/rest\/v1\/(weight|nutrition|cardio|steps|water|habits|program|travel_days)(\?on_conflict|$)/, json([{}], 201));
 };
 
 test('mcp: lists the coach tools and serves a snapshot from the same engine the app runs', env({ SUPABASE_KEY: 'k', MCP_TOKEN: null }, async () => {
@@ -359,11 +359,12 @@ test('push-schedule: a skipped or replaced rest alert never sends (latest-wins l
     const sub = { endpoint: 'https://web.push.apple.com/x', keys: { p256dh: 'p', auth: 'a' } };
     try {
       // cancel: conditional PATCH on (device, tag), so it cannot wipe a newer alert
-      mockFetch('/rest/v1/push_jobs', (u, init) => init.method === 'PATCH' ? new Response(null, { status: 204 }) : json([{ tag: 'rest-timer-2' }]));
+      // the ledger is program rows keyed push:<device>
+      mockFetch('/rest/v1/program', (u, init) => init.method === 'PATCH' ? new Response(null, { status: 204 }) : json([{ id: 'push:d', data: { device: 'd', tag: 'rest-timer-2' } }]));
       let r = res(); await handler(req({ method: 'POST', headers: { 'x-notify-token': 'nt' }, body: { cancel: true, subscription: sub, tag: 'rest-timer-1' } }), r);
       assert.equal(r.statusCode, 200); assert.equal(r.body.cancelled, true);
-      const patch = supabaseCalls('push_jobs').find(c => c.method === 'PATCH');
-      assert.match(patch.url, /tag=eq\.rest-timer-1/); assert.deepEqual(patch.body, { tag: null });
+      const patch = supabaseCalls('program').find(c => c.method === 'PATCH');
+      assert.match(patch.url, /id=eq\.push%3A/); assert.match(patch.url, /data->>tag=eq\.rest-timer-1/); assert.equal(patch.body.data.tag, null);
       // the ledger now holds rest-timer-2, so rest-timer-1 is stale and stays silent
       assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-1' }), false);
       await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-1', dueAt: Date.now() });
@@ -371,7 +372,7 @@ test('push-schedule: a skipped or replaced rest alert never sends (latest-wins l
       await scheduleOrSend(req({ headers: { host: 'x' } }), { subscription: sub, tag: 'rest-timer-2', dueAt: Date.now() });
       assert.equal(sent, 1, 'current job sent');
       // ledger unreachable: fail open, the alert still sends
-      routes = []; mockFetch('/rest/v1/push_jobs', new Response('down', { status: 503 }));
+      routes = []; mockFetch('/rest/v1/program', new Response('down', { status: 503 }));
       assert.equal(await stillCurrent({ subscription: sub, tag: 'rest-timer-9' }), true);
     } finally { webpush.sendNotification = real; }
   })();

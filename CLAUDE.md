@@ -9,7 +9,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
   - `progression.mjs` — e1RM and set rules, stalls, `resolveWeight`, `buildSession`, `swapOptions`, `sessionCursor`, `applyWorkout`
   - `analytics.mjs` — targets (`getDayCalTarget`…), `getTrend`, `calcAdaptiveTDEE`, weekly summary/recommendation, closeout, insights, `resolveMode`, `getAutoregProposal`
   - `migrations.mjs` — boot/one-shot normalizers (`backfillData`, `pruneProgression`, `repairDeloadProgression`, `applyBlockV2`) · `changes.mjs` — `applyChanges`, `exerciseReport` (the Coach's write path)
-- `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once. `loadAll` marks tables that failed to load in a hidden `__failed` list (and tables that do not exist at all in `__missing`); the app keeps the phone's copy for those, so an offline launch never resets settings. Tokens (`syncToken`, `notifyToken`) never go to the cloud.
+- `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once. `loadAll` marks tables that failed to load in a hidden `__failed` list (and tables that do not exist at all in `__missing`); the app keeps the phone's copy for those, so an offline launch never resets settings. Tokens (`syncToken`, `notifyToken`) never go to the cloud. **No new tables, ever:** Dylan does not open Supabase. Small stores live as rows of the existing `program` table (`VIRTUAL`: `lytes:<date>`, `meas:<date>`, `push:<device>`, row in `data`); callers still use the old table names and `makeClient` translates. The real program row is read with `id=eq.user`. Add a new store to `VIRTUAL` instead of writing a migration.
 - `lib/http.mjs` — shared API plumbing: `preflight` (CORS + method check), `requireToken`, `safeEqual`, `isCron`, `sameOrigin`, `supabaseEnv`. Every `api/*.js` uses it; do not copy auth or CORS code into a route.
 - `test/*.test.mjs` — `npm test`. Engine, mapping and API routes (network mocked). Add a test when you change a rule.
 
@@ -42,10 +42,10 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/cronometer-sync.js` — Cronometer nutrition sync (cron 4x daily, last at 03:00 UTC so dinner lands the same evening; source of truth for food)
 - Crons are UTC. Only Vercel's `Bearer CRON_SECRET` counts as a cron call; without `CRON_SECRET` crons are refused.
 - `api/sync-steps.js`, `api/sync-weight.js` — Apple Shortcut sync (SYNC_TOKEN)
-- `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing). The app's own page passes by Origin (`sameOrigin`), so no token is needed on the phone; scripts send `x-notify-token`.
+- `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` (program rows `push:<device>`) holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing). The app's own page passes by Origin (`sameOrigin`), so no token is needed on the phone; scripts send `x-notify-token`.
 - `api/allergies.js` — Austin pollen/mold counts
 - `sw.js` — Service worker: network-first (2.5 s timeout, cache fallback) for `/`, `/index.html`, `/app.js`; cache-first for `/vendor`, `/fonts`, icons; push display; notification tap deep-links to a tab
-- `supabase/*.sql` — Database migrations (run in Supabase SQL editor). `2026-10-20_missing_tables.sql` is the one paste for `lytes`, `body_measurements` and `push_jobs`
+- `supabase/*.sql` — historical migrations. Do not add new ones that need the SQL editor; use `VIRTUAL` rows in `lib/supabase.mjs`
 - `manifest.json` — PWA manifest
 
 ## UI: the Day line (Oct 2026 redesign)
@@ -119,7 +119,7 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (required: cron proof).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (84 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (85 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message

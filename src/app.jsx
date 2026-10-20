@@ -1,7 +1,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 import { bl, migrate, seedHistorical, backfillData, pruneProgression, repairDeloadProgression, applyBlockV2, mergeProgression } from "../lib/engine.mjs";
 import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
-import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, syncHealth } from "./core/storage.js";
+import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, svSB, syncHealth } from "./core/storage.js";
 import { APP_VERSION, C } from "./core/theme.js";
 import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
@@ -83,6 +83,17 @@ window.App = function App(){
         }
       }else{
         finalData=data;
+      }
+      // Electrolytes and tape measurements were phone-only until they moved into program rows
+      // (Oct 2026). Upload what the cloud lacks, once per store after a clean read.
+      if(sbData&&!sbData.__loadError){
+        const failedNow=new Set(sbData.__failed||[]);
+        [["lytes",(d,v)=>svSB.lytes(d,v)],["bodyMeas",(d,v)=>svSB.bodyMeas(d,v)]].forEach(([k,up])=>{
+          const flag=`dhub6_uploaded_${k}`;
+          try{if(failedNow.has(k)||localStorage.getItem(flag))return;
+            Object.entries(finalData[k]||{}).filter(([d,v])=>v&&!sbData[k]?.[d]).forEach(([d,v])=>up(d,v));
+            localStorage.setItem(flag,"1");}catch{}
+        });
       }
       // Browser boot is read-only: pending program updates and migrations require approved maintenance.
       const updated=finalData;
