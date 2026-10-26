@@ -67,3 +67,6 @@ Nothing in this file is implemented beyond what is noted as already in code.
 
 ## Push subscriptions (watchdog)
 Phone push subscriptions live as `program` rows (`sub:<device>`), readable with the public anon key like every other row. That exposes the endpoint, not the ability to push: a push service only accepts messages signed with the VAPID private key, which stays in Vercel. Registration trusts the app's Origin, which a script can fake, so a stranger could register a device. That is why watchdog pushes carry no health details ("Open Today", "Your weekly review is ready"), and only the 5 most recently registered phones get them (the real phone re-registers on every launch). Expired subscriptions (404/410) are deleted on the next send.
+
+## Coach chat (api/coach-chat.js)
+Same gate as the weekly analysis: the app's own page (Origin, which a script can fake) or `x-sync-token`. The data it reads is no more exposed than before: every table is already readable with the public anon key (see above, hardening deferred), so a faked Origin learns nothing new. The real exposure is Anthropic spend (about 5 cents a message, 20 turns of 4,000 characters max). Making the token mandatory would lock out a phone without a sync token set; revisit together with the Supabase RLS hardening.
