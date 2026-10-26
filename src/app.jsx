@@ -78,7 +78,7 @@ window.App = function App(){
           const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
           const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
           if(localHasData&&sbEmpty){
-            setSyncStatus("Cloud is empty or unreachable · showing this phone's copy");
+            setSyncStatus("Offline · showing this phone's copy, nothing is lost");
             setTimeout(()=>setSyncStatus(""),4000);
           }
         }else{

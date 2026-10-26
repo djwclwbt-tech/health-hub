@@ -27,7 +27,7 @@ const BASE = `http://127.0.0.1:${server.address().port}`;
 // Screens: every tab, Today at the moments that change its Now row, and the sheets people open daily.
 const SCREENS = [
   { id: 'today-morning', q: 'tab=dashboard&clock=07:00&day=monday' },
-  { id: 'today-midday', q: 'tab=dashboard&clock=12:30&day=tuesday' },
+  { id: 'today-midday', q: 'tab=dashboard&clock=12:30' },
   { id: 'today-fast', q: 'tab=dashboard&clock=13:00&day=wednesday' },
   { id: 'today-evening', q: 'tab=dashboard&clock=20:30&day=friday' },
   { id: 'train', q: 'tab=training' },
@@ -89,6 +89,10 @@ for (const sc of SCREENS) {
   if (sc.act) await sc.act(page);
   const ms = Date.now() - t0;
   const a = await page.evaluate(AUDIT);
+  // Phone-size shot as seen, then a full-page shot with the fixed bottom docks hidden
+  // (a stitched capture otherwise paints them mid-page, which no phone ever shows).
+  await page.screenshot({ path: path.join(OUT, 'shots', `${sc.id}-phone.png`) });
+  await page.addStyleTag({ content: '.hh-dock{display:none!important}' });
   await page.screenshot({ path: path.join(OUT, 'shots', `${sc.id}.png`), fullPage: true });
   results.push({ id: sc.id, ms, errors, ...a });
   await ctx.close();

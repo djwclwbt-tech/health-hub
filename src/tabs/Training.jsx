@@ -570,6 +570,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             {ssTag&&ei===curEi&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
             <div style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr 44px",alignItems:"center",marginTop:10,rowGap:2}}>
               {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t3,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
+              {showWu&&<span style={{gridColumn:"1 / -1",fontSize:13,color:C.t3,paddingTop:4}}>Warm-up sets (W). Light, they don't count. Tick them as you go.</span>}
               {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
                 <span style={{fontSize:15,color:C.t3}}>W</span><span style={{fontSize:15,color:C.t3}}>{w.l}</span>
                 <span style={{...cell,color:w.done?C.t3:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t3:C.t2}}>{w.r}</span>
@@ -590,8 +591,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                   <Chk on={x.done} label={x.done?`Undo set ${si+1}`:x.skipped?`Unskip set ${si+1}`:`Log set ${si+1}`} onClick={()=>{if(x.done||x.skipped)undoSet(ei,si);else dS(ei,si,restAt(ei));}}/>
                 </React.Fragment>);})}
             </div>
-            {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:10}}>
-              <span style={{fontSize:15,color:C.t3,width:40}}>RIR</span>
+            {/* Two labeled rows: RIR alone was a mystery, and the weight steppers looked like part of it. */}
+            {edSi>=0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.t3,marginTop:12,...NUMS}}><span>Reps left in the tank (RIR)</span><span>Weight ±{inc}</span></div>}
+            {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
               {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:44,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:17,cursor:"pointer",...NUMS}}>{v}</button>);})}
               <span style={{display:"flex",gap:6,marginLeft:8}}>
                 <button type="button" aria-label={`Weight down ${inc}`} onClick={()=>{haptic(6);uS(ei,edSi,"weight",Math.max(0,(Number(e.sets[edSi].weight)||0)-inc));}} style={{width:44,minHeight:44,borderRadius:8,border:`1px solid ${C.bd}`,background:C.cd,fontSize:20,cursor:"pointer"}}>−</button>
@@ -790,8 +792,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <span style={{fontSize:15,color:C.t3,...NUMS}}>{weekLabel}</span>
           {(weekOff!==0||selDate!==t)&&<button type="button" onClick={jumpToday} style={{background:"none",border:"none",fontSize:15,color:C.t2,cursor:"pointer",padding:"6px 0",minHeight:32}}>Back to today</button>}
         </div>
-        <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init&&el.clientWidth>0){el.dataset.init="1";el.scrollLeft=el.clientWidth*(PAST_WEEKS+weekOff);}}}
-          onScroll={e=>{const el=e.currentTarget;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
+        <div ref={el=>{stripRef.current=el;if(el&&!el.dataset.init&&el.clientWidth>0){
+            // Land on this week. A single assignment can be clamped or snapped back before layout
+            // settles (fresh launch, iOS), so re-apply for a few frames; scroll events are ignored until then.
+            el.dataset.init="pending";const want=()=>el.clientWidth*(PAST_WEEKS+weekOff);let n=0;
+            const pin=()=>{el.scrollLeft=want();if(++n<6&&Math.abs(el.scrollLeft-want())>1)requestAnimationFrame(pin);else requestAnimationFrame(()=>{el.dataset.init="1";});};pin();}}}
+          onScroll={e=>{const el=e.currentTarget;if(el.dataset.init!=="1")return;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
           style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:4}}>
           {pages.map(off=>(<div key={off} role="tablist" aria-label={off===0?"This week":`Week ${off>0?"+":""}${off}`} style={{flex:"0 0 100%",scrollSnapAlign:"start",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
             {weekOf(off).map(w=>{const on=w.ds===selDate;return(

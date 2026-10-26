@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-import { liftTarget, PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, shiftDate, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
+import { liftTarget, paceVerdict, PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, shiftDate, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
 import { CloseoutPanel, SYSTEM_HABITS } from "../cards/CloseoutPanel.jsx";
 import { ScalePad } from "../cards/ScalePad.jsx";
 import { haptic } from "../core/device.js";
@@ -118,7 +118,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   // ── Scale ──
   const trendV=trend?.points?.length?trend.points[trend.points.length-1].v:null;
   // Green only inside the planned cut pace (same band as Trends).
-  const pace=trend&&!trend.reliable?(trend.n>=4?"needs a week of weigh-ins for a rate":`${trend.n} weigh-ins in 2 weeks, too few for a rate`):trend?(trend.rate<=-0.6&&trend.rate>-2?<span style={{color:C.g}}>{trend.message}, on pace</span>:trend.message):null;
+  const pace=trend&&!trend.reliable?(trend.n>=4?"needs a week of weigh-ins for a rate":`${trend.n} weigh-ins in 2 weeks, too few for a rate`):trend?(()=>{const pv=paceVerdict(trend,t);return pv.kind==="goal"?<span style={{color:C.g}}>{pv.text}</span>:pv.text;})():null;
   rows.push(<Ev key="scale" time={nowId==="scale"?"Now":"AM"} state={stateOf("scale",wt!=null)}
     title={wt!=null?<>Weighed in <span style={NUM}>{Number(wt).toFixed(1)}</span></>:"Weigh in"}
     sub={trendV!=null?<>Trend <span style={NUM}>{trendV.toFixed(1)}</span>{pace?<> · {pace}</>:null}</>:"A couple of weigh-ins start the trend"}
