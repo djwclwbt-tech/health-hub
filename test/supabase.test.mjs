@@ -106,7 +106,7 @@ test('loadAll: a failed read is not empty data · keys listed in non-enumerable 
     return res(200, []);
   };
   const d = await loadAll(makeClient({ fetchImpl, onFailure: (t, s, b, tr) => failures.push([t, s, tr]), retryMs: 1 }));
-  assert.deepEqual([...d.__failed].sort(), ['bodyMeas', 'lytes', 'program', 'programVersion', 'settings'], 'virtual stores ride on the program read');
+  assert.deepEqual([...d.__failed].sort(), ['bodyMeas', 'lytes', 'program', 'programVersion', 'reviews', 'settings', 'watch'], 'virtual stores ride on the program read');
   assert.ok(!Object.keys(d).includes('__failed'), 'not enumerable, so a key-merge loop never sees it');
   assert.equal(JSON.stringify(d).includes('__failed'), false);
   assert.equal(d.wt['2026-10-06'], 190);

@@ -84,6 +84,8 @@ const svSB={
   travelDay:(date,active)=>active?trackedUpsert("travel_days",toRow.travelDay(date)):trackedDelete("travel_days","date",date),
   tdeeExclude:(date,active)=>active?trackedUpsert("tdee_exclude",toRow.tdeeExclude(date)):trackedDelete("tdee_exclude","date",date),
   settings:(s)=>trackedUpsert("settings",toRow.settings(s),"id"),
+  // A target change made on the phone leaves the same audit row a Coach change does.
+  audit:(change,opts)=>trackedUpsert("program_updates",toRow.programUpdate(change,opts),null),
   program:(p)=>trackedUpsert("program",toRow.program(p),"id"),
   delWeight:(date)=>trackedDelete("weight","date",date),
   delStepper:(date)=>trackedDelete("stepper","date",date),

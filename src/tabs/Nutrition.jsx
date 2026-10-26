@@ -154,7 +154,7 @@ const Nutrition=({data,setData})=>{
   const wkMissing=wk.filter(x=>!x.logged&&!x.future&&!x.today&&getDayType(x.d,data.travelDays)!=="wednesday").length;
   const proHitDays=wkDone.filter(x=>x.pro>=(x.proT||proT)).length;
   const link={background:"none",border:"none",color:C.t2,fontSize:16,cursor:"pointer",padding:"8px 0",minHeight:40};
-  const navBtn={background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,cursor:"pointer",fontSize:20,minWidth:44,minHeight:40};
+  const navBtn={background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.t2,cursor:"pointer",fontSize:20,minWidth:44,minHeight:44};
   const Stat=({label,v,target,unit,good})=>(<div style={{flex:1,minWidth:0}}>
     <div style={{fontSize:15,color:C.t3}}>{label}</div>
     <div style={{marginTop:2,...NUMS}}><span style={{fontSize:30,fontWeight:600,letterSpacing:"-0.3px",color:good?C.g:C.t}}>{viewLogged||isViewingToday?Math.round(v).toLocaleString():"○"}</span>{target!=null&&<span style={{fontSize:16,color:C.t3}}> / {Math.round(target).toLocaleString()}{unit}</span>}</div>
@@ -224,10 +224,10 @@ const Nutrition=({data,setData})=>{
         </S>);})()}
 
       <S title="This week" meta={wkDone.length?`${wkDone.length} days logged${wkMissing?` · ${wkMissing} missing`:""}`:"No days logged"} collapsible defaultOpen={false}>
-        <div style={{display:"grid",gridTemplateColumns:"48px 1fr 1fr",columnGap:8,fontSize:13,color:C.t4,padding:"4px 2px"}}><span>Day</span><span style={{textAlign:"right"}}>Calories</span><span style={{textAlign:"right"}}>Protein</span></div>
+        <div style={{display:"grid",gridTemplateColumns:"48px 1fr 1fr",columnGap:8,fontSize:13,color:C.t3,padding:"4px 2px"}}><span>Day</span><span style={{textAlign:"right"}}>Calories</span><span style={{textAlign:"right"}}>Protein</span></div>
         {wk.map((x,i)=>(<button type="button" key={x.d} disabled={x.future} onClick={()=>setViewDate(x.d)} style={{width:"100%",display:"grid",gridTemplateColumns:"48px 1fr 1fr",columnGap:8,alignItems:"center",minHeight:44,background:x.d===viewDate?C.cd:"none",border:"none",borderTop:`1px solid ${C.bd}`,cursor:x.future?"default":"pointer",padding:"0 2px",fontSize:16,textAlign:"left",...NUMS}}>
-          <span style={{color:x.future?C.t4:C.t2}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i]}</span>
-          {x.future?<span style={{gridColumn:"2 / 4",textAlign:"right",color:C.t4}}>○</span>
+          <span style={{color:x.future?C.t3:C.t2}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i]}</span>
+          {x.future?<span style={{gridColumn:"2 / 4",textAlign:"right",color:C.t3}}>○</span>
             :!x.logged&&!x.today?<span style={{gridColumn:"2 / 4",textAlign:"right",color:C.t3}}>{getDayType(x.d,data.travelDays)==="wednesday"?"Fast day, nothing logged":"Not synced"}</span>
             :<><span style={{textAlign:"right",color:C.t}}>{x.cal.toLocaleString()}<span style={{color:C.t3}}>{x.calT?` / ${x.calT.toLocaleString()}`:""}</span></span>
               <span style={{textAlign:"right",color:x.pro>=(x.proT||proT)?C.g:C.t}}>{x.pro} g</span></>}

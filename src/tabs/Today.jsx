@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-import { PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
+import { PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, shiftDate, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
 import { CloseoutPanel, SYSTEM_HABITS } from "../cards/CloseoutPanel.jsx";
 import { ScalePad } from "../cards/ScalePad.jsx";
 import { haptic } from "../core/device.js";
@@ -43,7 +43,7 @@ const KV=({k,v,dim})=>(
 const Ev=({time,state,title,sub,open,onToggle,children,last})=>{
   const isNow=state==="now";
   return(<div style={{position:"relative",paddingLeft:58,paddingBottom:last?0:22}}>
-    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:13,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUM}}>{time}</span>
+    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:13,color:isNow?C.p:C.t3,fontWeight:isNow?500:400,...NUM}}>{time}</span>
     <span aria-hidden="true" style={{position:"absolute",left:41,top:6,width:7,height:7,borderRadius:"50%",boxSizing:"border-box",
       background:isNow?C.p:state==="done"?C.t:C.bg,border:`1.5px solid ${isNow?C.p:state==="done"?C.t:C.t4}`,
       boxShadow:isNow?"0 0 0 4px var(--accent-soft)":"none"}}/>
@@ -132,7 +132,29 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   if(rec?.recoveryScore!=null){
     const bits=[rec.hrv?`HRV ${Math.round(rec.hrv)}`:null,rec.sleepHours?`sleep ${hm(rec.sleepHours)}`:null,rec.rhr?`RHR ${Math.round(rec.rhr)}`:null].filter(Boolean);
     rows.push(<Ev key="rec" time="AM" state="done" title={<>Recovery <span style={NUM}>{rec.recoveryScore}%</span></>} sub={<span style={NUM}>{bits.join(" · ")}{autoreg?null:sess?" · full session":""}</span>}/>);
+  }else{
+    // Silence would look like a normal morning. Say when the Oura feed has stopped (same rule as the coaching brief).
+    const lastRec=Object.keys(data.rec||{}).filter(k=>k<t&&data.rec[k]?.recoveryScore!=null).sort().at(-1);
+    const daysOff=lastRec?Math.round((new Date(t+"T12:00:00")-new Date(lastRec+"T12:00:00"))/864e5):null;
+    // The watchdog knows more (for example, Oura rejected the key); prefer its words when it has them.
+    const ouraAlert=(data.watch?.alerts||[]).find(x=>x.id==="oura");
+    if(daysOff==null||daysOff>2)rows.push(<Ev key="rec" time="AM" state="done" title="No recovery data" sub={ouraAlert?ouraAlert.text:lastRec?`The Oura feed stopped. Last reading ${fmt(lastRec)}.`:"Oura has not sent any readings."}/>);
   }
+
+  // ── Weekly review (the watchdog writes it Sunday morning; shown Sunday and Monday) ──
+  const revKey=Object.keys(data.reviews||{}).filter(k=>k<=t&&k>=shiftDate(t,-1)).sort().at(-1);
+  const rv=revKey?data.reviews[revKey]?.result:null;
+  if(rv)rows.push(<Ev key="review" time={revKey===t?"AM":"Sun"} state="done" title="Weekly review" sub={rv.nextWeekFocus||rv.summary} open={isOpen("review")} onToggle={toggle("review")}>
+    <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:10,fontSize:15,color:C.t2,lineHeight:1.45}}>
+      {rv.summary&&<div style={{color:C.t}}>{rv.summary}</div>}
+      {(rv.dataGaps||[]).length>0&&<div><div style={{fontWeight:500,color:C.t}}>Missing data</div>{rv.dataGaps.map((g,i)=><div key={i}>{g}</div>)}</div>}
+      {(rv.recommendations||[]).length>0&&<div><div style={{fontWeight:500,color:C.t}}>This week</div>{rv.recommendations.map((r,i)=><div key={i}>{i+1}. {r}</div>)}</div>}
+    </div>
+  </Ev>);
+
+  // ── Other stopped feeds (steps, weigh-ins, food) from the watchdog's last check ──
+  const otherAlerts=(data.watch?.today&&data.watch.today>=shiftDate(t,-1)?data.watch.alerts||[]:[]).filter(x=>x.id!=="oura");
+  if(otherAlerts.length)rows.push(<Ev key="watch" time="AM" state="done" title={otherAlerts.length===1?"A data feed needs you":`${otherAlerts.length} data feeds need you`} sub={otherAlerts.map(x=>x.text).join(" ")}/>);
 
   // ── Lift ──
   if(adj?.type==="mobilitySwap"){

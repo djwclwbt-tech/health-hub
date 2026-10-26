@@ -8,3 +8,4 @@ backups/
 public/
 .playwright-mcp/
 build.json
+eval/out/

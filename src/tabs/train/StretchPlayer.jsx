@@ -112,7 +112,7 @@ const StretchPlayer=({exercises,startedAt,onFinish,onSkipDay,onHide})=>{
 
       <div style={{textAlign:"center",marginTop:14}}>
         <div style={{fontSize:13,color:C.t3,height:16}}>{phase==="prep"?"Get ready":phase==="paused"?"Paused":""}</div>
-        <div role="timer" aria-live="off" style={{fontSize:60,fontWeight:500,letterSpacing:"-1px",lineHeight:1.05,color:phase==="ready"?C.t4:C.t,...NUM}}>{fmtS(phase==="ready"?ex.dur:left)}</div>
+        <div role="timer" aria-live="off" style={{fontSize:60,fontWeight:500,letterSpacing:"-1px",lineHeight:1.05,color:phase==="ready"?C.t3:C.t,...NUM}}>{fmtS(phase==="ready"?ex.dur:left)}</div>
         <div style={{height:3,background:C.bl,borderRadius:2,marginTop:10,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round(holdPct*100)}%`,background:C.t,transition:"width .25s linear"}}/></div>
       </div>
 

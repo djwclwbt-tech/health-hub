@@ -49,6 +49,8 @@ const snapshot = (d, t) => {
     consistency: E.getWeeklyConsistency(d, t, summary), closeout: E.getTonightCloseout(d, t), stalls: summary.stalls, insights: E.getInsights(d), retention: E.getCutRetentionScore(d),
     last7: week, integrations: { cronometerLast: last(d.nut, n => (n?.totalCal || 0) > 0), ouraLast: last(d.rec, r => r?.recoveryScore != null), stepsLast: last(d.steps), weightLast: last(d.wt), lastPhotos: last(d.bodyComp), lastMeasurements: last(d.bodyMeas) },
     settings: st, coachLog: (d.coachLog || []).slice(0, 10),
+    // Grounded weekly brief: coverage, feed freshness and data gaps first. Reason from this.
+    brief: E.coachBrief(d, t),
   };
 };
 
@@ -56,7 +58,7 @@ const mcpHandler = createMcpHandler(
   (server) => {
     server.registerTool("get_snapshot", {
       title: "Get coaching snapshot",
-      description: "Everything the phone computes, in one call: today's mode and targets, weight trend (EWMA/OLS, lbs/wk), adaptive TDEE, weekly adherence and the rule-based recommendation, tonight's closeout, auto-regulation proposal, stalls, last 7 days table, integration freshness, recent coach changes. Call this first in any coaching conversation.",
+      description: "Everything the phone computes, in one call. Read brief.gaps first: it says which numbers are too thin to trust (food coverage, stale recovery feed, unreliable weight rate). Then: today's mode and targets, weight trend (EWMA/OLS, lbs/wk), adaptive TDEE, weekly adherence and the rule-based recommendation, tonight's closeout, auto-regulation proposal, stalls, last 7 days table, integration freshness, recent coach changes. Call this first in any coaching conversation.",
       inputSchema: z.object({ date: DATE.optional().describe("Defaults to today in America/Chicago") }),
     }, async ({ date }) => { try { const d = await loadData(); return text(snapshot(d, date || todayChicago())); } catch (e) { return fail(`snapshot failed: ${e.message}`); } });
 

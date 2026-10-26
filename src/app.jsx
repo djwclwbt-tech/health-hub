@@ -3,6 +3,7 @@ import { bl, migrate, seedHistorical, backfillData, pruneProgression, repairDelo
 import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, svSB, syncHealth } from "./core/storage.js";
 import { APP_VERSION, C } from "./core/theme.js";
+import { registerPush } from "./core/device.js";
 import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";
@@ -128,6 +129,8 @@ window.App = function App(){
   // debounced so a burst of taps serializes once, flushed the moment the app hides.
   const dataRef=useRef(data);dataRef.current=data;
   const saveTimer=useRef(null);
+  // Let the watchdog reach this phone (only if notifications are already allowed; never prompts).
+  useEffect(()=>{const id=setTimeout(registerPush,3000);return()=>clearTimeout(id);},[]);
   useEffect(()=>{clearTimeout(saveTimer.current);saveTimer.current=setTimeout(()=>sv(dataRef.current),400);return()=>clearTimeout(saveTimer.current);},[data]);
   useEffect(()=>{const flush=()=>{if(document.visibilityState==="hidden"){clearTimeout(saveTimer.current);sv(dataRef.current);}};
     document.addEventListener("visibilitychange",flush);window.addEventListener("pagehide",flush);
@@ -138,7 +141,7 @@ window.App = function App(){
   // suspended for hours, and boot is the only other pull. Cloud wins per date, as at boot.
   const lastPull=useRef(Date.now());
   useEffect(()=>{
-    const EXTERNAL=["nut","rec","steps","wt"];
+    const EXTERNAL=["nut","rec","steps","wt","watch","reviews"];
     const pull=async()=>{
       if(document.visibilityState!=="visible"||navigator.onLine===false)return;
       if(Date.now()-lastPull.current<3*60*1000)return;

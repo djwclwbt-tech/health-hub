@@ -64,3 +64,6 @@ origin) and `privacy.html` (written for the removed WHOOP OAuth flow).
    key so the browser never talks to Supabase directly.
 
 Nothing in this file is implemented beyond what is noted as already in code.
+
+## Push subscriptions (watchdog)
+Phone push subscriptions live as `program` rows (`sub:<device>`), readable with the public anon key like every other row. That exposes the endpoint, not the ability to push: a push service only accepts messages signed with the VAPID private key, which stays in Vercel. Worst case someone learns a phone has push on. Expired subscriptions (404/410) are deleted on the next send.
