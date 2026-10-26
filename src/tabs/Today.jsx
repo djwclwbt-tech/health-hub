@@ -9,6 +9,7 @@ import { C } from "../core/theme.js";
 import { Br } from "../ui/atoms.jsx";
 import { Sheet } from "../ui/overlay.jsx";
 import { Nutrition } from "./Nutrition.jsx";
+import { CoachChat } from "../views/CoachChat.jsx";
 
 // ═══ TODAY · the Day line ═══
 // One timeline per day. Done items are one quiet line, the "Now" item is open
@@ -60,6 +61,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   useEffect(()=>{const iv=setInterval(()=>setTick(x=>x+1),60000);return()=>clearInterval(iv);},[]);
   const [openId,setOpenId]=useState(null);   // a tapped row; null = follow "now"
   const [foodOpen,setFoodOpen]=useState(false);
+  const [coachOpen,setCoachOpen]=useState(false);
   const [wIn,setWIn]=useState("");
   const [allergies,setAllergies]=useState(null);
   useEffect(()=>{let dead=false;(async()=>{try{const r=await fetch("/api/allergies");const d=await r.json();if(!dead&&r.ok)setAllergies(d);}catch{}})();return()=>{dead=true};},[]);
@@ -287,6 +289,10 @@ const Today=({data,setData,setTab,workout,addToast})=>{
       <span aria-hidden="true" style={{position:"absolute",left:44,top:6,bottom:6,width:1,background:C.bd}}/>
       {rows}
     </div>
+    <Quiet style={{width:"100%",marginTop:24}} onClick={()=>setCoachOpen(true)}>Ask the Coach</Quiet>
+    <Sheet open={coachOpen} onClose={()=>setCoachOpen(false)} title="Coach" maxHeight="92vh">
+      {coachOpen&&<CoachChat data={data} setData={setData} addToast={addToast}/>}
+    </Sheet>
     {pollen.length>0&&<div style={{fontSize:13,color:C.t3,marginTop:28,textAlign:"center"}}>Pollen · {pollen.map(a=>`${a.name} ${a.level||"○"}`).join(" · ")}</div>}
     <Sheet open={foodOpen} onClose={()=>setFoodOpen(false)} maxHeight="90vh">
       {foodOpen&&<Nutrition data={data} setData={setData} addToast={addToast}/>}
