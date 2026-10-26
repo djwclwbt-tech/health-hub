@@ -69,9 +69,9 @@ const mcpHandler = createMcpHandler(
     }, async () => {
       try {
         const d = await loadData();
-        const days = Object.fromEntries(Object.entries(d.program || {}).map(([dn, day]) => [dn, { name: day.name, focus: day.focus, warmup: day.warmup, exercises: (day.exercises || []).map(ex => {
-          const key = E.progKey(ex, ex); return { ...ex, progKey: key, workingWeight: E.resolveWeight(d, { ...ex, progKey: key }, ex.sw, ex), progression: d.prog?.[key] || null }; }) }]));
-        return text({ source: "live", block: { name: E.PROG.name, version: E.PROG.version }, settings: d.settings, days, mobility: E.PROG.mobility, library: E.EXERCISE_LIBRARY.map(e => ({ id: e.id, name: e.name, pattern: e.pattern, region: e.region, unit: e.unit })) });
+        const days = Object.fromEntries(Object.entries(d.program || {}).map(([dn, day]) => [dn, { name: day.name, focus: day.focus, intent: day.intent || E.PROG.days[dn]?.intent, warmup: day.warmup, exercises: (day.exercises || []).map(ex => {
+          const key = E.progKey(ex, ex); return { ...ex, progKey: key, workingWeight: E.resolveWeight(d, { ...ex, progKey: key }, ex.sw, ex), today: E.liftTarget(d, ex), progression: d.prog?.[key] || null }; }) }]));
+        return text({ source: "live", block: { name: E.PROG.name, version: E.PROG.version, science: E.PROG.science }, settings: d.settings, days, mobility: E.PROG.mobility, library: E.EXERCISE_LIBRARY.map(e => ({ id: e.id, name: e.name, pattern: e.pattern, region: e.region, unit: e.unit })) });
       } catch (e) { return fail(`get_program failed: ${e.message}`); }
     });
 
@@ -162,7 +162,9 @@ const mcpHandler = createMcpHandler(
     server.registerTool("log_note", { title: "Log coach note", description: "Leave a dated note for the athlete (shows under Setup → Coach changes and in get_snapshot.coachLog). Use it for decisions, context, and what to watch next week.", inputSchema: z.object({ note: z.string().min(1).max(600) }) },
       async ({ note }) => { try { await client().upsert("program_updates", toRow.programUpdate({ type: "note" }, { reason: note, source: "coach", applied: true, summary: "Coach note" }), null); return text({ ok: true }); } catch (e) { return fail(e.message); } });
   },
-  {},
+  // The Coach persona travels with the connector: Claude.ai gets the block, its science and
+  // the rules on connect, so the project instructions can never go stale again.
+  { instructions: E.coachInstructions() },
   { basePath: "/api", disableSse: true, maxDuration: 60, verboseLogs: false },
 );
 

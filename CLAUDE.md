@@ -45,6 +45,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - `api/push-schedule.js` — Server web push for rest timers (VAPID + NOTIFY_TOKEN). Latest wins: `push_jobs` (program rows `push:<device>`) holds one current alert per phone; a skipped or re-timed rest is cancelled before it sends (fails open if the table is missing). The app's own page passes by Origin (`sameOrigin`), so no token is needed on the phone; scripts send `x-notify-token`.
 - `api/watchdog.js` — the app speaks first. Cron `?job=daily` 14:30 UTC: `feedAlerts` (Oura (plus a live check that Oura still accepts the key), steps, weigh-ins, food on the last 3 eating days) → `watch:latest`, push (no health details in the body; newest 5 phones) when the alert set changes or every 3 days; on Sunday the weekly review (`runAnalysis` over `coachBrief`) → `review:<date>`, a `program_updates` note (source `coach-auto`) and a push. Cron `?job=nudge` 01:30 UTC: eating day with no food → push. Manual: `Bearer UPDATE_TOKEN`, `&dry=1` writes and sends nothing, `&force=1` runs the review any day. Phones register on launch (`registerPush`, only if notifications are already allowed) and on every rest-timer booking.
 - `lib/analysis.mjs` — the weekly analysis model call (Opus 5.5) shared by `api/analyze.js` and the watchdog. `lib/push.mjs` — web push helpers shared by push-schedule and the watchdog.
+- `api/coach-chat.js` — the Coach inside the app ("Ask the Coach" on Today, `src/views/CoachChat.jsx`). POST `{messages}`; system = `coachInstructions()` + `COACH_CHAT_FORMAT` + `coachContext()` over `loadAll`; Opus 5.5 via `callClaude` (`lib/analysis.mjs`). Proposed changes arrive as `<change>{…}</change>` blocks, validated by `parseProposals` (dry run through `applyChanges`); the phone applies one only when Dylan taps Apply, and logs it (source `coach-chat`). Same gate as analyze (app page or SYNC_TOKEN). History lives on the phone (`dhub6_coach_chat`).
 - `api/allergies.js` — Austin pollen/mold counts
 - `sw.js` — Service worker: network-first (2.5 s timeout, cache fallback) for `/`, `/index.html`, `/app.js`; cache-first for `/vendor`, `/fonts`, icons; push display; notification tap deep-links to a tab
 - `supabase/*.sql` — historical migrations. Do not add new ones that need the SQL editor; use `VIRTUAL` rows in `lib/supabase.mjs`
@@ -116,6 +117,10 @@ curl -s -X POST "${HEALTH_HUB_URL}/api/update" \
 
 Payload format: see `api/schema.md`. Change types: `settings` field/value, `exercise` update/swap/add/remove. Always include a `reason`. The change is applied server-side at once; the app shows it as a toast on next launch.
 
+## The Coach persona (one source)
+`coachInstructions()` in `lib/engine/coach.mjs` is who the Coach is: voice, the block, `PROG.science`, each day's `intent`, `COACH_RULES`, and "every prescription serves a principle". The MCP server sends it as its `instructions` on connect, the in-app chat uses it, COACH.md quotes it.
+**Agents (you) do not set prescriptions.** Before changing sets, reps, rest, progression or exercise choice, read `PROG.science` and the day's `intent`, and put the change to the Coach: run a subagent with `coachInstructions()` + `coachContext(liveData)` and the question, and follow its reasoning or bring the disagreement to Dylan. Never apply a general formula across the program.
+
 ## Claude.ai MCP Integration (the Coach)
 `/api/mcp` is the second delivery vehicle; see `COACH.md` for the tool contract and the Claude.ai project instructions. Reads run the engine over `loadAll()`. Writes go straight to the live tables; settings/program changes are applied server-side by `writeProgramChanges` and logged to `program_updates` (`applied`, `applied_at`, `source`, `summary`, `reason`), which the app toasts on next launch and lists under You → Coach changes. There is no client-side apply step anymore.
 
@@ -123,7 +128,7 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (required: cron proof).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (98 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (101 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
 
 ## Hillclimb scorecard (`eval/`)
 `npm run score` runs three graders; outputs go to `eval/out/` (gitignored). Record in `docs/hillclimb-2026-10/index.md`.
