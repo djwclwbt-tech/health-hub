@@ -73,6 +73,18 @@ const scheduleServerPush=async({title="Rest complete",body="Next set is ready.",
   }catch{return false;}
 };
 
+// Tell the server about this phone (no prompt): the watchdog can then send feed alerts,
+// the evening food nudge and the weekly review. Runs on launch when permission is already granted.
+const registerPush=async()=>{
+  try{
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)||typeof Notification==="undefined"||Notification.permission!=="granted")return false;
+    const sub=await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+    if(!sub)return false;
+    const r=await fetch("/api/push-schedule",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({register:true,subscription:sub.toJSON()})});
+    return r.ok;
+  }catch{return false;}
+};
+
 // Clears a booked rest alert on the server (skip, cancel, finish). Never prompts.
 const cancelServerPush=async(tag)=>{
   try{
@@ -87,4 +99,4 @@ const cancelServerPush=async(tag)=>{
   }catch{return false;}
 };
 
-export { haptic, isStandalone, ensureNotificationPermission, notifyDevice, scheduleDeviceNotification, cancelDeviceNotification, scheduleServerPush, cancelServerPush };
+export { haptic, isStandalone, ensureNotificationPermission, notifyDevice, scheduleDeviceNotification, cancelDeviceNotification, scheduleServerPush, cancelServerPush, registerPush };

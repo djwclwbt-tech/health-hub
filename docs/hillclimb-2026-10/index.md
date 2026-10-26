@@ -95,6 +95,19 @@ The coaching took three rounds. Each round, 4 test athletes went to fresh Opus 5
 - Changing a target on the phone leaves a dated record next to Coach changes.
 - Screen fixes: faint gray text that carried meaning is now readable, small buttons are 44 px, and labels are in sentence case.
 
+### What now runs on its own
+
+The app no longer waits for you to notice problems.
+
+- **Every morning (9:30 Austin):** a watchdog checks Oura, steps, weigh-ins and food. If a feed stopped, your phone buzzes, and Today shows it. It repeats at most every 3 days unless something new breaks.
+- **8:30 pm on eating days:** if no food is logged yet, a nudge to log it in Cronometer.
+- **Sunday morning:** the Coach writes your weekly review with Opus 5.5 from the engine brief. It shows on Today on Sunday and Monday, and lands in the decision trail.
+
+Push reaches the phone that already has rest-timer alerts on. It registers itself the next time you open the app.
+
+!!! warning "What the watchdog saw on its first run"
+    Today's weigh-in was 188. The two-week trend is now **up** 1.3 lb a week, and 13 lb remain in 34 days. That needs 2.7 lb a week, about double the safe pace. The goal or the date has to move, and the Nov 1 checkpoint is the place to decide.
+
 ### Next round
 
 The losing-too-fast case is the weakest (7.5). The coach adds 100 to 250 calories, which may be too little at 2.7 lb a week. Next lever: size the food added to the gap in the rate.

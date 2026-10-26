@@ -1,6 +1,5 @@
-import webpush from 'web-push';
 import { waitUntil } from '@vercel/functions';
-import { createHash } from 'node:crypto';
+import { configured, configureWebPush, sendPush, pushEndpointOk, isExpired, deviceOf } from '../lib/push.mjs';
 import { preflight, requireToken, sameOrigin, bodyOf, supabaseEnv } from '../lib/http.mjs';
 import { makeClient } from '../lib/supabase.mjs';
 
@@ -8,38 +7,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const MAX_DELAY_MS = 30 * 60 * 1000;
 const HOP_MS = 45 * 1000;
 
-const configured = () => Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
-
-const configureWebPush = () => {
-  if (!configured()) return false;
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:dylanwurzel@yahoo.com',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
-  );
-  return true;
-};
-
-const sendPush = async ({ subscription, title, body, tag, url }) => {
-  configureWebPush();
-  const payload = JSON.stringify({
-    title: title || 'Rest complete',
-    body: body || 'Next set is ready.',
-    tag: tag || `health-hub-${Date.now()}`,
-    url: url || '/',
-    requireInteraction: true,
-    renotify: true,
-    vibrate: [300, 120, 300, 120, 300, 120, 500],
-  });
-  return webpush.sendNotification(subscription, payload);
-};
-
 // ── Latest-wins ledger (push_jobs: one row per phone) ──
 // Each phone keeps one current rest alert. Scheduling a new one replaces it;
 // skipping a rest clears it. Just before sending, the server checks that its job
 // is still the current one, so a skipped or re-timed rest never buzzes later.
 // If the table is missing or Supabase is down, alerts send as before (fail open).
-const deviceOf = (sub) => createHash('sha256').update(String(pushEndpointOk(sub?.endpoint) || sub?.endpoint || '')).digest('hex').slice(0, 32);
+const saveSubscription = async (subscription) => { try { await ledgerClient().upsert('push_subs', { device: deviceOf(subscription), subscription, at: new Date().toISOString() }, 'device'); } catch {} };
 // The ledger lives as `program` rows (id `push:<device>`, see VIRTUAL in lib/supabase.mjs).
 const ledgerClient = () => { const { url, key } = supabaseEnv(); return makeClient({ url, key }); };
 const registerJob = async (job) => { try { await ledgerClient().upsert('push_jobs', { device: deviceOf(job.subscription), tag: job.tag, due_at: Math.round(job.dueAt) }, 'device'); } catch {} };
@@ -58,23 +31,6 @@ export const stillCurrent = async (job) => {
     return !rows.length || rows[0].tag === job.tag;
   } catch { return true; }
 };
-
-// Only real browser push services. Without this a caller could aim the server's
-// signed POST at any URL (the Origin gate is spoofable by scripts).
-const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.apple\.com$/,
-  /^updates\.push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/];
-// Returns the normalized endpoint (sent on instead of the raw string, so web-push's
-// parser cannot read a different host than this check did), or null.
-export const pushEndpointOk = (endpoint) => {
-  try {
-    const u = new URL(endpoint);
-    if (u.protocol !== 'https:' || u.username || u.password || u.port || !/^[a-z0-9.-]+$/.test(u.hostname)) return null;
-    return PUSH_HOSTS.some((re) => re.test(u.hostname)) ? u.origin + u.pathname + u.search : null;
-  } catch { return null; }
-};
-
-// 404/410 from the push service = the browser dropped this subscription.
-const isExpired = (err) => err?.statusCode === 404 || err?.statusCode === 410;
 
 export const scheduleOrSend = async (req, job) => {
   const dueAt = Number(job.dueAt || Date.now());
@@ -102,6 +58,8 @@ export const scheduleOrSend = async (req, job) => {
     body: JSON.stringify({ ...job, hop: true }),
   });
 };
+
+export { pushEndpointOk };
 
 export default async function handler(req, res) {
   if (preflight(req, res, 'GET, POST', 'Content-Type, x-notify-token')) return;
@@ -131,6 +89,10 @@ export default async function handler(req, res) {
     const endpoint = pushEndpointOk(job.subscription.endpoint);
     if (!endpoint) return res.status(400).json({ error: 'Unknown push service' });
     job.subscription = { ...job.subscription, endpoint };
+    // Remember this phone so the watchdog (feed alerts, food nudge, weekly review) can reach it.
+    // A subscription is useless without the VAPID private key, which never leaves the server.
+    if (!job.hop) await saveSubscription(job.subscription);
+    if (job.register) return res.status(200).json({ ok: true, registered: true });
     const dueAt = Number(job.dueAt || Date.now());
     if (!Number.isFinite(dueAt)) return res.status(400).json({ error: 'Valid dueAt required' });
     if (dueAt - Date.now() > MAX_DELAY_MS) return res.status(400).json({ error: 'Delay too long' });
