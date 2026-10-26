@@ -111,7 +111,7 @@ const Trends=({data,setData})=>{
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
       <h1 style={{fontSize:26,fontWeight:600,letterSpacing:"-0.2px"}}>Weight</h1>
       <div role="group" aria-label="Range" style={{display:"flex",gap:2}}>
-        {RANGES.map(([l,d])=><button type="button" key={l} aria-pressed={range===d} onClick={()=>{setRange(d);setScrub(null);}} style={{background:"none",border:"none",fontSize:15,color:range===d?C.t:C.t3,fontWeight:range===d?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>)}
+        {RANGES.map(([l,d])=><button type="button" key={l} aria-pressed={range===d} onClick={()=>{setRange(d);setScrub(null);}} style={{background:"none",border:"none",fontSize:15,color:range===d?C.t:C.t3,fontWeight:range===d?500:400,padding:"8px 6px",minHeight:44,minWidth:44,cursor:"pointer"}}>{l}</button>)}
       </div>
     </div>
     {cur!=null?(<>

@@ -2,6 +2,7 @@
 // never touches Supabase, Oura, Cronometer or Anthropic. `npm test`.
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import * as E from '../lib/engine.mjs';
 
 // ── harness ────────────────────────────────────────────────────────────────
 const realFetch = globalThis.fetch;
@@ -247,9 +248,13 @@ test('analyze + bodycomp: send the right shape to the model and return parsed JS
   const { default: analyze } = await import('../api/analyze.js');
   const { default: bodycomp } = await import('../api/bodycomp.js');
   mockFetch('api.anthropic.com', (u, init) => { const b = JSON.parse(init.body); const isImage = Array.isArray(b.messages[0].content); return json({ content: [{ type: 'text', text: isImage ? '{"bodyFatRange":"16-18%","muscleDevelopment":["a"],"areasOfProgress":[],"focusAreas":[],"notes":"n"}' : '```json\n{"scores":{"overall":72},"summary":"ok","wins":[],"gaps":[],"trends":[],"correlations":[],"recommendations":[],"nextWeekFocus":"x"}\n```' }] }); });
-  let r = res(); await analyze(req({ method: 'POST', body: { range: '7d', days: 7, workouts: { count: 4, days: ['monday'], progressions: 1 }, nutrition: { cal: 1900, protein: 200, carbs: 150, fat: 55, fiber: 20, days: 7 }, targets: { calories: 1790, protein: 200 } } }), r);
-  assert.equal(r.statusCode, 200); assert.equal(r.body.scores.overall, 72);
-  const call = calls.find(c => c.url.includes('anthropic')); assert.equal(call.body.model, 'claude-sonnet-4-6'); assert.equal(call.headers['x-api-key'], 'key'); assert.match(call.body.messages[0].content, /WORKOUTS: 4 sessions/);
+  const { scenario } = await import('../eval/fixtures.mjs');
+  const brief = E.coachBrief(scenario('stalled-sparse', '2026-10-26'), '2026-10-26');
+  let r = res(); await analyze(req({ method: 'POST', body: { range: '7d', brief } }), r);
+  assert.equal(r.statusCode, 200); assert.equal(r.body.scores.overall, 72); assert.deepEqual(r.body.ungrounded, []);
+  const call = calls.find(c => c.url.includes('anthropic')); assert.equal(call.body.model, 'claude-sonnet-4-6'); assert.equal(call.headers['x-api-key'], 'key');
+  assert.match(call.body.messages[0].content, /DATA GAPS: Food logged on/); assert.equal(call.body.system, E.ANALYSIS_SYSTEM);
+  r = res(); await analyze(req({ method: 'POST', body: { range: '7d', workouts: {} } }), r); assert.equal(r.statusCode, 400, 'an old app without a brief is told to update');
   r = res(); await bodycomp(req({ method: 'POST', body: { image: { mediaType: 'image/jpeg', data: 'AAAA' }, context: { currentWeight: 190 } } }), r);
   assert.equal(r.statusCode, 200); assert.equal(r.body.bodyFatRange, '16-18%');
   r = res(); await bodycomp(req({ method: 'POST', body: {} }), r); assert.equal(r.statusCode, 400);
@@ -258,8 +263,9 @@ test('analyze + bodycomp: send the right shape to the model and return parsed JS
 test('analyze + bodycomp: x-sync-token required when SYNC_TOKEN is set; upstream errors → 502; bad model JSON → 422', env({ ANTHROPIC_API_KEY: 'key', SYNC_TOKEN: 'tok' }, async () => {
   const { default: analyze } = await import('../api/analyze.js');
   const { default: bodycomp } = await import('../api/bodycomp.js');
-  const img = { image: { mediaType: 'image/jpeg', data: 'AAAA' } };
-  let upstream = json({ content: [{ type: 'text', text: '{"scores":{"overall":70}}' }] });
+  const { scenario } = await import('../eval/fixtures.mjs');
+  const img = { image: { mediaType: 'image/jpeg', data: 'AAAA' }, brief: E.coachBrief(scenario('on-track', '2026-10-26'), '2026-10-26') };
+  let upstream = json({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: '{"scores":{"overall":70}}' }] });
   mockFetch('api.anthropic.com', () => upstream.clone());
   for (const h of [analyze, bodycomp]) {
     let r = res(); await h(req({ method: 'POST', body: img }), r); assert.equal(r.statusCode, 401, 'no token');

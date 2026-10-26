@@ -8,7 +8,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
   - `program.mjs` (`PROG`, versioned; library, supersets, poses, dinners, cardio, `DEFAULTS`, plates) · `dates.mjs` (`lds`, `td`, `dw`, `wkn`, formatting) · `state.mjs` (`bl`, `migrate`, seed, `sumMeals`, `progKey`/`repTrack`)
   - `progression.mjs` — e1RM and set rules, stalls, `resolveWeight`, `buildSession`, `swapOptions`, `sessionCursor`, `applyWorkout`
   - `analytics.mjs` — targets (`getDayCalTarget`…), `getTrend`, `calcAdaptiveTDEE`, weekly summary/recommendation, closeout, insights, `resolveMode`, `getAutoregProposal`
-  - `migrations.mjs` — boot/one-shot normalizers (`backfillData`, `pruneProgression`, `repairDeloadProgression`, `applyBlockV2`) · `changes.mjs` — `applyChanges`, `exerciseReport` (the Coach's write path)
+  - `migrations.mjs` — boot/one-shot normalizers (`backfillData`, `pruneProgression`, `repairDeloadProgression`, `applyBlockV2`) · `changes.mjs` — `applyChanges`, `exerciseReport` (the Coach's write path) · `coach.mjs` — `coachBrief` (grounded weekly brief: coverage, feed freshness, data gaps first), `briefText`, `COACH_RULES`, `ANALYSIS_SYSTEM`, `groundingCheck` (numbers a model wrote that are not in its brief). The weekly analysis, `get_snapshot.brief` and the eval all use it
 - `lib/supabase.mjs` — the one column mapping (`toRow`, `fromRows`, `loadAll`, `writeProgramChanges`, `makeClient`). Both vehicles use it; a column rename happens once. `loadAll` marks tables that failed to load in a hidden `__failed` list (and tables that do not exist at all in `__missing`); the app keeps the phone's copy for those, so an offline launch never resets settings. Tokens (`syncToken`, `notifyToken`) never go to the cloud. **No new tables, ever:** Dylan does not open Supabase. Small stores live as rows of the existing `program` table (`VIRTUAL`: `lytes:<date>`, `meas:<date>`, `push:<device>`, row in `data`); callers still use the old table names and `makeClient` translates. The real program row is read with `id=eq.user`. Add a new store to `VIRTUAL` instead of writing a migration.
 - `lib/http.mjs` — shared API plumbing: `preflight` (CORS + method check), `requireToken`, `safeEqual`, `isCron`, `sameOrigin`, `supabaseEnv`. Every `api/*.js` uses it; do not copy auth or CORS code into a route.
 - `test/*.test.mjs` — `npm test`. Engine, mapping and API routes (network mocked). Add a test when you change a rule.
@@ -18,7 +18,7 @@ Health Hub is a single-page PWA for personal health and fitness tracking, built 
 - **Backend**: Vercel Serverless Functions in `/api/`
 - **Database**: Supabase PostgreSQL (cloud sync; migrations in `/supabase/`)
 - **Local Storage**: Browser localStorage for offline-first functionality
-- **AI**: Claude API (`AI_MODEL` env, default `claude-sonnet-4-6`) for weekly analysis and body-comp photo analysis
+- **AI**: Claude API. Weekly analysis (`api/analyze.js`): `AI_MODEL` env, default `claude-opus-5-5`, effort medium, refusal fallback with a plain retry; the app posts `{range, brief}` and the reply carries `ungrounded` (numbers not in the brief). Body-comp photo analysis keeps its own default
 
 ## Build (the one step)
 `npm run build` compiles `src/app.jsx` → `app.js` and stamps a build id shown at the bottom of You. **Commit `app.js` with every source change.** The `claude/**` auto-merge workflow runs `npm run check` and commits a rebuilt `app.js` if you forgot, so a stale build cannot ship, but do not rely on it. Never edit `app.js` by hand. In-browser Babel is gone; a phone renders in ~100 ms instead of several seconds.
@@ -119,7 +119,14 @@ Payload format: see `api/schema.md`. Change types: `settings` field/value, `exer
 `ANTHROPIC_API_KEY`, `AI_MODEL` (optional), `SUPABASE_URL`/`SUPABASE_KEY` (or `SUPABASE_ANON_KEY`), `UPDATE_TOKEN`, `SYNC_TOKEN`, `OURA_PAT`, `OURA_SYNC_SECRET` (optional), `CRONOMETER_USERNAME`/`CRONOMETER_PASSWORD`, `CRONOMETER_SYNC_SECRET` (optional), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, `NOTIFY_TOKEN` (optional), `MCP_TOKEN` (Coach lock), `CRON_SECRET` (required: cron proof).
 
 ## Checks
-`npm run check` — builds `app.js`, runs `npm test` (85 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+`npm run check` — builds `app.js`, runs `npm test` (90 tests: engine, mapping, every API route with the network mocked), and syntax-checks every `/api/*.js`. Verify UI changes by loading the app (`npm run serve`, use `?clock=HH:MM&day=weekday` to simulate moments). Push notifications deep-link with `?tab=training`.
+
+## Hillclimb scorecard (`eval/`)
+`npm run score` runs three graders; outputs go to `eval/out/` (gitignored). Record in `docs/hillclimb-2026-10/index.md`.
+- `eval/ui.mjs` — headless Chromium (Playwright core + system Chromium) at 390×844, offline, seeded with a synthetic athlete; 8 screens × 14 Day line rules (errors, overflow, 12px floor, caps, contrast AA, 44px targets, dashes, one ember action, hex outside `:root`…). Pass a data file to score other data.
+- `eval/fidelity.mjs` — live data, read only (source `.env.local`): feed freshness (Oura incl. token check, steps, weigh-ins), coverage, totals vs meals, settings vs the last recorded decision, COACH.md block name.
+- `eval/coach.mjs` — `prep` writes one blind prompt per scenario (`eval/fixtures.mjs`: synthetic athletes with must / must-not rules) and variant; outputs come from a fresh model per prompt; a separate model grades A/B blind (`grade-*.json`); `score` adds grounding and copy checks. `live --model=` calls the API and costs money.
+- Keep a change only if its score rises and none falls. Never put real figures in fixtures.
 
 ## Git Workflow
 1. `npm run check`, then commit `src/app.jsx` **and** `app.js` together with a clear message

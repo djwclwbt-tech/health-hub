@@ -1,6 +1,17 @@
 import { preflight, requireToken, sameOrigin, bodyOf } from '../lib/http.mjs';
+import { ANALYSIS_SYSTEM, briefText, groundingCheck } from '../lib/engine.mjs';
 
-const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
+// Weekly analysis. The app builds the brief with the engine (coachBrief) and posts it;
+// the model may only cite numbers in it (groundingCheck reports any that are not).
+// eval/coach.mjs scores this exact prompt; change both together.
+const MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
+
+const call = (apiKey, body, fallback) => fetch('https://api.anthropic.com/v1/messages', {
+  signal: AbortSignal.timeout(50000),
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', ...(fallback ? { 'anthropic-beta': 'server-side-fallback-2026-07-01' } : {}) },
+  body: JSON.stringify(fallback ? { ...body, fallbacks: 'default' } : body),
+}).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.message } }) })); // network/timeout → 502 below
 
 export default async function handler(req, res) {
   if (preflight(req, res, 'POST', 'Content-Type, x-sync-token')) return;
@@ -11,93 +22,20 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
 
   try {
-    const { range, days, workouts, nutrition, recovery, weight, steps, habits, water, program, targets, bodyComp } = bodyOf(req);
+    const { brief } = bodyOf(req);
+    if (!brief || typeof brief !== 'object' || !brief.block || !brief.food) return res.status(400).json({ error: 'Update the app to run the analysis.' });
 
-    // Build a compact but data-rich summary for the prompt
-    const lines = [];
-    lines.push(`Program: ${program?.name || 'Upper/Lower v2'}, Week ${program?.week || '?'}/${program?.totalWeeks || 8}`);
-    lines.push(`Analysis window: ${range} (${days} days)`);
-    lines.push(`Goals: cut execution, ~${targets?.calories || 1800} cal/day, ${targets?.protein || 200}g+ protein, ${targets?.steps || 15000} steps/day, ${targets?.water || 128}oz water, ${targets?.sleep || 7.5}h sleep`);
-
-    if (workouts) {
-      lines.push(`\nWORKOUTS: ${workouts.count} sessions logged, days: ${(workouts.days || []).join(', ') || 'none'}, progressions this period: ${workouts.progressions}`);
-    } else {
-      lines.push(`\nWORKOUTS: None logged in this period`);
-    }
-
-    if (nutrition) {
-      lines.push(`\nNUTRITION (${nutrition.days} days avg): ${nutrition.cal} cal/day (target ${targets?.calories}), ${nutrition.protein}g protein (target ${targets?.protein}g+), ${nutrition.carbs}g carbs, ${nutrition.fat}g fat, ${nutrition.fiber}g fiber`);
-    } else {
-      lines.push(`\nNUTRITION: No data in this period`);
-    }
-
-    if (recovery) {
-      lines.push(`\nRECOVERY (${recovery.days} days): avg score ${recovery.recovery}%, HRV ${recovery.hrv}ms, RHR ${recovery.rhr}bpm, sleep ${recovery.sleep}h (target ${targets?.sleep}h)`);
-    } else {
-      lines.push(`\nRECOVERY: No data in this period`);
-    }
-
-    if (weight) {
-      if (weight.change !== undefined) {
-        lines.push(`\nWEIGHT: ${weight.start} → ${weight.end} lbs (${weight.change > 0 ? '+' : ''}${weight.change} lbs over ${range}), ${weight.entries} entries`);
-      } else if (weight.current) {
-        lines.push(`\nWEIGHT: ${weight.current} lbs (1 entry)`);
-      }
-    } else {
-      lines.push(`\nWEIGHT: No data in this period`);
-    }
-
-    lines.push(`\nSTEPS: ${steps ? `avg ${steps.toLocaleString()}/day (target ${(targets?.steps || 15000).toLocaleString()})` : 'No data'}`);
-    lines.push(`WATER: ${water ? `avg ${water}oz/day (target ${targets?.water || 128}oz)` : 'No data'}`);
-    lines.push(`HABITS (7-day score): ${habits != null ? `${habits}%` : 'No data'} — tracked: alcohol-free, cannabis-free, screens off by 10pm, morning sunlight, bed by 10:30, read before bed`);
-
-    if (bodyComp && bodyComp.assessments && bodyComp.assessments.length > 0) {
-      lines.push(`\nBODY COMPOSITION (${bodyComp.count} photo(s) in period):`);
-      bodyComp.assessments.forEach((a, i) => {
-        lines.push(`${i === 0 ? '[Latest] ' : ''}${a.date}: BF ${a.bfRange} — Progress: ${(a.progress || []).join('; ')} — Focus: ${(a.focus || []).join('; ')}`);
-      });
-      lines.push(`Last photo: ${bodyComp.daysSincePhoto} days ago`);
-    } else {
-      lines.push(`\nBODY COMPOSITION: No photos in this period.`);
-    }
-
-    const dataStr = lines.join('\n');
-
-    const systemPrompt = `You are a health data analyst for a strength athlete executing a fat-loss cut while preserving muscle and performance. Analyze the provided data and return ONLY a valid JSON object with this exact structure:
-{
-  "scores": {
-    "overall": <0-100>,
-    "training": <0-100 or null if no data>,
-    "nutrition": <0-100 or null if no data>,
-    "recovery": <0-100 or null if no data>,
-    "habits": <0-100 or null if no data>
-  },
-  "summary": "<2-3 sentence honest assessment of the period>",
-  "wins": ["<specific win 1>", "<specific win 2>"],
-  "gaps": ["<specific gap 1>", "<specific gap 2>"],
-  "trends": ["<trend observation 1>", "<trend observation 2>"],
-  "correlations": ["<correlation between metrics>"],
-  "recommendations": ["<actionable rec 1>", "<actionable rec 2>", "<actionable rec 3>"],
-  "nextWeekFocus": "<1-2 sentence priority focus for next 7 days>",
-  "bodyComposition": {"bfTrend":"direction or stable","recompSignal":"cut-retention signal with reasoning","muscleQuality":"brief observation","photoReminder":"only if >14 days since last photo, else null"}
-}
-Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs attention. Base scores strictly on data vs targets. Be direct — do not sugarcoat gaps. No markdown, no explanation, JSON only.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      signal: AbortSignal.timeout(50000),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: dataStr }],
-      }),
-    }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.message } }) })); // network/timeout → 502 below
+    const body = {
+      model: MODEL,
+      max_tokens: 16000,
+      // Opus 5.5 always thinks; effort sets how hard. Medium is its default, said out loud.
+      output_config: { effort: 'medium' },
+      system: ANALYSIS_SYSTEM,
+      messages: [{ role: 'user', content: briefText(brief) }],
+    };
+    // Server-side refusal fallback first; if the API rejects the beta, retry once plain.
+    let response = await call(apiKey, body, true);
+    if (response.status === 400) response = await call(apiKey, body, false);
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -105,17 +43,21 @@ Scoring guide: 100=perfect execution, 70+=solid, 45-70=inconsistent, <45=needs a
       return res.status(502).json({ error: 'Analysis unavailable.' });
     }
 
-    const raw = data.content?.[0]?.text || '{}';
+    // Thinking blocks come first on Opus 5.5: read the text block, not content[0].
+    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('') || '{}';
     let parsed;
     try {
-      const cleaned = raw.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(cleaned);
+      const m = raw.replace(/```json|```/g, '').match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(m ? m[0] : raw);
     } catch (e) {
       console.error('[analyze] Failed to parse analysis:', raw.slice(0, 500));
       return res.status(422).json({ error: 'Analysis unavailable.' });
     }
 
-    return res.status(200).json(parsed);
+    const prose = [parsed.summary, ...(parsed.dataGaps || []), ...(parsed.wins || []), ...(parsed.gaps || []), ...(parsed.trends || []), ...(parsed.recommendations || []), parsed.nextWeekFocus].filter(Boolean).join(' ');
+    const ungrounded = groundingCheck(prose, brief);
+    if (ungrounded.length) console.warn('[analyze] numbers not in the brief:', ungrounded.join(', '));
+    return res.status(200).json({ ...parsed, ungrounded, model: data.model || MODEL });
   } catch (err) {
     console.error('[analyze] Handler error:', err);
     return res.status(500).json({ error: 'Analysis unavailable.' });

@@ -560,7 +560,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const showWu=edSi===0&&e.wu?.some(w=>!w.done);
           return(<div style={{borderTop:`1px solid ${C.bd}`,padding:"14px 0 6px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10}}>
-              <button type="button" onClick={()=>setExInfo({ex:{...(sl||{}),...(e.swappedTo||{}),name},progKey:e.progKey})} aria-label={`${name} history`} style={{background:"none",border:"none",padding:0,textAlign:"left",fontSize:19,fontWeight:500,color:C.t,cursor:"pointer"}}>{name}</button>
+              <button type="button" onClick={()=>setExInfo({ex:{...(sl||{}),...(e.swappedTo||{}),name},progKey:e.progKey})} aria-label={`${name} history`} style={{background:"none",border:"none",padding:"6px 0",minHeight:44,textAlign:"left",fontSize:19,fontWeight:500,color:C.t,cursor:"pointer"}}>{name}</button>
               {rr&&<span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
             <div style={{fontSize:15,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
@@ -569,17 +569,17 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             </div>
             {ssTag&&ei===curEi&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
             <div style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr 44px",alignItems:"center",marginTop:10,rowGap:2}}>
-              {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
+              {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t3,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
               {showWu&&e.wu.map((w,wi)=>(<React.Fragment key={`w${wi}`}>
-                <span style={{fontSize:15,color:C.t4}}>W</span><span style={{fontSize:15,color:C.t4}}>{w.l}</span>
-                <span style={{...cell,color:w.done?C.t4:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t4:C.t2}}>{w.r}</span>
+                <span style={{fontSize:15,color:C.t3}}>W</span><span style={{fontSize:15,color:C.t3}}>{w.l}</span>
+                <span style={{...cell,color:w.done?C.t3:C.t2}}>{w.w}</span><span style={{...cell,color:w.done?C.t3:C.t2}}>{w.r}</span>
                 <Chk on={w.done} dim label={`Warm-up ${wi+1} done`} onClick={()=>!w.done&&dWU(ei,wi,restAt(ei))}/>
               </React.Fragment>))}
               {e.sets.map((x,si)=>{const isEd=si===edSi;const isNow=isEd&&ei===curEi;const pv=prev?.sets?.[si];
                 const tone=x.skipped?C.t4:x.done?C.t:C.t3;
                 return(<React.Fragment key={si}>
-                  <span style={{fontSize:16,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
-                  <span style={{fontSize:15,color:C.t4,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
+                  <span style={{fontSize:16,color:isNow?C.p:C.t3,fontWeight:isNow?500:400,...NUMS}}>{si+1}</span>
+                  <span style={{fontSize:15,color:C.t3,...NUMS}}>{pv?`${pv.weight>0?pv.weight:"BW"}×${pv.reps}`:"–"}</span>
                   {isEd?(<>
                     <span style={{marginRight:6}}><input aria-label={`Set ${si+1} weight`} inputMode="decimal" value={x.weight??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9.]/g,"").replace(/(\..*)\./g,"$1");uS(ei,si,"weight",/^\d+$/.test(v)?Number(v):v);}} style={inp}/></span>
                     <span style={{marginRight:6}}><input aria-label={`Set ${si+1} reps`} inputMode="numeric" value={x.reps??""} onFocus={ev=>ev.target.select()} onChange={ev=>{const v=ev.target.value.replace(/[^0-9]/g,"");uS(ei,si,"reps",v===""?"":Number(v));}} style={inp}/></span>
@@ -675,9 +675,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <N value={String(editW.dur??"")} onChange={v=>upd(n=>{n.dur=v;})} style={{width:72}}/></div>
         {editW.exercises?.map((ex,ei)=>(<div key={ei} style={{borderTop:`1px solid ${C.bd}`,marginTop:14,paddingTop:12}}>
           <div style={{fontSize:17,fontWeight:500}}>{nameOf(ex)}</div>
-          <div style={{...grid,marginTop:6}}>{["Set","lb","Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4}}>{h}</span>)}</div>
+          <div style={{...grid,marginTop:6}}>{["Set","lb","Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t3}}>{h}</span>)}</div>
           {ex.sets?.map((st,si)=>(<div key={si} style={{...grid,padding:"3px 0"}}>
-            <span style={{fontSize:16,color:C.t4,...NUMS}}>{si+1}</span>
+            <span style={{fontSize:16,color:C.t3,...NUMS}}>{si+1}</span>
             <N value={String(st.weight??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].weight=v===""?"":+v||v;})} placeholder="lb"/>
             <N value={String(st.reps??"")} onChange={v=>upd(n=>{n.exercises[ei].sets[si].reps=v===""?"":+v||v;})} placeholder="reps"/>
             <button type="button" aria-pressed={!!st.done} onClick={()=>upd(n=>{n.exercises[ei].sets[si].done=!st.done;})} style={{minHeight:40,border:`1px solid ${C.bd}`,background:C.cd,color:st.done?C.t:C.t3,borderRadius:8,fontSize:15,cursor:"pointer"}}>{st.done?"Done":"Skipped"}</button>
@@ -707,9 +707,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         </div>
         {ex.swappedFrom&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>Swapped from {ex.swappedFrom.name}</div>}
         <div style={{...grid,gridTemplateColumns:"32px 1fr 1fr 1fr",marginTop:6}}>
-          {["Set","lb","Reps","RIR"].map((h,i)=><span key={i} style={{fontSize:13,color:C.t4,textAlign:i?"center":"left"}}>{h}</span>)}
-          {(ex.sets||[]).map((x,si)=>{const ok=x.done;const top=rr&&ok&&+x.reps>=rr[1];const c=ok?C.t:C.t4;return(<React.Fragment key={si}>
-            <span style={{fontSize:16,color:C.t4,padding:"7px 0",...NUMS}}>{si+1}</span>
+          {["Set","lb","Reps","RIR"].map((h,i)=><span key={i} style={{fontSize:13,color:C.t3,textAlign:i?"center":"left"}}>{h}</span>)}
+          {(ex.sets||[]).map((x,si)=>{const ok=x.done;const top=rr&&ok&&+x.reps>=rr[1];const c=ok?C.t:C.t3;return(<React.Fragment key={si}>
+            <span style={{fontSize:16,color:C.t3,padding:"7px 0",...NUMS}}>{si+1}</span>
             <span style={{fontSize:17,color:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{+x.weight>0?x.weight:"BW"}</span>
             <span style={{fontSize:17,color:top?C.g:c,textAlign:"center",textDecoration:ok?"none":"line-through",...NUMS}}>{x.reps||"○"}</span>
             <span style={{fontSize:15,color:C.t3,textAlign:"center",...NUMS}}>{ok?(x.rir!=null&&x.rir!==""?x.rir:""):"skipped"}</span>
@@ -797,7 +797,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               <button type="button" role="tab" aria-selected={on} key={w.ds} onClick={()=>setSelDate(w.ds)} aria-label={`${fmt(w.ds)}${w.done?", logged":""}`}
                 style={{minHeight:58,borderRadius:9,border:`1px solid ${on?C.t:"transparent"}`,background:on?C.cd:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
                 <span style={{fontSize:13,color:C.t3}}>{w.dk.charAt(0).toUpperCase()+w.dk.slice(1,3)}</span>
-                <span style={{fontSize:18,fontWeight:w.done||w.today?500:400,color:w.done||w.today||(!w.future&&w.lift)?C.t:C.t4,...NUMS}}>{w.n}</span>
+                <span style={{fontSize:18,fontWeight:w.done||w.today?500:400,color:w.done||w.today||(!w.future&&w.lift)?C.t:C.t3,...NUMS}}>{w.n}</span>
                 <span aria-hidden="true" style={{width:5,height:5,borderRadius:3,background:w.done?C.g:w.today?C.p:"transparent"}}/>
               </button>);})}
           </div>))}
@@ -960,7 +960,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const cells=[...Array(pad).fill(null),...Array.from({length:days},(_,i)=>i+1)];
           const step=dir=>{let m=calMonth+dir,y=calYear;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);};
           const atNow=calYear===now.getFullYear()&&calMonth===now.getMonth();
-          const navBtn={background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",minWidth:40,minHeight:40};
+          const navBtn={background:"none",border:"none",color:C.t2,fontSize:20,cursor:"pointer",minWidth:44,minHeight:44};
           return(<>
             <H2 right={<div style={{display:"flex",alignItems:"center"}}>
               <button type="button" aria-label="Previous month" style={navBtn} onClick={()=>step(-1)}>‹</button>
@@ -968,12 +968,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               <button type="button" aria-label="Next month" style={{...navBtn,opacity:atNow?0.3:1}} disabled={atNow} onClick={()=>step(1)}>›</button>
             </div>}>History</H2>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",rowGap:2,marginTop:6,textAlign:"center"}}>
-              {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{fontSize:13,color:C.t4,padding:"4px 0"}}>{d}</div>)}
+              {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{fontSize:13,color:C.t3,padding:"4px 0"}}>{d}</div>)}
               {cells.map((d,i)=>{if(!d)return <div key={`e${i}`}/>;
                 const dk=`${mk}-${String(d).padStart(2,"0")}`;const w=data.wk?.[dk];const mob=!!(data.mob?.[dk]?.done&&!data.mob?.[dk]?.skipped)||data.mob?.[dk]===true;const isT=dk===t;
                 return(<button type="button" key={dk} disabled={!w} onClick={()=>w&&setViewW([dk,w])} aria-label={`${fmt(dk)}${w?`, ${workoutLabel(w,data.program)}`:""}`}
                   style={{minHeight:44,background:"none",border:isT?`1px solid ${C.p}`:"1px solid transparent",borderRadius:8,cursor:w?"pointer":"default",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:0}}>
-                  <span style={{fontSize:16,color:w?C.t:dk>t?C.t4:C.t3,fontWeight:w?500:400,fontVariantNumeric:"tabular-nums"}}>{d}</span>
+                  <span style={{fontSize:16,color:w?C.t:C.t3,fontWeight:w?500:400,fontVariantNumeric:"tabular-nums"}}>{d}</span>
                   <span style={{display:"flex",gap:2,height:5}}>{w&&<span style={{width:5,height:5,borderRadius:3,background:C.g}}/>}{mob&&<span style={{width:5,height:5,borderRadius:3,background:C.t4}}/>}</span>
                 </button>);})}
             </div>

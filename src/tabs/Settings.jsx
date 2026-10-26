@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, cutStepsTarget, DEFAULTS, bl, td, fmt, wkn, describeChange } from "../../lib/engine.mjs";
+import { PROG, cutStepsTarget, DEFAULTS, bl, td, fmt, wkn, describeChange, SETTINGS_FIELDS } from "../../lib/engine.mjs";
 import { LOAD_PLAN } from "../../lib/supabase.mjs";
 import { ensureNotificationPermission, isStandalone, notifyDevice, scheduleServerPush } from "../core/device.js";
 import { useBackClose } from "../core/nav.js";
@@ -41,7 +41,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
     return[
       {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`Synced ${fmt(lastNut)}`:"No data"},
       {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`Synced ${fmt(lastRecRow[0])}`:`Last worn ${fmt(lastRecRow[0])}`):"No data"},
-      {name:"HAE · steps & weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
+      {name:"Health Auto Export · steps and weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
       syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · ${/^404/.test(syncFailures[hardTables[0]]?.msg||"")?"table missing":"write failed"}`},
       {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"Off"},
     ];
@@ -65,7 +65,12 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
       water:+f.water||DEFAULTS.water,steps:+f.steps||DEFAULTS.steps,sleep:+f.sleep||DEFAULTS.sleep,fiber:+f.fiber||DEFAULTS.fiber,
       trainingCal:Number.isFinite(+f.trainingCal)?+f.trainingCal:DEFAULTS.trainingCal,wednesdayCal:Number.isFinite(+f.wednesdayCal)?+f.wednesdayCal:DEFAULTS.wednesdayCal,weekendCal:Number.isFinite(+f.weekendCal)?+f.weekendCal:DEFAULTS.weekendCal,
       syncToken:f.syncToken||"",notifyToken:f.notifyToken||""}};
-    setData(nd);sv(nd);svSB.settings(nd.settings);setSaved(true);setTimeout(()=>setSaved(false),2000);
+    // Record each changed target so the decision trail (You → Coach changes, the Coach's get_snapshot) stays complete.
+    const changed=SETTINGS_FIELDS.filter(k=>nd.settings[k]!==(data.settings||{})[k]);
+    const at=new Date().toISOString();
+    const rows=changed.map(field=>({type:"settings",action:null,payload:{type:"settings",field,value:nd.settings[field]},reason:"Changed on the phone",applied:true,source:"app",at}));
+    if(rows.length)nd.coachLog=[...rows,...(data.coachLog||[])];
+    setData(nd);sv(nd);svSB.settings(nd.settings);rows.forEach(r=>svSB.audit(r.payload,{reason:r.reason,source:"app"}));setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
   const exportData=()=>{
@@ -98,10 +103,10 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
     <X style={{}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-          <div style={{fontSize:16,fontWeight:700,color:C.t}}>Travel Day</div>
+          <div style={{fontSize:17,fontWeight:500,color:C.t}}>Travel day</div>
           <div style={{fontSize:13,color:C.t3}}>Toggle for travel/social weekends</div>
         </div>
-        <button onClick={toggleTravel} style={{padding:"8px 16px",borderRadius:6,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+        <button onClick={toggleTravel} aria-pressed={isTravel} style={{padding:"8px 16px",minHeight:44,minWidth:64,borderRadius:8,fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"inherit",
           background:isTravel?C.bg:"transparent",border:`1px solid ${isTravel?C.t:C.bd}`,color:isTravel?C.t:C.t3}}>{isTravel?"On":"Off"}</button>
       </div>
       {isTravel&&(<div style={{marginTop:8,padding:8,background:C.bg,borderRadius:8}}>
@@ -153,27 +158,27 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
     )}
 
     {editTargets&&<X style={{}}>
-      <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:8}}>Daily Targets</div>
+      <div style={{fontSize:17,fontWeight:500,color:C.t,marginBottom:8}}>Daily targets</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <div><L>Avg Calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
+        <div><L>Avg calories</L><N value={f.calories} onChange={v=>setF({...f,calories:v})} placeholder="1790"/></div>
         <div><L>Protein (g)</L><N value={f.protein} onChange={v=>setF({...f,protein:v})} placeholder="200"/></div>
         <div><L>Water (oz)</L><N value={f.water} onChange={v=>setF({...f,water:v})} placeholder="128"/></div>
         <div><L>Steps</L><N value={f.steps} onChange={v=>setF({...f,steps:v})} placeholder="15000"/></div>
         <div><L>Sleep (hrs)</L><N value={f.sleep} onChange={v=>setF({...f,sleep:v})} placeholder="7.5"/></div>
         <div><L>Fiber (g)</L><N value={f.fiber} onChange={v=>setF({...f,fiber:v})} placeholder="30"/></div>
       </div>
-      <div style={{fontSize:13,fontWeight:700,color:C.t2,marginTop:10,marginBottom:4}}>Day-Type Calorie Targets</div>
+      <div style={{fontSize:15,fontWeight:500,color:C.t2,marginTop:10,marginBottom:4}}>Calories by day type</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
         <div><L>Training</L><N value={f.trainingCal} onChange={v=>setF({...f,trainingCal:v})} placeholder="2000"/></div>
         <div><L>Wednesday</L><N value={f.wednesdayCal} onChange={v=>setF({...f,wednesdayCal:v})} placeholder="900"/></div>
         <div><L>Weekend avg</L><N value={f.weekendCal} onChange={v=>setF({...f,weekendCal:v})} placeholder="1800"/></div>
       </div>
-      <div style={{fontSize:12,color:C.t3,marginTop:4}}>Weekend splits Sat +100 / Sun −100 around the average.</div>
-      <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save Targets"}</B>
+      <div style={{fontSize:13,color:C.t3,marginTop:4}}>Weekend splits Sat +100 and Sun −100 around the average.</div>
+      <B full style={{marginTop:10}} onClick={saveSettings} color={saved?C.g:C.p}>{saved?"Saved!":"Save targets"}</B>
     </X>}
 
     {(data.coachLog||[]).length>0&&(
-      <S title="Coach changes" meta={(data.coachLog||[]).length} collapsible defaultOpen={false}>
+      <S title="Coach and phone changes" meta={(data.coachLog||[]).length} collapsible defaultOpen={false}>
         {(data.coachLog||[]).slice(0,20).map((c,i)=>(
           <div key={c.id||i} style={{padding:"10px 2px",borderTop:`1px solid ${C.bd}`}}>
             <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"baseline"}}>
@@ -262,7 +267,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
                 saveNotificationSettings(nextNotifications);
                 const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                 setData(nd);sv(nd);svSB.settings(nd.settings);
-              }} style={{padding:"6px 16px",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              }} style={{padding:"6px 16px",minHeight:44,minWidth:64,borderRadius:8,fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"inherit",
                 border:`1px solid ${(data.settings.notifications||{}).enabled?C.g:C.bd}`,
                 background:(data.settings.notifications||{}).enabled?C.gl:"transparent",
                 color:(data.settings.notifications||{}).enabled?C.g:C.t3}}>
@@ -281,7 +286,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
                       saveNotificationSettings(nextNotifications);
                       const nd={...data,settings:{...data.settings,notifications:nextNotifications}};
                       setData(nd);sv(nd);svSB.settings(nd.settings);
-                    }} style={{padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                    }} style={{padding:"3px 10px",minHeight:44,minWidth:64,borderRadius:8,fontSize:15,fontWeight:500,cursor:"pointer",fontFamily:"inherit",
                       border:`1px solid ${on?C.g:C.bd}`,background:on?C.gl:"transparent",color:on?C.g:C.t3}}>
                       {on?"On":"Off"}
                     </button>

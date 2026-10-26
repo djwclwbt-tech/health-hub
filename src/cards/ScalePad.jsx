@@ -7,7 +7,7 @@ const ScalePad=({value,onChange,onLog,hint,todayLogged,yesterdayWt,compact=false
   const ok=!!value&&Number(value)>80&&Number(value)<500;
   return(<X style={{padding:compact?"14px 14px 12px":"18px 16px",textAlign:"center",boxShadow:C.sh2}}>
     <div style={{fontSize:13,color:C.t3,fontVariantNumeric:"tabular-nums"}}>{todayLogged!=null?`Logged ${Number(todayLogged).toFixed(1)} · log again to correct`:`Today${yesterdayWt?` · yesterday ${Number(yesterdayWt).toFixed(1)}`:""}`}</div>
-    <div style={{fontSize:compact?44:52,fontWeight:500,letterSpacing:"-0.5px",fontFamily:FD,lineHeight:1,marginTop:8,color:value?C.t:C.t4,fontVariantNumeric:"tabular-nums"}}>{value||(yesterdayWt?Number(yesterdayWt).toFixed(1):"185.0")}</div>
+    <div style={{fontSize:compact?44:52,fontWeight:500,letterSpacing:"-0.5px",fontFamily:FD,lineHeight:1,marginTop:8,color:value?C.t:C.t3,fontVariantNumeric:"tabular-nums"}}>{value||(yesterdayWt?Number(yesterdayWt).toFixed(1):"185.0")}</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:12}}>
       {["1","2","3","4","5","6","7","8","9",".","0","⌫"].map(k=>(
         <button type="button" key={k} onClick={()=>{haptic(8);

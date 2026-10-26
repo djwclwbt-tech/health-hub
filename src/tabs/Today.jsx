@@ -43,7 +43,7 @@ const KV=({k,v,dim})=>(
 const Ev=({time,state,title,sub,open,onToggle,children,last})=>{
   const isNow=state==="now";
   return(<div style={{position:"relative",paddingLeft:58,paddingBottom:last?0:22}}>
-    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:13,color:isNow?C.p:C.t4,fontWeight:isNow?500:400,...NUM}}>{time}</span>
+    <span style={{position:"absolute",left:0,top:1,width:34,textAlign:"right",fontSize:13,color:isNow?C.p:C.t3,fontWeight:isNow?500:400,...NUM}}>{time}</span>
     <span aria-hidden="true" style={{position:"absolute",left:41,top:6,width:7,height:7,borderRadius:"50%",boxSizing:"border-box",
       background:isNow?C.p:state==="done"?C.t:C.bg,border:`1.5px solid ${isNow?C.p:state==="done"?C.t:C.t4}`,
       boxShadow:isNow?"0 0 0 4px var(--accent-soft)":"none"}}/>
@@ -132,6 +132,11 @@ const Today=({data,setData,setTab,workout,addToast})=>{
   if(rec?.recoveryScore!=null){
     const bits=[rec.hrv?`HRV ${Math.round(rec.hrv)}`:null,rec.sleepHours?`sleep ${hm(rec.sleepHours)}`:null,rec.rhr?`RHR ${Math.round(rec.rhr)}`:null].filter(Boolean);
     rows.push(<Ev key="rec" time="AM" state="done" title={<>Recovery <span style={NUM}>{rec.recoveryScore}%</span></>} sub={<span style={NUM}>{bits.join(" · ")}{autoreg?null:sess?" · full session":""}</span>}/>);
+  }else{
+    // Silence would look like a normal morning. Say when the Oura feed has stopped (same rule as the coaching brief).
+    const lastRec=Object.keys(data.rec||{}).filter(k=>k<t&&data.rec[k]?.recoveryScore!=null).sort().at(-1);
+    const daysOff=lastRec?Math.round((new Date(t+"T12:00:00")-new Date(lastRec+"T12:00:00"))/864e5):null;
+    if(daysOff==null||daysOff>2)rows.push(<Ev key="rec" time="AM" state="done" title="No recovery data" sub={lastRec?`The Oura feed stopped. Last reading ${fmt(lastRec)}.`:"Oura has not sent any readings."}/>);
   }
 
   // ── Lift ──
