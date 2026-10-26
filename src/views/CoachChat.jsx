@@ -9,6 +9,11 @@ import { C } from "../core/theme.js";
 const KEY="dhub6_coach_chat";
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||[];}catch{return[];}};
 const save=m=>{try{localStorage.setItem(KEY,JSON.stringify(m.slice(-40)));}catch{}};
+// Light formatting for the Coach's replies: **bold** and "- " bullets, nothing else.
+const Rich=({text})=>String(text||"").split("\n").map((line,i)=>{
+  const bullet=/^\s*[-•]\s+/.test(line);const body=bullet?line.replace(/^\s*[-•]\s+/,""):line;
+  const parts=body.split(/\*\*(.+?)\*\*/g).map((p,j)=>j%2?<strong key={j} style={{fontWeight:600}}>{p}</strong>:p);
+  return body.trim()?<div key={i} style={{display:"flex",gap:8,marginTop:bullet?2:i?8:0}}>{bullet&&<span aria-hidden="true">·</span>}<span>{parts}</span></div>:null;});
 const STARTERS=["What should I focus on this week?","Am I on track for Nov 29?","Why is rest different on each day?","How should today's lift go?"];
 
 const CoachChat=({data,setData,addToast})=>{
@@ -53,8 +58,8 @@ const CoachChat=({data,setData,addToast})=>{
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       {msgs.map((m,mi)=>m.role==="user"
         ?<div key={mi} style={{alignSelf:"flex-end",maxWidth:"85%",background:C.bg,border:`1px solid ${C.bd}`,borderRadius:12,padding:"9px 12px",fontSize:16,color:C.t,whiteSpace:"pre-wrap"}}>{m.content}</div>
-        :<div key={mi} style={{fontSize:16,color:C.t,lineHeight:1.5,whiteSpace:"pre-wrap"}}>
-          {m.content}
+        :<div key={mi} style={{fontSize:16,color:C.t,lineHeight:1.5}}>
+          <Rich text={m.content}/>
           {(m.proposals||[]).map((p,pi)=><div key={pi} style={{marginTop:10,border:`1px solid ${C.bd}`,borderRadius:12,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <span style={{fontSize:15,color:C.t2}}>{p.summary}</span>
             {p.applied?<span style={{fontSize:15,color:C.g,whiteSpace:"nowrap"}}>Applied</span>
