@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
+import { liftTarget, PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -468,7 +468,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         </div>);})()}
 
       {rt>0&&(()=>{const pct=rt?Math.min(100,Math.round((1-rl/Math.max(rt,1))*100)):0;const done=rl<=0;
-        return(<Portal><div style={{position:"fixed",left:0,right:0,bottom:"calc(var(--tabbar-h) + var(--safe-b))",zIndex:95,maxWidth:520,margin:"0 auto",padding:"0 8px 6px"}}>
+        return(<Portal><div className="hh-dock" style={{position:"fixed",left:0,right:0,bottom:"calc(var(--tabbar-h) + var(--safe-b))",zIndex:95,maxWidth:520,margin:"0 auto",padding:"0 8px 6px"}}>
           <div className="hh-sheet" role="timer" aria-live="off" style={{background:done?C.g:C.t,borderRadius:12,boxShadow:C.sh,padding:"8px 8px 8px 14px",display:"flex",alignItems:"center",gap:8,position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${pct}%`,background:"var(--on-accent-line)",opacity:0.35,transition:"width .5s linear"}}/>
             <div style={{position:"relative",flex:1,minWidth:0}}>
@@ -553,9 +553,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const inc=(e.swappedTo?.inc??sl?.inc)||5;
           const unit=(e.swappedTo?.unit||sl?.unit||"lb").toLowerCase().replace("lbs","lb");
           const rr=sl?.rr;
-          const goal=(!prev||workout.isDeload||!rr)?null:(()=>{const reps=prev.reps||[];if(!reps.length)return null;
-            if(reps.every(r=>r>=rr[1]))return`all ${rr[1]}s last time, so the weight goes up`;
-            if(Math.max(...reps)>=rr[0])return"beat one of last time's sets";return"match last time before adding";})();
+          // One rule for "what am I aiming for", shared with Today and the Train plan (anchors move up; the rest hold on the cut).
+          const goal=sl?liftTarget(data,{...sl,...(e.swappedTo||{}),sets:e.sets.length},{isDeload:workout.isDeload}).goal:null;
           const cue=e.swappedTo?.cue||sl?.cue||"";
           const showWu=edSi===0&&e.wu?.some(w=>!w.done);
           return(<div style={{borderTop:`1px solid ${C.bd}`,padding:"14px 0 6px"}}>
@@ -564,9 +563,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {rr&&<span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
             <div style={{fontSize:15,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
-              {[sl?.anchor?"Anchor":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&(prev||goal)?" · ":""}
-              {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}{prev&&goal?" · ":""}{goal}
+              {[sl?.anchor?"Anchor":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&prev?" · ":""}
+              {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}
             </div>
+            {goal&&<div style={{fontSize:15,color:C.t2,marginTop:2,lineHeight:1.45}}>{goal}</div>}
             {ssTag&&ei===curEi&&<div style={{fontSize:15,color:C.t3,marginTop:2}}>{restOf(ei)===0?`No rest, straight to ${nameOf(grp[grp.indexOf(ei)+1])}`:`Rest after this, then back to ${nameOf(grp[0])}`}</div>}
             <div style={{display:"grid",gridTemplateColumns:"28px 1fr 1fr 1fr 44px",alignItems:"center",marginTop:10,rowGap:2}}>
               {["Set","Last",unit,"Reps",""].map((h,i)=><span key={i} style={{fontSize:13,color:C.t3,textAlign:i>=2?"center":"left",paddingBottom:2}}>{h}</span>)}
@@ -769,11 +769,12 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       const mobEntry=data.mob?.[t];
       const bigBtn=(primary)=>({marginTop:14,width:"100%",minHeight:48,borderRadius:9,fontSize:17,fontWeight:500,cursor:"pointer",border:primary?"none":`1px solid ${C.bd}`,background:primary?C.p:C.cd,color:primary?C.oa:C.t});
       const liftRows=(exs,dim)=>(<div style={{marginTop:12,borderTop:`1px solid ${C.bd}`}}>
-        {exs.map(ex=>{const cw=gw(ex,ex.sw,ex);const ss=supersetLabel(selDow,ex);return(
+        {exs.map(ex=>{const lt=liftTarget(data,ex);const cw=lt.weight;const ss=supersetLabel(selDow,ex);return(
           <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
             <span style={{minWidth:0}}>
               <span style={{display:"block",fontSize:17,color:dim?C.t2:C.t}}>{ex.name}</span>
-              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`].filter(Boolean).join(" · ")}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
+              {!dim&&<span style={{display:"block",fontSize:15,color:C.t2,marginTop:2}}>{lt.goal}</span>}
             </span>
             <span style={{fontSize:17,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
           </button>);})}

@@ -4,6 +4,8 @@ import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, svSB, syncHealth } from "./core/storage.js";
 import { APP_VERSION, C } from "./core/theme.js";
 import { registerPush } from "./core/device.js";
+import { installViewportFixes } from "./core/viewport.js";
+installViewportFixes();
 import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";

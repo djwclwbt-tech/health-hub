@@ -36,7 +36,7 @@ const pushAll = async (c, msg) => {
   let sent = 0;
   for (const s of subs) {
     if (!s?.subscription || !pushEndpointOk(s.subscription.endpoint)) continue;
-    try { await sendPush({ subscription: s.subscription, tag: msg.tag, title: msg.title, body: msg.body, url: msg.url || '/' }); sent++; }
+    try { await sendPush({ subscription: s.subscription, tag: msg.tag, title: msg.title, body: msg.body, url: msg.url || '/', urgency: 'normal', ttl: 12 * 3600 }); sent++; }
     catch (err) { if (isExpired(err)) await c.deleteRow('push_subs', 'device', s.device).catch(() => {}); else console.error('[watchdog] push failed:', err.statusCode || '', err.message); }
   }
   return { sent, phones: subs.length };

@@ -1,5 +1,5 @@
 const { useState, useEffect } = React;
-import { PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, shiftDate, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
+import { liftTarget, PROG, shortLiftName, cutStepsTarget, DEFAULTS, lds, td, dw, fmt, shiftDate, wkn, estTime, getDayCalTarget, getDayProTarget, getDayType, workoutLabel, getTrend, getAutoregProposal } from "../../lib/engine.mjs";
 import { CloseoutPanel, SYSTEM_HABITS } from "../cards/CloseoutPanel.jsx";
 import { ScalePad } from "../cards/ScalePad.jsx";
 import { haptic } from "../core/device.js";
@@ -180,8 +180,15 @@ const Today=({data,setData,setTab,workout,addToast})=>{
           </div>
         </Card>);})()}
       {!lifted&&<Card>
-        {exs.map(e=>{const rr=e.rr||[8,12];const s=cut&&!e.anchor?e.sets-1:e.sets;return(
-          <KV key={e.id} k={e.name} v={`${s} × ${rr[0]}${rr[1]>rr[0]?"–"+rr[1]:""}`}/>);})}
+        {exs.map((e,i)=>{const s=cut&&!e.anchor?e.sets-1:e.sets;const lt=liftTarget(data,{...e,sets:s});return(
+          // Weight first: "what do I lift today" is the question this card answers.
+          <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"9px 0",borderTop:i?`1px solid ${C.bd}`:"none"}}>
+            <span style={{minWidth:0}}>
+              <span style={{display:"block",fontSize:17,color:C.t}}>{e.name}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,...NUM}}>{s} sets of {lt.rangeTxt}{lt.last?` · last ${lt.last}`:""}</span>
+            </span>
+            <span style={{fontSize:17,fontWeight:500,color:C.t,whiteSpace:"nowrap",...NUM}}>{lt.weight>0?<>{lt.weight}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> {lt.unit}</span></>:"Body weight"}</span>
+          </div>);})}
         <Main onClick={()=>setTab("training")}>{workout?"Resume session":"Start session"}</Main>
       </Card>}
       {lifted&&<Card style={{padding:"4px 16px"}}><KV k="Session" v="Open in Train"/><Quiet style={{width:"100%",marginBottom:12}} onClick={()=>setTab("training")}>View workout</Quiet></Card>}
