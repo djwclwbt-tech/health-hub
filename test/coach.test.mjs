@@ -47,3 +47,30 @@ test('groundingCheck: flags invented numbers, passes cited ones and thousands se
   assert.deepEqual(E.groundingCheck('Eat 2,437 calories and bench 315.', b), [2437, 315]);
   assert.deepEqual(E.groundingCheck('He averaged 14,149 steps', 'STEPS: avg 14,149/day'), []);
 });
+
+test('liftTarget: anchors move up, accessories hold, body weight says so', () => {
+  const d = scenario('on-track', TODAY);
+  const mon = d.program.monday.exercises;
+  const anchor = mon.find(e => e.anchor && e.inc > 0), acc = mon.find(e => !e.anchor && e.sw > 0);
+  assert.match(E.liftTarget(d, anchor).goal, /weight goes up/);
+  assert.doesNotMatch(E.liftTarget(d, acc).goal, /goes up/, 'cut hold: accessories never promise more weight');
+  const lt = E.liftTarget(d, anchor);
+  assert.equal(lt.weight, E.buildExerciseEntry(d, anchor).sets[0].weight, 'the weight shown is the weight the session prefills');
+  assert.equal(lt.unit, 'lb');
+});
+
+test('paceVerdict: green only when the goal lands by the block end', () => {
+  const mk = (rate, cur) => ({ reliable: true, rate, n: 10, current: cur, points: [{ v: cur }] });
+  assert.equal(E.paceVerdict(mk(-1.2, 178), TODAY).kind, 'goal');
+  assert.equal(E.paceVerdict(mk(-0.9, 185), TODAY).kind, 'late', 'safe rate, but 10 lb at 0.9/wk ends in January');
+  assert.equal(E.paceVerdict(mk(-2.4, 185), TODAY).kind, 'fast');
+  assert.equal(E.paceVerdict(mk(0.4, 185), TODAY).kind, 'gaining');
+  assert.equal(E.paceVerdict({ reliable: false, n: 3 }, TODAY).kind, 'unreliable');
+});
+
+test('history replay follows the cut hold: accessories never gain weight from backfill', () => {
+  const d = E.migrate(scenario('on-track', TODAY));
+  const acc = d.program.monday.exercises.find(e => !e.anchor && e.sw > 0 && e.inc > 0);
+  E.backfillData(d); E.repairDeloadProgression(d);
+  assert.equal(E.liftTarget(d, acc).weight, acc.sw, 'topped sets at the same weight → same weight next time');
+});

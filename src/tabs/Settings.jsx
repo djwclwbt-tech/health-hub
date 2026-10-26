@@ -42,7 +42,7 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
       {name:"Cronometer",dot:lastNut&&daysAgo(lastNut)<=1?C.g:C.t3,status:lastNut?`Synced ${fmt(lastNut)}`:"No data"},
       {name:"Oura",dot:lastRecRow&&daysAgo(lastRecRow[0])<=1?C.g:C.t3,status:lastRecRow?(daysAgo(lastRecRow[0])<=1?`Synced ${fmt(lastRecRow[0])}`:`Last worn ${fmt(lastRecRow[0])}`):"No data"},
       {name:"Health Auto Export · steps and weight",dot:lastSteps&&daysAgo(lastSteps)<=1?C.g:C.t3,status:lastSteps?`Last ${fmt(lastSteps)}`:"No data"},
-      syncOk?{name:"Supabase sync",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Supabase sync",dot:C.r,status:`${hardTables[0]} · ${/^404/.test(syncFailures[hardTables[0]]?.msg||"")?"table missing":"write failed"}`},
+      syncOk?{name:"Cloud backup",dot:C.g,status:blipTables.length?`OK · ${blipTables.length} dropped, retrying`:"All writes OK"}:{name:"Cloud backup",dot:C.r,status:`${hardTables[0]} · ${/^404/.test(syncFailures[hardTables[0]]?.msg||"")?"table missing":"write failed"}`},
       {name:"Push notifications",dot:pushOn?C.g:C.t3,status:pushOn?"Rest timers on":"Off"},
     ];
   })();
@@ -309,10 +309,10 @@ const Settings=({data,setData,setTab,missingTables=[],syncFailures={}})=>{
     <X>
       <div style={{fontSize:16,fontWeight:700,color:C.t,marginBottom:8}}>Data</div>
       <div style={{display:"flex",gap:6}}>
-        <B full outline onClick={exportData}>Export Data (JSON)</B>
+        <B full outline onClick={exportData}>Download a copy of my data</B>
       </div>
       <div style={{fontSize:12,color:C.t3,marginTop:6}}>Download all your health data as a JSON file for backup.</div>
-      <S title="Admin data tools" collapsible defaultOpen={false}>
+      <S title="Repair tools (rarely needed)" collapsible defaultOpen={false}>
         {showReset&&<ConfirmModal title="Erase everything?" message="Every table on this phone and in Supabase is wiped. There is no undo. Export first." confirmText="Erase all" confirmColor={C.r} onCancel={()=>setShowReset(false)} onConfirm={async()=>{setShowReset(false);const nd=bl();setData(nd);sv(nd);["dhub6_sb_outbox","dhub6_workout","dhub6_variant","dhub6_rest_timer","dhub6_mob_active","dhub6_coach_seen"].forEach(k=>{try{localStorage.removeItem(k);}catch{}});for(const[table]of LOAD_PLAN){await sb.deleteAll(table);}}}/>}
         <button type="button" onClick={()=>setShowReset(true)}
           style={{background:"none",border:"none",color:C.r,cursor:"pointer",fontSize:12,fontFamily:"inherit",marginTop:4,opacity:0.7,padding:"6px 0"}}>

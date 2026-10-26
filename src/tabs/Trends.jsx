@@ -1,5 +1,5 @@
 const { useState, useRef } = React;
-import { PROG, DEFAULTS, fmt, lds, td, okWeight, getTrend, calcAdaptiveTDEE, calcEWMA } from "../../lib/engine.mjs";
+import { PROG, DEFAULTS, fmt, lds, td, okWeight, getTrend, calcAdaptiveTDEE, calcEWMA, paceVerdict } from "../../lib/engine.mjs";
 import { useBackClose } from "../core/nav.js";
 import { useToday } from "../core/hooks.js";
 import { sv, svSB } from "../core/storage.js";
@@ -84,17 +84,15 @@ const Trends=({data,setData})=>{
   const rate=reliable?trend.rate:0;   // no rate, no projection, until there are enough weigh-ins
   const daysToGoal=cur!=null&&rate<-0.05&&cur>goal?(cur-goal)/(-rate)*7:null;
   const goalBy=daysToGoal!=null&&daysToGoal<=180?(()=>{const d=new Date(t+"T12:00:00");d.setDate(d.getDate()+Math.round(daysToGoal));return shortD(lds(d));})():null;
-  const pace=!trend?null:!reliable?{txt:`${trend.n} weigh-ins in 2 weeks. A rate needs 4 across a week.`,c:C.t3}:rate>=0.1?{txt:`+${rate.toFixed(1)} lb/wk · gaining`,c:C.t2}
-    :rate<=-0.6&&rate>-2?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · on pace${goalBy?` for ${goalBy}`:""}`,c:C.g}
-    :rate<=-2?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · faster than planned`,c:C.t2}
-    :rate<=-0.1?{txt:`−${Math.abs(rate).toFixed(1)} lb/wk · slow`,c:C.t2}
-    :{txt:"Holding steady",c:C.t2};
+  // Same verdict as Today (engine paceVerdict); green only when the goal lands by the block's end.
+  const pv=paceVerdict(trend,t);
+  const pace=!trend?null:{txt:pv.goalBy&&pv.kind!=="fast"?`${pv.text} · goal ${shortD(pv.goalBy)}`:pv.text,c:pv.kind==="goal"?C.g:pv.kind==="unreliable"?C.t3:C.t2};
   const s=scrub!=null?pts[scrub]:null;
   const week=(()=>{const days=[];for(let i=6;i>=0;i--){const d=new Date(t+"T12:00:00");d.setDate(d.getDate()-i);days.push(lds(d));}return days;})();
   const weighs=week.filter(d=>data.wt?.[d]!=null).length;
   const proDays=week.map(d=>data.nut?.[d]?.totalProtein||0).filter(v=>v>0);
   const proAvg=proDays.length?Math.round(proDays.reduce((a,b)=>a+b,0)/proDays.length):null;
-  const cells=[["To goal",cur!=null?`${Math.max(0,cur-goal).toFixed(1)} lb`:"○"],["Burn estimate",tdee?.tdee?Math.round(tdee.tdee).toLocaleString():"○"],["Weigh-ins, week",`${weighs}/7`],["Protein, 7-day",proAvg!=null?`${proAvg} g`:"○"]];
+  const cells=[["To goal",cur!=null?`${Math.max(0,cur-goal).toFixed(1)} lb to ${goal}`:"○"],["Burn estimate",tdee?.tdee?`${Math.round(tdee.tdee).toLocaleString()} cal/day`:"○"],["Weigh-ins, week",`${weighs}/7`],["Protein, 7-day",proAvg!=null?`${proAvg} g`:"○"]];
   const entries=all.slice().reverse();
   // Weigh-ins by month. The change shows only against a weigh-in in the 7 days
   // before; after a longer gap a "+7.0" would be a month of drift, not a day.

@@ -446,8 +446,9 @@ test('applyChanges update and swap reach every day that holds the lift', () => {
 });
 
 test('progression: reps above the range count as topping it; extra sets do not block it', () => {
-  const pe = { rr: [5, 8], inc: 5, sets: 3 };
+  const pe = { rr: [5, 8], inc: 5, sets: 3, anchor: true };
   assert.equal(E.nextWeightFromSets(sets(100, [9, 9, 9]), pe), 105, '3×9 on 5-8 progresses');
+  assert.equal(E.nextWeightFromSets(sets(100, [9, 9, 9]), { ...pe, anchor: false }), 100, 'on a cut an accessory holds even when topped');
   assert.equal(E.hitTopOfRange(sets(100, [8, 8]), [5, 8], 3), false);
   const anc = { id: 'machine-chest-press', sets: 1, rr: [5, 8], sw: 135, inc: 5, anchor: true };
   const run = (st) => E.applyWorkout({ prog: {}, wk: {} }, { day: 'monday', start: 0, exercises: [{ id: anc.id, sets: st }] }, { exercises: [anc] }, '2026-10-05', 6e5).data.prog['machine-chest-press__5-8'];

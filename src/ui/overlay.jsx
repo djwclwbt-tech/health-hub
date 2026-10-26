@@ -1,4 +1,9 @@
 import { useBackClose } from "../core/nav.js";
+import { lockScroll, unlockScroll } from "../core/viewport.js";
+const { useEffect } = React;
+
+// Pin the page behind an open overlay (iOS scrolls it otherwise).
+const useScrollLock=(on)=>useEffect(()=>{if(!on)return;lockScroll();return unlockScroll;},[on]);
 import { C, FD } from "../core/theme.js";
 import { B } from "./atoms.jsx";
 
@@ -8,6 +13,7 @@ const Portal=({children})=>ReactDOM.createPortal(children,document.body);
 // ═══ CONFIRM MODAL ═══
 const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",confirmColor=C.g})=>{
   useBackClose(true,onCancel);
+  useScrollLock(true);
   return(<Portal><div className="hh-fade" onClick={onCancel} style={{position:"fixed",inset:0,background:C.scrim,zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div className="hh-sheet" role="alertdialog" aria-modal="true" onClick={e=>e.stopPropagation()} style={{background:C.cd,borderRadius:12,padding:20,width:"100%",maxWidth:320,border:`1px solid ${C.bd}`,boxShadow:C.sh}}>
       <div style={{fontSize:18,fontWeight:700,color:C.t,marginBottom:6}}>{title}</div>
@@ -23,9 +29,10 @@ const ConfirmModal=({title,message,onConfirm,onCancel,confirmText="Confirm",conf
 // ═══ BOTTOM SHEET · every overlay uses this: slide-up, scrim tap + back button close ═══
 const Sheet=({open,onClose,title,children,right,maxHeight="82vh"})=>{
   useBackClose(!!open,onClose);
+  useScrollLock(!!open);
   if(!open)return null;
   return(<Portal><div className="hh-fade" onClick={onClose} style={{position:"fixed",inset:0,background:C.scrim,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-    <div className="hh-sheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()} style={{background:C.cd,borderRadius:"14px 14px 0 0",width:"100%",maxWidth:520,maxHeight,overflowY:"auto",padding:"8px 16px calc(18px + var(--safe-b))",border:`1px solid ${C.bd}`,boxShadow:C.sh}}>
+    <div className="hh-sheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()} style={{background:C.cd,borderRadius:"14px 14px 0 0",width:"100%",maxWidth:520,maxHeight,overflowY:"auto",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",padding:"8px 16px calc(18px + var(--safe-b))",border:`1px solid ${C.bd}`,boxShadow:C.sh}}>
       <div style={{width:36,height:4,borderRadius:2,background:C.bl,margin:"0 auto 10px"}}/>
       {(title||right)&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8}}>
         <div style={{fontSize:19,fontWeight:800,color:C.t,fontFamily:FD}}>{title}</div>{right}

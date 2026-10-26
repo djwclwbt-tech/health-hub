@@ -10,7 +10,7 @@ import { C, FD } from "../core/theme.js";
 // old ones so deep links (?tab=training) and notification taps keep working.
 const TABS=[{id:"dashboard",l:"Today"},{id:"training",l:"Train"},{id:"weight",l:"Trends"},{id:"settings",l:"You"}];
 const TabBar=({active,set,hasActiveWorkout})=>(
-  <nav aria-label="Primary" style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:"color-mix(in srgb, var(--bg) 88%, transparent)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",padding:"0 12px var(--safe-b)"}}>
+  <nav aria-label="Primary" className="hh-dock" style={{display:"flex",borderTop:`1px solid ${C.bd}`,background:"color-mix(in srgb, var(--bg) 88%, transparent)",backdropFilter:"blur(18px)",WebkitBackdropFilter:"blur(18px)",position:"fixed",bottom:0,left:0,right:0,zIndex:100,maxWidth:520,margin:"0 auto",padding:"0 12px var(--safe-b)"}}>
     {TABS.map(t=>{const on=active===t.id;return(
       <button type="button" key={t.id} aria-current={on?"page":undefined} onClick={()=>{if(!on)haptic(6);set(t.id);}} style={{
         flex:1,background:"transparent",border:"none",cursor:"pointer",color:on?C.t:C.t3,position:"relative",minHeight:"var(--tabbar-h)",

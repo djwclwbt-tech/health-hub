@@ -4,6 +4,8 @@ import { KEYS_OF_TABLE } from "../lib/supabase.mjs";
 import { flushOutbox, ld, loadFromSB, onSyncFailure, sv, svSB, syncHealth } from "./core/storage.js";
 import { APP_VERSION, C } from "./core/theme.js";
 import { registerPush } from "./core/device.js";
+import { installViewportFixes } from "./core/viewport.js";
+installViewportFixes();
 import { Today } from "./tabs/Today.jsx";
 import { Settings } from "./tabs/Settings.jsx";
 import { Training } from "./tabs/Training.jsx";
@@ -76,7 +78,7 @@ window.App = function App(){
           const localHasData=Object.keys(merged.wk).length>0||Object.keys(merged.wt).length>0||Object.keys(merged.nut).length>0;
           const sbEmpty=Object.keys(sbData.wk).length===0&&Object.keys(sbData.wt).length===0;
           if(localHasData&&sbEmpty){
-            setSyncStatus("Cloud is empty or unreachable · showing this phone's copy");
+            setSyncStatus("Offline · showing this phone's copy, nothing is lost");
             setTimeout(()=>setSyncStatus(""),4000);
           }
         }else{
