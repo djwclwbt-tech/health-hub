@@ -108,6 +108,20 @@ Push reaches the phone that already has rest-timer alerts on. It registers itsel
 !!! warning "What the watchdog saw on its first run"
     Today's weigh-in was 188. The two-week trend is now **up** 1.3 lb a week, and 13 lb remain in 34 days. That needs 2.7 lb a week, about double the safe pace. The goal or the date has to move, and the Nov 1 checkpoint is the place to decide.
 
+### Round 4: your feedback (Oct 26)
+
+You said push only arrives when the phone is unlocked, bars get stuck mid-screen, the page scrolls behind sheets, and the day's weights aren't clear. Each one was a real defect.
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Push only when unlocked | Alerts went out at normal priority, which Apple batches on a locked phone | Rest alerts go out at high priority with a 2-minute expiry |
+| Bars stuck mid-screen | iOS lifts fixed bars with the keyboard and can strand them | Bars hide while you type and re-pin after |
+| Page scrolls behind sheets | iOS ignores the usual scroll lock | The page is pinned while a sheet is open |
+| Unclear weights | Today showed sets but no weight; accessories said "goes up" when they hold | Weight per lift on Today; one goal line everywhere |
+| Accessory weights 5 lb too high (Coach, fresh installs) | A startup repair ignored the cut hold rule | The rule lives in the shared function now; 15 lifts corrected |
+
+A fresh model that had never seen the app answered questions from screenshots alone. It rated "could use this without help" **6/10** before these fixes and **7/10** after the first half. Its top remaining confusions: the RIR default, what "Anchor" means, and that the goal date and block end disagree. That last one is true, and it's your decision.
+
 ### Next round
 
 The losing-too-fast case is the weakest (7.5). The coach adds 100 to 250 calories, which may be too little at 2.7 lb a week. Next lever: size the food added to the gap in the rate.

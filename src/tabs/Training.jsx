@@ -796,7 +796,9 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             // Land on this week. A single assignment can be clamped or snapped back before layout
             // settles (fresh launch, iOS), so re-apply for a few frames; scroll events are ignored until then.
             el.dataset.init="pending";const want=()=>el.clientWidth*(PAST_WEEKS+weekOff);let n=0;
-            const pin=()=>{el.scrollLeft=want();if(++n<6&&Math.abs(el.scrollLeft-want())>1)requestAnimationFrame(pin);else requestAnimationFrame(()=>{el.dataset.init="1";});};pin();}}}
+            const pin=()=>{el.scrollLeft=want();if(++n<6&&Math.abs(el.scrollLeft-want())>1)requestAnimationFrame(pin);else requestAnimationFrame(()=>{el.dataset.init="1";});};pin();
+            // A width change (rotation, resize) keeps the scroll in pixels, which lands on another week: hold the week instead.
+            let w=el.clientWidth;if(typeof ResizeObserver!=="undefined")new ResizeObserver(()=>{if(el.clientWidth===w||!el.clientWidth)return;const off=Math.round(el.scrollLeft/Math.max(1,w));w=el.clientWidth;el.dataset.init="pending";el.scrollLeft=off*w;requestAnimationFrame(()=>{el.dataset.init="1";});}).observe(el);}}}
           onScroll={e=>{const el=e.currentTarget;if(el.dataset.init!=="1")return;const off=Math.round(el.scrollLeft/Math.max(1,el.clientWidth))-PAST_WEEKS;if(off!==weekOff)setWeekOff(off);}}
           style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",scrollbarWidth:"none",WebkitOverflowScrolling:"touch",marginTop:4}}>
           {pages.map(off=>(<div key={off} role="tablist" aria-label={off===0?"This week":`Week ${off>0?"+":""}${off}`} style={{flex:"0 0 100%",scrollSnapAlign:"start",display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>

@@ -67,3 +67,10 @@ test('paceVerdict: green only when the goal lands by the block end', () => {
   assert.equal(E.paceVerdict(mk(0.4, 185), TODAY).kind, 'gaining');
   assert.equal(E.paceVerdict({ reliable: false, n: 3 }, TODAY).kind, 'unreliable');
 });
+
+test('history replay follows the cut hold: accessories never gain weight from backfill', () => {
+  const d = E.migrate(scenario('on-track', TODAY));
+  const acc = d.program.monday.exercises.find(e => !e.anchor && e.sw > 0 && e.inc > 0);
+  E.backfillData(d); E.repairDeloadProgression(d);
+  assert.equal(E.liftTarget(d, acc).weight, acc.sw, 'topped sets at the same weight → same weight next time');
+});
