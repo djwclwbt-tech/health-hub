@@ -434,7 +434,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     const s=sessOf(workout);
     const slotAt=ei=>s.exercises?.[ei]||workout.exercises[ei]?.slot;
     // Rest comes from the lift actually on the bar: a swap gets its own rest, not the old lift's.
-    const restAt=ei=>restFor(slotAt(ei),workout.exercises[ei]?.swappedTo);
+    const restAt=ei=>restFor(slotAt(ei));   // the slot's planned rest, swapped lift or not
     const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));const reps=targetReps({...slot,sets:wkEx.sets.length},wt,lastSessionSets(data,key,newEx.id),{isDeload:workout.isDeload});wkEx.sets=wkEx.sets.map((s,si)=>({...s,weight:wt,done:false,reps:reps[si],prefilled:true,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish the workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
@@ -834,6 +834,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               <div style={{fontSize:22,fontWeight:600,color:isPast?C.t2:C.t}}>{selPlan.name}</div>
               <span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{selPlan.exercises.length} lifts · {estTime(selPlan)} min</span>
             </div>
+            {(selPlan.intent||PROG.days[selDow]?.intent)&&<div style={{fontSize:15,color:C.t2,marginTop:4,lineHeight:1.45}}>{selPlan.intent||PROG.days[selDow].intent}</div>}
             {PROG.variants?.[selDow]&&<div role="group" aria-label="Version" style={{display:"flex",flexWrap:"wrap",marginTop:6,marginLeft:-6}}>
               {[[null,"Standard"],...Object.entries(PROG.variants[selDow]).map(([k,v])=>[k,v.name.replace(data.program[selDow]?.name+" ","").replace(/[()]/g,"")])].map(([k,l])=>{const on=(activeVariant[selDow]||null)===k;return(
                 <button type="button" key={l} aria-pressed={on} onClick={()=>setVariant(selDow,k)} style={{background:"none",border:"none",fontSize:15,color:on?C.t:C.t3,fontWeight:on?500:400,padding:"8px 6px",minHeight:36,cursor:"pointer"}}>{l}</button>);})}

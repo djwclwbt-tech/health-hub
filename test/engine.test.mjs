@@ -228,20 +228,28 @@ test('ruleRest: compounds longest, lower > upper, 5-8 > 8-12, isolation 60 (90 f
   assert.equal(r('seated-calf', [10, 12]), 60);
 });
 
-test('the shipped program follows the rest rule (supersets chain with 0)', () => {
-  for (const [day, s] of Object.entries(E.PROG.days)) for (const ex of s.exercises)
-    assert.equal(ex.rest, ex.rest === 0 ? 0 : E.ruleRest(ex), `${day} ${ex.id}`);
+// The PF Austin design (Oct 5): rest is set by each day's job. Pinned so no "one rule"
+// pass can flatten it again; change it only as a program decision with its reason in PROG.
+test('the shipped program keeps its designed rest per day (not a formula)', () => {
+  const rest = Object.fromEntries(Object.entries(E.PROG.days).map(([d, s]) => [d, s.exercises.map(e => e.rest)]));
+  assert.deepEqual(rest, {
+    monday: [150, 120, 120, 150, 60],          // strength: anchor and pull-ups long, accessories 120, finisher 60
+    tuesday: [120, 90, 90, 60],                // strength (comeback loads)
+    wednesday: [0, 60, 0, 60, 0, 60],          // fast-day arm supersets
+    thursday: [90, 90, 60, 60, 60],            // hypertrophy density
+    friday: [90, 60, 60, 60, 60],              // hypertrophy density
+  });
+  for (const [d, s] of Object.entries(E.PROG.days)) assert.ok(s.intent, `${d} says what it is for`);
+  assert.ok(E.PROG.science.length >= 5);
 });
 
-test('restFor: a swapped lift gets its own rest, never the old lift\'s; superset chains stay 0', () => {
-  const slot = { id: 'pec-deck', rr: [12, 15], rest: 60 };
-  assert.equal(E.restFor(slot), 60, 'planned lift keeps the plan number');
-  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 120 }, { id: 'hack-squat' }), 180, 'heavy squat swap');
-  assert.equal(E.restFor({ id: 'leg-press', rr: [5, 8], rest: 180 }, { id: 'leg-extension' }), 90, 'isolation swap is shorter');
-  assert.equal(E.restFor({ id: 'incline-db-curl', rr: [10, 12], rest: 0 }, { id: 'cable-curl' }), 0);
+test("restFor: the slot's planned rest stands for a swapped-in lift; manual lifts get a starting rule", () => {
+  assert.equal(E.restFor({ id: 'pec-deck', rr: [12, 15], rest: 60 }), 60);
+  assert.equal(E.restFor({ id: 'incline-db-curl', rr: [10, 12], rest: 0 }), 0, 'superset chain stays 0');
+  assert.equal(E.restFor({ id: 'leg-extension', rr: [10, 12] }), 90, 'no plan number → rule');
   const mon = E.PROG.days.monday;
-  const opts = E.swapOptions(base(), { exercises: [] }, mon.exercises[0], mon.exercises[0]);
-  assert.ok(opts.every(o => o.rest === 150), 'chest press swaps rest like a heavy press');
+  const opts = E.swapOptions(base(), { exercises: [] }, mon.exercises[1], mon.exercises[1]);
+  assert.ok(opts.length && opts.every(o => o.rest === 120), 'a row swap on Upper A keeps the slot rest');
 });
 
 // ── history repair ──────────────────────────────────────────────────────────
