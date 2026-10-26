@@ -74,7 +74,7 @@ test('buildSession prefills from last session, applies deload and accepted autor
   const w = E.buildSession(d, 'tuesday', tue, { date: TODAY, now: 1 });
   assert.equal(w.exercises.length, tue.exercises.length);
   assert.equal(w.isDeload, false);
-  assert.deepEqual(w.exercises[0].sets.map(s => s.reps), [5, 5, 4], 'reps prefilled from last time');
+  assert.deepEqual(w.exercises[0].sets.map(s => s.reps), [5, 5, 5], 'same weight → one more rep than last time, capped at the 5-rep range');
   assert.equal(w.exercises[0].sets[0].weight, 235, 'missed a rep → hold weight');
   assert.equal(w.exercises[0].wu.length, 3);
   const auto = base({ autoregLog: { [TODAY]: { type: 'minusOneSet' } } });

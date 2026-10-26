@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { liftTarget, PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
+import { liftTarget, targetReps, lastSessionSets, PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -435,7 +435,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
     const slotAt=ei=>s.exercises?.[ei]||workout.exercises[ei]?.slot;
     // Rest comes from the lift actually on the bar: a swap gets its own rest, not the old lift's.
     const restAt=ei=>restFor(slotAt(ei),workout.exercises[ei]?.swappedTo);
-    const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));const lastReps=data.prog?.[key]?.lastReps||[];wkEx.sets=wkEx.sets.map((s,si)=>({...s,weight:wt,done:false,reps:lastReps[si]||lastReps[0]||slot.rr?.[0]||0,prefilled:true,rir:""}));return n;});setSwapModal(null);};
+    const swapExercise=(ei,newEx)=>{const oldEx=slotAt(ei);const slot={...oldEx};const key=progKey(newEx,slot);const newW=gw({...newEx,progKey:key},newEx.sw,slot);const wt=workout.isDeload?Math.round(newW*0.5/5)*5:newW;setWorkout(p=>{const n=JSON.parse(JSON.stringify(p));const wkEx=n.exercises[ei];wkEx.swappedFrom={id:oldEx.id,name:oldEx.name,progKey:progKey(oldEx,oldEx)};wkEx.id=newEx.id;wkEx.progKey=key;wkEx.swappedTo={id:newEx.id,name:newEx.name,unit:newEx.unit,sw:newEx.sw,cue:newEx.cue,inc:newEx.inc,progKey:key,pattern:newEx.pattern,region:newEx.region};wkEx.wu=WU(wt).map(w=>({...w,done:false}));const reps=targetReps({...slot,sets:wkEx.sets.length},wt,lastSessionSets(data,key,newEx.id),{isDeload:workout.isDeload});wkEx.sets=wkEx.sets.map((s,si)=>({...s,weight:wt,done:false,reps:reps[si],prefilled:true,rir:""}));return n;});setSwapModal(null);};
     return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
       {showFinishConfirm&&<ConfirmModal title="Finish the workout?" message="This will log your workout and save all set data." onConfirm={finishWorkout} onCancel={()=>setShowFinishConfirm(false)} confirmText="Finish" confirmColor={C.g}/>}
       {showCancelConfirm&&<ConfirmModal title="Discard this workout?" message="This will discard all data from this session. Nothing will be logged." onConfirm={cancelWorkout} onCancel={()=>setShowCancelConfirm(false)} confirmText="Discard" confirmColor={C.r}/>}
@@ -592,7 +592,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
                 </React.Fragment>);})}
             </div>
             {/* Two labeled rows: RIR alone was a mystery, and the weight steppers looked like part of it. */}
-            {edSi>=0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.t3,marginTop:12,...NUMS}}><span>Reps left in the tank (RIR)</span><span>Weight ±{inc}</span></div>}
+            {edSi>=0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.t3,marginTop:12,...NUMS}}><span>Reps left in the tank (RIR, optional)</span><span>Weight ±{inc}</span></div>}
             {edSi>=0&&(<div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
               {[0,1,2,3].map(v=>{const on=String(e.sets[edSi].rir)===String(v);return(<button type="button" key={v} aria-pressed={on} onClick={()=>uS(ei,edSi,"rir",on?"":v)} style={{flex:1,minHeight:44,borderRadius:8,border:`1px solid ${on?C.t:C.bd}`,background:on?C.t:C.cd,color:on?C.oa:C.t,fontSize:17,cursor:"pointer",...NUMS}}>{v}</button>);})}
               <span style={{display:"flex",gap:6,marginLeft:8}}>
@@ -775,7 +775,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
             <span style={{minWidth:0}}>
               <span style={{display:"block",fontSize:17,color:dim?C.t2:C.t}}>{ex.name}</span>
-              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,`${ex.sets} × ${rrTxt(ex.rr)}`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,dim?`${ex.sets} × ${rrTxt(ex.rr)}`:`${lt.aim} reps (${rrTxt(ex.rr)})`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
               {!dim&&<span style={{display:"block",fontSize:15,color:C.t2,marginTop:2}}>{lt.goal}</span>}
             </span>
             <span style={{fontSize:17,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>

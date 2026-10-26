@@ -185,7 +185,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
           <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"9px 0",borderTop:i?`1px solid ${C.bd}`:"none"}}>
             <span style={{minWidth:0}}>
               <span style={{display:"block",fontSize:17,color:C.t}}>{e.name}</span>
-              <span style={{display:"block",fontSize:15,color:C.t3,...NUM}}>{s} sets of {lt.rangeTxt}{lt.last?` · last ${lt.last}`:""}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,...NUM}}>{lt.aim} reps{lt.last?` · last ${lt.last}`:""}</span>
             </span>
             <span style={{fontSize:17,fontWeight:500,color:C.t,whiteSpace:"nowrap",...NUM}}>{lt.weight>0?<>{lt.weight}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> {lt.unit}</span></>:"Body weight"}</span>
           </div>);})}
