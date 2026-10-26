@@ -29,7 +29,10 @@ const ouraKeyDead = async () => {
 
 const pushAll = async (c, msg) => {
   if (!configured()) return { sent: 0, reason: 'VAPID not configured' };
-  const subs = await c.select('push_subs', 'device', 'desc', 20).catch(() => []);
+  // Registration trusts the app's Origin (spoofable by a script), so: newest 5 phones only
+  // (the real phone re-registers on every launch), and no health details in any push body.
+  const subs = (await c.select('push_subs', 'device', 'desc', 200).catch(() => []))
+    .filter(s => s?.at).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 5);
   let sent = 0;
   for (const s of subs) {
     if (!s?.subscription || !pushEndpointOk(s.subscription.endpoint)) continue;
@@ -54,7 +57,7 @@ export const daily = async (c, d, today, { dry = false, now = Date.now() } = {})
   let push = null;
   if (!dry) {
     await c.upsert('watch', row, 'id');
-    if (due) push = await pushAll(c, { tag: 'hh-watch', title: alerts.length === 1 ? 'Health Hub: a data feed needs you' : `Health Hub: ${alerts.length} data feeds need you`, body: alerts.map(a => a.text).join(' '), url: '/?tab=dashboard' });
+    if (due) push = await pushAll(c, { tag: 'hh-watch', title: 'Health Hub: a data feed needs you', body: 'Open Today to see what stopped.', url: '/?tab=dashboard' });
   }
   return { alerts, pushed: !!due, push };
 };
@@ -70,14 +73,14 @@ export const review = async (c, d, today, { dry = false, force = false } = {}) =
   await c.upsert('reviews', { date: today, at: new Date().toISOString(), gaps: brief.gaps, result: res }, 'date');
   const focus = res.nextWeekFocus || res.recommendations?.[0] || '';
   await c.upsert('program_updates', toRow.programUpdate({ type: 'note' }, { reason: [res.summary, focus && `Focus: ${focus}`].filter(Boolean).join(' '), source: 'coach-auto', applied: true, summary: 'Weekly review' }), null).catch(() => {});
-  const push = await pushAll(c, { tag: 'hh-review', title: 'Your weekly review is ready', body: focus || res.summary || 'Open Today to read it.', url: '/?tab=dashboard' });
+  const push = await pushAll(c, { tag: 'hh-review', title: 'Your weekly review is ready', body: 'Open Today to read it.', url: '/?tab=dashboard' });
   return { review: res, push };
 };
 
 export const nudge = async (c, d, today, { dry = false } = {}) => {
   const n = E.foodNudge(d, today);
   if (!n) return { skipped: 'food logged or fast day' };
-  return dry ? { nudge: n } : { nudge: n, push: await pushAll(c, { tag: 'hh-food', ...n, url: '/?tab=dashboard' }) };
+  return dry ? { nudge: n } : { nudge: n, push: await pushAll(c, { tag: 'hh-food', title: 'Health Hub', body: 'Time to log today in Cronometer.', url: '/?tab=dashboard' }) };
 };
 
 export default async function handler(req, res) {

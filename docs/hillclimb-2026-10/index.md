@@ -1,9 +1,9 @@
 # Health Hub hillclimb
 
-Health Hub now has a scorecard. Three automatic graders measure the app screens, the data, and the coaching. Each change has to raise a score without lowering another. ==Biggest finding: Oura has sent no recovery data since Aug 22, and nothing in the app said so.==
+Health Hub now has a scorecard. Three automatic graders measure the app screens, the data, and the coaching. Each change has to raise a score without lowering another. ==Biggest finding: the app had no recovery data from Aug 23 to Oct 20, and nothing in it said so.==
 
 !!! warning "One thing only you can do"
-    Oura has retired personal access tokens, and the one the sync uses now gets refused. Fixing it needs you to log in to Oura once, so it can grant the sync a new key. Until then the app and the Coach now say "recovery feed stale" instead of quietly reasoning from old numbers.
+    Oura itself has readings for only one night since Aug 23 (Oct 21). The app's connection to Oura works. The ring is not recording, or the Oura app is not syncing. Wear it at night and open the Oura app each morning. The watchdog now tells you when this happens.
 
 ## What you asked for, and what it is really for
 
@@ -23,7 +23,7 @@ So the first wins are data the coach can trust, and a coach that admits what it 
 
 The outcome is a finished cut, not a prettier app. So the scorecard checks the data pipes first: Oura, Cronometer, steps and weigh-ins. Then it checks whether the coaching names the one lever that matters this week.
 
-Access I used without you: the live database (read only), production logs, Cronometer and Oura through the app's own keys, and a headless browser on the Pi. Access I still need from you: one Oura login.
+Access I used without you: the live database (read only), production logs, Cronometer and Oura through the app's own keys, and a headless browser on the Pi. Nothing else is needed from you except wearing the ring.
 
 ### Depth
 
@@ -57,7 +57,7 @@ The app has to do five things for you: show what to do now, record what happened
 Nothing here is graded by the model that built it:
 
 - **Screens:** headless Chrome at iPhone size, 8 screens, 14 rules from your design system, all counted.
-- **Data:** 14 checks against the live database and the Oura API.
+- **Data:** 13 checks against the live database.
 - **Coaching:** 4 test athletes, each with "must do" and "must not do" rules. A separate Opus model grades blind, and a script counts made-up numbers.
 
 ## Scorecard
@@ -65,7 +65,7 @@ Nothing here is graded by the model that built it:
 | Area | Before | After |
 |---|---|---|
 | Screens (14 rules, 8 screens) | 94 | **100** |
-| Data (live, 14 checks) | 36 | 48 |
+| Data (live, 13 checks) | 36 | 48 |
 | Coaching, blind grade out of 10 | 5.4 | **8.5** |
 | Made-up numbers in coaching | 20 | **0** |
 
@@ -82,7 +82,7 @@ The coaching took three rounds. Each round, 4 test athletes went to fresh Opus 5
 
 ### What the data score still needs
 
-- **Oura login (you).** Personal tokens are refused, so recovery has been missing since Aug 22.
+- **The ring (you).** Oura has one night of data since Aug 23. The connection works; the ring isn't recording or syncing.
 - **Food logged daily.** 3 of 6 eating days last week. The app and the Coach now say so instead of averaging two days.
 - **One decision.** The Coach set Wednesday to a 0-calorie fast on Aug 1, but the live target is 900. Training days were set to 2,100 on May 3, live is 2,000. The app now records target changes you make on the phone, so this can't drift silently again.
 
@@ -133,3 +133,6 @@ Goal: 175 lb by 2026-11-29 without losing strength. Run a hillclimb on it.
    Ask before pushing (every push to claude/** is a production deploy).
 6. Log each round's scores in docs/hillclimb-2026-10/index.md.
 ```
+
+!!! note "Correction, Oct 26"
+    My first pass said Oura had retired the app's key. That was wrong: I tested a masked copy of the key. In production the key works, and Oura simply has no readings for those nights.

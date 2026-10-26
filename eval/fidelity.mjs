@@ -23,11 +23,7 @@ const check = (id, weight, pass, evidence, fix) => checks.push({ id, weight, pas
 
 // 1. Feeds are alive (the rawest signal: is the pipe delivering at all).
 const ouraLast = lastKey(d.rec, r => r?.recoveryScore != null);
-check('feed.oura', 3, ago(ouraLast) <= 2, `last recovery ${ouraLast} (${ago(ouraLast)} days ago)`, 'Oura stopped delivering. Personal access tokens are retired; the sync needs Oura OAuth.');
-if (process.env.OURA_PAT && !file) {
-  const r = await fetch('https://api.ouraring.com/v2/usercollection/personal_info', { headers: { Authorization: `Bearer ${process.env.OURA_PAT}` } }).catch(() => ({ status: 0 }));
-  check('feed.oura.token', 3, r.status === 200, `Oura API answered ${r.status}`, 'The Oura token is rejected (401). Re-authorize Oura.');
-}
+check('feed.oura', 3, ago(ouraLast) <= 2, `last recovery ${ouraLast} (${ago(ouraLast)} days ago)`, 'Oura has no new readings: the ring is not recording or not syncing to the Oura app.');
 const stepsLast = lastKey(d.steps, v => v > 0);
 check('feed.steps', 1, ago(stepsLast) <= 2, `last steps ${stepsLast}`, 'Apple Shortcut step sync stopped.');
 const wtLast = lastKey(d.wt);

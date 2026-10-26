@@ -138,7 +138,7 @@ const Today=({data,setData,setTab,workout,addToast})=>{
     const daysOff=lastRec?Math.round((new Date(t+"T12:00:00")-new Date(lastRec+"T12:00:00"))/864e5):null;
     // The watchdog knows more (for example, Oura rejected the key); prefer its words when it has them.
     const ouraAlert=(data.watch?.alerts||[]).find(x=>x.id==="oura");
-    if(daysOff==null||daysOff>2)rows.push(<Ev key="rec" time="AM" state="done" title="No recovery data" sub={ouraAlert?ouraAlert.text:lastRec?`The Oura feed stopped. Last reading ${fmt(lastRec)}.`:"Oura has not sent any readings."}/>);
+    if(daysOff==null||daysOff>2)rows.push(<Ev key="rec" time="AM" state="done" title="No recovery data" sub={ouraAlert?ouraAlert.text:lastRec?`Oura has no readings since ${fmt(lastRec)}. Wear the ring at night and open the Oura app so it syncs.`:"Oura has not sent any readings."}/>);
   }
 
   // ── Weekly review (the watchdog writes it Sunday morning; shown Sunday and Monday) ──
