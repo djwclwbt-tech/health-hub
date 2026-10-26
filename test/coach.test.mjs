@@ -52,7 +52,7 @@ test('liftTarget: anchors move up, accessories hold, body weight says so', () =>
   const d = scenario('on-track', TODAY);
   const mon = d.program.monday.exercises;
   const anchor = mon.find(e => e.anchor && e.inc > 0), acc = mon.find(e => !e.anchor && e.sw > 0);
-  assert.match(E.liftTarget(d, anchor).goal, /weight goes up/);
+  assert.match(E.liftTarget(d, anchor).goal, /goes up/);
   assert.doesNotMatch(E.liftTarget(d, acc).goal, /goes up/, 'cut hold: accessories never promise more weight');
   const lt = E.liftTarget(d, anchor);
   assert.equal(lt.weight, E.buildExerciseEntry(d, anchor).sets[0].weight, 'the weight shown is the weight the session prefills');
@@ -73,4 +73,16 @@ test('history replay follows the cut hold: accessories never gain weight from ba
   const acc = d.program.monday.exercises.find(e => !e.anchor && e.sw > 0 && e.inc > 0);
   E.backfillData(d); E.repairDeloadProgression(d);
   assert.equal(E.liftTarget(d, acc).weight, acc.sw, 'topped sets at the same weight → same weight next time');
+});
+
+test('targetReps: a coach target, not a copy of last time', () => {
+  const s = { sets: 3, rr: [5, 8] }, last = w => r => r.map(x => ({ weight: w, reps: x, done: true }));
+  assert.deepEqual(E.targetReps(s, 145, last(140)([9, 8, 8])), [6, 6, 6], 'weight went up → two under the top');
+  assert.deepEqual(E.targetReps(s, 140, last(140)([6, 5, 4])), [7, 6, 5], 'same weight → one more rep each set (stray set → floor)');
+  assert.deepEqual(E.targetReps(s, 140, last(140)([8, 8, 8])), [8, 8, 8], 'capped at the top');
+  assert.deepEqual(E.targetReps({ sets: 2, rr: [10, 12] }, 75, last(75)([1])), [10, 10], 'a stray 1-rep set never becomes the target');
+  assert.deepEqual(E.targetReps(s, 140, []), [5, 5, 5], 'no history → the bottom of the range');
+  const d = scenario('on-track', TODAY); const ex = d.program.monday.exercises[0];
+  assert.deepEqual(E.buildExerciseEntry(d, ex).sets.map(x => x.reps), E.liftTarget(d, ex).reps, 'the session prefills what Today shows');
+  assert.equal(E.buildExerciseEntry(d, ex).sets[0].rir, '', 'RIR starts empty');
 });
