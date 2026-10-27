@@ -563,7 +563,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {rr&&<span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
             <div style={{fontSize:15,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
-              {[sl?.anchor?"Anchor":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&prev?" · ":""}
+              {[sl?.anchor?"Anchor lift (adds weight)":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&prev?" · ":""}
               {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}
             </div>
             {goal&&<div style={{fontSize:15,color:C.t2,marginTop:2,lineHeight:1.45}}>{goal}</div>}
@@ -775,7 +775,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
             <span style={{minWidth:0}}>
               <span style={{display:"block",fontSize:17,color:dim?C.t2:C.t}}>{ex.name}</span>
-              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor":null,dim?`${ex.sets} × ${rrTxt(ex.rr)}`:`${lt.aim} reps (${rrTxt(ex.rr)})`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor lift (adds weight)":null,dim?`${ex.sets} × ${rrTxt(ex.rr)}`:`${lt.aim} reps (${rrTxt(ex.rr)})`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
               {!dim&&<span style={{display:"block",fontSize:15,color:C.t2,marginTop:2}}>{lt.goal}</span>}
             </span>
             <span style={{fontSize:17,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
