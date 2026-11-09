@@ -32,15 +32,14 @@ Carbs: 35 g in the sandwich and about 68 g in the whole breakfast. The chicken u
 2. Whisk the Fage and seasoning into the whites until there are no lumps. Pour into the pan.
 3. Bake on the top rack. That dark pan runs hot, so check at 25 minutes. Pull the eggs when the middle no longer jiggles, about 30 minutes. Brown patches and cracks are normal. Cool 5 minutes.
 4. While the eggs bake, weigh 28 oz of frozen chicken. Tare the empty bowl first. Microwave the chicken on a plate for about 2 minutes to thaw it, then warm it on the bottom rack for 15 to 20 minutes, until hot in the center. Cut each of the 4 breasts in half, about 3.5 oz each, then slice flat.
-5. Cut the eggs into 8 squares. Stack eggs, chicken, then half a slice of cheese on squares of parchment and fold closed.
-6. Put 3 kits in the fridge for Monday, Tuesday and Thursday. Put 5 in the freezer for Friday, Saturday, Sunday and next Monday and Tuesday. Keep the muffins in their bag.
+5. Cut the eggs into 8 squares. Build whole sandwiches on the muffins: egg, chicken and half a slice of cheese. Let everything cool fully, then zip each one in its own bag.
+6. Put 3 in the fridge for Monday, Tuesday and Thursday. Put 5 in the freezer for Friday, Saturday, Sunday and next Monday and Tuesday.
 
 ## Each morning
 
-1. Toast a muffin, about 2 minutes.
-2. Unwrap a kit onto a plate and cover it with a damp paper towel.
-3. Microwave 60 to 75 seconds, until steaming. From frozen, use half power for 2 minutes, then full power for 30 seconds.
-4. Stack it on the muffin. Add pickles, mustard or hot sauce if you want more flavor. Have it with your Nurri and apple.
+1. Take the sandwich out of its bag. Never put the bag in the air fryer.
+2. From the fridge, air fry at 325°F for 5 to 6 minutes. From frozen, air fry at 300°F for 12 to 14 minutes, or move it to the fridge the night before and heat it as usual.
+3. It's ready when the center is hot and the cheese has melted. Add pickles, mustard or hot sauce if you want more flavor. Have it with your Nurri and apple.
 
 ## Fitting it into your day
 
