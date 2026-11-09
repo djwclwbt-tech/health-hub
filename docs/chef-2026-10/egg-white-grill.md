@@ -28,11 +28,11 @@ Carbs: 35 g in the sandwich and about 68 g in the whole breakfast. The chicken u
 
 ## Steps
 
-1. Heat the oven to 350°F on plain Bake, not Convection Bake. Line the big deep black NutriChef pan with parchment and spray it.
+1. Heat the oven to 350°F on plain Bake, not Convection Bake. Rub the big deep black NutriChef pan with 1 tsp of oil, corners included.
 2. Whisk the Fage and seasoning into the whites until there are no lumps. Pour into the pan.
 3. Bake on the top rack. That dark pan runs hot, so check at 25 minutes. Pull the eggs when the middle no longer jiggles, about 30 minutes. Brown patches and cracks are normal. Cool 5 minutes.
 4. While the eggs bake, weigh 28 oz of frozen chicken. Tare the empty bowl first. Microwave the chicken on a plate for about 2 minutes to thaw it, then warm it on the bottom rack for 15 to 20 minutes, until hot in the center. Cut each of the 4 breasts in half, about 3.5 oz each, then slice flat.
-5. Cut the eggs into 8 squares. Build whole sandwiches on the muffins: egg, chicken and half a slice of cheese. Let everything cool fully, then zip each one in its own bag.
+5. Cut the eggs into 8 squares. Build whole sandwiches on the muffins: half a slice of cheese, egg, then chicken. Let everything cool fully, then zip each one in its own bag.
 6. Put 3 in the fridge for Monday, Tuesday and Thursday. Put 5 in the freezer for Friday, Saturday, Sunday and next Monday and Tuesday.
 
 ## Each morning
@@ -70,3 +70,17 @@ Log it in Cronometer as a custom food: 420 calories, 49 g protein, 35 g carbs, 7
 - **Fresh thighs:** this recipe doesn't use them. Cook or freeze both packs within 2 days.
 - **Egg whites:** keep unopened cartons sealed. Use the open carton by the date on it.
 - **Mesquite chicken:** put the rest of the bag back in the freezer right away.
+
+## First batch, Nov 8
+
+**Made:** 8 sandwiches from 4 mesquite chicken breasts (28 oz), the egg and Fage bake, 8 muffins and 4 slices of provolone.
+
+**What happened:**
+
+- The eggs set well on the top rack, with toasted brown patches and some cracks.
+- The stacks came out tall. The egg squares are wider than the muffins and the sandwiches look very filling.
+- Taste and the air fryer reheat haven't been rated yet.
+
+**If they're too filling:** have the Nurri at 3 PM. Keep the sandwich as it is, since the daily numbers don't change.
+
+**Still to do:** cook or freeze the fresh thighs by Nov 10. Save the Cronometer food: 420 calories, 49 g protein, 35 g carbs, 7 g fat.
