@@ -31,7 +31,7 @@ Carbs: 32 g in the sandwich and about 65 g in the whole breakfast. These numbers
 
 ## Steps
 
-1. Heat the oven to 350°F on plain Bake, not Convection Bake. Line the big deep black NutriChef pan with parchment and spray it. Line the light sheet pan with foil. Eggs go on the upper rack and chicken on the lower. That dark pan runs hot, so check the eggs at 25 minutes.
+1. Heat the oven to 350°F on plain Bake, not Convection Bake. Line the big deep black NutriChef pan with parchment and spray it. Spray the shallow black NutriChef pan well for the chicken. No foil needed. Eggs go on the upper rack and chicken on the lower. That dark pan runs hot, so check the eggs at 25 minutes.
 2. Whisk the Fage and seasoning into the whites until there are no lumps. Pour into the 9×13.
 3. Put the frozen breasts on the sheet pan, spray them, and season. Bake both pans.
 4. Pull the eggs at about 30 minutes, when the middle no longer jiggles.
