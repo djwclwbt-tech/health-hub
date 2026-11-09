@@ -1,6 +1,6 @@
 # Egg White Grill, batch of 6
 
-==One sandwich is about 465 calories and 60 g protein. With a Nurri and a Honeycrisp, breakfast is about 735 calories and 90 g protein.== Only the eggs need the oven. The chicken is already cooked. Each morning takes 3 minutes.
+==One sandwich is about 465 calories and 58 g protein. With a Nurri and a Honeycrisp, breakfast is about 735 calories and 88 g protein.== Only the eggs need the oven. The chicken is already cooked. Each morning takes 3 minutes.
 
 Six covers the week: Monday, Tuesday, Thursday, Friday, Saturday and Sunday. Wednesday is your fast.
 
@@ -11,14 +11,14 @@ Six covers the week: Monday, Tuesday, Thursday, Friday, Saturday and Sunday. Wed
 | English muffin | 150 | 5 g | 1 g |
 | Egg whites, ¾ cup | 100 | 20 g | 0 g |
 | Fage 0%, ¼ cup, baked into the whites | 30 | 6 g | 0 g |
-| Mesquite chicken, 4 oz | 145 | 27 g | 3 g |
+| Mesquite chicken, 4 oz | 145 | 25 g | 3 g |
 | Provolone, ½ slice | 40 | 2.5 g | 3 g |
-| **Sandwich** | **465** | **60 g** | **7 g** |
+| **Sandwich** | **465** | **58 g** | **7 g** |
 | Nurri | 150 | 30 g | 2.5 g |
 | Honeycrisp, large | 120 | 0 g | 0 g |
-| **Breakfast** | **735** | **90 g** | **9.5 g** |
+| **Breakfast** | **735** | **88 g** | **9.5 g** |
 
-Carbs: 36 g in the sandwich and about 69 g in the whole breakfast. The chicken uses the Member's Mark label: 110 calories, 2 g fat and 3 g carbs per 3 oz. The protein line was hidden in the photo, so about 20 g per 3 oz is worked out from those numbers. The other numbers are estimates from typical labels. The real Chick-fil-A sandwich is 300 calories and 27 g protein.
+Carbs: 36 g in the sandwich and about 69 g in the whole breakfast. The chicken uses the Member's Mark label: 110 calories, 19 g protein, 2 g fat and 3 g carbs per 3 oz. The other numbers are estimates from typical labels. The real Chick-fil-A sandwich is 300 calories and 27 g protein.
 
 ## Ingredients for 6
 
@@ -44,7 +44,7 @@ Carbs: 36 g in the sandwich and about 69 g in the whole breakfast. The chicken u
 
 ## Fitting it into your day
 
-On a 2,000 calorie, 200 g protein day, this breakfast leaves **1,265 calories and 110 g protein**.
+On a 2,000 calorie, 200 g protein day, this breakfast leaves **1,265 calories and 112 g protein**.
 
 **Keep the Nurri.** At 5 calories per gram of protein, it's about as lean as the chicken. If breakfast feels too big, have it at 3 PM instead.
 
@@ -52,19 +52,19 @@ Here's a sample day, using Monday's salmon dinner. Numbers are estimates.
 
 | Meal | Cal | Protein |
 |---|---|---|
-| Breakfast | 735 | 90 g |
+| Breakfast | 735 | 88 g |
 | Lunch: 7 oz raw chicken thigh, vegetables | 330 | 40 g |
 | Snack: Oikos Triple Zero | 100 | 15 g |
 | Dinner: 6 oz salmon, 6 oz potato, vegetables | 530 | 39 g |
 | Quest chips | 140 | 20 g |
 | Treat: Rice Krispies Treat | 150 | 1 g |
-| **Total** | **1,985** | **205 g** |
+| **Total** | **1,985** | **203 g** |
 
 Fat lands around 55 g, below the 70 to 85 g floor in your older notes. To close the gap, swap the treat for half an avocado.
 
 Your older plan kept starch to dinner on weekdays, and this muffin breaks that rule. On days dinner runs high, drop the rice or potato at dinner, not this breakfast.
 
-Log it in Cronometer as a custom food: 465 calories, 60 g protein, 36 g carbs, 7 g fat.
+Log it in Cronometer as a custom food: 465 calories, 58 g protein, 36 g carbs, 7 g fat.
 
 ## Leftovers
 
