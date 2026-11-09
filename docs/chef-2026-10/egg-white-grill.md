@@ -4,10 +4,8 @@
 
 Six covers the week: Monday, Tuesday, Thursday, Friday, Saturday and Sunday. Wednesday is your fast.
 
-!!! warning "Check these two labels first"
-    **The egg carton.** The receipt only says "MM LIQ EGG". Member's Mark egg whites fit that line, but make sure the carton says egg whites. Whole liquid egg would add about 160 calories and 17 g of fat per sandwich.
-
-    **The frozen chicken.** This recipe assumes plain raw breasts. If the bag says fully cooked or breaded, tell me first, because the steps and numbers change.
+!!! warning "Check the frozen chicken label first"
+    This recipe assumes plain raw breasts. If the bag says fully cooked or breaded, tell me first, because the steps and numbers change.
 
 ## What's in one sandwich
 
@@ -99,6 +97,22 @@ Pickle slices and hot sauce add a lot of flavor for almost no calories. Add them
 ## Fitting it into your day
 
 On a 2,000 calorie, 200 g protein day, this breakfast leaves **1,260 calories and 112 g protein**. That's plenty of room per gram of protein, so the rest of the day gets easier.
+
+**Keep the Nurri.** At 5 calories per gram of protein, it's as lean as the chicken. Skipping it saves 150 calories, but you'd have to find 30 g of protein later for about the same calories. If breakfast feels too big, have it at 3 PM instead.
+
+Here's a sample day, using Monday's salmon dinner. Numbers are estimates.
+
+| Meal | Cal | Protein |
+|---|---|---|
+| Breakfast | 740 | 88 g |
+| Lunch: 7 oz raw chicken thigh, vegetables | 330 | 40 g |
+| Snack: Oikos Triple Zero | 100 | 15 g |
+| Dinner: 6 oz salmon, 6 oz potato, vegetables | 530 | 39 g |
+| Quest chips | 140 | 20 g |
+| Treat: Rice Krispies Treat | 150 | 1 g |
+| **Total** | **1,990** | **203 g** |
+
+Fat lands around 55 g, below the 70 to 85 g floor in your older notes. To close the gap, swap the treat for half an avocado.
 
 Your older plan kept starch to dinner on weekdays, and this muffin breaks that rule. It's fine if your calories still fit. On days dinner runs high, drop the rice or potato at dinner, not this breakfast.
 
