@@ -10,7 +10,7 @@
 
 ## Sam's Club, bought Nov 8
 
-Corrected Nov 9 from the order screens in the Sam's app. The paper receipt's short codes were misread the first time: "100 SIRLOIN" is Gary's QuickSteak, not ground sirloin.
+Corrected Nov 9 from the order screens in the Sam's app. The screens cover the whole order, Quest chips first. One thigh pack was frozen whole on Nov 9. The paper receipt's short codes were misread the first time: "100 SIRLOIN" is Gary's QuickSteak, not ground sirloin.
 
 | Receipt code | Real product |
 |---|---|

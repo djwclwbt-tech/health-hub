@@ -1,9 +1,9 @@
 # Kitchen catalog
 
-==This is everything the chef knows about your kitchen as of Nov 9: food, seasonings, appliances and pans. One thing needs you by tomorrow: about 11 lb of fresh chicken thighs.== Built from the Randalls receipt (Nov 9), the Sam's Club receipt (Nov 8), your notes, and older photos. Anything marked "check" is a guess.
+==This is everything the chef knows about your kitchen as of Nov 9: food, seasonings, appliances and pans. One thing needs you by tomorrow: the one fresh pack of chicken thighs left, about 5.5 lb.== Built from the Randalls receipt (Nov 9), the Sam's Club receipt (Nov 8), your notes, and older photos. Anything marked "check" is a guess.
 
 !!! warning "Use by Nov 10"
-    **Chicken thighs, 2 packs, about 11 lb (Sam's, Nov 8).** Keep about 2 lb in the fridge for the next two dinners. Split the rest into 1.5 lb portions, about 3 dinners for two, and freeze them flat in the Hefty bags, labeled with the date. Flat bags thaw in 1 hour in cold water.
+    **Chicken thighs, 1 pack, about 5.5 lb (Sam's, Nov 8).** The other pack is already frozen. Keep about 2 lb in the fridge for the next two dinners. Split the rest into two 1.5 lb portions and freeze them flat in the Hefty bags, labeled with the date. Flat bags thaw in 1 hour in cold water.
 
 ## How this list was built
 
@@ -15,7 +15,7 @@
 
 | Item | From | Use by |
 |---|---|---|
-| Chicken thighs, boneless, 2 packs, about 11 lb | Sam's Nov 8 | **Nov 10** |
+| Chicken thighs, boneless, 1 pack, about 5.5 lb | Sam's Nov 8 | **Nov 10** |
 | Egg White Grill sandwiches, 3 | Made Nov 8 | Nov 13 |
 | Liquid egg whites, about 3½ of 6 cartons (16 oz) | Sam's Nov 8 | Date on carton |
 | Cold smoked salmon, 2 packs of 12 oz | Sam's Nov 8 | Date on pack |
@@ -47,6 +47,7 @@
 | Item | Notes |
 |---|---|
 | Egg White Grill sandwiches, 5 | Made Nov 8. Breakfast through Nov 18 |
+| Chicken thighs, 1 whole pack, about 5.5 lb | Frozen Nov 9 as one block. Thaw 2 days in the fridge |
 | Gary's QuickSteak, 9 thin-sliced sirloin steaks | Cooks from frozen in 2 to 3 minutes. Tacos, fajitas, cheesesteaks |
 | Mesquite grilled chicken fillets, about 20 oz left of 3 lb | Fully cooked. Sandwich batches and fast lunches |
 | Chicken meatballs | Brand unknown (check) |
@@ -146,5 +147,4 @@ These are the usual pieces of an AI kitchen system. Each one is a gap today.
 - A photo of the freezer: Danielle's meals, the meatball brand, and the other vegetables.
 - How many Goodles boxes, and which flavors?
 - Which La Costeña item did you buy?
-- The Sam's screenshots start mid-order. Was anything above the 4 screens, such as liquid egg whites or the Nurri?
 - Do you have a meat thermometer and meal-prep containers yet?
