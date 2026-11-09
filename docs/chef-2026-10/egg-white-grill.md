@@ -1,39 +1,39 @@
-# Egg White Grill, batch of 6
+# Egg White Grill, batch of 8
 
-==One sandwich is about 490 calories and 63 g protein. With a Nurri and a Honeycrisp, breakfast is about 760 calories and 93 g protein.== Only the eggs need the oven. The chicken is already cooked. Each morning takes 3 minutes.
+==One sandwich is about 420 calories and 49 g protein. With a Nurri and a Honeycrisp, breakfast is about 690 calories and 79 g protein.== Only the eggs need the oven. The chicken is already cooked. Each morning takes 3 minutes.
 
-Six covers the week: Monday, Tuesday, Thursday, Friday, Saturday and Sunday. Wednesday is your fast.
+Eight covers Monday, Tuesday, Thursday, Friday, Saturday and Sunday, plus next Monday and Tuesday. Wednesday is your fast.
 
 ## What's in one sandwich
 
 | Part | Cal | Protein | Fat |
 |---|---|---|---|
 | English muffin | 150 | 5 g | 1 g |
-| Egg whites, ¾ cup | 100 | 20 g | 0 g |
-| Fage 0%, ¼ cup, baked into the whites | 30 | 6 g | 0 g |
-| Mesquite chicken, 4.7 oz | 170 | 30 g | 3 g |
+| Egg whites, about ½ cup | 75 | 15 g | 0 g |
+| Fage 0%, 3 tbsp, baked into the whites | 25 | 4.5 g | 0 g |
+| Mesquite chicken, 3.5 oz | 130 | 22 g | 3 g |
 | Provolone, ½ slice | 40 | 2.5 g | 3 g |
-| **Sandwich** | **490** | **63 g** | **7 g** |
+| **Sandwich** | **420** | **49 g** | **7 g** |
 | Nurri | 150 | 30 g | 2.5 g |
 | Honeycrisp, large | 120 | 0 g | 0 g |
-| **Breakfast** | **760** | **93 g** | **9.5 g** |
+| **Breakfast** | **690** | **79 g** | **9.5 g** |
 
-Carbs: 37 g in the sandwich and about 70 g in the whole breakfast. The chicken uses the Member's Mark label: 110 calories, 19 g protein, 2 g fat and 3 g carbs per 3 oz. The other numbers are estimates from typical labels. The real Chick-fil-A sandwich is 300 calories and 27 g protein.
+Carbs: 35 g in the sandwich and about 68 g in the whole breakfast. The chicken uses the Member's Mark label: 110 calories, 19 g protein, 2 g fat and 3 g carbs per 3 oz. The other numbers are estimates from typical labels. The real Chick-fil-A sandwich is 300 calories and 27 g protein.
 
-## Ingredients for 6
+## Ingredients for 8
 
 - **Eggs:** 2½ cartons liquid egg whites (40 oz by weight, about 4½ cups). Shake first, 1½ cups Fage 0%, 1 tsp each kosher salt, garlic powder and onion powder, plenty of black pepper
 - **Chicken:** 28 oz Member's Mark fully cooked mesquite chicken fillets, frozen. No seasoning needed.
-- **To finish:** 6 English muffins, 3 slices provolone cut in half
+- **To finish:** 8 English muffins, 4 slices provolone cut in half
 
 ## Steps
 
 1. Heat the oven to 350°F on plain Bake, not Convection Bake. Line the big deep black NutriChef pan with parchment and spray it.
 2. Whisk the Fage and seasoning into the whites until there are no lumps. Pour into the pan.
 3. Bake on the middle rack. That dark pan runs hot, so check at 25 minutes. Pull the eggs when the middle no longer jiggles, about 30 minutes. Cool 5 minutes.
-4. While the eggs bake, weigh 28 oz of frozen chicken. Tare the empty bowl first. Microwave the chicken on a plate for about 2 minutes, until soft enough to slice. Split it into 6 equal portions, about 4.7 oz each.
-5. Cut the eggs into 6 squares. Stack eggs, chicken, then half a slice of cheese on squares of parchment and fold closed.
-6. Put 3 kits in the fridge for Monday, Tuesday and Thursday. Put 3 in the freezer for Friday, Saturday and Sunday. Keep the muffins in their bag.
+4. While the eggs bake, weigh 28 oz of frozen chicken. Tare the empty bowl first. Microwave the chicken on a plate for about 2 minutes, until soft enough to slice. Cut each of the 4 breasts in half, about 3.5 oz each, then slice flat.
+5. Cut the eggs into 8 squares. Stack eggs, chicken, then half a slice of cheese on squares of parchment and fold closed.
+6. Put 3 kits in the fridge for Monday, Tuesday and Thursday. Put 5 in the freezer for Friday, Saturday, Sunday and next Monday and Tuesday. Keep the muffins in their bag.
 
 ## Each morning
 
@@ -44,7 +44,7 @@ Carbs: 37 g in the sandwich and about 70 g in the whole breakfast. The chicken u
 
 ## Fitting it into your day
 
-On a 2,000 calorie, 200 g protein day, this breakfast leaves **1,240 calories and 107 g protein**.
+On a 2,000 calorie, 200 g protein day, this breakfast leaves **1,310 calories and 121 g protein**.
 
 **Keep the Nurri.** At 5 calories per gram of protein, it's about as lean as the chicken. If breakfast feels too big, have it at 3 PM instead.
 
@@ -52,19 +52,19 @@ Here's a sample day, using Monday's salmon dinner. Numbers are estimates.
 
 | Meal | Cal | Protein |
 |---|---|---|
-| Breakfast | 760 | 93 g |
+| Breakfast | 690 | 79 g |
 | Lunch: 7 oz raw chicken thigh, vegetables | 330 | 40 g |
 | Snack: Oikos Triple Zero | 100 | 15 g |
 | Dinner: 6 oz salmon, 6 oz potato, vegetables | 530 | 39 g |
 | Quest chips | 140 | 20 g |
 | Treat: Rice Krispies Treat | 150 | 1 g |
-| **Total** | **2,010** | **208 g** |
+| **Total** | **1,940** | **194 g** |
 
-Fat lands around 55 g, below the 70 to 85 g floor in your older notes. To close the gap, swap the treat for half an avocado.
+That leaves room for about 60 more calories and 6 g more protein. Fat lands around 55 g, below the 70 to 85 g floor in your older notes. To close the gap, swap the treat for half an avocado.
 
 Your older plan kept starch to dinner on weekdays, and this muffin breaks that rule. On days dinner runs high, drop the rice or potato at dinner, not this breakfast.
 
-Log it in Cronometer as a custom food: 490 calories, 63 g protein, 37 g carbs, 7 g fat.
+Log it in Cronometer as a custom food: 420 calories, 49 g protein, 35 g carbs, 7 g fat.
 
 ## Leftovers
 
