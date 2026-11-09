@@ -118,3 +118,5 @@ Handed off on 2026-11-09 to a new thread (`~/.claude/handoffs/2026-11-09-chef-ag
 Correction on 2026-11-09: the core is not a short dinner ticket. It's teaching Dylan to cook: full recipes written for him, covering when to start, every step with temps, times and grams, what done looks like, and why. The Egg White Grill page is the minimum level of detail.
 
 Also on 2026-11-09: the Chef works in chat. Recipes arrive in the conversation, not as HTML pages. These docs are the Chef's memory, not something Dylan opens.
+
+Update on 2026-11-09: the [slice 1 spec](slice-1-spec.md) is written and was reviewed by a second model. The review changed four things: a push cannot open a Claude chat, so the thaw push carries the whole action in its text; thaws can be planned up to 3 days ahead (the frozen 5.5 lb block needs about 48 hours); confirmed standing defaults replace daily questions; and the build starts with a test of whether Claude.ai keeps the Chef's and the Coach's connectors apart. Waiting on Dylan's yes to the plain-words plan.
