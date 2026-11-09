@@ -1,5 +1,8 @@
 # Egg White Grill, batch of 8
 
+!!! note "Moved"
+    Since 2026-11-09 the live copy is in the Chef project, `~/.t3/projects/chef/`. This file is history.
+
 ==One sandwich is about 420 calories and 49 g protein. With a Nurri and a Honeycrisp, breakfast is about 690 calories and 79 g protein.== Only the eggs need the oven. The chicken is already cooked. Each morning takes 3 minutes.
 
 Eight covers Monday, Tuesday, Thursday, Friday, Saturday and Sunday, plus next Monday and Tuesday. Wednesday is your fast.

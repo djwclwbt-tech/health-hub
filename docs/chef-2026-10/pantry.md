@@ -1,5 +1,8 @@
 # Pantry, freezer and first Sam's Club list
 
+!!! note "Moved"
+    Since 2026-11-09 the live copy is in the Chef project, `~/.t3/projects/chef/`. This file is history.
+
 ==Your house already holds about a week of dinners. The first Sam's Club order only needs fresh food: salmon, vegetables, potatoes, Greek yogurt and oats.== Taken from 8 photos and the Sam's receipt dated Oct 13, 2026.
 
 !!! tip "Newer list"

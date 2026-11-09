@@ -1,5 +1,8 @@
 # Kitchen catalog
 
+!!! note "Moved"
+    Since 2026-11-09 the live copy is in the Chef project, `~/.t3/projects/chef/`. This file is history.
+
 ==This is everything the chef knows about your kitchen as of Nov 9: food, seasonings, appliances and pans. One thing needs you by tomorrow: the one fresh pack of chicken thighs left, about 5.5 lb.== Built from the Randalls receipt (Nov 9), the Sam's Club receipt (Nov 8), your notes, and older photos. Anything marked "check" is a guess.
 
 !!! warning "Use by Nov 10"

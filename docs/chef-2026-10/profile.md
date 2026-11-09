@@ -1,5 +1,8 @@
 # Chef profile: reference notes
 
+!!! note "Moved"
+    Since 2026-11-09 the live copy is in the Chef project, `~/.t3/projects/chef/`. This file is history.
+
 This is what your AI chef would start from. Most of it comes from old notes, so ==anything marked "confirm" is a guess until you say it's right==.
 
 !!! warning "Old notes disagree with today"
