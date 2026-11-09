@@ -120,3 +120,5 @@ Correction on 2026-11-09: the core is not a short dinner ticket. It's teaching D
 Also on 2026-11-09: the Chef works in chat. Recipes arrive in the conversation, not as HTML pages. These docs are the Chef's memory, not something Dylan opens.
 
 Update on 2026-11-09: the [slice 1 spec](slice-1-spec.md) is written and was reviewed by a second model. The review changed four things: a push cannot open a Claude chat, so the thaw push carries the whole action in its text; thaws can be planned up to 3 days ahead (the frozen 5.5 lb block needs about 48 hours); confirmed standing defaults replace daily questions; and the build starts with a test of whether Claude.ai keeps the Chef's and the Coach's connectors apart. Waiting on Dylan's yes to the plain-words plan.
+
+Decided on 2026-11-09 (Dylan): the Chef talks on Discord, for now in the #coach channel, as a Hermes agent on the Pi like the Coach, Scout and Researcher. The slice 1 spec's Claude.ai connector plan is dropped and gets rewritten for Hermes.

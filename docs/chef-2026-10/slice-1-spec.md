@@ -1,5 +1,8 @@
 # Chef slice 1: tonight's dinner
 
+!!! warning "Superseded surface"
+    Dylan decided on 2026-11-09 that the Chef talks on Discord (#coach for now) as a Hermes agent. The Claude.ai connector, step 0 and the web push below are being rewritten. Data, recipe, thaw and asking rules still stand.
+
 Status: spec v2, 2026-11-09. Revised after a second-model review (findings folded in below). Not built. Needs Dylan's yes on the plain-words plan first, then step 0.
 
 ## What slice 1 does
