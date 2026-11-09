@@ -116,3 +116,5 @@ Decided on 2026-11-09 (springboard): the Chef is its own agent with its own file
 Handed off on 2026-11-09 to a new thread (`~/.claude/handoffs/2026-11-09-chef-agent.md`). New rules: when data is missing, the Chef asks and never guesses. Cooking at home is a must for both Dylan and Danielle, to save money, get healthier and lose weight.
 
 Correction on 2026-11-09: the core is not a short dinner ticket. It's teaching Dylan to cook: full recipes written for him, covering when to start, every step with temps, times and grams, what done looks like, and why. The Egg White Grill page is the minimum level of detail.
+
+Also on 2026-11-09: the Chef works in chat. Recipes arrive in the conversation, not as HTML pages. These docs are the Chef's memory, not something Dylan opens.
