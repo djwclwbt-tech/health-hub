@@ -10,29 +10,34 @@
 
 ## Sam's Club, bought Nov 8
 
-Breakfast this week comes from this receipt: [Egg White Grill, batch of 8](egg-white-grill.md). No Nurri on this receipt.
+Corrected Nov 9 from the order screens in the Sam's app. The paper receipt's short codes were misread the first time: "100 SIRLOIN" is Gary's QuickSteak, not ground sirloin.
 
-| Receipt line | What it is |
+| Receipt code | Real product |
 |---|---|
-| ENG MUFFINS | English muffins |
-| MM LIQ EGG | Member's Mark liquid egg whites |
-| B/S THIGHS ×2 | Boneless skinless chicken thighs |
-| SKDPROVOLON | Provolone slices (check) |
-| HONEYCRISP | Honeycrisp apples |
-| BANANAS | Bananas |
-| 100 SIRLOIN | Ground sirloin |
-| MM MSQT BRS | Member's Mark fully cooked mesquite grilled chicken fillets, frozen |
-| MM CAN CHKN | Member's Mark canned chicken |
-| COLD_SMK_SA | Cold smoked salmon |
-| OIKOS TZ | Oikos Triple Zero yogurt |
-| TORTILLAS ×2 | Tortillas |
-| QST CHIPS | Quest protein chips |
-| CINN CEREAL | Cinnamon cereal |
-| RKT VP 40CT | Rice Krispies Treats variety pack |
-| 4PK CHEDDY | Check: unknown cheddar item |
-| ORG MM 00 1 | Check: unknown Member's Mark organic item |
-| ALAN 8.4Z24 | Alani drinks, 24 pack (check) |
-| COKEZERO35P | Coke Zero, 35 cans |
+| ENG MUFFINS | Thomas' Original English Muffins, 12 |
+| MM LIQ EGG | Member's Mark liquid egg whites, 6 × 16 oz |
+| B/S THIGHS ×2 | Member's Mark boneless skinless thighs, 5.30 lb and 5.63 lb |
+| SKDPROVOLON | Member's Mark smoked provolone slices, 2 lb |
+| HONEYCRISP | Honeycrisp apples, 4 lb |
+| BANANAS | Bananas, 3 lb |
+| 100 SIRLOIN | Gary's QuickSteak, thin-sliced sirloin, frozen, 9 |
+| MM MSQT BRS | Member's Mark mesquite grilled chicken fillets, frozen, 3 lb |
+| MM CAN CHKN | Member's Mark chunk chicken breast, 6 × 12.5 oz |
+| COLD_SMK_SA | Member's Mark cold smoked Atlantic salmon, 2 × 12 oz |
+| OIKOS TZ | Oikos Triple Zero variety pack, 18 |
+| TORTILLAS ×2 | Mission Carb Balance 10", 12 · La Banderita Carb Counter, 16 |
+| QST CHIPS | Quest tortilla-style protein chips, 14 |
+| CINN CEREAL | Catalina Crunch Cinnamon Toast, 22 oz |
+| RKT VP 40CT | Rice Krispies Treats variety pack, 40 |
+| 4PK CHEDDY | Goodles Cheddy Mac, 4 × 6 oz |
+| ORG MM 00 1 | Member's Mark organic extra virgin olive oil, 34 oz |
+| ALAN 8.4Z24 | Alani Nu mini variety pack, 24 |
+| COKEZERO35P | Coke Zero, 35 |
+
+Also on the order, not food: Bounty paper towels, Dude Wipes.
+
+!!! tip "Reading Sam's receipts"
+    The paper codes are too short to trust. Send screenshots of the order in the Sam's app (Account, Purchase history). They show full names, sizes and weights.
 
 ## Sam's Club, bought Oct 13
 

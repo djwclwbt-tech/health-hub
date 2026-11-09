@@ -1,14 +1,13 @@
 # Kitchen catalog
 
-==This is everything the chef knows about your kitchen as of Nov 9: food, seasonings, appliances and pans. Two things need you by tomorrow: cook or freeze the chicken thighs and the ground sirloin.== Built from the Randalls receipt (Nov 9), the Sam's Club receipt (Nov 8), your notes, and older photos. Anything marked "check" is a guess.
+==This is everything the chef knows about your kitchen as of Nov 9: food, seasonings, appliances and pans. One thing needs you by tomorrow: about 11 lb of fresh chicken thighs.== Built from the Randalls receipt (Nov 9), the Sam's Club receipt (Nov 8), your notes, and older photos. Anything marked "check" is a guess.
 
 !!! warning "Use by Nov 10"
-    - **Chicken thighs, 2 packs (Sam's, Nov 8).** Cook one tonight or tomorrow. Freeze the other flat in a Hefty freezer bag.
-    - **Ground sirloin (Sam's, Nov 8).** Ground meat lasts 1 to 2 days in the fridge. Cook it tomorrow or freeze it.
+    **Chicken thighs, 2 packs, about 11 lb (Sam's, Nov 8).** Keep about 2 lb in the fridge for the next two dinners. Split the rest into 1.5 lb portions, about 3 dinners for two, and freeze them flat in the Hefty bags, labeled with the date. Flat bags thaw in 1 hour in cold water.
 
 ## How this list was built
 
-- **Counted as here:** the Nov 8 Sam's receipt, today's Randalls receipt, and what you told me (meatballs, frozen vegetables, rice, Goodles, Danielle's frozen meals).
+- **Counted as here:** the Nov 8 Sam's order from the app (Nov 9 screenshots), today's Randalls receipt, and what you told me (meatballs, frozen vegetables, rice, Goodles, Danielle's frozen meals).
 - **Counted as gone:** fresh meat and anything perishable from the Oct 13 Sam's trip and the October photos.
 - **Probably still here:** shelf-stable food from the October pantry photos. It's listed under "Check" until you confirm it.
 
@@ -16,31 +15,30 @@
 
 | Item | From | Use by |
 |---|---|---|
-| Chicken thighs, boneless, 2 packs | Sam's Nov 8 | **Nov 10** |
-| Ground sirloin | Sam's Nov 8 | **Nov 10** |
+| Chicken thighs, boneless, 2 packs, about 11 lb | Sam's Nov 8 | **Nov 10** |
 | Egg White Grill sandwiches, 3 | Made Nov 8 | Nov 13 |
-| Liquid egg whites, open carton | Sam's Nov 8 | Date on carton |
-| Cold smoked salmon | Sam's Nov 8 | Date on pack |
+| Liquid egg whites, about 3½ of 6 cartons (16 oz) | Sam's Nov 8 | Date on carton |
+| Cold smoked salmon, 2 packs of 12 oz | Sam's Nov 8 | Date on pack |
 | Pico de gallo | Randalls | About Nov 13 |
 | Organic dill | Randalls | About Nov 13 |
 | Baby spinach, organic | Randalls | About Nov 15 |
 | Hothouse cucumbers, 2 | Randalls | About Nov 16 |
 | Good Culture cottage cheese, 2 | Randalls | Date on tub |
 | Fairlife fat-free milk | Randalls | Date on bottle |
-| Oikos Triple Zero yogurt | Sam's Nov 8 | Date on cups |
-| Provolone slices (check) | Sam's Nov 8 | Date on pack |
+| Oikos Triple Zero, 18-cup variety pack | Sam's Nov 8 | Date on cups |
+| Smoked provolone slices, 2 lb | Sam's Nov 8 | Date on pack |
 | Claussen pickle spears | Randalls | Weeks |
-| Honeycrisp apples | Sam's Nov 8 | About 3 weeks |
+| Honeycrisp apples, 4 lb | Sam's Nov 8 | About 3 weeks |
 
 ## Counter and pantry
 
-**Fresh, room temperature:** potatoes, one bag (Randalls) · bananas (Sam's) · English muffins, if any are left after the batch · tortillas, 2 packs (Sam's).
+**Fresh, room temperature:** potatoes, one bag (Randalls) · bananas, 3 lb (Sam's) · Thomas' English muffins, about 4 left of 12 · Mission Carb Balance 10" tortillas, 12 · La Banderita Carb Counter soft tacos, 16.
 
-**Starch:** Minute rice cups, about 5 · Ben's Original ready rice, about 4 packs · Goodles, an older box or two plus the new ones (check the count) · Cheerios (Randalls) · cinnamon cereal (Sam's).
+**Starch:** Minute rice cups, about 5 · Ben's Original ready rice, about 4 packs · Goodles Cheddy Mac, a new 4-pack plus older boxes (check the count) · Cheerios (Randalls) · Catalina Crunch Cinnamon Toast (Sam's).
 
-**Protein, shelf-stable:** Member's Mark canned chicken (Sam's).
+**Protein, shelf-stable:** Member's Mark chunk chicken breast, 6 cans of 12.5 oz (Sam's).
 
-**Snacks:** Quest chips · Rice Krispies Treats · Alani drinks · Coke Zero.
+**Snacks:** Quest tortilla-style protein chips, 14 bags · Rice Krispies Treats, 40 · Alani Nu minis, 24 · Coke Zero, 35.
 
 **Wraps and storage (new):** Hefty slider freezer bags, gallon · parchment paper · aluminum foil.
 
@@ -49,7 +47,8 @@
 | Item | Notes |
 |---|---|
 | Egg White Grill sandwiches, 5 | Made Nov 8. Breakfast through Nov 18 |
-| Mesquite grilled chicken fillets, rest of the bag | Fully cooked. Sandwich batches and fast lunches |
+| Gary's QuickSteak, 9 thin-sliced sirloin steaks | Cooks from frozen in 2 to 3 minutes. Tacos, fajitas, cheesesteaks |
+| Mesquite grilled chicken fillets, about 20 oz left of 3 lb | Fully cooked. Sandwich batches and fast lunches |
 | Chicken meatballs | Brand unknown (check) |
 | Stir-fry vegetable blend | Kirkland |
 | Broccoli and other vegetables | Check what else is there |
@@ -75,7 +74,7 @@
 | Morton Lite Salt | Half the sodium of salt, for Danielle's plate |
 | La Costeña (check: salsa, beans or jalapeños?) | |
 
-**Already at home:** Bachan's Japanese barbecue sauce · Barilla pesto · olive oil · chicken broth (check) · "some of the main single spices" (not listed yet).
+**Already at home:** Member's Mark organic extra virgin olive oil, 34 oz (Sam's) · Bachan's Japanese barbecue sauce · Barilla pesto · chicken broth (check) · "some of the main single spices" (not listed yet).
 
 !!! note "Still missing for Chinese food"
     Soy sauce alone won't taste like takeout. Add toasted sesame oil, rice vinegar and oyster sauce on the next trip. Hoisin is optional.
@@ -118,7 +117,7 @@ All mild by default. Your heat goes on at the table.
 | Dinner | How | Danielle |
 |---|---|---|
 | Za'atar chicken thighs and potatoes | Air fryer with Smart Finish: thighs in one basket, potato wedges in the other | Cucumber, dill and yogurt sauce |
-| Asadero beef taco bowls | Ground sirloin in the steel pan with Asadero and cumin. Spinach, pico | Rice instead of a tortilla |
+| Asadero steak tacos | QuickSteak straight from the freezer into a hot steel pan with Asadero. Carb Counter tortillas, pico, spinach | Rice bowl instead of tacos |
 | Five-spice chicken stir-fry | Thighs, frozen stir-fry vegetables, Less Sodium soy, five-spice. Steel pan, very hot | Minute rice. No chili oil |
 | Greek chicken sheet pan | Cavender's on thighs and potatoes, 425°F on the lined light pan | Same plate |
 | Rescue night: Goodles and meatballs | 15 minutes. Wilt spinach into the pasta | Her portion is smaller |
@@ -147,4 +146,5 @@ These are the usual pieces of an AI kitchen system. Each one is a gap today.
 - A photo of the freezer: Danielle's meals, the meatball brand, and the other vegetables.
 - How many Goodles boxes, and which flavors?
 - Which La Costeña item did you buy?
+- The Sam's screenshots start mid-order. Was anything above the 4 screens, such as liquid egg whites or the Nurri?
 - Do you have a meat thermometer and meal-prep containers yet?
