@@ -22,7 +22,7 @@ Carbs: 36 g in the sandwich and about 69 g in the whole breakfast. The chicken u
 
 ## Ingredients for 6
 
-- **Eggs:** 4½ cups liquid egg whites (2¼ cartons), 1½ cups Fage 0%, 1 tsp each kosher salt, garlic powder and onion powder, plenty of black pepper
+- **Eggs:** 2½ cartons liquid egg whites (40 oz by weight, about 4½ cups). Shake first, 1½ cups Fage 0%, 1 tsp each kosher salt, garlic powder and onion powder, plenty of black pepper
 - **Chicken:** 24 oz Member's Mark fully cooked mesquite chicken fillets, frozen. No seasoning needed.
 - **To finish:** 6 English muffins, 3 slices provolone cut in half
 
