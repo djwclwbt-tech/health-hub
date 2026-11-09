@@ -37,9 +37,12 @@ Carbs: 35 g in the sandwich and about 68 g in the whole breakfast. The chicken u
 
 ## Each morning
 
+The muffins went in untoasted, so open the sandwich and toast them while the filling heats.
+
 1. Take the sandwich out of its bag. Never put the bag in the air fryer.
-2. From the fridge, air fry at 325°F for 5 to 6 minutes. From frozen, air fry at 300°F for 12 to 14 minutes, or move it to the fridge the night before and heat it as usual.
-3. It's ready when the center is hot and the cheese has melted. Add pickles, mustard or hot sauce if you want more flavor. Have it with your Nurri and apple.
+2. From the fridge: open it and put both muffin halves cut side up in basket 1, with the cheese, egg and chicken stacked beside them. AIR FRY at 350°F for 5 minutes. Put it back together when the muffin is golden and the filling is hot.
+3. From frozen: move it to the fridge the night before. If you forgot, REHEAT it whole at 300°F for 10 minutes, then open it and AIR FRY at 350°F for 3 minutes.
+4. Add pickles, mustard or hot sauce if you want more flavor. Have it with your Nurri and apple.
 
 ## Fitting it into your day
 
