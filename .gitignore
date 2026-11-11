@@ -9,3 +9,9 @@ public/
 .playwright-mcp/
 build.json
 eval/out/
+companion/DerivedData/
+companion/**/xcuserdata/
+companion/device-captures/
+
+# Mack mail-triage notes (sender/subject pointers; private)
+intake/mail/
