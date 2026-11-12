@@ -1,49 +1,59 @@
-# Garmin gym app: design
+# Garmin gym app
 
-A Connect IQ watch app on Dylan's Forerunner 245 shows Health Hub's next set, runs the rest timer, buzzes when rest ends and logs each set with one press. It talks to Health Hub through a small iPhone app over Bluetooth, not through Garmin Connect.
+A Connect IQ app on Dylan's Forerunner 245 shows Health Hub's next set, runs the rest timer, buzzes when rest ends and logs each set with one press. The plan and the log travel through Garmin Connect on the iPhone over Bluetooth. Health Hub's engine does all the math at both ends.
 
 ## The path
 
 ```mermaid
 flowchart TD
-  A[Health Hub engine on Vercel] -->|plan text| B[iPhone bridge app]
-  B -->|Bluetooth notify| C[Forerunner 245 app]
-  C -->|Bluetooth write: set log text| B
-  B -->|POST log text| A
+  A[Health Hub engine on Vercel: /api/wrist] -->|plan JSON| B[Garmin Connect on the iPhone]
+  B -->|Bluetooth| C[Forerunner 245 app]
+  C -->|set log JSON| B
+  B -->|POST| A
 ```
 
-- **Server:** `/api/wrist`, a rewrite onto `api/sync-steps.js` (Hobby plan allows 12 functions; we are at 12). Gate: `SYNC_TOKEN` (the phone bridge already holds it for the band). GET returns today's plan as text; POST takes the watch's log text, turns it into a workout through `applyWorkout`, writes `workouts` + `progression` rows, and files a `wrist:<logId>` receipt row in `program` (VIRTUAL) so a resent log is ignored.
-- **Engine:** `lib/engine/wrist.mjs`. `wristPlan` (from `buildSession`, so weights, reps and rest are the app's own) and `applyWristLog` (log text → workout → `applyWorkout`). All parsing and rules live here and are tested.
-- **Phone:** a dumb pipe. BLE peripheral with one service and two characteristics: RX (watch writes) and TX (phone notifies). Messages are UTF-8 text cut into 20-byte frames: byte 0 = frame index (bit 7 set on the last frame), bytes 1..19 = text.
-- **Watch:** BLE central (`Toybox.BluetoothLowEnergy`, supported on the fr245). Scans for the bridge's service each sync (iPhone rotates its address, so stored pairing is not trusted). Works offline from a cached plan. Sets are stored after every press; finished logs wait in an outbox until the phone acknowledges them.
+!!! note "Why not our own Bluetooth bridge"
+    The first design had our own iPhone app talk to the watch directly. The red-team found two blockers. The fr245 cannot keep a Bluetooth pairing between app launches (`pairDevice` does not persist; bonding needs API 4.2.5). An iPhone app in the background also hides its service from non-Apple devices. So the bridge app would have to be open on screen at every sync. Garmin Connect already keeps the link in the background, and it needs no iPhone app or 7-day reinstall.
 
-## Message formats (text, one record per line, fields split by `|`)
+## Parts
 
-Plan (server → watch):
+- **Engine** (`lib/engine/wrist.mjs`): `wristPlan` turns `buildSession` into small JSON, so weights, reps, rest and the goal line are the app's own. `applyWristLog` matches sets by lift id, stamps each set with the log id (`lid`), and runs `applyWorkout`. A resent log is recognised from the saved workout, so it applies once.
+- **Route** (`lib/wrist-route.mjs`): served as `/api/wrist`, a rewrite onto `api/sync-steps.js`, because the Hobby plan allows 12 functions. Bearer token = `wristToken(SYNC_TOKEN)`, an HMAC. The watch carries only that token, so it can't reach any other route. Progression is written first and the workout last, so a failure part-way means the watch resends and the whole log applies again.
+- **App** (`src/app.jsx`): the foreground pull now includes `wk` and `prog`, so a watch workout shows up without a relaunch.
+- **Watch** (`garmin/`): offline-first. The plan is cached in Storage. The session is saved after every press, so a killed app resumes on the same set. Finished logs wait in an outbox until the server says ok. Records a native strength activity (one lap per set), which keeps the heart-rate sensor on.
 
-```
-P|1|<planId>|<date>|<day>|<session name>
-E|<exIdx>|<exercise id>|<name ≤ 18 chars>|<weight>|<unit>|<step>|<reps csv>
-S|<exIdx>|<setIdx>|<rest seconds after this set>
-```
+## Messages
 
-`S` lines are the order to do the sets in (supersets already interleaved by the engine's `sessionCursor` rule). Weight 0 = body weight.
+Plan (GET `/api/wrist`, optional `?date=&day=`):
 
-Log (watch → server):
-
-```
-L|1|<logId>|<planId>|<date>|<day>|<start epoch s>|<end epoch s>
-D|<exIdx>|<exercise id>|<setIdx>|<weight>|<reps>|<epoch s>|<avg hr>|<max hr>
-K|<exIdx>|<setIdx>
+```json
+{"v":1,"id":"k3j9x","date":"2026-11-09","day":"monday","name":"Upper A - Strength",
+ "ex":[{"i":"machine-chest-press","n":"Machine Chest","w":135,"u":"","st":5,"r":[8,8,8],"g":"Same weight. One more rep..."}],
+ "seq":[[0,0,150],[0,1,150],[0,2,0]]}
 ```
 
-`K` = skipped set. Acks (phone → watch): `A|<logId>|ok` or `A|<logId>|err|<reason>`.
+`seq` is the set order (supersets already interleaved) with the rest after each set. Weight 0 = body weight. `u`: "" = lb, `ea` = per hand, `side`, `asst`, `BW`.
 
-## Watch screens (fr245: 240×240, five buttons, no touch)
+Log (POST `/api/wrist`):
 
-- **Home:** session name, lift count, sync state, unsynced count. START begins.
-- **Set:** lift, set n of m, big `185 × 8`, heart rate. UP/DOWN change reps. START logs the set "as done". Hold UP (menu): weight ±step, skip set, skip lift, finish.
-- **Rest:** big countdown, next set preview. Buzz + tone at zero. START skips rest.
-- **Done:** sets, volume, "3 unsynced" until the phone acks.
+```json
+{"v":1,"id":"6730f1a2b4c5d6","plan":"k3j9x","date":"2026-11-09","day":"monday","t0":1762693200,"t1":1762696800,
+ "d":[[0,"machine-chest-press",0,135,8,1762693500,112,141,0]],"k":[[3,2]]}
+```
 
-Recorded as a native strength activity so the heart-rate sensor stays on and the app stays open.
+`d` rows: lift index, lift id, set index, weight, reps, time (s), average and peak heart rate during the set, step index (watch only). `k`: skipped sets.
+
+## Buttons (fr245)
+
+| Screen | START | UP / DOWN | Hold UP | BACK |
+| --- | --- | --- | --- | --- |
+| Home | Start or resume | | Sync now | Exit |
+| Set | Log the set | Reps ±1 | Weight ±, skip, goal, finish | Finish? |
+| Rest | Go now | | | Undo last set |
+| Done | Close | | | Close |
+
+## Build and install
+
+1. Device files: `connect-iq-sdk-manager login` (Garmin account), then `device download --manifest=garmin/manifest.xml`.
+2. `garmin/scripts/build.sh` writes the gitignored `secrets/Secrets.mc` (URL + wrist token from `.env.local`), makes a developer key once, and builds `garmin/bin/HealthHubGym.prg`.
+3. On the Mac: quit Garmin Express, plug in the watch, and copy the `.prg` file to `GARMIN/APPS` with OpenMTP.

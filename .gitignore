@@ -19,4 +19,4 @@ intake/mail/
 # Garmin watch app: build output, developer key, and the generated token resource
 garmin/bin/
 garmin/developer_key*
-garmin/resources/secrets/
+garmin/secrets/Secrets.mc

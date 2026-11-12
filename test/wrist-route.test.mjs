@@ -24,10 +24,10 @@ const TOK = wristToken('tok');
 const req = ({ method = 'GET', query = {}, body = null, token = TOK } = {}) => ({ method, url: '/api/sync-steps', query: { route: 'wrist', ...query }, body, headers: token ? { authorization: `Bearer ${token}` } : {} });
 const res = () => { const r = { statusCode: 200, headers: {}, body: null }; r.status = c => { r.statusCode = c; return r; }; r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v; }; r.json = b => { r.body = b; return r; }; r.end = b => { r.body = b; return r; }; return r; };
 const withEnv = fn => async () => { const p = process.env.SYNC_TOKEN; process.env.SYNC_TOKEN = 'tok'; process.env.SUPABASE_KEY = 'k'; try { await fn(); } finally { if (p == null) delete process.env.SYNC_TOKEN; else process.env.SYNC_TOKEN = p; } };
-const T0 = Date.parse('2026-11-09T13:00:00Z') / 1000;
+const T0 = Math.floor(Date.now() / 1000) - 3600;
 const logFor = (id) => {
   const { plan } = E.wristPlan(E.bl(), { date: '2026-11-09' });
-  return { v: 1, id, plan: plan.id, date: '2026-11-09', day: 'monday', t0: T0, t1: T0 + 900, d: [[0, plan.ex[0].i, 0, plan.ex[0].w, plan.ex[0].r[0], T0 + 60, 110, 140]], k: [] };
+  return { v: 1, id, plan: plan.id, date: E.chicagoDate(T0), day: 'monday', t0: T0, t1: T0 + 900, d: [[0, plan.ex[0].i, 0, plan.ex[0].w, plan.ex[0].r[0], T0 + 60, 110, 140]], k: [] };
 };
 
 test('wrist: only the derived wrist token gets in, not SYNC_TOKEN itself', withEnv(async () => {
@@ -59,7 +59,7 @@ test('wrist POST: writes progression then the workout, and a resend is not appli
   assert.equal(r.statusCode, 200); assert.equal(r.body.sets, 1);
   const writes = calls.filter(c => c.method === 'POST').map(c => c.url.match(/rest\/v1\/(\w+)/)[1]);
   assert.deepEqual(writes, ['progression', 'workouts']);
-  assert.equal(workoutRows[0].date, '2026-11-09');
+  assert.equal(workoutRows[0].date, E.chicagoDate(T0));
   assert.ok(workoutRows[0].exercises.some(e => e.sets.some(s => s.lid === 'abcd1234')));
   r = res(); await handler(req({ method: 'POST', body: logFor('abcd1234') }), r);
   assert.equal(r.body.duplicate, true);

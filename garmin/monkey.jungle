@@ -1,0 +1,3 @@
+project.manifest = manifest.xml
+# secrets/ holds Secrets.mc, written by scripts/build.sh (gitignored).
+base.sourcePath = source;secrets
