@@ -1,4 +1,4 @@
-import { DEFAULTS, bl } from "../../lib/engine.mjs";
+import { DEFAULTS, bl, keepWristSets } from "../../lib/engine.mjs";
 import { makeClient, toRow, loadAll } from "../../lib/supabase.mjs";
 
 const SK="dhub6";
@@ -72,7 +72,9 @@ const svSB={
   lytes:(date,l)=>trackedUpsert("lytes",toRow.lytes(date,l)),
   recovery:(date,r)=>trackedUpsert("recovery",toRow.recovery(date,r)),
   habits:(date,h)=>trackedUpsert("habits",toRow.habits(date,h)),
-  workout:(date,w)=>trackedUpsert("workouts",toRow.workout(date,w)),
+  // The Garmin watch may have written this date already: keep its sets (engine keepWristSets).
+  workout:async(date,w)=>{let out=w;try{const rows=await sb.select("workouts","date","desc",1,`date=eq.${date}`);if(Array.isArray(rows)&&rows[0])out=keepWristSets(w,rows[0].exercises);}catch{}
+    return trackedUpsert("workouts",toRow.workout(date,out));},
   nutrition:(date,n)=>trackedUpsert("nutrition",toRow.nutrition(date,n)),
   progression:(exId,p)=>trackedUpsert("progression",toRow.progression(exId,p),"exercise_id"),
   debrief:(date)=>trackedUpsert("debrief",toRow.debrief(date)),

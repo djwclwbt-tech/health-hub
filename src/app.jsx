@@ -139,11 +139,12 @@ window.App = function App(){
     return()=>{document.removeEventListener("visibilitychange",flush);window.removeEventListener("pagehide",flush);};},[]);
 
   // Coming back to the app: pull what outside syncs wrote while it sat in the background
-  // (Cronometer food, Oura recovery, Shortcut steps and weight). An iPhone can keep the app
+  // (Cronometer food, Oura recovery, Shortcut steps and weight, Garmin watch workouts). An iPhone can keep the app
   // suspended for hours, and boot is the only other pull. Cloud wins per date, as at boot.
   const lastPull=useRef(Date.now());
   useEffect(()=>{
-    const EXTERNAL=["nut","rec","steps","wt","watch","reviews"];
+    // wk and prog: sets logged on the Garmin watch reach the cloud from the server.
+    const EXTERNAL=["nut","rec","steps","wt","watch","reviews","wk","prog"];
     const pull=async()=>{
       if(document.visibilityState!=="visible"||navigator.onLine===false)return;
       if(Date.now()-lastPull.current<3*60*1000)return;
@@ -155,7 +156,7 @@ window.App = function App(){
         const nd={...prev};let changed=false;
         for(const k of EXTERNAL){
           if(failed.has(k)||!sb[k]||typeof sb[k]!=="object")continue;
-          const merged={...(prev[k]||{}),...sb[k]};
+          const merged=k==="prog"?mergeProgression(prev[k]||{},sb[k]):{...(prev[k]||{}),...sb[k]};
           if(JSON.stringify(merged)!==JSON.stringify(prev[k]||{})){nd[k]=merged;changed=true;}
         }
         if(!changed)return prev;

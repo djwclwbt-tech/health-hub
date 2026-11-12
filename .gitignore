@@ -9,3 +9,14 @@ public/
 .playwright-mcp/
 build.json
 eval/out/
+companion/DerivedData/
+companion/**/xcuserdata/
+companion/device-captures/
+
+# Mack mail-triage notes (sender/subject pointers; private)
+intake/mail/
+
+# Garmin watch app: build output, developer key, and the generated token resource
+garmin/bin/
+garmin/developer_key*
+garmin/secrets/Secrets.mc
