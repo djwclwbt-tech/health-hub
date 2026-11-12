@@ -1,9 +1,13 @@
 // GET|POST /api/sync-steps · Apple Shortcut / Health Auto Export sync · SYNC_TOKEN as ?token=, body.token or Bearer.
+// Also serves /api/wrist (rewrite → ?route=wrist): lib/wrist-route.mjs.
 import { makeClient } from '../lib/supabase.mjs';
 import { preflight, requireToken, queryOf, bodyOf, supabaseEnv } from '../lib/http.mjs';
+import wristRoute from '../lib/wrist-route.mjs';
 
 export default async function handler(req, res) {
   if (preflight(req, res, 'GET, POST')) return;
+  // /api/wrist (Garmin gym app) shares this function: the Hobby plan allows 12.
+  if (queryOf(req).route === 'wrist') return wristRoute(req, res);
   if (!requireToken(req, res, 'SYNC_TOKEN', { allowQuery: true, allowBody: true })) return;
 
   try {

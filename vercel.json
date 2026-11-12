@@ -108,5 +108,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/wrist",
+      "destination": "/api/sync-steps?route=wrist"
+    }
   ]
 }
