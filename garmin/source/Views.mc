@@ -23,8 +23,11 @@ function fmtW(w as Numeric) as String {
 
 // "185 lb", "40 ea", "BW"
 function weightText(w as Numeric, unit as String) as String {
-    if (unit.equals("BW") || w == 0) {
+    if (w == 0) {
         return "BW";
+    }
+    if (unit.equals("BW")) {
+        return "BW+" + fmtW(w);
     }
     return fmtW(w) + (unit.equals("") ? " lb" : " " + unit);
 }

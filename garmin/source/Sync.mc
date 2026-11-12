@@ -65,8 +65,16 @@ class SyncClient {
         }
         status = describe(code);
         WatchUi.requestUpdate();
+        // The server answered but would not take it (401, 500...): still refresh the plan,
+        // so a stuck log never leaves the watch on an old day. The log stays queued.
+        if (code > 0) {
+            var err = status;
+            fetchPlan();
+            pendingError = err;
+        }
     }
 
+    var pendingError as String? = null;
     var lastRefused as Boolean = false;
     var sendingId as String = "";
 
@@ -88,11 +96,16 @@ class SyncClient {
         busy = false;
         if (code == 200 && data instanceof Dictionary && data["v"] == 1 && Store.cur() == null) {
             Store.setPlan(data as Dictionary);
-            status = "Up to date";
+            status = pendingError != null ? pendingError as String : "Up to date";
         } else {
             status = describe(code);
         }
+        pendingError = null;
         WatchUi.requestUpdate();
+        // A workout finished while this request ran: send it now, not at the next launch.
+        if (Store.outbox().size() > 0 && status.equals("Up to date")) {
+            flush();
+        }
     }
 
     function describe(code as Number) as String {

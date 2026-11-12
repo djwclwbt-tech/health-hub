@@ -102,6 +102,11 @@ class Runner {
         if (c == null && (p == null || (p["seq"] as Array).size() == 0)) {
             return false;
         }
+        if (c != null && step(c) == null) {
+            // Killed after the last set but before finishing: finish now.
+            finish();
+            return false;
+        }
         if (c != null && c["re"] != null && restLeft() == 0) {
             // Rest ran out while the app was closed: no buzz, straight to the set.
             c["re"] = null;
