@@ -236,6 +236,9 @@ class Runner {
         Store.setCur(c);
     }
 
+    // UP/DOWN change the weight while it has focus (BACK on the set screen). One step
+    // is the lift's own increment from the plan ("st": 2.5 or 5). The new weight is
+    // kept per lift (cur "w"), so the next set of this lift starts from it.
     function changeWeight(sign as Number) as Void {
         var c = Store.cur();
         var st = c == null ? null : step(c as Dictionary);
@@ -243,11 +246,26 @@ class Runner {
             return;
         }
         var ei = st[0] as Number;
-        var w = weightFor(c as Dictionary, ei) + sign * (exAt(ei)["st"] as Numeric);
+        var ex = exAt(ei);
+        var inc = ex["st"] as Numeric;
+        var w = weightFor(c as Dictionary, ei) + sign * inc;
+        // Added weight (BW+) may go back to 0; a loaded lift stops at one step.
+        var floor = (ex["u"] as String).equals("BW") ? 0 : inc;
         var wd = c["w"] as Dictionary;
-        wd[ei] = w < 0 ? 0 : w;
+        wd[ei] = w < floor ? floor : (w > 999 ? 999 : w);
         Store.setCur(c);
     }
+
+    // A body-weight lift (planned weight 0) has no weight to edit.
+    function canEditWeight() as Boolean {
+        var c = Store.cur();
+        var st = c == null ? null : step(c as Dictionary);
+        return st != null && (exAt(st[0] as Number)["w"] as Numeric) != 0;
+    }
+
+    // Which number UP/DOWN change on the set screen: reps (default) or weight.
+    // Back to reps after every log and undo, so one START press still logs as planned.
+    var editW as Boolean = false;
 
     // START on the set screen: log it as shown, then rest or move on.
     function logSet() as Void {
@@ -294,6 +312,7 @@ class Runner {
     }
 
     function advance(c as Dictionary, rest as Number) as Void {
+        editW = false;
         c["r"] = null;
         c["k"] = nextK(c, (c["k"] as Number) + 1);
         var more = step(c) != null;
@@ -329,6 +348,7 @@ class Runner {
         c["re"] = null;
         Store.setCur(c);
         resetHr();
+        editW = false;
         WatchUi.switchToView(new SetView(), new SetDelegate(), WatchUi.SLIDE_RIGHT);
     }
 

@@ -48,9 +48,24 @@ Log (POST `/api/wrist`):
 | Screen | START | UP / DOWN | Hold UP | BACK |
 | --- | --- | --- | --- | --- |
 | Home | Start or resume | | Sync now | Exit |
-| Set | Log the set | Reps ±1 | Weight ±, skip, goal, finish | Finish? |
+| Set | Log the set (from either field) | Reps ±1, or weight ± one step after BACK | Undo, skip, goal, finish | Weight focus, then Finish? (body-weight lifts: Finish? at once) |
 | Rest | Go now | | | Undo last set |
 | Done | Close | | | Close |
+
+### Changing the weight on the watch
+
+The set screen shows weight and reps; the one in ember is what UP/DOWN change. Reps have focus at the start of every set, so START logs the planned set with one press, as before.
+
+1. BACK: the weight turns ember and the hint says the step (`weight +/-2.5`). UP/DOWN move it by the lift's own increment from the plan (`st`, 2.5 or 5). Dumbbells read "ea".
+2. START logs the set with the weight and reps on screen.
+3. The edited weight stays for the next set of that lift. Focus goes back to reps after every log or undo.
+4. BACK again (in weight focus) opens "Finish workout?". "No" returns with reps in focus. A body-weight lift (planned weight 0) has no weight step: BACK goes straight to the prompt.
+
+A loaded lift cannot go below one step; added weight (BW+) can go back to 0.
+
+## Watch and phone on the same session
+
+If Dylan logs a session on the watch and on the phone, the copies fold into one entry per lift (`foldLiftCopies`, `foldDayLog` in `lib/engine/progression.mjs`). The phone's weight and reps win, the watch adds set times, heart rate and its log id (`lid`, so a resent watch log still applies once). Sets pair by position; the phone's set count wins. A phone swap wins over the planned lift the watch logged (they match by slot). The day keeps its program name instead of "multi". It works in any order: the phone finishing after the watch (`applyWorkout`), the watch posting after the phone (`applyWristLog` → `applyWorkout`), and the phone save path (`keepWristSets`). Progression reads the folded entry. 2026-11-12 predates this: `scripts/fix-wrist-double.mjs` folds that day (dry run by default).
 
 ## Build and install
 
