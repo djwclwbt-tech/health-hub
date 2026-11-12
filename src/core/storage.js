@@ -73,7 +73,7 @@ const svSB={
   recovery:(date,r)=>trackedUpsert("recovery",toRow.recovery(date,r)),
   habits:(date,h)=>trackedUpsert("habits",toRow.habits(date,h)),
   // The Garmin watch may have written this date already: keep its sets (engine keepWristSets).
-  workout:async(date,w)=>{let out=w;try{const rows=await sb.select("workouts","date","desc",1,`date=eq.${date}`);if(Array.isArray(rows)&&rows[0])out=keepWristSets(w,rows[0].exercises);}catch{}
+  workout:async(date,w)=>{let out=w;try{const rows=await sb.select("workouts","date","desc",1,`date=eq.${date}`);if(Array.isArray(rows)&&rows[0])out=keepWristSets(w,{day:rows[0].day_name,exercises:rows[0].exercises});}catch{}
     return trackedUpsert("workouts",toRow.workout(date,out));},
   nutrition:(date,n)=>trackedUpsert("nutrition",toRow.nutrition(date,n)),
   progression:(exId,p)=>trackedUpsert("progression",toRow.progression(exId,p),"exercise_id"),

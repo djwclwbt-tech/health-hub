@@ -1,5 +1,6 @@
 // Screens for a 240 px round screen with five buttons (no touch).
-//   START = the main action · UP/DOWN = reps · hold UP (menu) = more · BACK = back or undo
+//   START = the main action · UP/DOWN = the number in ember (reps, or weight after BACK)
+//   hold UP (menu) = more · BACK = weight, then finish? (set screen) or undo (rest)
 // Colors: ember (0xFF5500) marks the one thing you act on now, as in Health Hub.
 import Toybox.Graphics;
 import Toybox.Lang;
@@ -151,9 +152,11 @@ class SetView extends WatchUi.View {
         var sets = (ex["r"] as Array).size();
         centerText(dc, 34, Graphics.FONT_SMALL, ex["n"] as String, Graphics.COLOR_WHITE);
         centerText(dc, 64, Graphics.FONT_XTINY, "Set " + ((st[1] as Number) + 1) + " of " + sets, GRAY);
-        centerText(dc, 100, Graphics.FONT_MEDIUM, weightText(r.weightFor(c as Dictionary, ei), ex["u"] as String), Graphics.COLOR_WHITE);
-        centerText(dc, 152, Graphics.FONT_NUMBER_MEDIUM, r.repsFor(c as Dictionary, st).toString(), EMBER);
-        centerText(dc, 190, Graphics.FONT_XTINY, "reps", GRAY);
+        // Ember marks the number UP/DOWN change now.
+        var w = r.editW;
+        centerText(dc, 100, Graphics.FONT_MEDIUM, weightText(r.weightFor(c as Dictionary, ei), ex["u"] as String), w ? EMBER : Graphics.COLOR_WHITE);
+        centerText(dc, 152, Graphics.FONT_NUMBER_MEDIUM, r.repsFor(c as Dictionary, st).toString(), w ? Graphics.COLOR_WHITE : EMBER);
+        centerText(dc, 190, Graphics.FONT_XTINY, w ? "weight +/-" + fmtW(ex["st"] as Numeric) : "reps", w ? EMBER : GRAY);
         centerText(dc, 214, Graphics.FONT_XTINY, hrLine(), GRAY);
     }
 }
@@ -168,25 +171,29 @@ class SetDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
+    // UP/DOWN: reps, or the weight while it has focus.
     function onPreviousPage() as Boolean {
-        runner().changeReps(1);
-        WatchUi.requestUpdate();
+        bump(1);
         return true;
     }
 
     function onNextPage() as Boolean {
-        runner().changeReps(-1);
-        WatchUi.requestUpdate();
+        bump(-1);
         return true;
+    }
+
+    function bump(sign as Number) as Void {
+        var r = runner();
+        if (r.editW) {
+            r.changeWeight(sign);
+        } else {
+            r.changeReps(sign);
+        }
+        WatchUi.requestUpdate();
     }
 
     function onMenu() as Boolean {
         var m = new WatchUi.Menu2({ :title => "Set" });
-        var c = Store.cur();
-        var st = c == null ? null : runner().step(c as Dictionary);
-        var stepTxt = st == null ? "" : fmtW(runner().exAt(st[0] as Number)["st"] as Numeric);
-        m.addItem(new WatchUi.MenuItem("Weight +" + stepTxt, null, :up, {}));
-        m.addItem(new WatchUi.MenuItem("Weight -" + stepTxt, null, :down, {}));
         if (runner().doneCount() > 0) {
             m.addItem(new WatchUi.MenuItem("Undo last set", null, :undo, {}));
         }
@@ -204,8 +211,17 @@ class SetDelegate extends WatchUi.BehaviorDelegate {
         return st == null ? "" : runner().exAt(st[0] as Number)["g"] as String;
     }
 
-    // BACK mid-session asks before closing; the session is safe either way.
+    // BACK: first the weight (UP/DOWN now change it, START still logs), then the
+    // finish prompt. A body-weight lift goes straight to the prompt. "No" comes back
+    // with reps in focus. The session is safe either way.
     function onBack() as Boolean {
+        var r = runner();
+        if (!r.editW && r.canEditWeight()) {
+            r.editW = true;
+            WatchUi.requestUpdate();
+            return true;
+        }
+        r.editW = false;
         WatchUi.pushView(new WatchUi.Confirmation("Finish workout?"), new FinishConfirm(), WatchUi.SLIDE_UP);
         return true;
     }
@@ -223,11 +239,7 @@ class SetMenuDelegate extends WatchUi.Menu2InputDelegate {
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         var r = runner();
-        if (id == :up) {
-            r.changeWeight(1);
-        } else if (id == :down) {
-            r.changeWeight(-1);
-        } else if (id == :undo) {
+        if (id == :undo) {
             r.undo();
         } else if (id == :skipSet) {
             r.skipSet();
