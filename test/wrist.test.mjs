@@ -113,7 +113,7 @@ test('log: a partial anchor session holds the weight', () => {
 
 test('log: sets follow the lift id, not the index, and unknown ids are dropped', () => {
   const data = base();
-  const second = E.wristPlan(data, { date: MON }).session.exercises[1];
+  const second = E.wristPlan(data, { date: MON }).session.exercises.find((e, i) => i > 0 && e.slot.unit !== 'BW');
   const res = apply(data, log({ id: 'idx1', d: [[0, second.id, 0, 100, 8, T0 + 60], [3, 'no-such-lift', 0, 50, 8, T0 + 120]] }));
   assert.equal(res.data.wk[MON].exercises.find(e => e.id === second.id).sets[0].weight, 100);
   assert.deepEqual(res.dropped, ['no-such-lift']);

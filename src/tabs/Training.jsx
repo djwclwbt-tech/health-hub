@@ -1,5 +1,5 @@
 const { useState, useEffect, useRef, useCallback } = React;
-import { liftTarget, targetReps, lastSessionSets, PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, CUT_HOLD_PROGRESSION, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
+import { liftTarget, targetReps, lastSessionSets, PROG, WU, rrTxt, progKey, saneSet, supersetLabel, EXERCISE_LIBRARY, exLibById, shortLiftName, STRETCH_POSES, mayAddWeight, getProgEntry, CARDIO_PRESETS, CARDIO_TYPES, cardioLabel, intensityLabel, cardioSummary, dw, lds, fmt, wkn, estTime, fmtElapsed, BARBELL_IDS, resolveWeight, swapOptions, restFor, buildExerciseEntry, buildSession, manualSlot, sessionCursor, applyWorkout, workoutLabel, exerciseName, cleanDur } from "../../lib/engine.mjs";
 import { PlateCalc } from "../cards/PlateCalc.jsx";
 import { cancelDeviceNotification, cancelServerPush, haptic, notifyDevice, scheduleDeviceNotification, scheduleServerPush } from "../core/device.js";
 import { useToday } from "../core/hooks.js";
@@ -553,7 +553,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           const inc=(e.swappedTo?.inc??sl?.inc)||5;
           const unit=(e.swappedTo?.unit||sl?.unit||"lb").toLowerCase().replace("lbs","lb");
           const rr=sl?.rr;
-          // One rule for "what am I aiming for", shared with Today and the Train plan (anchors move up; the rest hold on the cut).
+          // One rule for "what am I aiming for", shared with Today and the Train plan (the block decides which lifts add weight: mayAddWeight).
           const goal=sl?liftTarget(data,{...sl,...(e.swappedTo||{}),sets:e.sets.length},{isDeload:workout.isDeload}).goal:null;
           const cue=e.swappedTo?.cue||sl?.cue||"";
           const showWu=edSi===0&&e.wu?.some(w=>!w.done);
@@ -563,7 +563,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {rr&&<span style={{fontSize:15,color:C.t3,whiteSpace:"nowrap",...NUMS}}>{rrTxt(rr)} reps</span>}
             </div>
             <div style={{fontSize:15,color:C.t3,marginTop:3,lineHeight:1.45,...NUMS}}>
-              {[sl?.anchor?"Anchor lift (adds weight)":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&prev?" · ":""}
+              {[sl?.anchor?"Anchor lift":null,ssTag,e.swappedTo?"Swapped":null].filter(Boolean).join(" · ")}{(sl?.anchor||ssTag||e.swappedTo)&&prev?" · ":""}
               {prev?<>Last {prev.weight>0?prev.weight:"BW"} × {prev.reps.join(", ")}</>:null}
             </div>
             {goal&&<div style={{fontSize:15,color:C.t2,marginTop:2,lineHeight:1.45}}>{goal}</div>}
@@ -605,7 +605,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,edSi)}>Skip set</button>}
               {edSi>=0&&<button type="button" style={link} onClick={()=>skipSets(ei,'all')}>Skip lift</button>}
               {getSwapOptions(sl,e).length>0&&!e.sets.some(x=>x.done)&&<button type="button" style={link} onClick={()=>setSwapModal({ei,exName:name})}>Swap lift</button>}
-              {BARBELL_IDS.has(e.id)&&<button type="button" style={link} onClick={()=>setShowPlates(true)}>Plates</button>}
+              {BARBELL_IDS.has(e.id)&&!/hand|side/.test(unit)&&<button type="button" style={link} onClick={()=>setShowPlates(true)}>Plates</button>}
             </div>
             {cue&&<details style={{marginTop:2}}><summary style={{fontSize:15,color:C.t3,cursor:"pointer",padding:"6px 0"}}>Form cue</summary><div style={{fontSize:15,color:C.t2,lineHeight:1.5,paddingBottom:6}}>{cue}</div></details>}
             <Sheet open={showPlates} onClose={()=>setShowPlates(false)} title="Plates"><PlateCalc weight={e.sets[Math.max(0,edSi)]?.weight||0}/></Sheet>
@@ -762,8 +762,10 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
       const jumpToday=()=>{setSelDate(t);const el=stripRef.current;if(el)el.scrollTo({left:el.clientWidth*PAST_WEEKS,behavior:"smooth"});};
       const selDow=dw(selDate);
       const selLog=data.wk?.[selDate];
-      // Before this block started there was no plan for that day; offer the picker instead.
-      const selPlan=selDate<PROG.start?null:getSess(selDow,activeVariant[selDow]);
+      // A past day before this block started had no plan from it; offer the picker instead.
+      // Today and later always show the current program (a block deployed early is already live).
+      const preBlock=selDate<PROG.start&&selDate<t;
+      const selPlan=preBlock?null:getSess(selDow,activeVariant[selDow]);
       const isToday=selDate===t,isPast=selDate<t;
       const selLabel=isToday?"Today":fmt(selDate);
       const todayLogged=!!data.wk?.[t];
@@ -775,7 +777,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
           <button type="button" key={ex.id} onClick={()=>setExInfo({ex,progKey:progKey(ex,ex)})} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,minHeight:52,padding:"8px 0",background:"none",border:"none",borderBottom:`1px solid ${C.bd}`,cursor:"pointer",textAlign:"left"}}>
             <span style={{minWidth:0}}>
               <span style={{display:"block",fontSize:17,color:dim?C.t2:C.t}}>{ex.name}</span>
-              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor lift (adds weight)":null,dim?`${ex.sets} × ${rrTxt(ex.rr)}`:`${lt.aim} reps (${rrTxt(ex.rr)})`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
+              <span style={{display:"block",fontSize:15,color:C.t3,marginTop:1,...NUMS}}>{[ss?`Superset ${ss}`:null,ex.anchor?"Anchor lift":null,dim?`${ex.sets} × ${rrTxt(ex.rr)}`:`${lt.aim} reps (${rrTxt(ex.rr)})`,lt.last&&!dim?`last ${lt.last}`:null].filter(Boolean).join(" · ")}</span>
               {!dim&&<span style={{display:"block",fontSize:15,color:C.t2,marginTop:2}}>{lt.goal}</span>}
             </span>
             <span style={{fontSize:17,fontWeight:500,color:dim?C.t2:C.t,whiteSpace:"nowrap",...NUMS}}>{cw>0?<>{cw}<span style={{fontSize:13,color:C.t3,fontWeight:400}}> lb</span></>:"BW"}</span>
@@ -854,8 +856,8 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
             <div style={{textAlign:"center"}}><button type="button" style={link} onClick={()=>setPicker({date:isPast?selDate:t})}>Pick a different session</button></div>
           </>):(<>
             <div style={{fontSize:15,color:C.t3}}>{isPast?`Nothing logged · ${selLabel}`:selLabel}</div>
-            <div style={{fontSize:22,fontWeight:600,marginTop:4}}>{selDate<PROG.start?"Before this block":"Rest day"}</div>
-            <div style={{fontSize:15,color:C.t3,marginTop:2}}>{selDate<PROG.start?`${PROG.name} started ${fmt(PROG.start)}.`:"No lift on the plan. Steps, stretch and protein still count."}</div>
+            <div style={{fontSize:22,fontWeight:600,marginTop:4}}>{preBlock?"Before this block":"Rest day"}</div>
+            <div style={{fontSize:15,color:C.t3,marginTop:2}}>{preBlock?`${PROG.name} ${t<PROG.start?"starts":"started"} ${fmt(PROG.start)}.`:"No lift on the plan. Steps, stretch and protein still count."}</div>
             {isPast?<>
               <button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:selDate})}>Log a session for {selLabel}</button>
             </>:<button type="button" style={bigBtn(false)} onClick={()=>setPicker({date:t})}>Start a session</button>}
@@ -924,7 +926,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         if(!wks.length)return{name:shortName(ex.name),vals:[],status:"No logs yet",sc:C.t3,stroke:C.t3,pts:"",exp:""};
         const vals=wks.map(w=>byWk[w]);
         const inc=ex.inc||5;
-        const expVals=wks.map((w,i)=>ex.anchor?vals[0]+inc*(w-wks[0]):vals[0]);
+        const expVals=wks.map((w,i)=>mayAddWeight(ex)?vals[0]+inc*(w-wks[0]):vals[0]);
         const all=[...vals,...expVals];const mn=Math.min(...all),mx=Math.max(...all),rng=(mx-mn)||1;
         const px=w=>wks.length>1?(w-wks[0])/(wks[wks.length-1]-wks[0])*120:60;
         const py=v=>22-((v-mn)/rng)*18;
@@ -935,7 +937,7 @@ const Training=({data,setData,workout,setWorkout,setTab,addToast,active})=>{
         let status,sc,stroke;
         if(vals.length<2){status="Logging";sc=C.t3;stroke=C.t;}
         else if(last<first&&trail>=3){status=`Down ${trail} weeks`;sc=C.t2;stroke=C.t2;}
-        else if(last>first){stroke=C.t;sc=C.g;status=ex.anchor?(last>=expVals[expVals.length-1]?`Ahead · +${inc} next week`:"On pace"):"On pace";}
+        else if(last>first){stroke=C.t;sc=C.g;status=mayAddWeight(ex)?(last>=expVals[expVals.length-1]?`Ahead · +${inc} next week`:"On pace"):"On pace";}
         else{stroke=C.t2;sc=C.t2;status=`Holding ${trail} week${trail>1?"s":""}`;}
         return{name:shortName(ex.name),status,sc,stroke,pts,exp,vals};
       });
