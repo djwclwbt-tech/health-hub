@@ -6,9 +6,9 @@ import * as E from '../lib/engine.mjs';
 import { OLD_DAYS } from './fixtures/summer-cut-days.mjs';
 const { DEFAULTS } = E;
 // These tests are pinned to the frozen Summer Cut block: its days and its dates
-// (deload week 4 from 2026-07-06). Each test file runs in its own process, so
+// (deload week 4 from 2026-07-06, accessories held on the cut). Each test file runs in its own process, so
 // pinning the engine's PROG here cannot leak into other files.
-Object.assign(E.PROG, { start: '2026-07-06', end: '2026-08-30', weeks: 8, deload: 4 });
+Object.assign(E.PROG, { start: '2026-07-06', end: '2026-08-30', weeks: 8, deload: 4, holdAccessories: true, comeback: {} });
 const PROG = { ...E.PROG, days: OLD_DAYS };
 const day = (offset, from = '2026-09-08') => { const d = new Date(from + 'T12:00:00'); d.setDate(d.getDate() + offset); return E.lds(d); };
 const TODAY = '2026-09-08'; // a Tuesday inside Summer Cut v2 (week 10 → past deload week 4)
@@ -233,11 +233,11 @@ test('ruleRest: compounds longest, lower > upper, 5-8 > 8-12, isolation 60 (90 f
 test('the shipped program keeps its designed rest per day (not a formula)', () => {
   const rest = Object.fromEntries(Object.entries(E.PROG.days).map(([d, s]) => [d, s.exercises.map(e => e.rest)]));
   assert.deepEqual(rest, {
-    monday: [150, 120, 120, 150, 60],          // strength: anchor and pull-ups long, accessories 120, finisher 60
-    tuesday: [120, 90, 90, 60],                // strength (comeback loads)
-    wednesday: [0, 60, 0, 60, 0, 60],          // fast-day arm supersets
-    thursday: [90, 90, 60, 60, 60],            // hypertrophy density
-    friday: [90, 60, 60, 60, 60],              // hypertrophy density
+    monday: [150, 150, 120, 120, 60],          // strength: chest press and pull-up anchors 150, moderate compounds 120, isolation 60
+    tuesday: [180, 150, 90, 60],               // strength: leg press 180, RDL 150, curl 90, extension 60
+    wednesday: [0, 60, 0, 60, 0, 60],          // fast-day arm and delt supersets: 0 inside the pair, 60 after
+    thursday: [90, 90, 60, 90, 60],            // hypertrophy: compounds 90, isolation 60
+    friday: [120, 60, 90, 60],                 // hypertrophy: leg press anchor 120, pull-through 90, isolation 60
   });
   for (const [d, s] of Object.entries(E.PROG.days)) assert.ok(s.intent, `${d} says what it is for`);
   assert.ok(E.PROG.science.length >= 5);
@@ -247,8 +247,8 @@ test("restFor: the slot's planned rest stands for a swapped-in lift; manual lift
   assert.equal(E.restFor({ id: 'pec-deck', rr: [12, 15], rest: 60 }), 60);
   assert.equal(E.restFor({ id: 'incline-db-curl', rr: [10, 12], rest: 0 }), 0, 'superset chain stays 0');
   assert.equal(E.restFor({ id: 'leg-extension', rr: [10, 12] }), 90, 'no plan number → rule');
-  const mon = E.PROG.days.monday;
-  const opts = E.swapOptions(base(), { exercises: [] }, mon.exercises[1], mon.exercises[1]);
+  const row = E.PROG.days.monday.exercises.find(e => e.id === 'seated-row');
+  const opts = E.swapOptions(base(), { exercises: [] }, row, row);
   assert.ok(opts.length && opts.every(o => o.rest === 120), 'a row swap on Upper A keeps the slot rest');
 });
 
@@ -271,7 +271,7 @@ test('backfillData replays logs by identity once, and pruneProgression drops orp
 
 // ── targets & day types ─────────────────────────────────────────────────────
 test('day targets: training, Wednesday fast, weekend split, travel, social weekend', () => {
-  const s = { ...DEFAULTS };
+  const s = { ...DEFAULTS, protein: 200, wednesdayCal: 900 }; // Summer Cut settings
   assert.equal(E.getDayCalTarget('2026-09-08', s, {}, null), 2000);       // Tue
   assert.equal(E.getDayCalTarget('2026-09-09', s, {}, null), 900);        // Wed
   assert.equal(E.getDayCalTarget('2026-09-09', { ...s, wednesdayCal: 0 }, {}, null), 0, 'zero-cal Wednesday is a real fast, not the default');
@@ -393,7 +393,7 @@ test('applyChanges applies settings and exercise edits, rejects nonsense, never 
   assert.equal(r.program.thursday.exercises.filter(e => e.id === 'face-pull').length, 1);
   assert.equal(r.program.friday.exercises.some(e => e.id === 'seated-calf'), false);
   assert.equal(program.monday.exercises.some(e => e.id === 'cable-fly'), true, 'input program untouched');
-  assert.equal(DEFAULTS.protein, 200, 'input settings untouched');
+  assert.equal(DEFAULTS.protein, 180, 'input settings untouched');
 });
 
 test('exerciseReport summarizes a lift for coaching', () => {
@@ -418,8 +418,9 @@ test('td(): a server (no window) reads the day in Austin, not UTC', () => {
 test('calcAdaptiveTDEE and getWeeklyRecoveryAvg honor an explicit today', () => {
   const wt = {}, nut = {};
   for (let i = 27; i >= 0; i--) { const k = day(-i); wt[k] = 190; nut[k] = { meals: [], totalCal: 2000 }; }
-  const tue = E.calcAdaptiveTDEE(wt, nut, DEFAULTS, {}, {}, null, TODAY);
-  const wed = E.calcAdaptiveTDEE(wt, nut, DEFAULTS, {}, {}, null, day(1));
+  const st = { ...DEFAULTS, wednesdayCal: 900 }; // Summer Cut fast-day target
+  const tue = E.calcAdaptiveTDEE(wt, nut, st, {}, {}, null, TODAY);
+  const wed = E.calcAdaptiveTDEE(wt, nut, st, {}, {}, null, day(1));
   assert.equal(tue.deficit, tue.tdee - 2000, 'Tuesday target');
   assert.equal(wed.deficit, wed.tdee - 900, 'Wednesday target');
   const rec = { [day(0)]: { recoveryScore: 80 }, [day(-1)]: { recoveryScore: 70 }, [day(-2)]: { recoveryScore: 60 } };
@@ -442,15 +443,16 @@ test('trend and TDEE ignore null, zero and non-numeric weights', () => {
 test('getStalls reports a lift once even with a legacy plain-id row', () => {
   const wk = {}; [['2026-09-25', 100], ['2026-10-02', 95], ['2026-10-06', 95]].forEach(([d, w]) => { wk[d] = { exercises: [{ id: 'seated-calf', sets: [{ done: true, reps: 10, weight: w }] }] }; });
   const prog = { 'seated-calf__10-12': { lastDate: '2026-10-06', exerciseId: 'seated-calf' }, 'seated-calf': { lastDate: '2026-09-25' } };
-  assert.deepEqual(E.getStalls(prog, wk, E.PROG.days).map(s => s.id), ['seated-calf__10-12']);
+  assert.deepEqual(E.getStalls(prog, wk, PROG.days).map(s => s.id), ['seated-calf__10-12']);
 });
 
 test('applyChanges update and swap reach every day that holds the lift', () => {
-  const u = E.applyChanges([{ type: 'exercise', action: 'update', exerciseId: 'seated-calf', fields: { sw: 100 } }], { program: E.PROG.days });
-  assert.deepEqual([u.program.tuesday, u.program.friday].map(d => d.exercises.find(e => e.id === 'seated-calf').sw), [100, 100]);
-  const s = E.applyChanges([{ type: 'exercise', action: 'swap', oldExerciseId: 'seated-calf', newExercise: { id: 'leg-press-calf', name: 'Calf Press', sets: 2, rr: [10, 12] } }], { program: E.PROG.days });
-  assert.ok(['tuesday', 'friday'].every(d => s.program[d].exercises.some(e => e.id === 'leg-press-calf') && !s.program[d].exercises.some(e => e.id === 'seated-calf')));
-  assert.match(s.applied[0], /tuesday, friday/);
+  // Cut v3: the cable lateral raise is on Monday and Wednesday.
+  const u = E.applyChanges([{ type: 'exercise', action: 'update', exerciseId: 'lateral-raise', fields: { sw: 15 } }], { program: E.PROG.days });
+  assert.deepEqual([u.program.monday, u.program.wednesday].map(d => d.exercises.find(e => e.id === 'lateral-raise').sw), [15, 15]);
+  const s = E.applyChanges([{ type: 'exercise', action: 'swap', oldExerciseId: 'lateral-raise', newExercise: { id: 'cable-reverse-fly', name: 'Cable Reverse Fly', sets: 2, rr: [12, 15] } }], { program: E.PROG.days });
+  assert.ok(['monday', 'wednesday'].every(d => s.program[d].exercises.some(e => e.id === 'cable-reverse-fly') && !s.program[d].exercises.some(e => e.id === 'lateral-raise')));
+  assert.match(s.applied[0], /monday, wednesday/);
 });
 
 test('progression: reps above the range count as topping it; extra sets do not block it', () => {

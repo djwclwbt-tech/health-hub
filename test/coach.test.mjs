@@ -48,12 +48,16 @@ test('groundingCheck: flags invented numbers, passes cited ones and thousands se
   assert.deepEqual(E.groundingCheck('He averaged 14,149 steps', 'STEPS: avg 14,149/day'), []);
 });
 
-test('liftTarget: anchors move up, accessories hold, body weight says so', () => {
+// Run fn with the block's progression rule pinned (PROG is read at call time).
+const withHold = (hold, fn) => { const was = E.PROG.holdAccessories; E.PROG.holdAccessories = hold; try { return fn(); } finally { E.PROG.holdAccessories = was; } };
+
+test('liftTarget: Cut v3 lets every lift add weight; a hold block keeps accessories', () => {
   const d = scenario('on-track', TODAY);
   const mon = d.program.monday.exercises;
   const anchor = mon.find(e => e.anchor && e.inc > 0), acc = mon.find(e => !e.anchor && e.sw > 0);
   assert.match(E.liftTarget(d, anchor).goal, /goes up/);
-  assert.doesNotMatch(E.liftTarget(d, acc).goal, /goes up/, 'cut hold: accessories never promise more weight');
+  assert.match(E.liftTarget(d, acc).goal, /goes up/, 'Cut v3: double progression on every lift');
+  withHold(true, () => assert.doesNotMatch(E.liftTarget(d, acc).goal, /goes up/, 'hold block: accessories never promise more weight'));
   const lt = E.liftTarget(d, anchor);
   assert.equal(lt.weight, E.buildExerciseEntry(d, anchor).sets[0].weight, 'the weight shown is the weight the session prefills');
   assert.equal(lt.unit, 'lb');
@@ -68,11 +72,13 @@ test('paceVerdict: green only when the goal lands by the block end', () => {
   assert.equal(E.paceVerdict({ reliable: false, n: 3 }, TODAY).kind, 'unreliable');
 });
 
-test('history replay follows the cut hold: accessories never gain weight from backfill', () => {
-  const d = E.migrate(scenario('on-track', TODAY));
+test('history replay follows the block rule: a topped accessory moves up in Cut v3, holds on a hold block', () => {
+  const replay = () => { const d = E.migrate(scenario('on-track', TODAY)); E.backfillData(d); E.repairDeloadProgression(d); return d; };
+  const d = replay();
   const acc = d.program.monday.exercises.find(e => !e.anchor && e.sw > 0 && e.inc > 0);
-  E.backfillData(d); E.repairDeloadProgression(d);
-  assert.equal(E.liftTarget(d, acc).weight, acc.sw, 'topped sets at the same weight → same weight next time');
+  const lastW = Number(E.lastSessionSets(d, E.progKey(acc, acc), acc.id)[0].weight);
+  assert.equal(E.liftTarget(d, acc).weight, lastW + acc.inc, 'topped sets → up one step next time');
+  withHold(true, () => { const h = replay(); assert.equal(E.liftTarget(h, acc).weight, lastW, 'hold block: same weight next time'); });
 });
 
 test('targetReps: a coach target, not a copy of last time', () => {
